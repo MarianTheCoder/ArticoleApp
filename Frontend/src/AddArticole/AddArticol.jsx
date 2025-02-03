@@ -1,9 +1,10 @@
-import React, { useContext, useEffect } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import HorizontalForm from './HorizontalForm';
 import FetchedArticles from './FetchedArticles';
 import { ArticlesContext } from '../context/ArticlesContext';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faLongArrowAltLeft, faLongArrowAltRight, faLongArrowRight } from '@fortawesome/free-solid-svg-icons';
+import { faArrowRight, faLongArrowAltLeft, faLongArrowAltRight, faLongArrowRight } from '@fortawesome/free-solid-svg-icons';
+import HorizontalSearch from './HorizontalSearch';
 
 export default function AddArticol() {
   const {clicked, handlePrevious , handleNext, setArticles, setTotalItems, setOffset,  totalItems ,articles, offset } = useContext(ArticlesContext);
@@ -15,23 +16,36 @@ export default function AddArticol() {
     console.log("ads");
   }, [clicked]);
 
+    const [selectedForm, setSelectedForm] = useState();
 
   return (
-    <div className="w-full h-full flex flex-col bg-gray-800 rounded-xl mt-4 overflow-hidden">
+    <>
+    <div className="w-full relative h-full  gap-2 rounded-xl flex flex-col overflow-hidden    mt-4">
       {/* HorizontalForm */}
-      <div className="flex-shrink-0">
+      <div className={` rounded-xl  bg-gray-800 grid grid-cols-[auto_1fr]`}>
+        <div className='w-12 h-full rounded-xl bg-red-500 flex'>
+          <div className='flex flex-col w-full items-center justify-around'>
+            <FontAwesomeIcon icon={faArrowRight}/>
+            <p className=' -rotate-90'>Search</p>
+            <FontAwesomeIcon icon={faArrowRight}/>
+
+          </div>
+          { selectedForm === 1 && <HorizontalSearch/>}
+        </div>
         <HorizontalForm />
       </div>
 
       {/* FetchedArticles */}
-      <div className="flex-grow overflow-hidden">
-        <FetchedArticles />
+        <div className="h-full grid grid-rows-[1fr_auto] w-full scrollbar-webkit overflow-hidden">
+          <FetchedArticles />
+          <div className='p-2 bg-gray-800 text-xl rounded-xl flex justify-between px-5'>
+            <button className='px-2' onClick={() => handlePrevious()}><FontAwesomeIcon icon={faLongArrowAltLeft}/></button>
+            <p className=''>{offset / 10}</p>
+            <button className='px-2' onClick={() => handleNext()}><FontAwesomeIcon icon={faLongArrowAltRight}/></button>
+          </div>
+        </div>
       </div>
-      <div className='p-2 bg-gray-800 text-xl flex justify-between px-5'>
-          <button className='px-2' onClick={() => handlePrevious()}><FontAwesomeIcon icon={faLongArrowAltLeft}/></button>
-          <p className=''>{offset / 10}</p>
-          <button className='px-2' onClick={() => handleNext()}><FontAwesomeIcon icon={faLongArrowAltRight}/></button>
-      </div>
-    </div>
+     
+    </>
   );
 }
