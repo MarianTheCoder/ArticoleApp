@@ -102,7 +102,7 @@ function HorizontalForm() {
   };
 
   return (
-    <div className="flex justify-center items-center text-black ">
+    <div className="flex justify-center items-center text-black  ">
       
       <form
         onSubmit={handleSubmit}
