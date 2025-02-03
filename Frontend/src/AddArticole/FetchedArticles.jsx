@@ -7,9 +7,9 @@ export default function FetchedArticles() {
   const { articles, editArticle ,deleteArticle, setEditArticle } = useContext(ArticlesContext);
 
   return (
-    <div className="bg-slate-600 w-full h-full   pt-2 overflow-hidden ">
-      <div className="flex flex-col h-full justify-start items-center ">
-        <div className="w-full h-full overflow-y-auto mb-1">
+    <div className="bg-gray-00 w-full overflow-hidden">
+      <div className="flex flex-col h-full justify-start items-center  ">
+        <div className="w-full h-full overflow-y-auto mb-1 pr-1 scrollbar-webkit">
           {articles &&
             articles.map((article) => (
               <div
