@@ -16,22 +16,11 @@ export default function AddArticol() {
     console.log("ads");
   }, [clicked]);
 
-    const [selectedForm, setSelectedForm] = useState();
-
   return (
     <>
     <div className="w-full relative h-full  gap-2 rounded-xl flex flex-col overflow-hidden    mt-4">
       {/* HorizontalForm */}
-      <div className={` rounded-xl  bg-gray-800 grid grid-cols-[auto_1fr]`}>
-        <div className='w-12 h-full rounded-xl bg-red-500 flex'>
-          <div className='flex flex-col w-full items-center justify-around'>
-            <FontAwesomeIcon icon={faArrowRight}/>
-            <p className=' -rotate-90'>Search</p>
-            <FontAwesomeIcon icon={faArrowRight}/>
-
-          </div>
-          { selectedForm === 1 && <HorizontalSearch/>}
-        </div>
+      <div className={` rounded-xl  bg-gray-800 `}>
         <HorizontalForm />
       </div>
 

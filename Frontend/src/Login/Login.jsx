@@ -46,7 +46,7 @@ export default function login() {
     </div>
 
     <div className='login'>
-        <h2 className={`border-l-15 ${selectedUser == 0 ? "border-l-[#16A34A]" : selectedUser == 1 ? "border-l-[#F97316]" : "border-l-[#2563EB]"}`} id='txt'>Login</h2>
+        <h2 className={`border-l-[15px] ${selectedUser == 0 ? "border-l-[#16A34A]" : selectedUser == 1 ? "border-l-[#F97316]" : "border-l-[#2563EB]"}`} id='txt'>Login</h2>
         <div className='inputBox'>
             <input value={name} onChange={(e) => setName(e.target.value)}  type="text" placeholder='Username' />
         </div>

@@ -1,5 +1,5 @@
 const express = require('express');
-const { getAllArticles, addArticle, getArticles, deleteArticle, editArticle} = require('../controllers/ArticlesController');
+const { getAllArticles, addArticle, getArticles, deleteArticle, editArticle} = require('../Controllers/ArticlesController');
 
 
 const router = express.Router();

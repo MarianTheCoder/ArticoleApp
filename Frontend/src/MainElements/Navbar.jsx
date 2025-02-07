@@ -5,6 +5,7 @@ import { faEye, faFilePen, faHouse, faNewspaper, faPeopleGroup, faPhone, faRight
 import photo from '../assets/no-user-image-square.jpg';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/TokenContext';
+import Logo from '../assets/logo.svg';
 
 function Navbar() {
 
@@ -17,13 +18,14 @@ function Navbar() {
   return (
     <>
    
-    <div onClick={() => setActive(!active)} className={`menuToggle ${active == true ? "active" : ""}`}></div>
-      <div  className={`sidebar text-xl ${active == true ? "active" : ""}`}>
+      <div  className={`sidebar text-xl  ${active == true ? "active" : ""}`}>
         <ul>
           <li className='logo' style={{"--bg":"#333"}}>
             <a className=' cursor-default'>
-              <div className='icon'><FontAwesomeIcon icon={faEye}/></div>
-              <div className='text'>Website Logo</div>
+              <div className='icon'><div onClick={() => setActive(!active)} className={`menuToggle ${active == true ? "active" : ""}`}></div></div>
+              <div className="flex items-center">
+                <img src={Logo} alt="Website Logo" className={`transition-all duration-500 w-full ${active == false ? "opacity-0" : ""}`} />
+               </div>
             </a>
           </li>
           <div className='Menulist'>
@@ -42,7 +44,7 @@ function Navbar() {
                     </a>
                 </li>
                 <li onClick={() => setSelected(2)} style={{"--bg":"#0fc70f"}} className={`cursor-pointer ${selected == 2 ? "active" : ""}`}>
-                    <a href="#">
+                <a onClick={() => navigate("/Echipa")}>
                         <div className='icon'><FontAwesomeIcon icon={faUser}/></div>
                         <div className='text'>Echipa</div>
                     </a>
@@ -64,7 +66,7 @@ function Navbar() {
                     </a>
                 </li>
                 <li onClick={() => setSelected(2)} style={{"--bg":"#0fc70f"}} className={`cursor-pointer ${selected == 2 ? "active" : ""}`}>
-                    <a href="#">
+                    <a onClick={() => navigate("/addAngajati")}>
                         <div className='icon'><FontAwesomeIcon icon={faUserPlus}/></div>
                         <div className='text'>Angajati</div>
                     </a>
@@ -72,7 +74,13 @@ function Navbar() {
                 <li onClick={() => setSelected(3)} style={{"--bg":"#2196f3"}} className={`cursor-pointer ${selected == 3 ? "active" : ""}`}>
                     <a href="#">
                         <div className='icon'><FontAwesomeIcon icon={faPeopleGroup}/></div>
-                        <div className='text'>Clienti</div>
+                        <div className='text'>Santiere</div>
+                    </a>
+                </li>
+                <li onClick={() => setSelected(4)} style={{"--bg":"#dee61d"}} className={`cursor-pointer ${selected == 4 ? "active" : ""}`}>
+                <a onClick={() => navigate("/AddEchipa")}>
+                        <div className='icon'><FontAwesomeIcon icon={faPeopleGroup}/></div>
+                        <div className='text'>Adauga Echipa</div>
                     </a>
                 </li>
                 </>
