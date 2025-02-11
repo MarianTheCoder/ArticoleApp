@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/axiosAPI';
 import photoAPI from '../api/photoAPI';
-import '../assets/News.css';
+import '../assets/Echipa.css';
 
 export default function ListaEchipa() {
   const [team, setTeam] = useState([]);
@@ -9,10 +9,10 @@ export default function ListaEchipa() {
   useEffect(() => {
     const fetchTeam = async () => {
       try {
-        const response = await api.get('/News/api/news');
+        const response = await api.get('/Echipa/api/team');
         setTeam(response.data);
       } catch (error) {
-        console.error('Eroare la preluarea stirilor:', error);
+        console.error('Eroare la preluarea echipei:', error);
       }
     };
 
@@ -21,20 +21,21 @@ export default function ListaEchipa() {
 
   return (
     
-    <div className="news-container">
-      <h2 className="news-title">Echipa Noastră</h2>
-      <div className="news-container1">
+    <div className="echipa-container">
+      <h2 className="echipa-title">Echipa Noastră</h2>
+      <div className="echipa-container1">
         {team.map((member) => (
-          <div key={member.id} className="news-card">
-            <div className="news-imgBx">
+          <div key={member.id} className="echipa-card">
+            <div className="echipa-imgBx">
               <img 
                 src={`${photoAPI}/${member.photoUrl}`} 
                 alt={member.name} 
               />
             </div>
-            <h3 className="news-name">{member.name}</h3>
-            <div className="news-content">
-              <p className="news-text">{member.description}</p>
+            <h3 className="echipa-name">{member.name}</h3>
+            <p className="echipa-role">{member.role}</p> {/* Mutați aici rolul */}
+            <div className="echipa-content">
+              <p className="echipa-text">{member.description}</p>
             </div>
           </div>
         ))}

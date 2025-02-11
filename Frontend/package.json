@@ -18,9 +18,11 @@
     "framer-motion": "^12.4.1",
     "jwt-decode": "^4.0.0",
     "react": "^18.3.1",
+    "react-countup": "^6.5.3",
     "react-dom": "^18.3.1",
     "react-image-file-resizer": "^0.4.8",
-    "react-router-dom": "^7.1.1"
+    "react-router-dom": "^7.1.1",
+    "react-visibility-sensor": "^5.1.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",

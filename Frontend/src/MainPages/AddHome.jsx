@@ -2,8 +2,8 @@ import React, { useContext } from 'react'
 import ListaAdaugareUsers from './Lista&AdaugareUsers'
 import { AngajatiContext } from '../context/UsersContex';
 import "../assets/customCSS.css"
-import AddingUsersForm from './AddingUsersForm';
-import FetchedUsers from './FetchedUsers';
+import AddEchipa from './AddEchipa';
+import AddNews from './AddNews';
 
 export default function SelectedUserType() {
     const {clicked, setClicked } = useContext(AngajatiContext);
@@ -14,13 +14,13 @@ export default function SelectedUserType() {
           <div className='containerWhiter w-full  '>
             <div className = 'flex justify-around items-center p-4  text-2xl rounded-xl'>
               <button onClick={() => setClicked(1)} className={`bg-white text-black  px-5 py-3 rounded-xl ${clicked == 1 ? "bg-gray-200 outline-2 outline" : ""} hover:bg-gray-200`}>
-                Ofertanti
+                News
               </button>
               <button onClick={() => setClicked(2)} className={`bg-white text-black  px-5 py-3 rounded-xl ${clicked == 2 ? "bg-gray-200 outline-2 outline" : ""} hover:bg-gray-200`}>
-                Angajati
+                Echipa
               </button>
               <button onClick={() => setClicked(3)} className={`bg-white text-black  px-5 py-3 rounded-xl ${clicked == 3 ? "bg-gray-200 outline-2 outline" : ""} hover:bg-gray-200`}>
-                Beneficiari
+               Altceva
               </button>
             </div>
        
@@ -28,12 +28,12 @@ export default function SelectedUserType() {
          {clicked && 
          <>
             <div className={` w-full mt-8 rounded-xl `}>
-              <AddingUsersForm />
+              <AddNews />
             </div>
-           <div className="w-full relative h-full  gap-2 rounded-lg flex flex-col overflow-hidden p-5 py-8">
-              {/* FetchedArticles */}
-              <div className="h-full grid grid-rows-1 w-full rounded-lg scrollbar-webkit  overflow-hidden">
-                 <FetchedUsers />
+           <div className="w-full relative h-full  gap-2 rounded-xl flex flex-col overflow-hidden p-5 py-8">
+
+              <div className="h-full grid grid-rows-1 w-full scrollbar-webkit overflow-hidden">
+                 <AddEchipa />
                </div>
             </div>
            </>

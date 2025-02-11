@@ -9,6 +9,7 @@ const path = require("path");
 const loginRoute = require('./Routes/LoginRoutes');
 const UsersRoute = require("./Routes/UsersRoutes");
 const EchipaRoutes = require("./Routes/EchipaRoutes");
+const NewsRoutes = require("./Routes/NewsRoutes");
 
 const app = express();
 const port = 3000;
@@ -33,6 +34,7 @@ const pool = mysql.createPool(dbConfig);
 //acces the photos
 app.use('/uploads/Angajati', express.static(path.join(__dirname, 'uploads/Angajati')));
 app.use('/uploads/Echipa', express.static(path.join(__dirname, 'uploads/Echipa')));
+app.use('/uploads/News', express.static(path.join(__dirname, 'uploads/News')));
 
 // Function to initialize the database
 async function initializeDatabase() {
@@ -79,10 +81,23 @@ async function initializeDatabase() {
     data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `;
- 
 
   await pool.execute(createEchipaTableQuery);
-  console.log("Articole table created or already exists.");
+  console.log("Echipa table created or already exists.");
+ 
+  const createNewsTableQuery = `
+  CREATE TABLE IF NOT EXISTS News (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  photoUrl TEXT NOT NULL,
+  name VARCHAR(50) NOT NULL,
+  description TEXT NOT NULL, 
+  data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+`;
+
+  await pool.execute(createNewsTableQuery);
+  console.log("News table created or already exists.");
+
     // Insert initial admin user if needed
     await insertInitialAdminUser();
 
