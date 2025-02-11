@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../api/axiosAPI';
+import photoAPI from '../api/photoAPI'
 
-export default function Echipa() {
+export default function ListaEchipa() {
   const [team, setTeam] = useState([]);
 
   useEffect(() => {
     const fetchTeam = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/team');
+        const response = await api.get('/Echipa/api/team');
         setTeam(response.data);
       } catch (error) {
         console.error('Eroare la preluarea echipei:', error);
@@ -18,26 +19,30 @@ export default function Echipa() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#000043] p-6">
-      <h2 className="text-3xl font-bold text-center mb-6">Echipa Noastră</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-        {team.length > 0 ? (
-          team.map((member) => (
-            <div key={member.id} className="bg-white p-4 shadow-md rounded-lg text-center">
-              <img
-                src={member.photoUrl}
-                alt={member.name}
-                className="w-32 h-32 mx-auto rounded-full object-cover mb-4"
-              />
-              <h3 className="text-xl font-semibold">{member.name}</h3>
-              <p className="text-gray-600">{member.role}</p>
-              <p className="mt-2 text-gray-500">{member.description}</p>
-            </div>
-          ))
-        ) : (
-          <p className="text-center text-gray-500 col-span-3">Nu există membri în echipă.</p>
-        )}
+<div className="min-h-screen bg-[#000043] p-6">
+  <h2 className="text-3xl font-bold text-center mb-6 text-white">Echipa Noastră</h2>
+  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+    {team.map((member) => (
+      <div
+        key={member.id}
+        className="bg-white rounded-lg shadow-md p-4 text-center relative group overflow-hidden transform transition-all duration-300 hover:h-[450px] hover:scale-105"
+      >
+        <img
+          src={`${photoAPI}/${member.photoUrl}`}
+          alt={member.name}
+          className="w-32 h-32 mx-auto rounded-full object-cover transition-transform duration-300 group-hover:translate-y-[-30px]"
+        />
+        <h3 className="text-gray-600 mt-4 font-bold text-lg group-hover:mt-8">{member.name}</h3>
+
+        {/* Descriere și rol care vor apărea doar la hover */}
+        <div className="absolute inset-0 bg-[#ffffff] bg-opacity-90 opacity-0 group-hover:opacity-100 flex flex-col justify-center items-center p-4 transition-opacity duration-300 z-10">
+          <p className="text-gray-600">{member.role}</p>
+          <p className="text-sm text-gray-500 mt-2">{member.description}</p>
+        </div>
       </div>
-    </div>
+    ))}
+  </div>
+</div>
+
   );
 }

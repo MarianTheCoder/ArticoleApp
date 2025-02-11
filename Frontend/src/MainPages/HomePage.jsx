@@ -2,7 +2,7 @@ import React from 'react';
 
 export default function PresentationPage() {
   return (
-    <div className="relative min-h-screen bg-[#000043]">
+    <div className=" h-full bg-[#000043]">
 
       {/* Efectul de picături */}
       <div className="rain"></div>

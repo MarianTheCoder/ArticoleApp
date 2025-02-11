@@ -23,16 +23,13 @@ export default function SelectedUserType() {
                 Beneficiari
               </button>
             </div>
-            {
-              clicked &&
-              <div className={` rounded-xl `}>
-                <AddingUsersForm />
-              </div>
-            }
+       
           </div>
          {clicked && 
          <>
-        
+            <div className={` w-full mt-8 rounded-xl `}>
+              <AddingUsersForm />
+            </div>
            <div className="w-full relative h-full  gap-2 rounded-xl flex flex-col overflow-hidden p-5 py-8">
               {/* FetchedArticles */}
               <div className="h-full grid grid-rows-1 w-full scrollbar-webkit overflow-hidden">

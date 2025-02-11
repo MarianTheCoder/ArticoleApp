@@ -53,6 +53,7 @@ export const AuthProvider = ({ children }) => {
                 });
             } else {
                 localStorage.removeItem('token'); // Remove invalid token
+                localStorage.removeItem('photoUser');
             }
         }
         else{
@@ -63,13 +64,13 @@ export const AuthProvider = ({ children }) => {
     }
 
     // Login function
-    const login = async (username, password, role) => {
+    const login = async (email, password, role) => {
         const users = ["angajat", "beneficiar", "ofertant"];
         try {
             const response = await api.post(`/auth/login`, {
-                username,
+                email,
                 password,
-                role:users[role]
+                role:users[role],
             });
 
             const newToken = response.data.token;
@@ -85,6 +86,8 @@ export const AuthProvider = ({ children }) => {
                 setColor('text-amber-500');
             }
             setToken(newToken);
+            localStorage.setItem('photoUser', decoded.photo);
+            console.log(decoded);
             setUser({
                 id: decoded.id,
                 role: decoded.role,
@@ -99,6 +102,7 @@ export const AuthProvider = ({ children }) => {
     // Logout function
     const logout = () => {
         localStorage.removeItem('token');
+        localStorage.removeItem('photoUser');
         setToken(null);
         setUser({ id: null, role: null, user: null });
         window.location.reload();

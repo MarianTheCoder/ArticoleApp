@@ -10,7 +10,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     }, [])
 
     if(loading) 
-        return <div>Loading...</div>
+        return <div></div>
     // If the user is not logged in, redirect to the login page
     if (!user.role) {
         console.log(user);

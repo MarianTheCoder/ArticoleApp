@@ -22,7 +22,7 @@ export default function RoutesDom() {
           <Route path="/settings" element={<ProtectedRoute allowedRoles = {["ofertant","angajat","beneficiar"]}><Settings/></ProtectedRoute>}/>
           <Route path="/addAngajati" element={<ProtectedRoute allowedRoles = {["ofertant"]}><AddUsers/></ProtectedRoute>}/>
           <Route path="/Echipa" element={<Echipa/>}/>
-          <Route path="/AddEchipa" element={<AddEchipa/>}/>
+          <Route path="/AddEchipa" element={<ProtectedRoute allowedRoles = {["ofertant"]}><AddEchipa/></ProtectedRoute>}/>
         </Routes>
         </ArticlesProvider>
     </div>

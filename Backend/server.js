@@ -14,27 +14,25 @@ const app = express();
 const port = 3000;
 
 // MySQL Connection Configuration
-// const dbConfig = {
-//   host: "localhost",
-//   user: "iasirecr_baly_energies",
-//   password: "saps2002c",
-//   database: "iasirecr_baza_de_date",
-// };
+const dbConfig = {
+  host: "localhost",
+  user: "iasirecr_baly_energies",
+  password: "saps2002c",
+  database: "iasirecr_baza_de_date",
+};
 
 // Middleware
 app.use(bodyParser.json());
-// {origin: ['http://192.168.1.107t:5173', 'http://localhost:5173']}
+// {origin: ['http://192.168.1.107:5173', 'http://localhost:5173']}
 
 app.use(cors());
 
-const dbConfig = {
-  host: "localhost",
-  user: "root",
-  password: "pass", // Replace with your MySQL password
-  database: "construction" // Replace or create a database
-};
 
 const pool = mysql.createPool(dbConfig);
+
+//acces the photos
+app.use('/uploads/Angajati', express.static(path.join(__dirname, 'uploads/Angajati')));
+app.use('/uploads/Echipa', express.static(path.join(__dirname, 'uploads/Echipa')));
 
 // Function to initialize the database
 async function initializeDatabase() {
@@ -43,12 +41,13 @@ async function initializeDatabase() {
 
     // Create `angajati` table
     const createAngajatiTableQuery = `
-      CREATE TABLE IF NOT EXISTS angajati (
+      CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
         email VARCHAR(100) NOT NULL UNIQUE,
         name VARCHAR(50) NOT NULL,
         password VARCHAR(255) NOT NULL,
         role ENUM('ofertant', 'angajat', 'beneficiar') NOT NULL DEFAULT 'angajat',
+        photo_url VARCHAR(255) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `;
@@ -72,14 +71,16 @@ async function initializeDatabase() {
 
     const createEchipaTableQuery = `
     CREATE TABLE IF NOT EXISTS Echipa (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      photoUrl TEXT NOT NULL,
-      name VARCHAR(50) NOT NULL,
-      role VARCHAR(50) NOT NULL,
-      description TEXT NOT NULL, 
-      data DATE NOT NULL
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    photoUrl TEXT NOT NULL,
+    name VARCHAR(50) NOT NULL,
+    role VARCHAR(50) NOT NULL,
+    description TEXT NOT NULL, 
+    data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `;
+ 
+
   await pool.execute(createEchipaTableQuery);
   console.log("Articole table created or already exists.");
     // Insert initial admin user if needed
@@ -95,26 +96,27 @@ async function initializeDatabase() {
 async function insertInitialAdminUser() {
   try {
     const email = 'admin@example.com';
-    const name = 'AdminBoss22';
-    const plainPassword = 'admin22!!';
+    const name = 'admin';
+    const plainPassword = 'admin';
     const role = 'ofertant';
 
-    const [existingAngajat] = await pool.execute(
-      'SELECT * FROM angajati WHERE email = ?',
-      [email]
+    const [existingAngajati] = await pool.execute(
+      'SELECT * FROM users WHERE role = ?',
+      ["ofertant"]
     );
 
-    if (existingAngajat.length > 0) {
+    if (existingAngajati.length > 0) {
       console.log('Admin user already exists. Skipping insertion.');
       return;
     }
 
     const hashedPassword = await bcrypt.hash(plainPassword, 10);
     const insertQuery = `
-      INSERT INTO angajati (email, name, password, role) 
-      VALUES (?, ?, ?, ?)
+      INSERT INTO users (email, name, password, role, photo_url) 
+      VALUES (?, ?, ?, ?, ?)
     `;
-    await pool.execute(insertQuery, [email, name, hashedPassword, role]);
+    let photoUrl = "uploads/Angajati/no-user-image-square.jpg"
+    await pool.execute(insertQuery, [email, name, hashedPassword, role, photoUrl]);
     console.log('Admin user inserted successfully.');
   } catch (err) {
     console.error('Error inserting admin user:', err);
@@ -123,8 +125,9 @@ async function insertInitialAdminUser() {
 
 app.use('/articles', articlesRoutes);
 app.use('/auth', loginRoute);
-app.use('/news', EchipaRoutes);
+app.use('/Echipa', EchipaRoutes);
 app.use('/users', UsersRoute);
+
 
 // Serve static files from the React app
 app.use(express.static(path.join(__dirname, "../"))); // Adjust the path to your React build folder

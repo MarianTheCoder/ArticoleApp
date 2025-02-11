@@ -11,6 +11,7 @@ const UsersProvider = ({ children }) => {
 
     useEffect(() => {
         if(clicked != null){
+            setAngajati(null);
             getAngajati();
         }
     }, [clicked]);
@@ -27,8 +28,18 @@ const UsersProvider = ({ children }) => {
         }
     }
 
+    const deleteAngajat = async (id) =>{
+        try {
+            const response = await api.post(`/users/DeleteUser/${id}`);
+            console.log(response.data);
+            await getAngajati();
+        } catch (error) {
+            console.log(error);
+        }
+    }
+
     return (
-        <AngajatiContext.Provider value={{ clicked, setClicked, angajati, setAngajati }}>
+        <AngajatiContext.Provider value={{ clicked, setClicked, angajati, setAngajati , getAngajati, deleteAngajat}}>
             {children}
         </AngajatiContext.Provider>
     );

@@ -1,11 +1,13 @@
-import { useContext, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import "../assets/navbar.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEye, faFilePen, faHouse, faNewspaper, faPeopleGroup, faPhone, faRightFromBracket, faUser, faUserPlus } from "@fortawesome/free-solid-svg-icons"; 
+import { faEye, faFilePen, faHelmetSafety, faHouse, faL, faNewspaper, faPeopleGroup, faPhone, faRightFromBracket, faUser, faUserPlus } from "@fortawesome/free-solid-svg-icons"; 
 import photo from '../assets/no-user-image-square.jpg';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/TokenContext';
 import Logo from '../assets/logo.svg';
+import {useLocation} from 'react-router-dom';
+import photoAPI from '../api/photoAPI';
 
 function Navbar() {
 
@@ -13,12 +15,26 @@ function Navbar() {
     const [selected, setSelected] = useState(0);
 
     let navigate = useNavigate();
+    const location = useLocation();
     const {user, logout, color} = useContext(AuthContext);
+    const [loading, setLoading] = useState(true);
+    const photoStorage = localStorage.getItem("photoUser");
+
+    useEffect(() => {
+        if(location.pathname.includes("addAngajati")) setSelected(2);
+        else if(location.pathname.includes("addArticles")) setSelected(1);
+        else if(location.pathname.includes("News")) setSelected(1);
+        else if(location.pathname.includes("Echipa")) setSelected(2);
+        else if(location.pathname.includes("Contact")) setSelected(3);
+        else setSelected(0);
+        setLoading(false);
+    }, [])
+    
 
   return (
     <>
    
-      <div  className={`sidebar text-xl  ${active == true ? "active" : ""}`}>
+      {!loading && <div  className={`sidebar text-xl  ${active == true ? "active" : ""}`}>
         <ul>
           <li className='logo' style={{"--bg":"#333"}}>
             <a className=' cursor-default'>
@@ -38,7 +54,7 @@ function Navbar() {
             {!user.role ? 
             <>
                 <li onClick={() => setSelected(1)} style={{"--bg":"#f44336"}} className={`cursor-pointer ${selected == 1 ? "active" : ""}`}>
-                    <a href="#">
+                    <a onClick={() => navigate("/News")}>
                         <div className='icon'><FontAwesomeIcon icon={faNewspaper}/></div>
                         <div className='text'>News</div>
                     </a>
@@ -50,7 +66,7 @@ function Navbar() {
                     </a>
                 </li>
                 <li onClick={() => setSelected(3)} style={{"--bg":"#2196f3"}} className={`cursor-pointer ${selected == 3 ? "active" : ""}`}>
-                    <a href="#">
+                    <a onClick={() => navigate("/Contact")}>
                         <div className='icon'><FontAwesomeIcon icon={faPhone}/></div>
                         <div className='text'>Contact</div>
                     </a>
@@ -73,7 +89,7 @@ function Navbar() {
                 </li>
                 <li onClick={() => setSelected(3)} style={{"--bg":"#2196f3"}} className={`cursor-pointer ${selected == 3 ? "active" : ""}`}>
                     <a href="#">
-                        <div className='icon'><FontAwesomeIcon icon={faPeopleGroup}/></div>
+                        <div className='icon'><FontAwesomeIcon icon={faHelmetSafety}/></div>
                         <div className='text'>Santiere</div>
                     </a>
                 </li>
@@ -96,7 +112,7 @@ function Navbar() {
                 <a className=' cursor-pointer' onClick={() => navigate("/Settings")}>
                     <div className='icon'>
                         <div className='imgBx'>
-                             <img src={photo} alt="" />
+                        <img src={photoStorage ? `${photoAPI}/${photoStorage}` : photo} alt="" />
                         </div>
                     </div>
                     <div className='text'>{user.name}</div>
@@ -119,7 +135,7 @@ function Navbar() {
         }
           </div>
         </ul>
-      </div>
+      </div>}
     </>
   )
 }

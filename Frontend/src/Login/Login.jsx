@@ -12,7 +12,7 @@ export default function login() {
 
     const {login} = useContext(AuthContext);
  
-    const [name, setName] = useState("");
+    const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [wait, setWait] = useState(false);
     const [message, setMessage] = useState("")
@@ -21,7 +21,7 @@ export default function login() {
 
     const handleSubmit = async (e) =>{
         e.preventDefault();
-        const res = await login(name, password, selectedUser);
+        const res = await login(email, password, selectedUser);
         if(res){
             setMessage(res.response?.data?.message);
             setWait(true);
@@ -48,7 +48,7 @@ export default function login() {
     <div className='login'>
         <h2 className={`border-l-[15px] ${selectedUser == 0 ? "border-l-[#16A34A]" : selectedUser == 1 ? "border-l-[#F97316]" : "border-l-[#2563EB]"}`} id='txt'>Login</h2>
         <div className='inputBox'>
-            <input value={name} onChange={(e) => setName(e.target.value)}  type="text" placeholder='Username' />
+            <input value={email} onChange={(e) => setEmail(e.target.value)}  type="text" placeholder='Email' />
         </div>
         <div className='inputBox'>
             <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" placeholder='Password' />
