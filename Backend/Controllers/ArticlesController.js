@@ -36,7 +36,7 @@ const getArticles = async (req, res) =>{
       query += ` LIMIT ? OFFSET ?`;
       queryParams.push(parseInt(limit), parseInt(offset));
 
-      const [rows] = await db.execute(query, queryParams);
+      const [rows] = await global.db.execute(query, queryParams);
 
       // Count total rows for pagination metadata
       let countQuery = `SELECT COUNT(*) as total FROM articole`;

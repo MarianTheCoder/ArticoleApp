@@ -2,15 +2,15 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 
 const login = async (req, res) => {
-    const { username, password, role } = req.body;
-    let name = username;
-    if (!name || !password || !role) {
+    const { email, password, role } = req.body;
+    console.log(email, password ,role)
+    if (!email || !password || !role) {
         return res.status(400).json({ message: 'All fields are required.' });
     }
 
     try {
-        const selectQuery = `SELECT * FROM users WHERE name = ?`;
-        const [rows] = await global.db.execute(selectQuery, [name]);
+        const selectQuery = `SELECT * FROM users WHERE email = ?`;
+        const [rows] = await global.db.execute(selectQuery, [email]);
 
         if (rows.length === 0) {
             return res.status(400).json({ message: 'Invalid credentials.' });
@@ -32,6 +32,7 @@ const login = async (req, res) => {
                 id: user.id,
                 role: user.role,
                 user: user.name,
+                photo: user.photo_url
             },
             process.env.JWT_SECRET || 'your_jwt_secret'
         );

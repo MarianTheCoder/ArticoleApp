@@ -9,7 +9,7 @@ export default function FetchedArticles() {
   return (
     <div className="bg-gray-00 w-full overflow-hidden">
       <div className="flex flex-col h-full justify-start items-center  ">
-        <div className="w-full h-full overflow-y-auto mb-1 pr-1 scrollbar-webkit">
+        <div className="w-full h-full overflow-y-auto mb-1  pr-1 scrollbar-webkit">
           {articles &&
             articles.map((article) => (
               <div
@@ -20,7 +20,7 @@ export default function FetchedArticles() {
                   {/* Code Display */}
                   <div className="flex  items-center">
                     <label className="font-medium text-white pr-2">Code</label>
-                    <div className="w-32 px-2 text-center  py-1 border rounded-lg  text-gray-200 bg-gray-700 overflow-hidden text-ellipsis whitespace-nowrap">
+                    <div className="w-32 px-2 text-center    py-1 border rounded-lg  text-gray-200 bg-gray-700 overflow-hidden text-ellipsis whitespace-nowrap">
                       {article.code}
                     </div>
                   </div>

@@ -1,28 +1,16 @@
-var findMin = function(nums) {
-    let left = 0;
-    let right = nums.length - 1;
-    let minVal = nums[0];
-
-    while (left <= right) {
-        if (nums[left] < nums[right]) {
-            minVal = Math.min(minVal, nums[left]);
-            break;  // Array is already sorted, so take the leftmost value.
-        }
-
-        let mid = Math.floor((left + right) / 2);
-        minVal = Math.min(minVal, nums[mid]);
-
-        // Decide which half to search
-        if (nums[mid] >= nums[left]) {
-            // Pivot is in the right half
-            left = mid + 1;
-        } else {
-            // Pivot is in the left half
-            right = mid - 1;
+var countBadPairs = function(nums) {
+    let totalNumber = Math.floor((nums.length*(nums.length-1))/2);
+    console.log(totalNumber);
+    let map = new Map();
+    for (let i = 0; i < nums.length; i++) {
+        let sum = nums[i] - i;
+        if(!map.has(sum)) map.set(sum, 1);
+        else{
+            totalNumber = totalNumber - map.get(sum);
+            map.set(sum, map.get(sum) + 1);
         }
     }
-
-    console.log(minVal);
+    console.log(totalNumber);
 };
 
-findMin([2, 3, 1]);  // Output: 1
+countBadPairs([1,2,3,4,5]);

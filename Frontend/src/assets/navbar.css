@@ -10,7 +10,7 @@
 
 :root
 {
-    --clr: #14161e;
+    --clr: #000043;
 }
 
 body
@@ -191,12 +191,10 @@ body
 
 .menuToggle
 {
-    position: absolute;
-    top: 20px;
     right: 20px;
     width: 50px;
     height: 50px;
-    background: #31a4ff;
+    background: #ffffff;
     cursor: pointer;
     display: flex;
     justify-content: center;
@@ -209,10 +207,10 @@ body
     position: absolute;
     width: 30px;
     height: 3px;
-    background: #fff;
+    background: #000043;
     transform: translateY(-9px);
     transition: 0.5s;
-    box-shadow: 0 9px 0 #fff;
+    box-shadow: 0 9px 0 #000043;
 }
 .menuToggle::after
 {
@@ -220,14 +218,14 @@ body
     position: absolute;
     width: 30px;
     height: 3px;
-    background: #fff;
+    background: #000043;
     transform: translateY(9px);
     transition: 0.5s;
 }
 .menuToggle.active::before
 {
     transform: translateY(0px) rotate(45deg);
-    box-shadow: 0 0 0 #fff;
+    box-shadow: 0 0 0 #000043;
 }
 
 .menuToggle.active::after
