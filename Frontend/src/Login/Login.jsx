@@ -8,7 +8,7 @@ import { AuthContext } from '../context/TokenContext';
 
 export default function login() {
 
-    const [selectedUser, setSelectedUser] = useState(0);
+    const [selectedUser, setSelectedUser] = useState(2);
 
     const {login} = useContext(AuthContext);
  

@@ -1,16 +1,26 @@
-var countBadPairs = function(nums) {
-    let totalNumber = Math.floor((nums.length*(nums.length-1))/2);
-    console.log(totalNumber);
-    let map = new Map();
-    for (let i = 0; i < nums.length; i++) {
-        let sum = nums[i] - i;
-        if(!map.has(sum)) map.set(sum, 1);
-        else{
-            totalNumber = totalNumber - map.get(sum);
-            map.set(sum, map.get(sum) + 1);
+var canCompleteCircuit = function(gas, cost) {
+    let len = gas.length;
+    gas = [...gas , ...gas];
+    cost = [...cost , ...cost];
+    let left = 0;
+    let right = 0;
+    let sum = gas[0];
+
+    while(right != gas.length){
+        console.log("diff", right-left, left);
+        if(right-left == len) return left;
+            if(sum - cost[right] < 0){
+                right++;
+                sum = gas[right];
+                left = right;
+            }
+            else{
+                sum = sum - cost[right];
+                right++;
+                sum = sum + gas[right];
+            }
         }
-    }
-    console.log(totalNumber);
+        return -1;
 };
 
-countBadPairs([1,2,3,4,5]);
+canCompleteCircuit([2], [2]);

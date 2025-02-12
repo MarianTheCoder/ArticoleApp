@@ -7,7 +7,7 @@ import api from '../api/axiosAPI';
 
 export default function AddingUsersForm() {
 
-  const {clicked, getAngajati} = useContext(AngajatiContext);
+  const {clicked, getAngajati, setConfirmDel, confirmDel, deleteAngajat, setEditAngajat, editAngajat} = useContext(AngajatiContext);
 
   const [formData, setFormData] = useState({
       email:"",
@@ -20,11 +20,52 @@ export default function AddingUsersForm() {
   const [preview, setPreview] = useState(defaultPhoto);
 
   useEffect(() => {
-    handleClicked(clicked)
-  }, [clicked])
+    if(clicked != formData.role){
+      setFormData({
+        email:"",
+        name:"",
+        password:"",
+        role: clicked
+      }); 
+      setSelectedFile(null);
+      setPreview(defaultPhoto);
+      setEditAngajat(null);
+      setConfirmDel(null);
+    }
+    else{
+      if(editAngajat != null){
+        setFormData({
+          email: editAngajat.email,
+          name: editAngajat.name,
+          password: "",
+          role: clicked
+        });
+        setSelectedFile(null);
+        setPreview(defaultPhoto);
+        setConfirmDel(null);
+      }
+      else{
+        setFormData({
+          email:"",
+          name:"",
+          password:"",
+          role: clicked
+        }); 
+        setSelectedFile(null);
+        setPreview(defaultPhoto);
+        setEditAngajat(null);
+        
+      }
+    }
+    
+  }, [clicked,editAngajat])
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if(formData.email.trim() === "" || formData.name.trim() === "" || formData.password.trim() === ""){
+      alert("All fields are required");
+      return;
+    }
     const roles = ["ofertant", "angajat", "beneficiar"];
     // Send form data and compressed photo to the backend
     const data = new FormData();
@@ -35,19 +76,24 @@ export default function AddingUsersForm() {
     data.append('photo', selectedFile);
 
     try {
-      await api.post("/users/SetUser", data, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      if(editAngajat != null){
+        await api.post(`/users/UpdateUser/${editAngajat.id}`, data, {
+          headers: { 'Content-Type': 'multipart/form-data'},
+        })
+      }else{
+        await api.post("/users/SetUser", data, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      }
       console.log('Photo uploaded successfully!');
+      setConfirmDel(null);
+      setEditAngajat(null);
       getAngajati();
     } catch (error) {
       console.error('Upload error:', error);
     }
   };
   
-  const handleClicked = (click) => {
-    setFormData((prev) => ({ ...prev, role: click }));
-  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -55,11 +101,18 @@ export default function AddingUsersForm() {
   };
 
   const cancelEdit = (e) => {
-      e.preventDefault();
+    e.preventDefault();
+    setEditAngajat(null);
   };
+
+  const cancelDel = (e) => {
+    e.preventDefault();
+    setConfirmDel(null);
+  }
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
+    console.log(file);
     if (file) {
       setSelectedFile(file);
       setPreview(URL.createObjectURL(file)); // Show image preview
@@ -136,8 +189,21 @@ export default function AddingUsersForm() {
               />
           </div>
             <div className="flex gap-2 items-center ">
-              <button type="submit" className="bg-green-500 hover:bg-green-600 text-black text-lg mt-6 px-6 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-3"/> Submit</button>
-              {/* {<button className="bg-red-500 hover:bg-red-600 text-white text-lg mt-6 px-2 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faCancel} className="pr-3"/>Cancel</button>} */}
+              {confirmDel == null && editAngajat == null ? 
+                <button type="submit" className="bg-green-500 hover:bg-green-600 text-black text-lg mt-6 px-6 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-3"/> Submit</button>
+              :
+              confirmDel != null ?
+              <>
+                <button onClick={(e) => deleteAngajat(confirmDel,e)} className="bg-red-500 hover:bg-red-600 text-white text-lg mt-6 px-2 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faCancel} className="pr-3"/>Delete</button>
+                <button onClick={(e) => cancelDel(e) } className="bg-green-500 hover:bg-green-600 text-white text-lg mt-6 px-2 py-2 flex  items-center rounded-lg">Cancel</button>
+              </>
+              :
+              <>
+                <button onClick={(e) => handleSubmit(e) } className="bg-green-500 hover:bg-green-600 text-white text-lg mt-6 px-2 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-3"/>Submit</button>
+                <button onClick={(e) => cancelEdit(e)} className="bg-red-500 hover:bg-red-600 text-white text-lg mt-6 px-2 py-2 flex  items-center rounded-lg"> Cancel</button>
+              </>
+            
+              }     
             </div>
           </div>
         </form>

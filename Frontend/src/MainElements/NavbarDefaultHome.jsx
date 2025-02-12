@@ -16,18 +16,14 @@ function Navbar() {
 
     let navigate = useNavigate();
     const location = useLocation();
-    const {user, logout, color} = useContext(AuthContext);
+    const {user, logout} = useContext(AuthContext);
     const [loading, setLoading] = useState(true);
     const photoStorage = localStorage.getItem("photoUser");
 
     useEffect(() => {
-        if(location.pathname.includes("addAngajati")) setSelected(2);
-        else if(location.pathname.includes("addArticles")) setSelected(1);
-        else if(location.pathname.includes("News")) setSelected(1);
+         if(location.pathname.includes("News")) setSelected(1);
         else if(location.pathname.includes("Echipa")) setSelected(2);
         else if(location.pathname.includes("Contact")) setSelected(3);
-        else if(location.pathname.includes("Santiere")) setSelected(3);
-        else if(location.pathname.includes("AddHome")) setSelected(4);
         else setSelected(0);
         setLoading(false);
     }, [])
@@ -48,70 +44,36 @@ function Navbar() {
           </li>
           <div className=' Menulist'>
             <li onClick={() => setSelected(0)} style={{"--bg":"#ffa117"}} className={` cursor-pointer ${selected == 0 ? "active" : ""}`}>
-                <a onClick={() => navigate("/")}>
+                <a onClick={() => navigate("/defaultHome")}>
                     <div className='icon'><FontAwesomeIcon icon={faHouse}/></div>
                     <div className='text'>Home</div>
                 </a>
             </li>
-            {!user.role ? 
-            <>
                 <li onClick={() => setSelected(1)} style={{"--bg":"#f44336"}} className={`cursor-pointer ${selected == 1 ? "active" : ""}`}>
-                    <a onClick={() => navigate("/News")}>
+                    <a onClick={() => navigate("/defaultHome/News")}>
                         <div className='icon'><FontAwesomeIcon icon={faNewspaper}/></div>
                         <div className='text'>News</div>
                     </a>
                 </li>
                 <li onClick={() => setSelected(2)} style={{"--bg":"#0fc70f"}} className={`cursor-pointer ${selected == 2 ? "active" : ""}`}>
-                <a onClick={() => navigate("/Echipa")}>
+                <a onClick={() => navigate("/defaultHome/Echipa")}>
                         <div className='icon'><FontAwesomeIcon icon={faUser}/></div>
                         <div className='text'>Echipa</div>
                     </a>
                 </li>
                 <li onClick={() => setSelected(3)} style={{"--bg":"#2196f3"}} className={`cursor-pointer ${selected == 3 ? "active" : ""}`}>
-                    <a onClick={() => navigate("/Contact")}>
+                    <a onClick={() => navigate("/defaultHome/Contact")}>
                         <div className='icon'><FontAwesomeIcon icon={faPhone}/></div>
                         <div className='text'>Contact</div>
                     </a>
                 </li>
-                </>
-                :
-                user.role == "ofertant" ? 
-                <>
-                <li onClick={() => setSelected(1)} style={{"--bg":"#f44336"}} className={`cursor-pointer ${selected == 1 ? "active" : ""}`}>
-                    <a onClick={() => navigate("/addArticles")}>
-                        <div className='icon'><FontAwesomeIcon icon={faFilePen}/></div>
-                        <div className='text'>Articole</div>
-                    </a>
-                </li>
-                <li onClick={() => setSelected(2)} style={{"--bg":"#0fc70f"}} className={`cursor-pointer ${selected == 2 ? "active" : ""}`}>
-                    <a onClick={() => navigate("/addAngajati")}>
-                        <div className='icon'><FontAwesomeIcon icon={faUserPlus}/></div>
-                        <div className='text'>Angajati</div>
-                    </a>
-                </li>
-                <li onClick={() => setSelected(3)} style={{"--bg":"#2196f3"}} className={`cursor-pointer ${selected == 3 ? "active" : ""}`}>
-                    <a onClick={() => navigate("/Santiere")}>
-                        <div className='icon'><FontAwesomeIcon icon={faHelmetSafety}/></div>
-                        <div className='text'>Santiere</div>
-                    </a>
-                </li>
-                <li onClick={() => setSelected(4)} style={{"--bg":"#dee61d"}} className={`cursor-pointer ${selected == 4 ? "active" : ""}`}>
-                <a onClick={() => navigate("/AddHome")}>
-                        <div className='icon'><FontAwesomeIcon icon={faPeopleGroup}/></div>
-                        <div className='text'>AddHome</div>
-                    </a>
-                </li>
-                </>
-                :
-                ""
-            }
           </div>
           {/* bottom */}
           <div className='bottom'>
        {user.name ? 
        <>
-        <li style={{"--bg":"#333"}}>
-                <a className=' cursor-pointer' onClick={() => navigate("/Settings")}>
+              <li style={{"--bg":"#333"}}>
+                <a className=' cursor-pointer'>
                     <div className='icon'>
                         <div className='imgBx'>
                         <img src={photoStorage ? `${photoAPI}/${photoStorage}` : photo} alt="" />
@@ -121,9 +83,9 @@ function Navbar() {
                 </a>
             </li>
             <li style={{"--bg":"#333"}}>
-                <a className=' cursor-pointer' onClick={() => navigate("/defaultHome")}>
+                <a className=' cursor-pointer' onClick={() => navigate("/")}>
                     <div className='icon'><FontAwesomeIcon icon={faArrowsSpin}/></div>
-                    <div className='text'>Default Home</div>
+                    <div className='text'>Loged Home</div>
                 </a>
             </li>
             <li style={{"--bg":"#333"}}>

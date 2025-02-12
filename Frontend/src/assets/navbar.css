@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap');
 
+
 *
 {
     margin: 0;
@@ -48,7 +49,7 @@ body
     border-top-left-radius: 50px;
     border-bottom-left-radius: 50px;
 }
-
+/* nimic aici */
 .sidebar ul li.active::before
 {
     content: "";
@@ -61,7 +62,7 @@ body
     box-shadow: 5px 5px 0 5px var(--clr);
     background-color: transparent;
 }
-
+/* nici aici */
 .sidebar ul li.active::after
 {
     content: "";
@@ -77,7 +78,7 @@ body
 
 .sidebar ul li.logo
 {
-    margin-bottom: 50px;
+    margin-bottom: 15px;
 }
 
 .sidebar ul li.logo .img
@@ -236,4 +237,37 @@ body
 .sidebar.active
 {
     width: 300px;
+}
+
+@media (max-height: 600px) {
+    .sidebar ul li a .icon {
+        min-width: 45px;
+        height: 55px;
+    }
+    .sidebar ul li a .text{
+        height: 55px;
+    }
+    .sidebar ul li.active a .icon::before{
+        width: 45px;
+    }
+    .sidebar{
+        width: 70px;
+    }
+    .imgBx{
+        width: 35px;
+        height: 35px;
+    }
+    .menuToggle{
+        width: 40px;
+        height: 40px;
+    }
+    .menuToggle::after{
+        width: 25px;
+    }
+    .menuToggle::before{
+        width: 25px;
+    }
+    .sidebar.active{
+    width: 220px;
+}
 }

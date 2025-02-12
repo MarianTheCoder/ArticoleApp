@@ -16,7 +16,7 @@ export default function ListaAdaugareUsers() {
       </div>
 
       {/* FetchedArticles */}
-        <div className="h-full grid grid-rows-1 w-full scrollbar-webkit overflow-hidden">
+        <div className="h-full grid grid-rows-1 w-full scrollbar-webkit rounded-lg overflow-hidden">
           <FetchedUsers />
         </div>
       </div>
