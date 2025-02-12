@@ -24,7 +24,7 @@ export default function ListaEchipa() {
     <div className="echipa-container">
       <h2 className="echipa-title">Echipa Noastră</h2>
       <div className="echipa-container1">
-        {team.map((member) => (
+        {team && team.map((member) => (
           <div key={member.id} className="echipa-card">
             <div className="echipa-imgBx">
               <img 

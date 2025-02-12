@@ -5,7 +5,6 @@ import photoAPI from '../api/photoAPI';
 export default function News() {
   const [team, setTeam] = useState([]);
   const [name, setName] = useState('');
-  const [role, setRole] = useState('');
   const [description, setDescription] = useState('');
   const [photo, setPhoto] = useState(null);
   const [message, setMessage] = useState('');
@@ -51,7 +50,6 @@ export default function News() {
         {
           id: response.data.id,
           name,
-          role,
           description,
           photoUrl: response.data.photoUrl,
         },
@@ -76,7 +74,7 @@ export default function News() {
 
   return (
     <div className="min-h-screen bg-[#000043] flex flex-col items-center justify p-6">
-      <h2 className="text-3xl font-bold mb-6 text-white">Adaugă un Membru în News</h2>
+      <h2 className="text-3xl font-bold mb-6 text-white">Adaugă</h2>
 
       <form
   className="bg-white p-5 rounded-lg shadow-md w-full grid grid-cols-[1fr_1fr_1fr_1fr_1fr] max-h-36"
@@ -92,16 +90,6 @@ export default function News() {
       className="text-black w-full p-3 border rounded"
       value={name}
       onChange={(e) => setName(e.target.value)}
-      required
-    />
-  </div>
-  <div className="">
-    <input
-      type="text"
-      placeholder="Rol"
-      className="text-black w-full p-3 border rounded"
-      value={role}
-      onChange={(e) => setRole(e.target.value)}
       required
     />
   </div>
@@ -139,9 +127,9 @@ export default function News() {
       {message && <p className="mt-4 text-center text-green-600">{message}</p>}
 
       {/* Lista echipei */}
-      <h2 className="text-3xl font-bold mb-6 text-white">News Noastră</h2>
+      <h2 className="text-3xl font-bold mb-6 text-white">News</h2>
       <div className="w-full max-w-4xl">
-        {team.map((member) => (
+        {team && team.map((member) => (
           <div
             key={member.id}
             className="flex items-center justify-between bg-white p-6 mb-4 rounded-lg shadow-lg"
@@ -156,7 +144,6 @@ export default function News() {
               </div>
               <div>
                 <h3 className="text-xl font-semibold text-black">{member.name}</h3>
-                <p className="text-sm text-gray-600">{member.role}</p>
                 <p className="text-sm text-gray-500 mt-2">{member.description}</p>
               </div>
             </div>

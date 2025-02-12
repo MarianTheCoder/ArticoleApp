@@ -22,7 +22,7 @@ export default function ListaEchipa() {
   return (
     
     <div className="news-container">
-      <h2 className="news-title">Echipa Noastră</h2>
+      <h2 className="news-title">News</h2>
       <div className="news-container1">
         {team.map((member) => (
           <div key={member.id} className="news-card">
