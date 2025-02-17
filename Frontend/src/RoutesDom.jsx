@@ -12,6 +12,8 @@ import News from './Home/News';
 import AddEchipa from './Home/AddHome';
 import NavbarDefaultHome from './MainElements/NavbarDefaultHome';
 import Contact from './MainPages/Contact';
+import Test from './test/Test';
+import DatabaseMainCategories from './BazaDeDate/DatabaseMainCategories';
 
 export default function RoutesDom() {
 
@@ -29,9 +31,11 @@ export default function RoutesDom() {
           <Route path="/addAngajati" element={<ProtectedRoute allowedRoles = {["ofertant"]}><AddUsers/></ProtectedRoute>}/>
           <Route path="/AddEchipa" element={<ProtectedRoute allowedRoles = {["ofertant"]}><AddEchipa/></ProtectedRoute>}/>
           <Route path="/AddHome" element={<ProtectedRoute allowedRoles = {["ofertant"]}><AddEchipa/></ProtectedRoute>}/>
+          <Route path="/Baza_de_date" element={<ProtectedRoute allowedRoles = {["ofertant"]}><DatabaseMainCategories/></ProtectedRoute>}/>
           <Route path="/Echipa" element={<Echipa/>}/>
           <Route path="/News" element={<News/>}/>
           <Route path="/Contact" element={<Contact/>}/>
+          <Route path="/test" element={<Test/>}/>
           {/* default home if loged */}
           <Route path="/defaultHome" element={null}>
             <Route path="" element={<Homepage/>}/>

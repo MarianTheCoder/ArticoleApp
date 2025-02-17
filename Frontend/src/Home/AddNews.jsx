@@ -106,12 +106,12 @@ export default function News() {
   <div className="">
     <input
       type="file"
-      className="w-full p-3 border rounded"
+      className=" top-0 right-0 bg-gray-500 text-white rounded-full p-2 m-2 "
       onChange={handleFileChange}
       required
     />
   </div>
-  <div className="w-full sm:w-auto mt-4 sm:mt-0 flex items-center justify-center">
+  <div className="w-full sm:w-auto mt-4 sm:mt-0 flex items-center justify-end">
     <button
       type="submit"
       className="w-full sm:w-auto p-3 bg-blue-600 text-white rounded hover:bg-blue-700"

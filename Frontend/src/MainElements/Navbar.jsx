@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState } from 'react';
 import "../assets/navbar.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowsSpin, faEye, faFilePen, faHelmetSafety, faHouse, faL, faNewspaper, faPeopleGroup, faPhone, faRightFromBracket, faUser, faUserPlus } from "@fortawesome/free-solid-svg-icons"; 
+import { faArrowsSpin, faEye, faDatabase, faFilePen, faHelmetSafety, faHouse, faL, faNewspaper, faPeopleGroup, faPhone, faRightFromBracket, faUser, faUserPlus } from "@fortawesome/free-solid-svg-icons"; 
 import photo from '../assets/no-user-image-square.jpg';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/TokenContext';
@@ -21,13 +21,14 @@ function Navbar() {
     const photoStorage = localStorage.getItem("photoUser");
 
     useEffect(() => {
-        if(location.pathname.includes("addAngajati")) setSelected(2);
-        else if(location.pathname.includes("addArticles")) setSelected(1);
+        if(location.pathname.includes("addAngajati")) setSelected(3);
+        else if(location.pathname.includes("addArticles")) setSelected(2);
         else if(location.pathname.includes("News")) setSelected(1);
         else if(location.pathname.includes("Echipa")) setSelected(2);
         else if(location.pathname.includes("Contact")) setSelected(3);
-        else if(location.pathname.includes("Santiere")) setSelected(3);
-        else if(location.pathname.includes("AddHome")) setSelected(4);
+        else if(location.pathname.includes("Santiere")) setSelected(4);
+        else if(location.pathname.includes("AddHome")) setSelected(5);
+        else if(location.pathname.includes("Baza_de_date")) setSelected(1);
         else setSelected(0);
         setLoading(false);
     }, [])
@@ -77,30 +78,37 @@ function Navbar() {
                 :
                 user.role == "ofertant" ? 
                 <>
-                <li onClick={() => setSelected(1)} style={{"--bg":"#f44336"}} className={`cursor-pointer ${selected == 1 ? "active" : ""}`}>
+                         <li onClick={() => setSelected(1)} style={{"--bg":"#a855f7 "}} className={` cursor-pointer ${selected == 1 ? "active" : ""}`}>
+                <a onClick={() => navigate("/Baza_de_date")}>
+                        <div className='icon'><FontAwesomeIcon icon={faDatabase}/></div>
+                        <div className='text'>Date</div>
+                    </a>
+                </li>
+                <li onClick={() => setSelected(2)} style={{"--bg":"#f44336"}} className={`cursor-pointer ${selected == 2 ? "active" : ""}`}>
                     <a onClick={() => navigate("/addArticles")}>
                         <div className='icon'><FontAwesomeIcon icon={faFilePen}/></div>
                         <div className='text'>Articole</div>
                     </a>
                 </li>
-                <li onClick={() => setSelected(2)} style={{"--bg":"#0fc70f"}} className={`cursor-pointer ${selected == 2 ? "active" : ""}`}>
+                <li onClick={() => setSelected(3)} style={{"--bg":"#0fc70f"}} className={`cursor-pointer ${selected == 3 ? "active" : ""}`}>
                     <a onClick={() => navigate("/addAngajati")}>
                         <div className='icon'><FontAwesomeIcon icon={faUserPlus}/></div>
                         <div className='text'>Angajati</div>
                     </a>
                 </li>
-                <li onClick={() => setSelected(3)} style={{"--bg":"#2196f3"}} className={`cursor-pointer ${selected == 3 ? "active" : ""}`}>
+                <li onClick={() => setSelected(4)} style={{"--bg":"#2196f3"}} className={`cursor-pointer ${selected == 4 ? "active" : ""}`}>
                     <a onClick={() => navigate("/Santiere")}>
                         <div className='icon'><FontAwesomeIcon icon={faHelmetSafety}/></div>
                         <div className='text'>Santiere</div>
                     </a>
                 </li>
-                <li onClick={() => setSelected(4)} style={{"--bg":"#dee61d"}} className={`cursor-pointer ${selected == 4 ? "active" : ""}`}>
+                <li onClick={() => setSelected(5)} style={{"--bg":"#dee61d"}} className={`cursor-pointer ${selected == 5 ? "active" : ""}`}>
                 <a onClick={() => navigate("/AddHome")}>
                         <div className='icon'><FontAwesomeIcon icon={faPeopleGroup}/></div>
                         <div className='text'>AddHome</div>
                     </a>
                 </li>
+       
                 </>
                 :
                 ""

@@ -4,7 +4,6 @@ import FetchedArticles from './FetchedArticles';
 import { ArticlesContext } from '../context/ArticlesContext';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowRight, faLongArrowAltLeft, faLongArrowAltRight, faLongArrowRight } from '@fortawesome/free-solid-svg-icons';
-import HorizontalSearch from './HorizontalSearch';
 
 export default function AddArticol() {
   const {clicked, handlePrevious , handleNext, setArticles, setTotalItems, setOffset,  totalItems ,articles, offset } = useContext(ArticlesContext);
