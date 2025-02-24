@@ -21,41 +21,69 @@ const AddManopera = async (req, res) =>{
 };
 
 const GetManopere = async (req, res) => {
-    try {
-        const { offset = 0, limit = 10 } = req.query;
-        console.log("Das", offset, limit)
-        // Validate limit and offset to be integers
-        const parsedOffset = parseInt(offset, 10);
-        const parsedLimit = parseInt(limit, 10);
+  try {
+      const { offset = 0, limit = 10, cod_COR = '', ocupatie = '' } = req.query;
 
-        if (isNaN(parsedOffset) || isNaN(parsedLimit) || parsedOffset < 0 || parsedLimit <= 0) {
-            return res.status(400).json({ message: "Invalid offset or limit values." });
-        }
+      // Validate limit and offset to be integers
+      const parsedOffset = parseInt(offset, 10);
+      const parsedLimit = parseInt(limit, 10);
 
-        // Construct query for fetching paginated data
-        let query = `SELECT * FROM manopera LIMIT ? OFFSET ?`;
-        const queryParams = [parsedLimit, parsedOffset*parsedLimit];
+      if (isNaN(parsedOffset) || isNaN(parsedLimit) || parsedOffset < 0 || parsedLimit <= 0) {
+          return res.status(400).json({ message: "Invalid offset or limit values." });
+      }
 
-        // Execute the select query
-        const [rows] = await global.db.execute(query, queryParams);
+      // Start constructing the base query
+      let query = `SELECT * FROM manopera`;
+      let queryParams = [];
+      let whereClauses = [];
 
-        // Count total rows for pagination metadata
-        let countQuery = `SELECT COUNT(*) as total FROM manopera`;  // Fix: Ensure it's 'manopera' not 'articole'
-        const [countResult] = await global.db.execute(countQuery);
+      // Conditionally add filters to the query
+      if (cod_COR.trim() !== "") {
+          whereClauses.push(`cod_COR LIKE ?`);
+          queryParams.push(`%${cod_COR}%`);
+      }
 
-        const totalItems = countResult[0].total;
+      if (ocupatie.trim() !== "") {
+          whereClauses.push(`ocupatie LIKE ?`);
+          queryParams.push(`%${ocupatie}%`);
+      }
 
-        // Send paginated data with metadata
-        res.send({
-            data: rows,
-            totalItems,
-            currentOffset: parsedOffset,
-            limit: parsedLimit,
-        });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Database error' });
-    }
+      // If there are any filters, add them to the query
+      if (whereClauses.length > 0) {
+          query += ` WHERE ${whereClauses.join(' AND ')}`;
+      }
+
+      // Add pagination to the query
+      query += ` LIMIT ? OFFSET ?`;
+      queryParams.push(parsedLimit, parsedOffset * parsedLimit);
+
+      // Execute the query with filters and pagination
+      const [rows] = await global.db.execute(query, queryParams);
+
+      let countQuery = `SELECT COUNT(*) as total FROM manopera`;
+      if (whereClauses.length > 0) {
+          countQuery += ` WHERE ${whereClauses.join(' AND ')}`;
+      }
+      
+      // Create new queryParams for the count query (without LIMIT and OFFSET)
+      const countQueryParams = queryParams.slice(0, queryParams.length - 2); // Remove pagination params
+
+      const [countResult] = await global.db.execute(countQuery, countQueryParams);
+
+      const totalItems = countResult[0].total;
+
+      // Send paginated data with metadata
+      res.send({
+          data: rows,
+          totalItems,
+          currentOffset: parsedOffset,
+          limit: parsedLimit,
+      });
+  } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Database error' });
+  }
 };
+
 
 module.exports = {AddManopera, GetManopere};

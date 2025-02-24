@@ -8,7 +8,7 @@ export default function DatabaseMainCategories() {
 
 return (
     <div className='h-screen w-full flex items-center justify-center'>
-        <div className="container  w-4/5 h-90h relative flex flex-col items-center rounded-lg">
+        <div className="container  w-4/5 h-90h relative flex  flex-col items-center rounded-lg">
           <div className='containerWhiter w-full  '>
             <div className = 'flex justify-around items-center p-4  text-lg xxl:text-xl xxxl:text-2xl rounded-xl'>
               <button onClick={() => setClicked(1)} className={`bg-white text-black  px-6 py-2 rounded-xl ${clicked == 1 ? "bg-gray-200 outline-2 outline" : ""} hover:bg-gray-200`}>
