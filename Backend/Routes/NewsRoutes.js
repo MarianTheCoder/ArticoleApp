@@ -20,10 +20,10 @@ const upload = multer({ storage: storage });
 // Ruta pentru adăugarea unei stire
 router.post('/api/news', upload.single('photo'), async (req, res) => {
   try {
-    const { name, description, date } = req.body;
+    const { name, description } = req.body;
 
     // Verificăm dacă toate câmpurile sunt prezente
-    if (!name || !role || !description || !req.file) {
+    if (!name || !description || !req.file) {
       return res.status(400).json({ message: 'Toate câmpurile sunt necesare!' });
     }
 
@@ -37,7 +37,7 @@ router.post('/api/news', upload.single('photo'), async (req, res) => {
     const sql = 'INSERT INTO News (name, photoUrl, description, data) VALUES (?, ?, ?, NOW())';
 
     // Executăm interogarea
-    const [result] = await global.db.execute(sql, [name, role, photoPath, description]);
+    const [result] = await global.db.execute(sql, [name, photoPath, description]);
 
     res.status(201).json({ message: 'Stire adăugata cu succes!', id: result.insertId });
   } catch (error) {

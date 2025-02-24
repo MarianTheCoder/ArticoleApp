@@ -1,7 +1,5 @@
 const getAllArticles = async (req, res) => {
-    console.log("dasd");
     const { type } = req.body;
-    console.log("adsa");
     try {
       // Validate the `type` parameter
       const allowedTypes = ["Category 1", "Category 2", "Category 3", "Category 4"];
@@ -51,7 +49,7 @@ const getArticles = async (req, res) =>{
       const totalItems = countResult[0].total;
 
       // Send paginated data with metadata
-      res.json({
+      res.send({
           data: rows,
           totalItems,
           currentOffset: parseInt(offset),

@@ -1,46 +1,90 @@
-import React from 'react';
+import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import logo from "../assets/Logo.svg";
 
-export default function HomePage() {
+export default function BalyEnergies() {
+  const navigate = useNavigate();
+
   return (
-    <div className="h-full bg-[#000043] text-white">
+    <div className="min-h-screen bg-[#000043] text-black flex flex-col items-center justify-center p-10">
+      <motion.div
+        initial={{ opacity: 0, y: -50 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8 }}
+        className="mb-8"
+      >
+        <img src={logo} alt="Logo" className="h-20" />
+      </motion.div>
 
-      {/* Hero Section */}
-      <header className="text-center py-20">
-        <h2 className="text-4xl font-bold">Firma de Construcții XYZ</h2>
-        <p className="mt-4 text-lg">Oferim soluții complete în construcții civile, instalații sanitare și electrice, precum și mobilă la comandă.</p>
-        <button className="mt-6 px-6 py-3 bg-white text-blue-600 font-semibold rounded-full shadow-md hover:bg-gray-200 transition-colors">
-          Află mai multe
-        </button>
-      </header>
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.5, duration: 1 }}
+        className="text-2xl text-gray-300 max-w-2xl text-center"
+      >
+        Lider în construcții sustenabile și eficiente energetic. Oferim soluții inovatoare pentru proiecte durabile și performante.
+      </motion.p>
 
-      {/* Servicii Section */}
-      <section className="py-16 px-6 text-center">
-        <h3 className="text-3xl font-bold mb-8">Serviciile Noastre</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
-          <div className="bg-white p-6 shadow-md rounded-lg">
-            <h4 className="text-xl font-semibold">Instalații Sanitare</h4>
-            <p className="mt-2 text-gray-600">Oferim servicii complete pentru instalații sanitare: de la proiectare și execuție la întreținere.</p>
-          </div>
-          <div className="bg-white p-6 shadow-md rounded-lg">
-            <h4 className="text-xl font-semibold">Instalații Electrice</h4>
-            <p className="mt-2 text-gray-600">Specializați în instalarea și întreținerea sistemelor electrice pentru orice tip de clădire.</p>
-          </div>
-          <div className="bg-white p-6 shadow-md rounded-lg">
-            <h4 className="text-xl font-semibold">Construcții Civile</h4>
-            <p className="mt-2 text-gray-600">Construim clădiri rezidențiale, comerciale și industriale cu respectarea celor mai înalte standarde de calitate.</p>
-          </div>
-          <div className="bg-white p-6 shadow-md rounded-lg">
-            <h4 className="text-xl font-semibold">Mobilă Personalizată</h4>
-            <p className="mt-2 text-gray-600">Creăm mobilier pe comandă, adaptat nevoilor și preferințelor tale, din cele mai bune materiale.</p>
-          </div>
+      {/* Secțiunea cu serviciile */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 1, duration: 0.6 }}
+        className="mt-10 text-center"
+      >
+        <h2 className="text-4xl font-bold text-white mb-6">Serviciile Noastre</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.2, duration: 0.6 }}
+            className="bg-green-800 bg-opacity-50 text-white p-4 rounded-lg shadow-lg"
+          >
+            <h3 className="text-xl font-semibold">Instalații electrice</h3>
+          </motion.div>
+          
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.4, duration: 0.6 }}
+            className="bg-blue-800 bg-opacity-50 text-white p-4 rounded-lg shadow-lg"
+          >
+            <h3 className="text-xl font-semibold">Instalații sanitare</h3>
+          </motion.div>
+          
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.6, duration: 0.6 }}
+            className="bg-purple-800 bg-opacity-50 text-white p-4 rounded-lg shadow-lg"
+          >
+            <h3 className="text-xl font-semibold">Construcții civile</h3>
+          </motion.div>
+          
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.8, duration: 0.6 }}
+            className="bg-yellow-800 bg-opacity-50 text-white p-4 rounded-lg shadow-lg"
+          >
+            <h3 className="text-xl font-semibold">Mobilă personalizată</h3>
+          </motion.div>
         </div>
-      </section>
+      </motion.div>
 
-      {/* Alte secțiuni */}
-      <footer className="bg-blue-600 text-white text-center py-4">
-        <p>&copy; 2025 Firma XYZ. Toate drepturile rezervate.</p>
-      </footer>
-
+      <motion.div
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 1.9, duration: 0.6 }}
+        className="mt-10"
+      >
+        <button 
+          onClick={() => navigate("/contact")} 
+          className="bg-yellow-400 text-black px-8 py-4 text-2xl font-semibold rounded-lg shadow-lg hover:bg-yellow-500 transition-all"
+        >
+          Contactează-ne
+        </button>
+      </motion.div>
     </div>
   );
 }

@@ -1,7 +1,6 @@
 import React, { useContext } from 'react'
 import AddArticol from './AddArticol';
 import { ArticlesContext } from '../context/ArticlesContext';
-import HorizontalSearch from './HorizontalSearch';
 
 export default function MainCategories() {
 
@@ -27,8 +26,7 @@ export default function MainCategories() {
           </div>
           {clicked && <AddArticol/>}
         </div>
-        {/* <HorizontalSearch/> */}
-        {/* </div> */}
+
       </div>
   )
 }

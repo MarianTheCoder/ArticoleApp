@@ -12,7 +12,7 @@ export default function ListaEchipa() {
         const response = await api.get('/News/api/news');
         setTeam(response.data);
       } catch (error) {
-        console.error('Eroare la preluarea echipei:', error);
+        console.error('Eroare la preluarea stirilor:', error);
       }
     };
 
@@ -21,20 +21,20 @@ export default function ListaEchipa() {
 
   return (
     
-    <div className="echipa-container">
-      <h2 className="echipa-title">Echipa Noastră</h2>
-      <div className="echipa-container1">
+    <div className="news-container">
+      <h2 className="news-title">News</h2>
+      <div className="news-container1">
         {team && team.map((member) => (
-          <div key={member.id} className="echipa-card">
-            <div className="echipa-imgBx">
+          <div key={member.id} className="news-card">
+            <div className="news-imgBx">
               <img 
                 src={`${photoAPI}/${member.photoUrl}`} 
                 alt={member.name} 
               />
             </div>
-            <h3 className="echipa-name">{member.name}</h3>
-            <div className="echipa-content">
-              <p className="echipa-text">{member.description}</p>
+            <h3 className="news-name">{member.name}</h3>
+            <div className="news-content">
+              <p className="news-text">{member.description}</p>
             </div>
           </div>
         ))}

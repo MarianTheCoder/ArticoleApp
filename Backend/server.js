@@ -10,6 +10,8 @@ const loginRoute = require('./Routes/LoginRoutes');
 const UsersRoute = require("./Routes/UsersRoutes");
 const EchipaRoutes = require("./Routes/EchipaRoutes");
 const NewsRoutes = require("./Routes/NewsRoutes");
+const ManoperaRoutes = require("./Routes/ManoperaRoutes");
+const MaterialeRoutes = require("./Routes/MaterialeRoutes");
 
 const app = express();
 const port = 3000;
@@ -35,6 +37,7 @@ const pool = mysql.createPool(dbConfig);
 app.use('/uploads/Angajati', express.static(path.join(__dirname, 'uploads/Angajati')));
 app.use('/uploads/Echipa', express.static(path.join(__dirname, 'uploads/Echipa')));
 app.use('/uploads/News', express.static(path.join(__dirname, 'uploads/News')));
+app.use('/uploads/Materiale', express.static(path.join(__dirname, 'uploads/Materiale')));
 
 // Function to initialize the database
 async function initializeDatabase() {
@@ -94,9 +97,40 @@ async function initializeDatabase() {
   data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   );
 `;
-
   await pool.execute(createNewsTableQuery);
   console.log("News table created or already exists.");
+
+  const createManoperaTableQuery = `
+  CREATE TABLE IF NOT EXISTS Manopera (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  cod_COR VARCHAR(255) NOT NULL,
+  ocupatie TEXT NOT NULL, 
+  unitate_masura VARCHAR(20) NOT NULL,
+  cost_unitar DECIMAL(10, 2) NOT NULL,
+  cantitate DECIMAL(10, 0) NOT NULL,
+  data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+`;
+  await pool.execute(createManoperaTableQuery);
+  console.log("News table created or already exists.");
+
+  const createMaterialeTableQuery = `
+  CREATE TABLE IF NOT EXISTS Materiale (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+          furnizor VARCHAR(255) NOT NULL,
+          clasa_material VARCHAR(255) NOT NULL,
+          cod_produs VARCHAR(50) NOT NULL,
+          denumire_produs VARCHAR(255) NOT NULL,
+          descriere_produs TEXT,
+          photoUrl TEXT NOT NULL,
+          unitate_masura VARCHAR(50) NOT NULL,
+          cost_unitar DECIMAL(10, 2) NOT NULL,
+          cost_preferential DECIMAL(10, 2),
+          pret_vanzare DECIMAL(10, 2) NOT NULL
+  );
+`;
+  await pool.execute(createMaterialeTableQuery);
+  console.log("Materiale table created or already exists.");
 
     // Insert initial admin user if needed
     await insertInitialAdminUser();
@@ -142,6 +176,9 @@ app.use('/articles', articlesRoutes);
 app.use('/auth', loginRoute);
 app.use('/Echipa', EchipaRoutes);
 app.use('/users', UsersRoute);
+app.use('/News', NewsRoutes);
+app.use('/Manopera', ManoperaRoutes);
+app.use('/Materiale', MaterialeRoutes);
 
 
 // Serve static files from the React app
