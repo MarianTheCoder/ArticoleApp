@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import ManoperaForm from './Manopera/ManoperaForm';
-import MaterialePost from './Materiale/MaterialePost';
 import MaterialeForm from './Materiale/MaterialeForm';
+import TransportForm from './Transport/TransportForm';
+import UtilajeForm from './Utilaje/UtilajeForm';
 
 export default function DatabaseMainCategories() {
 
@@ -28,9 +29,12 @@ return (
           </div>
         {
             clicked == 1 ? <ManoperaForm/>
-            
             :
             clicked == 2 ? <MaterialeForm/>
+            :
+            clicked == 3 ? <TransportForm/>
+            :
+            clicked == 4 ? <UtilajeForm/>
             :
             ""
         }

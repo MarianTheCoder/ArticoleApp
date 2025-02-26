@@ -190,8 +190,8 @@ export default function MaterialeForm() {
               <div className="w-10 sm:w-12  md:w-12 lg:w-14 xl:w-16 xxl:w-20 xxxl:w-24 aspect-square">
                 <img className='rounded-xl object-cover w-full h-full ' src={preview == null ? "" : preview}></img>
               </div>
-                <button type="button" onClick={handleButtonClick} className="bg-white px-4  text-center rounded-xl mt-6 p-2 ">File</button>
-                <input id="hiddenFileInput" type="file" onChange={handleFileChange} className="hidden"/>
+                <button ref={firstInputRef} type="button" onClick={handleButtonClick} className="bg-white px-4  text-center rounded-xl mt-6 p-2 ">File</button>
+                <input  id="hiddenFileInput" type="file" onChange={handleFileChange} className="hidden"/>
               </div>
             </div>
 
@@ -201,7 +201,7 @@ export default function MaterialeForm() {
                   Furnizor
               </label>
               <input
-                  ref={firstInputRef}
+                  
                   type="text"
                   id="furnizor"
                   name="furnizor"

@@ -4,7 +4,6 @@ import Navbar from './MainElements/Navbar'
 import Homepage from './MainPages/HomePage';
 import ProtectedRoute from './MainElements/ProtectedRoute';
 import Settings from './UserSettings/SettingsPage';
-import AddArticol from './AddArticole/TheRouteAddArticle';
 import AddUsers from './AddUsers/AddUsersRoute';
 import { ArticlesProvider } from './context/ArticlesContext';
 import Echipa from './Home/Echipa';
@@ -14,6 +13,7 @@ import NavbarDefaultHome from './MainElements/NavbarDefaultHome';
 import Contact from './MainPages/Contact';
 import Test from './test/Test';
 import DatabaseMainCategories from './BazaDeDate/DatabaseMainCategories';
+import RetetaForm from './BazaDeDate/Retete/RetetaForm'
 
 export default function RoutesDom() {
 
@@ -26,7 +26,7 @@ export default function RoutesDom() {
        <div className='w-[80px]'></div>
         <Routes>
           <Route path="/" element={<Homepage/>} />
-          <Route path="/addArticles" element={<ProtectedRoute allowedRoles = {['ofertant']}><AddArticol/></ProtectedRoute>} />
+          <Route path="/addArticles" element={<ProtectedRoute allowedRoles = {['ofertant']}><RetetaForm/></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute allowedRoles = {["ofertant","angajat","beneficiar"]}><Settings/></ProtectedRoute>}/>
           <Route path="/addAngajati" element={<ProtectedRoute allowedRoles = {["ofertant"]}><AddUsers/></ProtectedRoute>}/>
           <Route path="/AddEchipa" element={<ProtectedRoute allowedRoles = {["ofertant"]}><AddEchipa/></ProtectedRoute>}/>
