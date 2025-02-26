@@ -155,5 +155,44 @@ const DeleteManopera = async (req, res) => {
   }
 };
 
+const GetManopereLight = async (req, res) => {
+    try {
+        const { cod_COR = '', ocupatie = '' } = req.query;
+  
+  
+        // Start constructing the base query
+        let query = `SELECT * FROM manopera`;
+        let queryParams = [];
+        let whereClauses = [];
+  
+        // Conditionally add filters to the query
+        if (cod_COR.trim() !== "") {
+            whereClauses.push(`cod_COR LIKE ?`);
+            queryParams.push(`%${cod_COR}%`);
+        }
+  
+        if (ocupatie.trim() !== "") {
+            whereClauses.push(`ocupatie LIKE ?`);
+            queryParams.push(`%${ocupatie}%`);
+        }
+  
+        // If there are any filters, add them to the query
+        if (whereClauses.length > 0) {
+            query += ` WHERE ${whereClauses.join(' AND ')}`;
+        }
+  
+        // Execute the query with filters and pagination
+        const [rows] = await global.db.execute(query, queryParams);
+        
+        res.send({
+            data: rows
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Database error' });
+    }
+  };
+  
 
-module.exports = {AddManopera, GetManopere, DeleteManopera, EditManopera};
+
+module.exports = {AddManopera, GetManopere, DeleteManopera, EditManopera, GetManopereLight};

@@ -82,9 +82,9 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
     //States for dropDown/edit/delete/copy
 
     //handle selected edit/delete
-    const handleSelectedForDelete = (id) => {
+    const handleSelectedForDelete = (e, id) => {
         setSelectedDelete(id)// Toggle the dropdown based on the current state
-        setSelectedEdit(null);
+        cancelEdit(e);
     }
 
     const handleSelectedForEdit = (passedRow) => {
@@ -201,7 +201,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                 <div className=' dropdown-container w-full relative flex '> 
                     <div className='text-xl relative w-full py-2 select-none items-center justify-evenly gap-1 flex'>
                         <FontAwesomeIcon onClick={() => !isCopying && handleSelectedForEdit(row.original)}  className=' text-green-500 hover:text-green-600 cursor-pointer' icon={faPenToSquare}/>
-                        <FontAwesomeIcon onClick={() => !isCopying && handleSelectedForDelete(row.original.id)} className=' text-red-500 hover:text-red-600 cursor-pointer' icon={faTrashCan}/>
+                        <FontAwesomeIcon onClick={(e) => !isCopying && handleSelectedForDelete(e, row.original.id)} className=' text-red-500 hover:text-red-600 cursor-pointer' icon={faTrashCan}/>
                     </div>
                 </div>
             ),

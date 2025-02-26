@@ -1,7 +1,6 @@
 const express = require("express");
 const mysql = require("mysql2/promise");
 const bodyParser = require("body-parser");
-const articlesRoutes = require("./Routes/ArticlesRoutes");
 const cors = require("cors");
 const bcrypt = require('bcrypt');
 const path = require("path");
@@ -12,6 +11,7 @@ const EchipaRoutes = require("./Routes/EchipaRoutes");
 const NewsRoutes = require("./Routes/NewsRoutes");
 const ManoperaRoutes = require("./Routes/ManoperaRoutes");
 const MaterialeRoutes = require("./Routes/MaterialeRoutes");
+const UtilajeRoutes = require("./Routes/UtilajeRoutes");
 
 const app = express();
 const port = 3000;
@@ -38,6 +38,7 @@ app.use('/uploads/Angajati', express.static(path.join(__dirname, 'uploads/Angaja
 app.use('/uploads/Echipa', express.static(path.join(__dirname, 'uploads/Echipa')));
 app.use('/uploads/News', express.static(path.join(__dirname, 'uploads/News')));
 app.use('/uploads/Materiale', express.static(path.join(__dirname, 'uploads/Materiale')));
+app.use('/uploads/Utilaje', express.static(path.join(__dirname, 'uploads/Utilaje')));
 
 // Function to initialize the database
 async function initializeDatabase() {
@@ -59,64 +60,53 @@ async function initializeDatabase() {
     await pool.execute(createAngajatiTableQuery);
     console.log("Angajati table created or already exists.");
 
-    // Create `articole` table
-    const createArticoleTableQuery = `
-      CREATE TABLE IF NOT EXISTS articole (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        type ENUM('Category 1', 'Category 2', 'Category 3', 'Category 4') NOT NULL DEFAULT 'Category 1',
-        description TEXT NOT NULL,
-        code VARCHAR(50) NOT NULL,
-        unit VARCHAR(10) NOT NULL,
-        norma DECIMAL(10, 2) NOT NULL,
-        data DATE NOT NULL
-      );
-    `;
-    await pool.execute(createArticoleTableQuery);
-    console.log("Articole table created or already exists.");
-
+    //tabel echipa
     const createEchipaTableQuery = `
     CREATE TABLE IF NOT EXISTS Echipa (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    photoUrl TEXT NOT NULL,
-    name VARCHAR(50) NOT NULL,
-    role VARCHAR(50) NOT NULL,
-    description TEXT NOT NULL, 
-    data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      photoUrl TEXT NOT NULL,
+      name VARCHAR(50) NOT NULL,
+      role VARCHAR(50) NOT NULL,
+      description TEXT NOT NULL, 
+      data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `;
 
   await pool.execute(createEchipaTableQuery);
   console.log("Echipa table created or already exists.");
  
+  //tabel news
   const createNewsTableQuery = `
   CREATE TABLE IF NOT EXISTS News (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  photoUrl TEXT NOT NULL,
-  name VARCHAR(50) NOT NULL,
-  description TEXT NOT NULL, 
-  data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    photoUrl TEXT NOT NULL,
+    name VARCHAR(50) NOT NULL,
+    description TEXT NOT NULL, 
+    data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   );
 `;
   await pool.execute(createNewsTableQuery);
   console.log("News table created or already exists.");
 
+  //tabel manopera
   const createManoperaTableQuery = `
   CREATE TABLE IF NOT EXISTS Manopera (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  cod_COR VARCHAR(255) NOT NULL,
-  ocupatie TEXT NOT NULL, 
-  unitate_masura VARCHAR(20) NOT NULL,
-  cost_unitar DECIMAL(10, 2) NOT NULL,
-  cantitate DECIMAL(10, 0) NOT NULL,
-  data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    cod_COR VARCHAR(255) NOT NULL,
+    ocupatie TEXT NOT NULL, 
+    unitate_masura VARCHAR(20) NOT NULL,
+    cost_unitar DECIMAL(10, 2) NOT NULL,
+    cantitate DECIMAL(10, 0) NOT NULL,
+    data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   );
 `;
   await pool.execute(createManoperaTableQuery);
   console.log("News table created or already exists.");
 
+  //tabel materiale
   const createMaterialeTableQuery = `
   CREATE TABLE IF NOT EXISTS Materiale (
-  id INT AUTO_INCREMENT PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
           furnizor VARCHAR(255) NOT NULL,
           clasa_material VARCHAR(255) NOT NULL,
           cod_produs VARCHAR(50) NOT NULL,
@@ -126,12 +116,91 @@ async function initializeDatabase() {
           unitate_masura VARCHAR(50) NOT NULL,
           cost_unitar DECIMAL(10, 2) NOT NULL,
           cost_preferential DECIMAL(10, 2),
-          pret_vanzare DECIMAL(10, 2) NOT NULL
+          pret_vanzare DECIMAL(10, 2) NOT NULL,
+          data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   );
 `;
   await pool.execute(createMaterialeTableQuery);
   console.log("Materiale table created or already exists.");
 
+  const createUtilajeTableQuery = `
+  CREATE TABLE IF NOT EXISTS Utilaje (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    clasa_utilaj VARCHAR(255) NOT NULL,
+    utilaj TEXT NOT NULL, 
+    descriere_utilaj TEXT NOT NULL,
+    photoUrl TEXT NOT NULL,
+    status_utilaj VARCHAR(255) NOT NULL,
+    cost_amortizare DECIMAL(10, 2) NOT NULL,
+    pret_utilaj DECIMAL(10, 2) NOT NULL,
+    cantitate DECIMAL(10, 0) NOT NULL,
+    data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+`;
+  await pool.execute(createUtilajeTableQuery);
+  console.log("Utilaje table created or already exists.");
+
+  //
+  //
+  // CREATE RETETE TABLE !!
+
+
+  const createReteteTableQuery = `
+    CREATE TABLE IF NOT EXISTS retete (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      cod_reteta VARCHAR(255) NOT NULL,
+      clasa_reteta VARCHAR(255) NOT NULL,
+      descriere TEXT NOT NULL,
+      data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `;
+  await pool.execute(createReteteTableQuery);
+  console.log("Retete table created or already exists.");
+
+  const createReteteManoperaTableQuery = `
+    CREATE TABLE IF NOT EXISTS retete_manopera (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      reteta_id INT NOT NULL,
+      manopera_id INT NOT NULL,
+      cantitate DECIMAL(10, 2) NOT NULL,  
+      FOREIGN KEY (reteta_id) REFERENCES retete(id),
+      FOREIGN KEY (manopera_id) REFERENCES manopera(id)
+    );
+  `;
+  await pool.execute(createReteteManoperaTableQuery);
+  console.log("Retete_Manopera table created or already exists.");
+  
+  const createReteteMaterialeTableQuery = `
+    CREATE TABLE IF NOT EXISTS retete_materiale (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      reteta_id INT NOT NULL,
+      materiale_id INT NOT NULL,
+      cantitate DECIMAL(10, 2) NOT NULL, 
+      FOREIGN KEY (reteta_id) REFERENCES retete(id),
+      FOREIGN KEY (materiale_id) REFERENCES materiale(id)
+    );
+  `;
+  await pool.execute(createReteteMaterialeTableQuery);
+  console.log("Retete_Materiale table created or already exists.");
+  
+  const createReteteUtilajeTableQuery = `
+    CREATE TABLE IF NOT EXISTS retete_utilaje (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      reteta_id INT NOT NULL,
+      utilaje_id INT NOT NULL,
+      cantitate DECIMAL(10, 2) NOT NULL, 
+      FOREIGN KEY (reteta_id) REFERENCES retete(id),
+      FOREIGN KEY (utilaje_id) REFERENCES utilaje(id)
+    );
+  `;
+  await pool.execute(createReteteUtilajeTableQuery);
+  console.log("Retete_Utilaje table created or already exists.");
+
+
+  //
+  //
+  //
+  
     // Insert initial admin user if needed
     await insertInitialAdminUser();
 
@@ -172,13 +241,13 @@ async function insertInitialAdminUser() {
   }
 }
 
-app.use('/articles', articlesRoutes);
 app.use('/auth', loginRoute);
 app.use('/Echipa', EchipaRoutes);
 app.use('/users', UsersRoute);
 app.use('/News', NewsRoutes);
 app.use('/Manopera', ManoperaRoutes);
 app.use('/Materiale', MaterialeRoutes);
+app.use('/Utilaje', UtilajeRoutes);
 
 
 // Serve static files from the React app
