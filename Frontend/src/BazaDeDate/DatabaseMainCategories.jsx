@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import ManoperaForm from './Manopera/ManoperaForm';
-import MaterialeForm from './Materiale/MaterialePost';
+import MaterialePost from './Materiale/MaterialePost';
+import MaterialeForm from './Materiale/MaterialeForm';
 
 export default function DatabaseMainCategories() {
 
