@@ -1,6 +1,6 @@
 import { faCancel, faPlus } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import React, {  useState } from 'react'
+import React, {  useRef, useState } from 'react'
 import api from '../../api/axiosAPI';
 import ManoperaTable from './ManoperaTable';
 
@@ -39,11 +39,27 @@ export default function ManoperaForm() {
       return;
     }
     try {
+      if(selectedEdit != null){
+        await api.post("/Manopera/EditManopera", {form:form, id:selectedEdit});
+        console.log('Manopera edited');
+        setSelectedEdit(null);
+      }
+      else{
         await api.post("/Manopera/SetManopera", {form:form});
         console.log('Manopera added');
-        handleReload();
+      }
+      setFormData({
+        cod_COR:"",
+        ocupatie:"",
+        unitate_masura:"ora",
+        cost_unitar:"",
+        cantitate:"",
+      });
+      firstInputRef.current.focus();
+      handleReload();
     } catch (error) {
       console.error('Upload error:', error);
+      firstInputRef.current.focus();
     }
   };
   
@@ -68,16 +84,45 @@ export default function ManoperaForm() {
     else setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // const cancelEdit = (e) => {
-  //   e.preventDefault();
-  //   setEditAngajat(null);
-  // };
+  //
+  // STATES FOR DELETE, EDIT
+  //
 
-  // const cancelDel = (e) => {
-  //   e.preventDefault();
-  //   setConfirmDel(null);
-  // }
+  const [selectedDelete, setSelectedDelete] = useState(null);
+  const [selectedEdit, setSelectedEdit] = useState(null);
 
+  const cancelDelete = (e) => {
+    e.preventDefault();
+    setSelectedDelete(null);
+  }
+
+  const cancelEdit = (e) => {
+    e.preventDefault();
+    setSelectedEdit(null);
+    setFormData({
+      cod_COR:"",
+      ocupatie:"",
+      unitate_masura:"ora",
+      cost_unitar:"",
+      cantitate:"",
+    });
+  }
+
+  const deleteRow = async (e) => {
+    e.preventDefault();
+    try {
+        const response = await api.delete(`/Manopera/DeleteManopera/${selectedDelete}`);
+        console.log(response);
+        setSelectedDelete(null);
+        handleReload();
+        
+    } catch (error) {
+        console.error('Error deleting data:', error);
+    }
+  }
+
+  //Refernce to focus back on first input after submiting
+  const firstInputRef = useRef(null);
 
   return (
     <>
@@ -91,6 +136,7 @@ export default function ManoperaForm() {
                   Cod COR
               </label>
               <input
+                  ref={firstInputRef}
                   type="text"
                   id="cod_COR"
                   name="cod_COR"
@@ -171,16 +217,33 @@ export default function ManoperaForm() {
                   placeholder="00"
               />
           </div>
-            <div className="flex gap-2 items-center ">
+          {
+              !selectedDelete && !selectedEdit ?
+
+              <div className="flex gap-2 items-center ">
                 <button type="submit" className="bg-green-500 hover:bg-green-600 text-black text-lg mt-6 px-6 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-3"/> Submit</button>
-            </div>
+              </div>
+              :
+              !selectedEdit ?
+
+              <div className="flex gap-2 items-center ">
+                <button onClick={(e) => deleteRow(e)} className="bg-red-500 hover:bg-red-600 text-black text-lg mt-6 px-4 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faCancel} className="pr-3"/> Delete</button>
+                <button onClick={(e) => cancelDelete(e)} className="bg-green-500 hover:bg-green-600 text-black text-lg mt-6 px-4 py-2 flex  items-center rounded-lg">Cancel</button>
+              </div>
+              :
+              <div className="flex gap-2 items-center ">
+                <button  type="submit" className="bg-green-500 hover:bg-green-600 text-black text-lg mt-6 px-6 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-3"/> Submit</button>
+                <button  onClick={(e) => cancelEdit(e)} className="bg-red-500 hover:bg-red-600 text-black text-lg mt-6 px-6 py-2 flex  items-center rounded-lg"> Cancel</button>
+              </div>
+          }
+          
           </div>
         </form>
       </div>
       </div>
       {/* AICI JOS E TABELUL */}
       <div className="w-full h-full scrollbar-webkit overflow-hidden mt-6">
-          <ManoperaTable reloadKey = {reloadKey}/>
+          <ManoperaTable cancelEdit = {cancelEdit} cancelDelete = {cancelDelete} reloadKey = {reloadKey} selectedDelete = {selectedDelete} setFormData = {setFormData}  setSelectedDelete = {setSelectedDelete} selectedEdit = {selectedEdit}  setSelectedEdit = {setSelectedEdit}/>
       </div>
     </>
   );
