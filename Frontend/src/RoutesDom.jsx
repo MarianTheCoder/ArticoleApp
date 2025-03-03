@@ -14,6 +14,7 @@ import Contact from './MainPages/Contact';
 import Test from './test/Test';
 import DatabaseMainCategories from './BazaDeDate/DatabaseMainCategories';
 import RetetaForm from './BazaDeDate/Retete/RetetaForm'
+import { RetetaProvider } from './context/RetetaContext';
 
 export default function RoutesDom() {
 
@@ -26,7 +27,7 @@ export default function RoutesDom() {
        <div className='w-[80px]'></div>
         <Routes>
           <Route path="/" element={<Homepage/>} />
-          <Route path="/addArticles" element={<ProtectedRoute allowedRoles = {['ofertant']}><RetetaForm/></ProtectedRoute>} />
+          <Route path="/addArticles" element={<ProtectedRoute allowedRoles = {['ofertant']}><RetetaProvider><RetetaForm/></RetetaProvider></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute allowedRoles = {["ofertant","angajat","beneficiar"]}><Settings/></ProtectedRoute>}/>
           <Route path="/addAngajati" element={<ProtectedRoute allowedRoles = {["ofertant"]}><AddUsers/></ProtectedRoute>}/>
           <Route path="/AddEchipa" element={<ProtectedRoute allowedRoles = {["ofertant"]}><AddEchipa/></ProtectedRoute>}/>

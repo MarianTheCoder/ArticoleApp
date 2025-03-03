@@ -231,9 +231,9 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
         {manopere &&
             <div className="px-6 pb-4 scrollbar-webkit text-white h-full flex flex-col justify-between">
             <div className="overflow-auto  scrollbar-webkit">
-            <table className="w-full  border-separate border-spacing-0 ">
-              <thead className='top-0 w-full sticky  z-10 '>
-              <tr className='text-black'>
+                <table className="w-full  border-separate border-spacing-0 ">
+                    <thead className='top-0 w-full sticky  z-10 '>
+                        <tr className='text-black'>
                                     <th className='border border-black'>
                                         <input
                                             type="text"
@@ -308,7 +308,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                         {row.getVisibleCells().map((cell) => (
                             <td
                                 key={cell.id}
-                                className={`  border break-words max-w-72 relative border-black p-1 px-3`}
+                                className={`  border break-words max-w-72  relative border-black p-1 px-3`}
                                 style={cell.column.columnDef.meta?.style} // Apply the custom style
                             >
                                 {flexRender(cell.column.columnDef.cell, cell.getContext())}

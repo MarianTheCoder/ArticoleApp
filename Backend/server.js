@@ -12,6 +12,7 @@ const NewsRoutes = require("./Routes/NewsRoutes");
 const ManoperaRoutes = require("./Routes/ManoperaRoutes");
 const MaterialeRoutes = require("./Routes/MaterialeRoutes");
 const UtilajeRoutes = require("./Routes/UtilajeRoutes");
+const RetetaRoutes = require("./Routes/RetetaRoutes");
 
 const app = express();
 const port = 3000;
@@ -150,7 +151,8 @@ async function initializeDatabase() {
       id INT AUTO_INCREMENT PRIMARY KEY,
       cod_reteta VARCHAR(255) NOT NULL,
       clasa_reteta VARCHAR(255) NOT NULL,
-      descriere TEXT NOT NULL,
+      articol TEXT NOT NULL,
+      unitate_masura VARCHAR(255) NOT NULL,
       data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `;
@@ -195,7 +197,6 @@ async function initializeDatabase() {
   `;
   await pool.execute(createReteteUtilajeTableQuery);
   console.log("Retete_Utilaje table created or already exists.");
-
 
   //
   //
@@ -248,6 +249,7 @@ app.use('/News', NewsRoutes);
 app.use('/Manopera', ManoperaRoutes);
 app.use('/Materiale', MaterialeRoutes);
 app.use('/Utilaje', UtilajeRoutes);
+app.use('/Retete', RetetaRoutes);
 
 
 // Serve static files from the React app

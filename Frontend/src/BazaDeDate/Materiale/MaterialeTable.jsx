@@ -346,7 +346,7 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
                         {row.getVisibleCells().map((cell) => (
                             <td
                                 key={cell.id}
-                                className={`  border break-words relative border-black p-1 px-3`}
+                                className={`max-w-72  border break-words relative border-black p-1 px-3`}
                                 style={cell.column.columnDef.meta?.style} // Apply the custom style
                             >
                                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
