@@ -133,6 +133,48 @@ router.get('/api/utilaje', async (req, res) => {
   }
 });
 
+router.get('/api/utilajeLight', async (req, res) => {
+  try {
+      const {clasa_utilaj  = '', utilaj = '', descriere_utilaj  = '' } = req.query;
+
+      // Base query
+      let query = `SELECT * FROM utilaje`;
+      let queryParams = [];
+      let whereClauses = [];
+
+      // Apply filters dynamically
+      if (clasa_utilaj.trim() !== "") {
+          whereClauses.push(`clasa_utilaj LIKE ?`);
+          queryParams.push(`%${clasa_utilaj}%`);
+      }
+
+      if (utilaj.trim() !== "") {
+          whereClauses.push(`utilaj LIKE ?`);
+          queryParams.push(`%${utilaj}%`);
+      }
+
+      if (descriere_utilaj.trim() !== "") {
+          whereClauses.push(`descriere_utilaj LIKE ?`);
+          queryParams.push(`%${descriere_utilaj}%`);
+      }
+
+      // If filters exist, add them to the query
+      if (whereClauses.length > 0) {
+          query += ` WHERE ${whereClauses.join(' AND ')}`;
+      }
+
+      // Execute the query with filters and pagination
+      const [rows] = await global.db.execute(query, queryParams);
+
+      res.send({
+          data: rows,
+      });
+  } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Database error' });
+  }
+});
+
 
 
 const fs = require("fs");

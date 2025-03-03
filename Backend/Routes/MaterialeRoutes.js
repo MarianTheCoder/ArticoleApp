@@ -120,6 +120,49 @@ router.get('/api/materiale', async (req, res) => {
   }
 });
 
+router.get('/api/materialeLight', async (req, res) => {
+  try {
+      const {cod = '', denumire = '', clasa = "" } = req.query;
+
+      // Base query
+      let query = `SELECT * FROM materiale`;
+      let queryParams = [];
+      let whereClauses = [];
+
+      // Apply filters dynamically
+      if (cod.trim() !== "") {
+          whereClauses.push(`cod_produs LIKE ?`);
+          queryParams.push(`%${cod}%`);
+      }
+
+      if (denumire.trim() !== "") {
+          whereClauses.push(`denumire_produs LIKE ?`);
+          queryParams.push(`%${denumire}%`);
+      }
+
+      if (clasa.trim() !== "") {
+          whereClauses.push(`clasa_material LIKE ?`);
+          queryParams.push(`%${clasa}%`);
+      }
+
+      // If filters exist, add them to the query
+      if (whereClauses.length > 0) {
+          query += ` WHERE ${whereClauses.join(' AND ')}`;
+      }
+
+      // Execute the query with filters and pagination
+      const [rows] = await global.db.execute(query, queryParams);
+
+      res.send({
+          data: rows,
+      });
+  } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Database error' });
+  }
+});
+
+
 
 
 const fs = require("fs");
