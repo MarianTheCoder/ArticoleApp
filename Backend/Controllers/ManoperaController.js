@@ -20,6 +20,49 @@ const AddManopera = async (req, res) =>{
     }
 };
 
+const EditManopera = async (req, res) => {
+  const { id, form } = req.body;  // Extract id and form data from request
+  
+  try {
+      // Check if all necessary fields are filled
+      if (form.cod_COR === "" || form.ocupatie === "" || form.unitate_masura === "" || form.cost_unitar === "" || form.cantitate === "") {
+          return res.status(400).json({ message: "Invalid input fields." });
+      }
+
+      // Update data query
+      const updateQuery = `
+          UPDATE manopera 
+          SET 
+              cod_COR = ?, 
+              ocupatie = ?, 
+              unitate_masura = ?, 
+              cost_unitar = ?, 
+              cantitate = ?, 
+              data = NOW() 
+          WHERE id = ?
+      `;
+
+      // Execute the query
+      const [result] = await global.db.execute(updateQuery, [
+          form.cod_COR, 
+          form.ocupatie, 
+          form.unitate_masura, 
+          form.cost_unitar, 
+          form.cantitate,
+          id
+      ]);
+
+      if (result.affectedRows === 0) {
+          return res.status(404).json({ message: "Record not found." });
+      }
+
+      res.status(200).json({ message: "Data updated successfully!" });
+  } catch (err) {
+      console.error("Failed to update data:", err);
+      res.status(500).json({ message: "Database error." });
+  }
+};
+
 const GetManopere = async (req, res) => {
   try {
       const { offset = 0, limit = 10, cod_COR = '', ocupatie = '' } = req.query;
@@ -85,5 +128,71 @@ const GetManopere = async (req, res) => {
   }
 };
 
+const DeleteManopera = async (req, res) => {
+  const { id } = req.params; // Get the ID from the URL parameters
 
-module.exports = {AddManopera, GetManopere};
+  try {
+      if (!id || isNaN(id)) {
+          return res.status(400).json({ message: "Invalid or missing ID." });
+      }
+
+      // SQL query to delete the record by ID
+      const deleteQuery = `DELETE FROM manopera WHERE id = ?`;
+
+      // Execute the deletion
+      const [result] = await global.db.execute(deleteQuery, [id]);
+
+      // Check if any row was deleted
+      if (result.affectedRows === 0) {
+          return res.status(404).json({ message: "Record not found." });
+      }
+
+      // Return success message
+      res.status(200).json({ message: "Data deleted successfully!" });
+  } catch (err) {
+      console.error("Failed to delete data:", err);
+      res.status(500).json({ message: "Database error." });
+  }
+};
+
+const GetManopereLight = async (req, res) => {
+    try {
+        const { cod_COR = '', ocupatie = '' } = req.query;
+  
+  
+        // Start constructing the base query
+        let query = `SELECT * FROM manopera`;
+        let queryParams = [];
+        let whereClauses = [];
+  
+        // Conditionally add filters to the query
+        if (cod_COR.trim() !== "") {
+            whereClauses.push(`cod_COR LIKE ?`);
+            queryParams.push(`%${cod_COR}%`);
+        }
+  
+        if (ocupatie.trim() !== "") {
+            whereClauses.push(`ocupatie LIKE ?`);
+            queryParams.push(`%${ocupatie}%`);
+        }
+  
+        // If there are any filters, add them to the query
+        if (whereClauses.length > 0) {
+            query += ` WHERE ${whereClauses.join(' AND ')}`;
+        }
+  
+        // Execute the query with filters and pagination
+        const [rows] = await global.db.execute(query, queryParams);
+        
+        res.send({
+            data: rows
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Database error' });
+    }
+  };
+  
+
+
+module.exports = {AddManopera, GetManopere, DeleteManopera, EditManopera, GetManopereLight};

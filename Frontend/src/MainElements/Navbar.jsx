@@ -87,7 +87,7 @@ function Navbar() {
                 <li onClick={() => setSelected(2)} style={{"--bg":"#f44336"}} className={`cursor-pointer ${selected == 2 ? "active" : ""}`}>
                     <a onClick={() => navigate("/addArticles")}>
                         <div className='icon'><FontAwesomeIcon icon={faFilePen}/></div>
-                        <div className='text'>Articole</div>
+                        <div className='text'>Retete</div>
                     </a>
                 </li>
                 <li onClick={() => setSelected(3)} style={{"--bg":"#0fc70f"}} className={`cursor-pointer ${selected == 3 ? "active" : ""}`}>

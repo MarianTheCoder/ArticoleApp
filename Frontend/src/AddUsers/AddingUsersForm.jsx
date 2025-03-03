@@ -188,19 +188,19 @@ export default function AddingUsersForm() {
                   placeholder="Enter Password"
               />
           </div>
-            <div className="flex gap-2 items-center ">
+            <div className="flex gap-2 w-40 items-center text-black ">
               {confirmDel == null && editAngajat == null ? 
-                <button type="submit" className="bg-green-500 hover:bg-green-600 text-black text-lg mt-6 px-6 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-3"/> Submit</button>
+                <button type="submit" className="bg-green-500 hover:bg-green-600 w-full  text-lg mt-6  justify-center py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-3"/> Submit</button>
               :
               confirmDel != null ?
               <>
-                <button onClick={(e) => deleteAngajat(confirmDel,e)} className="bg-red-500 hover:bg-red-600 text-white text-lg mt-6 px-2 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faCancel} className="pr-3"/>Delete</button>
-                <button onClick={(e) => cancelDel(e) } className="bg-green-500 hover:bg-green-600 text-white text-lg mt-6 px-2 py-2 flex  items-center rounded-lg">Cancel</button>
+                <button onClick={(e) => deleteAngajat(confirmDel,e)} className="bg-red-500 hover:bg-red-600 text-black text-lg mt-6 px-2 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faCancel} className="pr-3"/>Delete</button>
+                <button onClick={(e) => cancelDel(e) } className="bg-green-500 hover:bg-green-600 text-black text-lg mt-6 px-2 py-2 flex  items-center rounded-lg">Cancel</button>
               </>
               :
               <>
-                <button onClick={(e) => handleSubmit(e) } className="bg-green-500 hover:bg-green-600 text-white text-lg mt-6 px-2 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-3"/>Submit</button>
-                <button onClick={(e) => cancelEdit(e)} className="bg-red-500 hover:bg-red-600 text-white text-lg mt-6 px-2 py-2 flex  items-center rounded-lg"> Cancel</button>
+                <button onClick={(e) => handleSubmit(e) } className="bg-green-500 hover:bg-green-600 text-black text-lg mt-6 px-2 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-3"/>Submit</button>
+                <button onClick={(e) => cancelEdit(e)} className="bg-red-500 hover:bg-red-600 text-black text-lg mt-6 px-2 py-2 flex  items-center rounded-lg"> Cancel</button>
               </>
             
               }     
