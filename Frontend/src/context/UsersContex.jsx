@@ -1,15 +1,23 @@
-import React, { createContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useState } from 'react'
 import api from '../api/axiosAPI'
+import defaultPhoto from '../assets/no-user-image-square.jpg';
+import { AuthContext } from './TokenContext';
+
 
 const AngajatiContext = createContext();
 
 const UsersProvider = ({ children }) => {
 
     const [editAngajat, setEditAngajat] = useState(null);
+    const {getUsersForSantiere} = useContext(AuthContext);
 
     const [confirmDel, setConfirmDel] = useState(null);
     const [clicked, setClicked] = useState(null);
     const [angajati, setAngajati] = useState(null);
+
+    
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [preview, setPreview] = useState(defaultPhoto);
 
     useEffect(() => {
         if(clicked != null){
@@ -37,13 +45,14 @@ const UsersProvider = ({ children }) => {
             console.log(response.data);
             await getAngajati();
             setConfirmDel(null);
+            getUsersForSantiere();
         } catch (error) {
             console.log(error);
         }
     }
 
     return (
-        <AngajatiContext.Provider value={{ clicked, setClicked, angajati, setAngajati , getAngajati, deleteAngajat, confirmDel, setConfirmDel, editAngajat, setEditAngajat }}>
+        <AngajatiContext.Provider value={{ clicked, setClicked, angajati, setAngajati , getAngajati, deleteAngajat, confirmDel, selectedFile, setSelectedFile, setPreview, preview, setConfirmDel, editAngajat, setEditAngajat }}>
             {children}
         </AngajatiContext.Provider>
     );

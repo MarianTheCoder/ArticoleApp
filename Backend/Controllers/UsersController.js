@@ -10,7 +10,7 @@ const getAngajati = async (req,res) =>{
       return res.status(400).json({ error: 'Role is required in the request body' });
     }
     const [rows] = await global.db.execute(
-      'SELECT id, email, name, role, photo_url, created_at FROM users WHERE role = ?',
+      'SELECT id, email, name, telephone, role, photo_url, created_at FROM users WHERE role = ?',
       [role]
     );
     return res.send(rows);
@@ -19,6 +19,47 @@ const getAngajati = async (req,res) =>{
      return res.status(500).json({ error: 'Failed to retrieve angajati' });
   }
   }
+
+  const getAngajatiName = async (req,res) =>{
+    try {
+      const [rows] = await global.db.execute(
+        'SELECT id, name, created_at FROM users WHERE role = ?',
+        ["beneficiar"]
+      );
+      return res.send(rows);
+    }catch (err) {
+      console.error('Error retrieving angajati:', err);
+       return res.status(500).json({ error: 'Failed to retrieve angajati' });
+    }
+    }
+
+    const addSantier = async (req,res) =>{
+      const {userId, name} = req.body;
+      try {
+        // SQL query to insert a new santier for the user
+        const query = `INSERT INTO Santiere (name, user_id) VALUES (?, ?)`;
+    
+        // Execute the query
+        const [rows] = await global.db.execute(query, [name, userId]);
+    
+        // Return the ID of the newly inserted record
+        res.status(200).send({ message: 'Santier added successfully', santierId: rows.insertId });
+      } catch (error) {
+          res.status(500).json({ message: "Internal server error" });
+      }
+    }
+
+    const getSantiere = async (req,res) =>{
+      try {
+        const [rows] = await global.db.execute(
+          'SELECT id, name, user_id FROM Santiere',
+        );
+        return res.send(rows);
+      }catch (err) {
+        console.error('Error retrieving Santiere:', err);
+         return res.status(500).json({ error: 'Failed to retrieve angajati' });
+      }
+      }
 
   const deleteUser = async (req,res) =>{
     const {id} = req.params;
@@ -30,7 +71,9 @@ const getAngajati = async (req,res) =>{
       }
 
       const imagePath = rows[0].photo_url;
-
+      
+      await global.db.query("DELETE FROM users WHERE id = ?", [id]);
+      
       // Step 2: Delete the image from the server
       const defaultImage = "no-user-image-square.jpg";
 
@@ -41,7 +84,7 @@ const getAngajati = async (req,res) =>{
           }
       }
       // Step 3: Delete the row from MySQL
-      await global.db.query("DELETE FROM users WHERE id = ?", [id]);
+      
       res.json({ message: "Product and image deleted successfully" });
     }
     catch (error) {
@@ -51,4 +94,4 @@ const getAngajati = async (req,res) =>{
   }
 
 
-  module.exports = { getAngajati, deleteUser };
+  module.exports = { getAngajati, deleteUser, getAngajatiName, addSantier, getSantiere};

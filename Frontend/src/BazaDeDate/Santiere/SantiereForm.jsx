@@ -2,7 +2,7 @@ import { faCancel, faPlus } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, {  useRef, useState } from 'react'
 import api from '../../api/axiosAPI';
-import ManoperaTable from './ManoperaTable';
+
 
 export default function ManoperaForm() {
 
@@ -126,6 +126,10 @@ export default function ManoperaForm() {
 
   return (
     <>
+        <div className='h-screen w-full flex items-center justify-center'>
+            <div className="container  w-4/5 h-90h relative flex  flex-col items-center rounded-lg">
+
+
     <div className='w-full containerWhiter'>
       <div className="flex justify-center items-center text-black  ">
         <form onSubmit={handleSubmit} className="w-full p-6 pt-4 px-12 rounded-xl shadow-xl">
@@ -243,7 +247,9 @@ export default function ManoperaForm() {
       </div>
       {/* AICI JOS E TABELUL */}
       <div className="w-full h-full scrollbar-webkit overflow-hidden mt-6">
-          <ManoperaTable cancelEdit = {cancelEdit} cancelDelete = {cancelDelete} reloadKey = {reloadKey} selectedDelete = {selectedDelete} setFormData = {setFormData}  setSelectedDelete = {setSelectedDelete} selectedEdit = {selectedEdit}  setSelectedEdit = {setSelectedEdit}/>
+          {/* <ManoperaTable cancelEdit = {cancelEdit} cancelDelete = {cancelDelete} reloadKey = {reloadKey} selectedDelete = {selectedDelete} setFormData = {setFormData}  setSelectedDelete = {setSelectedDelete} selectedEdit = {selectedEdit}  setSelectedEdit = {setSelectedEdit}/> */}
+      </div>
+      </div>
       </div>
     </>
   );

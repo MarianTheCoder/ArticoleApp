@@ -76,7 +76,7 @@ router.get('/api/utilaje', async (req, res) => {
       }
 
       // Base query
-      let query = `SELECT * FROM utilaje`;
+      let query = `SELECT * FROM Utilaje`;
       let queryParams = [];
       let whereClauses = [];
 
@@ -109,7 +109,7 @@ router.get('/api/utilaje', async (req, res) => {
       const [rows] = await global.db.execute(query, queryParams);
 
       // Query to count total items without pagination
-      let countQuery = `SELECT COUNT(*) as total FROM utilaje`;
+      let countQuery = `SELECT COUNT(*) as total FROM Utilaje`;
       if (whereClauses.length > 0) {
           countQuery += ` WHERE ${whereClauses.join(' AND ')}`;
       }
@@ -138,7 +138,7 @@ router.get('/api/utilajeLight', async (req, res) => {
       const {clasa_utilaj  = '', utilaj = '', descriere_utilaj  = '' } = req.query;
 
       // Base query
-      let query = `SELECT * FROM utilaje`;
+      let query = `SELECT * FROM Utilaje`;
       let queryParams = [];
       let whereClauses = [];
 
@@ -188,7 +188,7 @@ router.delete('/api/utilaje/:id', async (req, res) => {
         }
 
         // Step 1: Retrieve the photo filename from the database
-        const getFileQuery = `SELECT photoUrl FROM utilaje WHERE id = ?`;
+        const getFileQuery = `SELECT photoUrl FROM Utilaje WHERE id = ?`;
         const [rows] = await global.db.execute(getFileQuery, [id]);
 
         if (rows.length === 0) {
@@ -212,7 +212,7 @@ router.delete('/api/utilaje/:id', async (req, res) => {
         }
 
         // Step 3: Delete the record from the database
-        const deleteQuery = `DELETE FROM utilaje WHERE id = ?`;
+        const deleteQuery = `DELETE FROM Utilaje WHERE id = ?`;
         const [result] = await global.db.execute(deleteQuery, [id]);
 
         if (result.affectedRows === 0) {
@@ -238,7 +238,7 @@ router.put('/api/utilaje/:id', upload.single('poza'), async (req, res) => {
         }
 
         // Step 1: Get the current photo path from the database
-        const getPhotoQuery = `SELECT photoUrl FROM utilaje WHERE id = ?`;
+        const getPhotoQuery = `SELECT photoUrl FROM Utilaje WHERE id = ?`;
         const [rows] = await global.db.execute(getPhotoQuery, [id]);
 
         if (rows.length === 0) {
@@ -269,7 +269,7 @@ router.put('/api/utilaje/:id', upload.single('poza'), async (req, res) => {
 
         // Step 3: Update the material in the database
         const updateQuery = `
-            UPDATE utilaje 
+            UPDATE Utilaje 
             SET clasa_utilaj = ?, utilaj = ?, descriere_utilaj = ?, photoUrl = ?, status_utilaj = ?, cost_amortizare = ?, pret_utilaj = ?, cantitate = ?
             WHERE id = ?`;
 

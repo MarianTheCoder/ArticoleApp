@@ -4,20 +4,22 @@ import React, { useContext, useEffect, useState } from 'react'
 import { AngajatiContext } from '../context/UsersContex';
 import defaultPhoto from '../assets/no-user-image-square.jpg';
 import api from '../api/axiosAPI';
+import { AuthContext } from '../context/TokenContext';
+import photoAPI from '../api/photoAPI';
 
 export default function AddingUsersForm() {
 
-  const {clicked, getAngajati, setConfirmDel, confirmDel, deleteAngajat, setEditAngajat, editAngajat} = useContext(AngajatiContext);
+  const {user, setUser, getUsersForSantiere} = useContext(AuthContext);
+
+  const {clicked, getAngajati, setConfirmDel, confirmDel, deleteAngajat, setEditAngajat, editAngajat, preview, setPreview, setSelectedFile, selectedFile} = useContext(AngajatiContext);
 
   const [formData, setFormData] = useState({
       email:"",
       name:"",
       password:"",
+      telephone:"",
       role: clicked
   });
-
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [preview, setPreview] = useState(defaultPhoto);
 
   useEffect(() => {
     if(clicked != formData.role){
@@ -25,6 +27,7 @@ export default function AddingUsersForm() {
         email:"",
         name:"",
         password:"",
+        telephone:"",
         role: clicked
       }); 
       setSelectedFile(null);
@@ -38,10 +41,11 @@ export default function AddingUsersForm() {
           email: editAngajat.email,
           name: editAngajat.name,
           password: "",
+          telephone:editAngajat.telephone,
           role: clicked
         });
         setSelectedFile(null);
-        setPreview(defaultPhoto);
+        setPreview(`${photoAPI}/${editAngajat.photo_url}`);
         setConfirmDel(null);
       }
       else{
@@ -49,12 +53,12 @@ export default function AddingUsersForm() {
           email:"",
           name:"",
           password:"",
+          telephone:"",
           role: clicked
         }); 
         setSelectedFile(null);
         setPreview(defaultPhoto);
         setEditAngajat(null);
-        
       }
     }
     
@@ -72,23 +76,43 @@ export default function AddingUsersForm() {
     data.append('name', formData.name);
     data.append('email', formData.email);
     data.append('password', formData.password);
+    data.append('telephone', formData.telephone);
     data.append('role', roles[formData.role-1]);
     data.append('photo', selectedFile);
 
     try {
       if(editAngajat != null){
-        await api.post(`/users/UpdateUser/${editAngajat.id}`, data, {
+        let res = await api.post(`/users/UpdateUser/${editAngajat.id}`, data, {
           headers: { 'Content-Type': 'multipart/form-data'},
         })
+        if(res.data.id == user.id){
+          localStorage.setItem('photoUser', res.data.photo_url);
+          setUser({
+            id: user.id,
+            role: user.role,
+            name: res.data.name,
+        });
+        } 
+        setEditAngajat(null);
       }else{
         await api.post("/users/SetUser", data, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
+        setFormData({
+          email:"",
+          name:"",
+          password:"",
+          telephone:"",
+          role: clicked
+        }); 
+        setSelectedFile(null);
+        setPreview(defaultPhoto);
       }
       console.log('Photo uploaded successfully!');
-      setConfirmDel(null);
-      setEditAngajat(null);
       getAngajati();
+      if(roles[formData.role-1] == "beneficiar"){
+        getUsersForSantiere();
+      }
     } catch (error) {
       console.error('Upload error:', error);
     }
@@ -96,8 +120,28 @@ export default function AddingUsersForm() {
   
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    if(e.target.name == "name"){
+      if(/^[\p{L}][\p{L}\s-]*$/u.test(e.target.value) || e.target.value == ""){
+        let { name, value } = e.target;
+        if (value.length > 1 && (value[value.length - 2] === " " || value[value.length - 2] === "-")) {
+          value = value.slice(0, -1) + value.charAt(value.length - 1).toUpperCase();
+        }
+        else if(value.length == 1){
+          value = value.charAt(0).toUpperCase();
+        }
+        setFormData((prev) => ({ ...prev, [name]: value }));
+      }
+    }
+    else if(e.target.name == "telephone"){ 
+      if(/^\d*$/.test(e.target.value) || e.target.value == ""){
+        const { name, value } = e.target;
+        setFormData((prev) => ({ ...prev, [name]: value }));
+      }
+    } 
+    else{
+      const { name, value } = e.target;
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const cancelEdit = (e) => {
@@ -112,10 +156,10 @@ export default function AddingUsersForm() {
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
-    console.log(file);
     if (file) {
       setSelectedFile(file);
       setPreview(URL.createObjectURL(file)); // Show image preview
+      e.target.value = null;
     }
   };
 
@@ -127,7 +171,7 @@ export default function AddingUsersForm() {
     <div className='w-full containerWhiter'>
       <div className="flex  justify-center items-center text-black  ">
         <form onSubmit={handleSubmit} className="w-full p-6 px-12 rounded-xl shadow-xl">
-          <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] xxxl:gap-12 md:gap-6 xl:gap-8 items-center">
+          <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_auto] xxxl:gap-12 md:gap-6 xl:gap-8 items-center">
         {/* photourl */}
           <div className="flex flex-col items-center w-full">
               <div className=' items-center gap-4 flex w-full'>
@@ -135,7 +179,7 @@ export default function AddingUsersForm() {
                 <img className='rounded-xl object-cover w-full h-full ' src={preview == null ? defaultPhoto : preview}></img>
               </div>
                 <button type="button" onClick={handleButtonClick} className="bg-white w-full rounded-xl mt-6 p-2 ">Choose File</button>
-                <input id="hiddenFileInput" type="file" onChange={handleFileChange} className="hidden"/>
+                <input id="hiddenFileInput" type="file" onChange={(e) => handleFileChange(e)} className="hidden"/>
         
               </div>
           </div>
@@ -169,6 +213,24 @@ export default function AddingUsersForm() {
                   onChange={handleChange}
                   className="px-2 w-full outline-none text-center py-2  rounded-lg shadow-sm "
                   placeholder="Enter name"
+              />
+          </div>
+          <div className="flex flex-col items-center">
+              <label
+                  htmlFor="description"
+                  className=" font-medium text-black"
+              >
+                  Telephone
+              </label>
+              <input
+                  type="text"
+                  id="telephone"
+                  name="telephone"
+                  maxLength={20}
+                  value={formData.telephone}
+                  onChange={handleChange}
+                  className="px-2 w-full outline-none text-center py-2  rounded-lg shadow-sm "
+                  placeholder="Enter Phone"
               />
           </div>
           <div className="flex flex-col items-center">

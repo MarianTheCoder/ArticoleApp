@@ -31,6 +31,7 @@ export default function RetetaTablePreview({rowId, reloadKey, selectedDelete, se
     //
     //
     const columns = useMemo(() => [
+        {   accessorKey: "empty", header: "empty", },
         {   accessorKey: "whatIs", 
             header: "Tip", 
             size:85,

@@ -14,7 +14,12 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState({ id: null, role: null, name: null });
     const [loading, setLoading] = useState(true); // New loading state
     const [color, setColor] = useState("");
+    
 
+    const [beneficiari, setBeneficiari] = useState([]);
+    const [santiere, setSantiere] = useState([]);
+
+    
     const getDecodedToken = (token) => {
         if (token) {
             try {
@@ -30,6 +35,18 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
       decodeToken();
     }, [])
+
+    const getUsersForSantiere = async () => {
+        try {
+            const response = await api.get(`/users/GetUsersName`);
+            const responseSantiere = await api.get(`/users/getSantiere`);
+            setBeneficiari(response.data);
+            setSantiere(responseSantiere.data);
+        } catch (err) {
+            console.error('Login failed:', err.response?.data?.message || err.message);
+            return err; // Re-throw error for frontend handling
+        }
+    }
     
 
     const decodeToken = () =>{
@@ -109,7 +126,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ token, user, login, logout, getDecodedToken, decodeToken, loading , color}}>
+        <AuthContext.Provider value={{ token, user, login, logout, getDecodedToken, decodeToken, santiere, setSantiere, loading , color, setUser, getUsersForSantiere, beneficiari, setBeneficiari }}>
             {children}
         </AuthContext.Provider>
     );

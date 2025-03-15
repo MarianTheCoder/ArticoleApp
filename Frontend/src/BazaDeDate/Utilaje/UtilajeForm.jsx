@@ -170,7 +170,7 @@ export default function UtilajeForm() {
 
   return (
     <>
-    <div className='w-full containerWhiter mt-6'>
+    <div className='w-full containerWhiter'>
       <div className="flex justify-center items-center text-black  ">
         <form onSubmit={handleSubmit} className="w-full text-base p-4 px-6 rounded-lg shadow-xl">
           <div className="grid grid-cols-[auto_auto_auto_1fr_auto_auto_auto_auto_auto] xxxl:gap-4 md:gap-2 xl:gap-3 items-center">

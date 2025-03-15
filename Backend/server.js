@@ -53,6 +53,7 @@ async function initializeDatabase() {
         email VARCHAR(100) NOT NULL UNIQUE,
         name VARCHAR(50) NOT NULL,
         password VARCHAR(255) NOT NULL,
+        telephone VARCHAR(20),
         role ENUM('ofertant', 'angajat', 'beneficiar') NOT NULL DEFAULT 'angajat',
         photo_url VARCHAR(255) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -147,7 +148,7 @@ async function initializeDatabase() {
 
 
   const createReteteTableQuery = `
-    CREATE TABLE IF NOT EXISTS retete (
+    CREATE TABLE IF NOT EXISTS Retete (
       id INT AUTO_INCREMENT PRIMARY KEY,
       cod_reteta VARCHAR(255) NOT NULL,
       clasa_reteta VARCHAR(255) NOT NULL,
@@ -160,44 +161,55 @@ async function initializeDatabase() {
   console.log("Retete table created or already exists.");
 
   const createReteteManoperaTableQuery = `
-    CREATE TABLE IF NOT EXISTS retete_manopera (
+    CREATE TABLE IF NOT EXISTS Retete_manopera (
       id INT AUTO_INCREMENT PRIMARY KEY,
       reteta_id INT NOT NULL,
       manopera_id INT NOT NULL,
       cantitate DECIMAL(10, 2) NOT NULL,  
-      FOREIGN KEY (reteta_id) REFERENCES retete(id),
-      FOREIGN KEY (manopera_id) REFERENCES manopera(id)
+      FOREIGN KEY (reteta_id) REFERENCES Retete(id),
+      FOREIGN KEY (manopera_id) REFERENCES Manopera(id)
     );
   `;
   await pool.execute(createReteteManoperaTableQuery);
   console.log("Retete_Manopera table created or already exists.");
   
   const createReteteMaterialeTableQuery = `
-    CREATE TABLE IF NOT EXISTS retete_materiale (
+    CREATE TABLE IF NOT EXISTS Retete_materiale (
       id INT AUTO_INCREMENT PRIMARY KEY,
       reteta_id INT NOT NULL,
       materiale_id INT NOT NULL,
       cantitate DECIMAL(10, 2) NOT NULL, 
-      FOREIGN KEY (reteta_id) REFERENCES retete(id),
-      FOREIGN KEY (materiale_id) REFERENCES materiale(id)
+      FOREIGN KEY (reteta_id) REFERENCES Retete(id),
+      FOREIGN KEY (materiale_id) REFERENCES Materiale(id)
     );
   `;
   await pool.execute(createReteteMaterialeTableQuery);
   console.log("Retete_Materiale table created or already exists.");
   
   const createReteteUtilajeTableQuery = `
-    CREATE TABLE IF NOT EXISTS retete_utilaje (
+    CREATE TABLE IF NOT EXISTS Retete_utilaje (
       id INT AUTO_INCREMENT PRIMARY KEY,
       reteta_id INT NOT NULL,
       utilaje_id INT NOT NULL,
       cantitate DECIMAL(10, 2) NOT NULL, 
-      FOREIGN KEY (reteta_id) REFERENCES retete(id),
-      FOREIGN KEY (utilaje_id) REFERENCES utilaje(id)
+      FOREIGN KEY (reteta_id) REFERENCES Retete(id),
+      FOREIGN KEY (utilaje_id) REFERENCES Utilaje(id)
     );
   `;
   await pool.execute(createReteteUtilajeTableQuery);
   console.log("Retete_Utilaje table created or already exists.");
 
+  const createSantiereTableQuery = `
+    CREATE TABLE IF NOT EXISTS Santiere (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(100) NOT NULL,
+      user_id INT,
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `;
+  await pool.execute(createSantiereTableQuery);
+  console.log("Santiere table created or already exists.");
   //
   //
   //

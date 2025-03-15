@@ -14,7 +14,7 @@ export default function MaterialeForm() {
       cod_produs:"",
       denumire_produs:"",
       descriere_produs:"",
-      unitate_masura:"u",
+      unitate_masura:"U",
       cost_unitar:"",
       cost_preferential:"",
       pret_vanzare:"",
@@ -179,7 +179,7 @@ export default function MaterialeForm() {
 
   return (
     <>
-    <div className='w-full containerWhiter mt-6'>
+    <div className='w-full containerWhiter'>
       <div className="flex justify-center items-center text-black  ">
         <form onSubmit={handleSubmit} className="w-full text-base p-4 px-6 rounded-lg shadow-xl">
           <div className="grid grid-cols-[auto_auto_auto_auto_auto_auto_auto_auto_auto_auto_auto] xxxl:gap-4 md:gap-2 xl:gap-3 items-center">
@@ -294,7 +294,14 @@ export default function MaterialeForm() {
                 onChange={handleChange}
                 className="px-4 py-2 border  rounded-lg outline-none shadow-sm "
               >
-                <option value="u">u</option>
+                <option value="U">U</option>
+                <option value="m">m</option>
+                <option value="m²">m²</option>
+                <option value="m³">m³</option>
+                <option value="kg">kg</option>
+                <option value="Set">Set</option>
+                <option value="Rola">Rola</option>
+           
               </select>
             </div>
 
