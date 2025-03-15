@@ -1,17 +1,30 @@
-var maxAbsoluteSum = function(nums) {
-    let sum = 0;
-    let maxx = -Infinity;
-    for (let i = 0; i < nums.length; i++) {
-        sum = sum + nums[i];
-        if(sum < 0) sum = 0;
-        else maxx = Math.max(maxx, sum);
+/**
+ * @param {number[]} candies
+ * @param {number} k
+ * @return {number}
+ */
+var maximumCandies = function(candies, k) {
+    let maxx = 0;
+    for (let i = 0; i < candies.length; i++) {
+        maxx = Math.max(maxx, candies[i]);
     }
-    for (let i = 0; i < nums.length; i++) {
-        sum = sum + nums[i];
-        if(sum > 0) sum = 0;
-        else maxx = Math.max(maxx, Math.abs(sum));
+    let helper = (mid) => {
+        let sum = 0;
+        for (let i = 0; i < candies.length; i++) {
+            sum += Math.floor(candies[i] / mid);
+            if(sum >= k) return sum;
+        }
+        return sum;
     }
-    console.log(maxx);
+    let maximum = 0;
+    let binary = (left, right) => {
+        if(left > right) return right;
+        let mid = Math.floor((left + right) / 2);
+        let sum = helper(mid);
+        if(sum >= k) maximum = Math.max(maximum, mid);
+        if(sum >= k) return binary(mid + 1, right);
+        return binary(left, mid - 1);
+    }
+    binary(1, maxx);
+    console.log(maximum);
 };
-
-maxAbsoluteSum([2,-5,1,-4,3,-2])

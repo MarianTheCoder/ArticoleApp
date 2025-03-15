@@ -8,7 +8,7 @@ const AddManopera = async (req, res) =>{
   
       // Insert data
       const insertQuery = `
-        INSERT INTO manopera (cod_COR, ocupatie, unitate_masura, cost_unitar, cantitate, data) VALUES (?, ?, ?, ?, ?, NOW())
+        INSERT INTO Manopera (cod_COR, ocupatie, unitate_masura, cost_unitar, cantitate, data) VALUES (?, ?, ?, ?, ?, NOW())
       `;
   
       const [result] = await global.db.execute(insertQuery, [form.cod_COR, form.ocupatie, form.unitate_masura, form.cost_unitar, form.cantitate]);
@@ -31,7 +31,7 @@ const EditManopera = async (req, res) => {
 
       // Update data query
       const updateQuery = `
-          UPDATE manopera 
+          UPDATE Manopera 
           SET 
               cod_COR = ?, 
               ocupatie = ?, 
@@ -76,7 +76,7 @@ const GetManopere = async (req, res) => {
       }
 
       // Start constructing the base query
-      let query = `SELECT * FROM manopera`;
+      let query = `SELECT * FROM Manopera`;
       let queryParams = [];
       let whereClauses = [];
 
@@ -103,7 +103,7 @@ const GetManopere = async (req, res) => {
       // Execute the query with filters and pagination
       const [rows] = await global.db.execute(query, queryParams);
 
-      let countQuery = `SELECT COUNT(*) as total FROM manopera`;
+      let countQuery = `SELECT COUNT(*) as total FROM Manopera`;
       if (whereClauses.length > 0) {
           countQuery += ` WHERE ${whereClauses.join(' AND ')}`;
       }
@@ -137,7 +137,7 @@ const DeleteManopera = async (req, res) => {
       }
 
       // SQL query to delete the record by ID
-      const deleteQuery = `DELETE FROM manopera WHERE id = ?`;
+      const deleteQuery = `DELETE FROM Manopera WHERE id = ?`;
 
       // Execute the deletion
       const [result] = await global.db.execute(deleteQuery, [id]);
@@ -161,7 +161,7 @@ const GetManopereLight = async (req, res) => {
   
   
         // Start constructing the base query
-        let query = `SELECT * FROM manopera`;
+        let query = `SELECT * FROM Manopera`;
         let queryParams = [];
         let whereClauses = [];
   

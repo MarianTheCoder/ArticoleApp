@@ -63,7 +63,7 @@ router.get('/api/materiale', async (req, res) => {
       }
 
       // Base query
-      let query = `SELECT * FROM materiale`;
+      let query = `SELECT * FROM Materiale`;
       let queryParams = [];
       let whereClauses = [];
 
@@ -96,7 +96,7 @@ router.get('/api/materiale', async (req, res) => {
       const [rows] = await global.db.execute(query, queryParams);
 
       // Query to count total items without pagination
-      let countQuery = `SELECT COUNT(*) as total FROM materiale`;
+      let countQuery = `SELECT COUNT(*) as total FROM Materiale`;
       if (whereClauses.length > 0) {
           countQuery += ` WHERE ${whereClauses.join(' AND ')}`;
       }
@@ -125,7 +125,7 @@ router.get('/api/materialeLight', async (req, res) => {
       const {cod = '', denumire = '', clasa = "" } = req.query;
 
       // Base query
-      let query = `SELECT * FROM materiale`;
+      let query = `SELECT * FROM Materiale`;
       let queryParams = [];
       let whereClauses = [];
 
@@ -176,7 +176,7 @@ router.delete('/api/materiale/:id', async (req, res) => {
         }
 
         // Step 1: Retrieve the photo filename from the database
-        const getFileQuery = `SELECT photoUrl FROM materiale WHERE id = ?`;
+        const getFileQuery = `SELECT photoUrl FROM Materiale WHERE id = ?`;
         const [rows] = await global.db.execute(getFileQuery, [id]);
 
         if (rows.length === 0) {
@@ -200,7 +200,7 @@ router.delete('/api/materiale/:id', async (req, res) => {
         }
 
         // Step 3: Delete the record from the database
-        const deleteQuery = `DELETE FROM materiale WHERE id = ?`;
+        const deleteQuery = `DELETE FROM Materiale WHERE id = ?`;
         const [result] = await global.db.execute(deleteQuery, [id]);
 
         if (result.affectedRows === 0) {

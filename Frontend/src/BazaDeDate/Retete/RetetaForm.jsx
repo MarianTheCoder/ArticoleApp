@@ -17,13 +17,13 @@ export default function ManoperaForm() {
       clasa:"Regie",
       cod:"",
       articol:"",
-      unitate_masura:"m^2"
+      unitate_masura:"U"
   });
   
   const [isOpen, setIsOpen] = useState(false);
 
   const [reloadKey, setReloadKey] = useState(0);
-  const [clicked, setClicked] = useState(0);
+  const [clicked, setClicked] = useState(1);
 
   const handleReload = () => {
     setReloadKey(prevKey => prevKey + 1);  // Trigger child re-render by changing the key
@@ -139,8 +139,8 @@ export default function ManoperaForm() {
 
   return (
   
-     <div className='h-screen w-full grid grid-cols-[1fr_2fr] gap-12 px-32 items-center justify-center'>
-      <div className="container relative h-90h overflow-hidden flex flex-col items-center rounded-lg">
+     <div className='h-screen w-full flex items-center justify-center'>
+      {/* <div className="container relative h-90h overflow-hidden flex flex-col items-center rounded-lg">
         <div className='flex font-medium w-full justify-evenly containerWhiter py-5 '>
               <button onClick={() => setClicked((prev) => prev == 1 ? 0 : 1)} className={`bg-white text-black  px-6 py-2 rounded-xl ${clicked == 1 ? "bg-gray-200 outline-2 outline" : ""} hover:bg-gray-200`}>
                 Manopera
@@ -168,15 +168,13 @@ export default function ManoperaForm() {
               ""
             }
           </div>
-        </div>
-        <div className="container h-90h relative flex overflow-hidden  flex-col items-center rounded-lg">
+        </div> */}
+        <div className="container h-90h w-90w relative flex overflow-hidden  flex-col items-center rounded-lg">
             <div className='w-full containerWhiter '>
               <div className="flex justify-center flex-col items-center text-black  ">
                 <form onSubmit={handleSubmit} className="w-full p-6 pt-4 px-2 md:px-4 xl:px-6 rounded-xl">
-                  <div className="grid grid-cols-[auto_auto_auto_1fr_auto_auto] gap-2 md:gap-4 xl:gap-6 items-center">
-                    <div onClick={() => setIsOpen((prev) => !prev)} className="select-none  bg-white h-10 w-10 mt-6 cursor-pointer flex justify-center items-center rounded-full">
-                      <FontAwesomeIcon icon={faArrowDown}/>
-                    </div>
+                  <div className="grid grid-cols-[auto_auto_1fr_auto_auto] gap-2 md:gap-4 xl:gap-6 items-center">
+
                     {/* Clasa Dropdown */}
                     <div className="flex flex-col items-center">
                       <label htmlFor="unit" className="col-span-1 font-medium text-black">
@@ -236,23 +234,8 @@ export default function ManoperaForm() {
                           placeholder="Enter Articol"
                       />
                   </div>
-                  {/* temporary */}
-                  <div className="flex flex-col items-center">
-                      <label className=" font-medium text-black">
-                          Unitate
-                      </label>
-                      <input
-                          type="text"
-                          id="unitate_masura"
-                          name="unitate_masura"
-                          value={formData.unitate_masura}
-                          onChange={handleChange}
-                          className="px-2 w-full outline-none text-center py-2  rounded-lg shadow-sm "
-                          placeholder="Enter Unitate"
-                      />
-                  </div>
                   {/* input form */}
-                  {/* <div className="flex flex-col items-center">
+                  <div className="flex flex-col items-center">
                       <label htmlFor="unit" className=" font-medium text-black">
                         Unitate 
                       </label>
@@ -263,11 +246,15 @@ export default function ManoperaForm() {
                         onChange={handleChange}
                         className=" px-2 py-2   rounded-lg outline-none shadow-sm "
                       >
-                        <option value="m^2">m^2</option>
-                        <option value="m^3">m^3</option>
-                      
+                        <option value="U">U</option>
+                        <option value="m">m</option>
+                        <option value="m²">m²</option>
+                        <option value="m³">m³</option>
+                        <option value="kg">kg</option>
+                        <option value="Set">Set</option>
+                        <option value="Rola">Rola</option>
                       </select>
-                  </div> */}
+                  </div>
            
                   {
                       !selectedDelete && !selectedEdit ?
@@ -291,10 +278,6 @@ export default function ManoperaForm() {
                   
                   </div>
                 </form>
-
-                <div className={`flex ${isOpen ? "opacity-100" : " opacity-0 max-h-0"} transition-all duration-300 ease-in-out flex-col max-h-64 w-full overflow-hidden`}>
-                    <RetetaPreview/>
-                </div>
               </div>
               </div>
               {/* AICI JOS E TABELUL */}

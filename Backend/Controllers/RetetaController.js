@@ -5,7 +5,7 @@ const editReteta = async (req, res) => {
 
     // 1. Update Reteta (main form data)
     const sqlReteta = `
-      UPDATE retete 
+      UPDATE Retete 
       SET clasa_reteta = ?, cod_reteta = ?, articol = ?, unitate_masura = ?
       WHERE id = ?
     `;
@@ -19,10 +19,10 @@ const editReteta = async (req, res) => {
 
     // 2. Delete all associated items for this reteta
     const deleteQueries = [
-      `DELETE FROM retete_manopera WHERE reteta_id = ?`,
-      `DELETE FROM retete_materiale WHERE reteta_id = ?`,
-      // `DELETE FROM retete_transport WHERE reteta_id = ?`,
-      `DELETE FROM retete_utilaje WHERE reteta_id = ?`
+      `DELETE FROM Retete_manopera WHERE reteta_id = ?`,
+      `DELETE FROM Retete_materiale WHERE reteta_id = ?`,
+      // `DELETE FROM Retete_transport WHERE reteta_id = ?`,
+      `DELETE FROM Retete_utilaje WHERE reteta_id = ?`
     ];
 
     // Perform all deletions
@@ -33,7 +33,7 @@ const editReteta = async (req, res) => {
     // 3. Insert new or updated manopere (if any)
     for (const { id: manoperaId, cantitate } of manopereSelected) {
       const sqlManopera = `
-        INSERT INTO retete_manopera (reteta_id, manopera_id, cantitate)
+        INSERT INTO Retete_manopera (reteta_id, manopera_id, cantitate)
         VALUES (?, ?, ?)
       `;
       await global.db.execute(sqlManopera, [id, manoperaId, cantitate]);
@@ -42,7 +42,7 @@ const editReteta = async (req, res) => {
     // 4. Insert new or updated materiale (if any)
     for (const { id: materialeId, cantitate } of materialeSelected) {
       const sqlMateriale = `
-        INSERT INTO retete_materiale (reteta_id, materiale_id, cantitate)
+        INSERT INTO Retete_materiale (reteta_id, materiale_id, cantitate)
         VALUES (?, ?, ?)
       `;
       await global.db.execute(sqlMateriale, [id, materialeId, cantitate]);
@@ -51,7 +51,7 @@ const editReteta = async (req, res) => {
     // 5. Insert new or updated transport (if any)
     for (const { id: transportId, cantitate } of transportSelected) {
       const sqlTransport = `
-        INSERT INTO retete_transport (reteta_id, transport_id, cantitate)
+        INSERT INTO Retete_transport (reteta_id, transport_id, cantitate)
         VALUES (?, ?, ?)
       `;
       await global.db.execute(sqlTransport, [id, transportId, cantitate]);
@@ -60,7 +60,7 @@ const editReteta = async (req, res) => {
     // 6. Insert new or updated utilaje (if any)
     for (const { id: utilajeId, cantitate } of utilajeSelected) {
       const sqlUtilaje = `
-        INSERT INTO retete_utilaje (reteta_id, utilaje_id, cantitate)
+        INSERT INTO Retete_utilaje (reteta_id, utilaje_id, cantitate)
         VALUES (?, ?, ?)
       `;
       await global.db.execute(sqlUtilaje, [id, utilajeId, cantitate]);
@@ -82,7 +82,7 @@ const addReteta = async (req,res) =>{
     
         // Save Reteta (form data)
         const sql = `
-          INSERT INTO retete (clasa_reteta, cod_reteta, articol, unitate_masura, data)
+          INSERT INTO Retete (clasa_reteta, cod_reteta, articol, unitate_masura, data)
           VALUES (?, ?, ?, ?, NOW())
         `;
         const [result] = await global.db.execute(sql, [
@@ -96,7 +96,7 @@ const addReteta = async (req,res) =>{
         // Save the selected manopere with quantity
         for (const { id, cantitate } of manopereSelected) {
           const sqlManopera = `
-            INSERT INTO retete_manopera (reteta_id, manopera_id, cantitate)
+            INSERT INTO Retete_manopera (reteta_id, manopera_id, cantitate)
             VALUES (?, ?, ?)
           `;
           await global.db.execute(sqlManopera, [retetaId, id, cantitate]);
@@ -105,7 +105,7 @@ const addReteta = async (req,res) =>{
         // Save the selected materiale with quantity
         for (const { id, cantitate } of materialeSelected) {
           const sqlMateriale = `
-            INSERT INTO retete_materiale (reteta_id, materiale_id, cantitate)
+            INSERT INTO Retete_materiale (reteta_id, materiale_id, cantitate)
             VALUES (?, ?, ?)
           `;
           await global.db.execute(sqlMateriale, [retetaId, id, cantitate]);
@@ -114,7 +114,7 @@ const addReteta = async (req,res) =>{
         // Save the selected transport with quantity
         for (const { id, cantitate } of transportSelected) {
           const sqlTransport = `
-            INSERT INTO retete_transport (reteta_id, transport_id, cantitate)
+            INSERT INTO Retete_transport (reteta_id, transport_id, cantitate)
             VALUES (?, ?, ?)
           `;
           await global.db.execute(sqlTransport, [retetaId, id, cantitate]);
@@ -123,7 +123,7 @@ const addReteta = async (req,res) =>{
         // Save the selected utilaje with quantity
         for (const { id, cantitate } of utilajeSelected) {
           const sqlUtilaje = `
-            INSERT INTO retete_utilaje (reteta_id, utilaje_id, cantitate)
+            INSERT INTO Retete_utilaje (reteta_id, utilaje_id, cantitate)
             VALUES (?, ?, ?)
           `;
           await global.db.execute(sqlUtilaje, [retetaId, id, cantitate]);
@@ -149,7 +149,7 @@ const getRetete = async (req,res) =>{
     }
 
     // Start constructing the base query
-    let query = `SELECT * FROM retete`;  // Assuming 'retete' is the name of your table
+    let query = `SELECT * FROM Retete`;  // Assuming 'retete' is the name of your table
     let queryParams = [];
     let whereClauses = [];
 
@@ -182,7 +182,7 @@ const getRetete = async (req,res) =>{
     const [rows] = await global.db.execute(query, queryParams);
 
     // Count query to get total number of records without pagination
-    let countQuery = `SELECT COUNT(*) as total FROM retete`;
+    let countQuery = `SELECT COUNT(*) as total FROM Retete`;
     if (whereClauses.length > 0) {
       countQuery += ` WHERE ${whereClauses.join(' AND ')}`;
     }
@@ -237,15 +237,15 @@ const getSpecificReteta = async (req, res) => {
           u.photoUrl AS utilaj_photo, 
           u.pret_utilaj, 
           ru.cantitate AS utilaj_cantitate
-      FROM retete r
-      LEFT JOIN retete_manopera rm ON r.id = rm.reteta_id
-      LEFT JOIN manopera m ON rm.manopera_id = m.id
+      FROM Retete r
+      LEFT JOIN Retete_manopera rm ON r.id = rm.reteta_id
+      LEFT JOIN Manopera m ON rm.manopera_id = m.id
 
-      LEFT JOIN retete_materiale rm2 ON r.id = rm2.reteta_id
-      LEFT JOIN materiale mt ON rm2.materiale_id = mt.id
+      LEFT JOIN Retete_materiale rm2 ON r.id = rm2.reteta_id
+      LEFT JOIN Materiale mt ON rm2.materiale_id = mt.id
 
-      LEFT JOIN retete_utilaje ru ON r.id = ru.reteta_id
-      LEFT JOIN utilaje u ON ru.utilaje_id = u.id
+      LEFT JOIN Retete_utilaje ru ON r.id = ru.reteta_id
+      LEFT JOIN Utilaje u ON ru.utilaje_id = u.id
       WHERE r.id = ?;
     `;
 
@@ -351,27 +351,27 @@ const getSpecificReteta = async (req, res) => {
 
     // Start by deleting the related data from child tables
     const deleteManoperaQuery = `
-      DELETE FROM retete_manopera WHERE reteta_id = ?
+      DELETE FROM Retete_manopera WHERE reteta_id = ?
     `;
     await global.db.execute(deleteManoperaQuery, [id]);
 
     const deleteMaterialeQuery = `
-      DELETE FROM retete_materiale WHERE reteta_id = ?
+      DELETE FROM Retete_materiale WHERE reteta_id = ?
     `;
     await global.db.execute(deleteMaterialeQuery, [id]);
 
     // const deleteTransportQuery = `
-    //   DELETE FROM retete_transport WHERE reteta_id = ?
+    //   DELETE FROM Retete_transport WHERE reteta_id = ?
     // `;
     // await global.db.execute(deleteTransportQuery, [id]);
 
     const deleteUtilajeQuery = `
-      DELETE FROM retete_utilaje WHERE reteta_id = ?
+      DELETE FROM Retete_utilaje WHERE reteta_id = ?
     `;
     await global.db.execute(deleteUtilajeQuery, [id]);
 
     const deleteRetetaQuery = `
-      DELETE FROM retete WHERE id = ?
+      DELETE FROM Retete WHERE id = ?
     `;
     await global.db.execute(deleteRetetaQuery, [id]);
 

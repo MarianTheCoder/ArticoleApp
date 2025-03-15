@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import api from '../../api/axiosAPI';
 import { flexRender, getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCancel, faCopy, faEllipsis, faL, faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons';
+import { faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons';
 
 
 export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDelete, setSelectedEdit, setFormData, selectedEdit, cancelEdit, cancelDelete}) {
@@ -83,7 +83,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
 
     //handle selected edit/delete
     const handleSelectedForDelete = (e, id) => {
-        setSelectedDelete(id)// Toggle the dropdown based on the current state
+        setSelectedDelete(id)// Toggle the dropdown based on the current state   
         cancelEdit(e);
     }
 
@@ -96,17 +96,15 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
             cost_unitar: passedRow.cost_unitar,
             cantitate: passedRow.cantitate,
         })
-        setSelectedDelete(null);
+        setLastSelectedIndex(null);
     }
 
     //copy mechanics
     const [selectedRows, setSelectedRows] = useState({});
     const [lastSelectedIndex, setLastSelectedIndex] = useState(null);
-    const [isCopying, setCopying] = useState(false);
 
     //PASSING WITH ROWID . NOT ORIGINAL
     const handleRowClick = (row, event, rows) => {
-        // Check if Shift key is pressed
         if(event.ctrlKey){
             const newSelectedRows = { ...selectedRows };
             const rowId = row.index; // Assuming each row has an `id` field
@@ -133,18 +131,6 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
         setLastSelectedIndex(row.index);
     };
 
-    const manageCancelCopy = () => {
-        setSelectedRows({});
-        setLastSelectedIndex(null);
-        setCopying(false);
-    }
-
-    const startCopying = (e) =>{
-        setCopying(true);
-        cancelDelete(e);
-        cancelEdit(e);
-
-    }
 
     const handleCopy = () => {
         const rows = table.getRowModel().rows; // Access rows directly from the table
@@ -171,6 +157,12 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
     };
 
     
+    const handleCtrlC = (event) => {
+        if ((event.ctrlKey || event.metaKey) && event.key === 'c') {
+            console.log("Ctrl + C was pressed!");
+            handleCopy();
+        }
+      };
 
 
     //Handle Click Outside!
@@ -181,6 +173,13 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
         };
     }, []);
 
+    useEffect(() => {
+        document.addEventListener('keydown', handleCtrlC);
+        return () => {
+          document.removeEventListener('keydown', handleCtrlC);
+        };
+      }, [selectedRows]);
+
     const handleClickOutside = (event) => {
         if (!event.target.closest('.dropdown-container')) {
             setSelectedRows({}); // Close the dropdown if click is outside
@@ -190,7 +189,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
 
     const columns = useMemo(() => [
         { accessorKey: "cod_COR", header: "Cod COR" },
-        { accessorKey: "ocupatie", header: "Ocupatie", size:350 },
+        { accessorKey: "ocupatie", header: "Ocupatie", size:300 },
         { accessorKey: "unitate_masura", header: "Unitate", size:70 },
         { accessorKey: "cost_unitar", header: "Cost unitar", size:100 },
         { accessorKey: "cantitate", header: "Cantitate", size:100},
@@ -200,8 +199,8 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
             cell: ({ row }) => (
                 <div className=' dropdown-container w-full relative flex '> 
                     <div className='text-xl relative w-full py-2 select-none items-center justify-evenly gap-1 flex'>
-                        <FontAwesomeIcon onClick={() => !isCopying && handleSelectedForEdit(row.original)}  className=' text-green-500 hover:text-green-600 cursor-pointer' icon={faPenToSquare}/>
-                        <FontAwesomeIcon onClick={(e) => !isCopying && handleSelectedForDelete(e, row.original.id)} className=' text-red-500 hover:text-red-600 cursor-pointer' icon={faTrashCan}/>
+                        <FontAwesomeIcon onClick={() =>  handleSelectedForEdit(row.original)}  className=' text-green-500 hover:text-green-600 cursor-pointer' icon={faPenToSquare}/>
+                        <FontAwesomeIcon onClick={(e) =>  handleSelectedForDelete(e, row.original.id)} className=' text-red-500 hover:text-red-600 cursor-pointer' icon={faTrashCan}/>
                     </div>
                 </div>
             ),
@@ -212,7 +211,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                 },
             },
         },
-    ], [selectedDelete, isCopying]);
+    ], [selectedDelete]);
 
     const table = useReactTable({
         data: manopere,
@@ -256,27 +255,14 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                                             placeholder="Filter by Ocupatie"
                                         />
                                     </th>
-                                    <th className=" bg-white border border-black" colSpan={3}>
+                                    <th className=" bg-white border border-black" colSpan={4}>
                                        <div className=' flex  justify-center items-center'>
                                             <p className='px-2'>Arata</p>
                                             <input className='border border-black p-1 w-12 text-center rounded-lg' type="text" onChange={(e) => handleLimit(e)} value={limit} name="" id="" />
                                             <p className='px-2'>randuri</p>
                                        </div>
                                     </th>
-                                    <th className=" bg-white border border-black">
-                                       <div className=' flex justify-evenly items-center'>
-                                            
-                                            {
-                                                isCopying ?
-                                                <>
-                                                    <FontAwesomeIcon onClick={() => handleCopy()} className='text-2xl text-blue-500 hover:text-blue-600 select-none cursor-pointer' icon={faCopy}/>
-                                                    <FontAwesomeIcon onClick={() => manageCancelCopy()} className='text-2xl text-red-500 hover:text-red-600 select-none cursor-pointer' icon={faCancel}/>
-                                                </>
-                                                :
-                                                <div onClick={(e) => startCopying(e)} className=' select-none cursor-pointer hover:bg-blue-600 w-4/5 py-1 rounded-lg bg-blue-500'>Copy</div>
-                                            }
-                                       </div>
-                                    </th>
+                                    
                                 </tr>
                 {table.getHeaderGroups().map(headerGroup => (
                   <tr key={headerGroup.id} className="bg-white text-black text-left  font-bold select-none">
@@ -284,9 +270,9 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                        
                             <th key={header.id}  className={`relative border-b-2 border-black border  bg-white p-2 py-4 ${header.column.id === "threeDots" ? "text-center" : ""} `}     
                             style={{
-                                width: header.column.id === "threeDots" ? '40px' : `${header.getSize()}px`, // Enforce width for "Options"
-                                minWidth: header.column.id === "threeDots" ? '40px' : '', // Ensure no shrinkage
-                                maxWidth: header.column.id === "threeDots" ? '40px' : '', // Ensure no expansion
+                                width: header.column.id === "threeDots" ? '45px' : `${header.getSize()}px`, // Enforce width for "Options"
+                                minWidth: header.column.id === "threeDots" ? '45px' : '', // Ensure no shrinkage
+                                maxWidth: header.column.id === "threeDots" ? '45px' : '', // Ensure no expansion
                             }}>
                                 <div
                                 onMouseDown={header.getResizeHandler()}
@@ -304,7 +290,13 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
               </thead>
               <tbody className=' relative z-0'>
                 {table.getRowModel().rows.map((row,index,rows) => (
-                    <tr key={row.id} onClick = {(event) => isCopying && handleRowClick(row,event,rows)}  className={`dropdown-container  text-black ${!isCopying ? row.original.id == selectedDelete ? "bg-red-300" : row.original.id == selectedEdit ? "bg-green-300" : row.index % 2 === 0 ? 'bg-[rgb(255,255,255,0.75)] ' : 'bg-[rgb(255,255,255,1)] ' : selectedRows[row.index] ? "bg-blue-300 hover:bg-blue-400 select-none" :row.index % 2 === 0 ? 'bg-[rgb(255,255,255,0.75)] hover:bg-[rgb(255,255,255,0.65)] select-none ' : 'bg-[rgb(255,255,255,1)] hover:bg-[rgb(255,255,255,0.9)]  select-none' }`}>
+                    <tr key={row.id} onClick = {(event) =>!selectedDelete && !selectedEdit && handleRowClick(row,event,rows)}  className={`dropdown-container  text-black 
+                        ${selectedDelete || selectedEdit ? row.original.id == selectedDelete ? "bg-red-300" : row.original.id == selectedEdit ? "bg-green-300" : 
+                            row.index % 2 === 0 ? 'bg-[rgb(255,255,255,0.75)] select-none' :'bg-[rgb(255,255,255,1)] select-none' 
+                            : 
+                        selectedRows[row.index] ? "bg-blue-300 hover:bg-blue-400 select-none" :
+                            row.index % 2 === 0 ? 'bg-[rgb(255,255,255,0.75)] hover:bg-[rgb(255,255,255,0.65)] select-none' : 'bg-[rgb(255,255,255,1)] hover:bg-[rgb(255,255,255,0.9)]  select-none'}`
+                        }>  
                         {row.getVisibleCells().map((cell) => (
                             <td
                                 key={cell.id}

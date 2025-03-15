@@ -106,6 +106,7 @@ function Navbar() {
           </div>
         </ul>
       </div>}
+      <div className='w-[80px]'></div>
     </>
   )
 }

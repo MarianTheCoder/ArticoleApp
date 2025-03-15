@@ -16,6 +16,7 @@ const {angajati, clicked, setConfirmDel, confirmDel, setEditAngajat, editAngajat
     } 
   }
   const editButtonPressed = async (angajat) =>{
+    console.log(angajat);
     if(editAngajat == null || angajat.id != editAngajat.id){
       setConfirmDel(null);
       setEditAngajat(angajat);
@@ -26,13 +27,13 @@ const {angajati, clicked, setConfirmDel, confirmDel, setEditAngajat, editAngajat
      <div className=" w-full overflow-hidden text-black rounded-lg ">
        <div className="flex flex-col h-full justify-start items-center rounded-lg ">
          <div className="w-full h-full overflow-y-auto scrollbar-webkit rounded-lg  ">
-         <div className={`w-full grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_auto] text-xl font-extrabold tracking-wider p-3  gap-x-4 rounded-t-lg  bg-[rgb(255,255,255,1)] `}>
+         <div className={`w-full grid grid-cols-[0.5fr_1.5fr_1.5fr_1fr_0.7fr_0.8fr_auto] text-xl font-extrabold tracking-wider p-3  gap-x-4 rounded-t-lg  bg-[rgb(255,255,255,1)] `}>
                          {/* Code Display */}
                          <div className=" px-2 text-center  py-1  overflow-hidden 
                        whitespace-nowrap">
                         Photo
                       </div>
-                      <div className=" col-span-2 px-2 text-center  py-1  overflow-hidden 
+                      <div className="  px-2 text-center  py-1  overflow-hidden 
                        whitespace-nowrap">
                         Email
                       </div>
@@ -40,7 +41,9 @@ const {angajati, clicked, setConfirmDel, confirmDel, setEditAngajat, editAngajat
                       <div className=" px- text-center  py-1  overflow-hidden text-ellipsis whitespace-nowrap">
                        Nume
                       </div>
- 
+                      <div className=" px- text-center  py-1  overflow-hidden text-ellipsis whitespace-nowrap">
+                       Phone
+                      </div>
                    {/* Unit Display */}
                       <div className="px-4  py-1  text-center  overflow-hidden text-ellipsis whitespace-nowrap">
                        Rol
@@ -58,14 +61,14 @@ const {angajati, clicked, setConfirmDel, confirmDel, setEditAngajat, editAngajat
              angajati.map((angajat, index) => (
                <div
                  key={angajat.id}
-                 className={`w-full p-3 grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_auto] items-center text-lg tracking-wide gap-x-4 ${editAngajat && editAngajat.id == angajat.id ? "bg-green-300" : ""} ${confirmDel == angajat.id ? "bg-red-300" : ""} ${index === angajati.length - 1 ? "rounded-b-lg" : ""}  ${index % 2 == 1 ? "bg-[rgb(255,255,255,1)]" : "bg-[rgb(255,255,255,0.8)]"} `}>
+                 className={`w-full p-3 grid grid-cols-[0.5fr_1.5fr_1.5fr_1fr_0.7fr_0.8fr_auto] items-center text-lg tracking-wide gap-x-4 ${editAngajat && editAngajat.id == angajat.id ? "bg-green-300" : ""} ${confirmDel == angajat.id ? "bg-red-300" : ""} ${index === angajati.length - 1 ? "rounded-b-lg" : ""}  ${index % 2 == 1 ? "bg-[rgb(255,255,255,1)]" : "bg-[rgb(255,255,255,0.8)]"} `}>
                   <div className='flex justify-center'>
                      <div className="w-12 sm:w-14 md:w-16 lg:w-20 aspect-square ">
                           <img className='rounded-xl object-cover w-full h-full ' src={`${photoAPI}/${angajat.photo_url}`}></img>
                       </div>
                   </div>
                    {/* Code Display */}
-                      <div className=" col-span-2 px-2 text-center  py-1  overflow-hidden 
+                      <div className=" px-2 text-center  py-1  overflow-hidden 
                        whitespace-nowrap">
                         {angajat.email}
                       </div>
@@ -73,7 +76,10 @@ const {angajati, clicked, setConfirmDel, confirmDel, setEditAngajat, editAngajat
                       <div className=" px- text-center  py-1  overflow-hidden text-ellipsis whitespace-nowrap">
                         {angajat.name}
                       </div>
- 
+
+                      <div className=" px- text-center  py-1  overflow-hidden text-ellipsis whitespace-nowrap">
+                        {angajat.telephone}
+                      </div>
                    {/* Unit Display */}
                       <div className={`px-4 rounded-3xl ${clicked == 1 ? "bg-[#2563EB]" : clicked == 2 ? "bg-[#16A34A]" : "bg-[#F97316]"}  py-1  text-center  overflow-hidden text-ellipsis whitespace-nowrap`}>
                         {angajat.role.charAt(0).toUpperCase() + angajat.role.slice(1)}

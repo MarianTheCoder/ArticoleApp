@@ -2,9 +2,10 @@ import React, { useContext, useEffect, useMemo, useState } from 'react'
 import api from '../../api/axiosAPI';
 import { flexRender, getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowDown, faCancel, faChevronDown, faCopy, faEllipsis, faL, faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons';
+import { faArrowDown, faCancel, faChevronDown, faChevronRight, faCopy, faEllipsis, faL, faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons';
 import RetetaTablePreview from './RetetaTablePreview';
 import { RetetaContext } from '../../context/RetetaContext';
+import photoAPI from '../../api/photoAPI';
 
 
 export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDelete, setSelectedEdit, setFormData, selectedEdit, cancelEdit, cancelDelete}) {
@@ -23,6 +24,8 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
         clasa_reteta: '',
         articol: '',
     });
+
+    
 
  
     const fetchManopere = async (offset, limit) => {
@@ -49,6 +52,32 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
         }
     }
 
+    const fetchPreviewReteta = async () => {
+        try {
+            const response = await api.get(`/Retete/getSpecificReteta/${open}`);
+            console.log(retete);
+            const updatedRetete = [...retete];
+            const newObjects = [...response.data.manopera, ...response.data.materiale, ...response.data.utilaje];
+            console.log(newObjects)
+            // Find the index of the target object
+            const targetIndex = updatedRetete.findIndex(item => item.id === open);
+    
+            if (targetIndex !== -1) {
+                // Insert new objects after the target object
+                updatedRetete.splice(targetIndex + 1, 0, ...newObjects);
+                setRetete(updatedRetete); // Update the state
+            }
+            
+        } catch (error) {
+            console.error('Error fetching data:', error);
+        }
+    }
+
+
+    useEffect(() => { 
+        if(open != null) fetchPreviewReteta();
+    }, [open])
+
     useEffect(() => { 
         fetchManopere(currentOffset, limit);
     }, [reloadKey]);
@@ -70,6 +99,8 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
             [name]: value,
         }));
     };
+
+
 
     const setPage = (val) =>{
         setCurrentOffset((prev) => {
@@ -121,19 +152,37 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
 
     const columns = useMemo(() => [
         { 
-            accessorKey: "clasa_reteta", 
-            header: "Clasa" ,
+            accessorKey: "Dropdown", 
+            header: "",
             cell: ({ row, getValue, cell }) => (
-                <div className='flex items-center'>
-                    <FontAwesomeIcon onClick={() => setOpen((prev) => prev == cell.row.original.id ? null : cell.row.original.id)} className='cursor-pointer select-none text-lg pr-2' icon={faChevronDown}/>
-                    {getValue()}
+                <div onClick={() => setOpen((prev) => prev == cell.row.original.id ? null : cell.row.original.id)} className='flex justify-center select-none w-full cursor-pointer items-center'>
+                    <FontAwesomeIcon  className={`  text-center ${open == cell.row.original.id ? " rotate-90" : ""}  text-xl`} icon={faChevronRight}/>
                 </div>
             ),
-            size:50
         },
-        { accessorKey: "cod_reteta", header: "Cod" },
-        { accessorKey: "articol", header: "Articol" },
-        { accessorKey: "unitate_masura", header: "Unitate"},
+        { accessorKey: "cod_reteta", header: "Cod",size:100 },
+        { accessorKey: "clasa_reteta", header: "Clasa", size:100},
+        { accessorKey: "articol", header: "Articol", size:500 },
+        { accessorKey: "unitate_masura", header: "Unitate",size:60},
+        { 
+            accessorKey: "photo", 
+            header: "Poza",
+            cell: ({ getValue }) => (
+                getValue() ? 
+                <div className='flex justify-center items-center'>
+                    <img 
+                        src={`${photoAPI}/${getValue()}`}  // Concatenate the base URL with the value
+                        alt="Product"
+                        className="h-[4rem] max-w-28 object-cover" 
+                        style={{ objectFit: 'cover' }}
+                        />
+                </div>
+                :
+                ""
+                ),
+                size:60
+        },
+        { accessorKey: "cantitate", header: "Cantitate", size:60},
         { 
             accessorKey: "threeDots", 
             header: "Optiuni",
@@ -147,12 +196,12 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
             ),
             meta: {
                 style: {
-                    textAlign: 'center', // Center the icon
-                    padding: '0', // Reduce padding to minimize the space
+                    textAlign: 'center', 
+                    padding: '0', 
                 },
             },
         },
-    ], [selectedDelete]);
+    ], [selectedDelete, open]);
 
     const table = useReactTable({
         data: retete,
@@ -174,6 +223,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                 <table className="w-full  border-separate border-spacing-0 ">
                     <thead className='top-0 w-full sticky  z-10 '>
                         <tr className='text-black'>
+                                    <th className='border border-black bg-white'></th>
                                     <th className='border border-black'>
                                         <input
                                             type="text"
@@ -204,7 +254,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                                             placeholder="Filter by Articol"
                                         />
                                     </th>
-                                    <th className=" bg-white border border-black" colSpan={2}>
+                                    <th className=" bg-white border border-black" colSpan={4}>
                                        <div className=' flex  justify-center items-center'>
                                             <p className='px-2'>Arata</p>
                                             <input className='border border-black p-1 w-12 text-center rounded-lg' type="text" onChange={(e) => handleLimit(e)} value={limit} name="" id="" />
@@ -218,9 +268,9 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                        
                             <th key={header.id}  className={`relative border-b-2 border-black border  bg-white p-2 py-4 ${header.column.id === "threeDots" ? "text-center" : ""} `}     
                             style={{
-                                width: header.column.id === "threeDots" ? '55px' : `${header.getSize()}px`, // Enforce width for "Options"
-                                minWidth: header.column.id === "threeDots" ? '55px' : '', // Ensure no shrinkage
-                                maxWidth: header.column.id === "threeDots" ? '55px' : '', // Ensure no expansion
+                                width: header.column.id === "threeDots" ? '55px' : header.column.id === "Dropdown" ? "15px": `${header.getSize()}px`, // Enforce width for "Options"
+                                minWidth: header.column.id === "threeDots" ?  '55px' : header.column.id === "Dropdown" ? "15px" : '', // Ensure no shrinkage
+                                maxWidth: header.column.id === "threeDots" ? '55px' : header.column.id === "Dropdown" ? "15px" : '', // Ensure no expansion
                             }}>
                                 <div
                                 onMouseDown={header.getResizeHandler()}
@@ -236,7 +286,6 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
               </thead>
               <tbody className=' relative z-0'>
                 {table.getRowModel().rows.map((row,index,rows) => (
-                    <React.Fragment key={`parent-${row.id}`}>
                     <tr key={row.id}   className={`dropdown-container   text-black ${row.original.id == selectedDelete ? "bg-red-300 sticky" : row.original.id == selectedEdit ? "bg-green-300 sticky" : row.original.id == open ? "bg-blue-300" : row.index % 2 === 0 ? 'bg-[rgb(255,255,255,0.75)] ' : 'bg-[rgb(255,255,255,1)] '}`}>
                         {row.getVisibleCells().map((cell) => (
                             <td
@@ -249,15 +298,6 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                             </td>
                         ))}
                     </tr>
-                    {
-                        row.original.id == open &&
-                        <tr key={`child-${row.id}`} className='' >
-                            <td colSpan={5}>
-                                <RetetaTablePreview  reloadKey={reloadKey} rowId = {row}/>
-                            </td>
-                        </tr>
-                    }
-                    </React.Fragment>
                 ))}
                 </tbody>
             </table>

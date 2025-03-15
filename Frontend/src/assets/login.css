@@ -50,7 +50,18 @@
     color: #333;
 }
 
-.login .inputBox input#btn
+.login .inputBox button
+{
+    position: relative;
+    width: 100%;
+    padding: 10px 15px;
+    outline: none;
+    border: 2px solid #555;
+    font-size: 1em;
+    color: #333;
+}
+
+.login .inputBox button#btn
 {
     border: none;
     color: #fff;
