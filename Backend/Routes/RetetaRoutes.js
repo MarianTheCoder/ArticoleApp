@@ -1,12 +1,14 @@
 const express = require('express');
-const {addReteta , getRetete, getSpecificReteta, deleteReteta, editReteta} = require('../Controllers/RetetaController');
+const {addReteta , getRetete, getSpecificReteta, deleteReteta, editReteta, deleteFromReteta, addRetetaObjects} = require('../Controllers/RetetaController');
 
 const router = express.Router();
 
 router.post('/addReteta', addReteta); 
+router.post('/addRetetaObjects', addRetetaObjects); 
 router.get('/getRetete', getRetete); 
 router.get("/getSpecificReteta/:id", getSpecificReteta);
 router.delete("/deleteReteta/:id", deleteReteta);
+router.delete("/deleteFromReteta/:id/:whatIs", deleteFromReteta);
 router.put("/editReteta/:id", editReteta);
 
 

@@ -30,6 +30,7 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
                     descriere: filters.descriere, // Add any other filters here
                 },
             });
+            if(response.data.data.length == 0) return;
             if(offset >= Math.ceil(response.data.totalItems/limit)){
                 fetchManopere(0, limit);
             }
@@ -258,10 +259,10 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
             <table className="w-full border-separate border-spacing-0 ">
               <thead className='top-0 w-full sticky  z-10 '>
               <tr className='text-black'>
-                                    <th className=" bg-white border border-black" colSpan={2}>
+                                    <th className=" bg-white border-b border-r border-black" colSpan={2}>
                                     
                                     </th>
-                                    <th className='border border-black'>
+                                    <th className='border-b border-r border-black'>
                                         <input
                                             type="text"
                                             name="cod"
@@ -271,7 +272,7 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
                                             placeholder="Filter by Cod "
                                         />
                                     </th>
-                                    <th className='border border-black'>
+                                    <th className='border-b border-r border-black'>
                                         <input
                                             type="text"
                                             name="denumire"
@@ -281,7 +282,7 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
                                             placeholder="Filter by Denumire"
                                         />
                                     </th>
-                                    <th className='border border-black'>
+                                    <th className='border-b border-r border-black'>
                                         <input
                                             type="text"
                                             name="descriere"
@@ -291,7 +292,7 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
                                             placeholder="Filter by Descriere"
                                         />
                                     </th>
-                                    <th className=" bg-white border border-black" colSpan={6}>
+                                    <th className=" bg-white border-b border-r border-black" colSpan={6}>
                                        <div className=' flex  justify-center items-center'>
                                             <p className='px-2'>Arata</p>
                                             <input className='border border-black p-1 w-12 text-center rounded-lg' type="text" onChange={(e) => handleLimit(e)} value={limit} name="" id="" />
@@ -303,7 +304,7 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
                   <tr key={headerGroup.id} className="bg-white text-black text-left  font-bold select-none">
                     {headerGroup.headers.map(header => (
                        
-                            <th key={header.id}  className={`relative border-b-2 border-black border  bg-white p-2 py-4 ${header.column.id === "threeDots" ? "text-center" : ""} `}     
+                            <th key={header.id}  className={`relative border-b-2  border-r border-black   bg-white p-2 py-4 ${header.column.id === "threeDots" ? "text-center" : ""} `}     
                             style={{
                                 width: header.column.id === "threeDots" ? '55px' : `${header.getSize()}px`, // Enforce width for "Options"
                                 minWidth: header.column.id === "threeDots" ? '55px' : '', // Ensure no shrinkage
@@ -335,7 +336,7 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
                         {row.getVisibleCells().map((cell) => (
                             <td
                                 key={cell.id}
-                                className={`max-w-72  border break-words relative border-black p-1 px-3`}
+                                className={`max-w-72  border-b border-r break-words relative border-black p-1 px-3`}
                                 style={cell.column.columnDef.meta?.style} // Apply the custom style
                             >
                                 {flexRender(cell.column.columnDef.cell, cell.getContext())}

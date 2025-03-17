@@ -133,6 +133,7 @@ async function initializeDatabase() {
     descriere_utilaj TEXT NOT NULL,
     photoUrl TEXT NOT NULL,
     status_utilaj VARCHAR(255) NOT NULL,
+    unitate_masura VARCHAR(50) NOT NULL,
     cost_amortizare DECIMAL(10, 2) NOT NULL,
     pret_utilaj DECIMAL(10, 2) NOT NULL,
     cantitate DECIMAL(10, 0) NOT NULL,
@@ -165,6 +166,7 @@ async function initializeDatabase() {
       id INT AUTO_INCREMENT PRIMARY KEY,
       reteta_id INT NOT NULL,
       manopera_id INT NOT NULL,
+      UNIQUE (reteta_id, manopera_id),
       cantitate DECIMAL(10, 2) NOT NULL,  
       FOREIGN KEY (reteta_id) REFERENCES Retete(id),
       FOREIGN KEY (manopera_id) REFERENCES Manopera(id)
@@ -178,6 +180,7 @@ async function initializeDatabase() {
       id INT AUTO_INCREMENT PRIMARY KEY,
       reteta_id INT NOT NULL,
       materiale_id INT NOT NULL,
+      UNIQUE (reteta_id, materiale_id),
       cantitate DECIMAL(10, 2) NOT NULL, 
       FOREIGN KEY (reteta_id) REFERENCES Retete(id),
       FOREIGN KEY (materiale_id) REFERENCES Materiale(id)
@@ -191,6 +194,7 @@ async function initializeDatabase() {
       id INT AUTO_INCREMENT PRIMARY KEY,
       reteta_id INT NOT NULL,
       utilaje_id INT NOT NULL,
+      UNIQUE (reteta_id, utilaje_id),
       cantitate DECIMAL(10, 2) NOT NULL, 
       FOREIGN KEY (reteta_id) REFERENCES Retete(id),
       FOREIGN KEY (utilaje_id) REFERENCES Utilaje(id)

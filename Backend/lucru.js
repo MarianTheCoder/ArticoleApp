@@ -1,30 +1,35 @@
 /**
- * @param {number[]} candies
- * @param {number} k
+ * @param {number[]} ranks
+ * @param {number} cars
  * @return {number}
  */
-var maximumCandies = function(candies, k) {
-    let maxx = 0;
-    for (let i = 0; i < candies.length; i++) {
-        maxx = Math.max(maxx, candies[i]);
-    }
-    let helper = (mid) => {
-        let sum = 0;
-        for (let i = 0; i < candies.length; i++) {
-            sum += Math.floor(candies[i] / mid);
-            if(sum >= k) return sum;
+var repairCars = function(ranks, cars) {
+    let l = Math.min(...ranks);
+    let r = Math.max(...ranks) * cars * cars;
+    let helper = (mid) =>{
+        let count = 0;
+        for(let i = 0; i < ranks.length; i++){
+            count += Math.floor(Math.sqrt(mid / ranks[i]));
+            if(count > cars) return count;
         }
-        return sum;
+     
+        return count;
     }
-    let maximum = 0;
+    let finalRes = Infinity;
     let binary = (left, right) => {
-        if(left > right) return right;
-        let mid = Math.floor((left + right) / 2);
-        let sum = helper(mid);
-        if(sum >= k) maximum = Math.max(maximum, mid);
-        if(sum >= k) return binary(mid + 1, right);
-        return binary(left, mid - 1);
+        if(left > right) return;
+        let mid = Math.floor((left + right) / 2);   
+        let res = helper(mid);
+        if(res < cars){
+            binary(mid+ 1, right);
+        }
+        else{
+            finalRes = Math.min(finalRes, mid);
+            binary(left, mid - 1);
+        }
     }
-    binary(1, maxx);
-    console.log(maximum);
+    binary(l, r);
+    return finalRes
 };
+
+repairCars([100], 1000000)

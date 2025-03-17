@@ -15,6 +15,7 @@ export default function UtilajeForm() {
     status_utilaj:"",
     cost_amortizare:"",
     pret_utilaj:"",
+    unitate_masura:"ora",
     cantitate:""
   });
 
@@ -38,6 +39,7 @@ export default function UtilajeForm() {
     formDataSend.append("status_utilaj", formData.status_utilaj.trim())
     formDataSend.append("cost_amortizare", formData.cost_amortizare.trim())
     formDataSend.append("pret_utilaj", formData.pret_utilaj.trim())
+    formDataSend.append("unitate_masura", formData.unitate_masura.trim())
     formDataSend.append("cantitate", formData.cantitate.trim())
     formDataSend.append("poza", selectedFile)
     if(formData.clasa_utilaj.trim() === "" || formData.utilaj.trim() === "" || formData.descriere_utilaj.trim() === "" ||
@@ -76,6 +78,7 @@ export default function UtilajeForm() {
         status_utilaj:"",
         cost_amortizare:"",
         pret_utilaj:"",
+        unitate_masura:"ora",
         cantitate:""
       });
       setSelectedFile(null);
@@ -131,6 +134,7 @@ export default function UtilajeForm() {
         status_utilaj:"",
         cost_amortizare:"",
         pret_utilaj:"",
+        unitate_masura:"ora",
         cantitate:""
     });
     setPreview(defaultPhoto);
@@ -156,7 +160,6 @@ export default function UtilajeForm() {
   //Handle Photo preview and saving
   const handleFileChange = (e) => {
     const file = e.target.files[0];
-    console.log(file);
     if (file) {
       setSelectedFile(file);
       setPreview(URL.createObjectURL(file)); // Show image preview
@@ -173,7 +176,7 @@ export default function UtilajeForm() {
     <div className='w-full containerWhiter'>
       <div className="flex justify-center items-center text-black  ">
         <form onSubmit={handleSubmit} className="w-full text-base p-4 px-6 rounded-lg shadow-xl">
-          <div className="grid grid-cols-[auto_auto_auto_1fr_auto_auto_auto_auto_auto] xxxl:gap-4 md:gap-2 xl:gap-3 items-center">
+          <div className="grid grid-cols-[auto_auto_auto_1fr_auto_auto_auto_auto_auto_auto] xxxl:gap-4 md:gap-2 xl:gap-3 items-center">
             
           {/* photourl */}
           <div className="flex flex-col items-center ">
@@ -248,7 +251,21 @@ export default function UtilajeForm() {
                   placeholder="Status"
               />
           </div>
-
+          <div className="flex flex-col items-center">
+              <label htmlFor="unit" className="font-medium text-black">
+                Unitate
+              </label>
+              <select
+                id="unitate_masura"
+                name="unitate_masura"
+                value={formData.unitate_masura}
+                onChange={handleChange}
+                className="px-4 py-2 border  rounded-lg outline-none shadow-sm "
+              >
+                <option value="U">U</option>
+                <option value="ora">ora</option>
+              </select>
+            </div>
             {/* cost amortizare */}
           <div className="flex flex-col items-center">
               <label className=" font-medium text-black">

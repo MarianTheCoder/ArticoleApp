@@ -2,11 +2,7 @@ import { faArrowDown, faCancel, faL, faPlus } from '@fortawesome/free-solid-svg-
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, {  useContext, useRef, useState } from 'react'
 import api from '../../api/axiosAPI';
-import RetetaManopera from './RetetaManopera';
-import RetetaMateriale from './RetetaMateriale';
-import RetetaUtilaje from './RetetaUtilaje';
 import {RetetaContext, RetetaProvider } from '../../context/RetetaContext';
-import RetetaPreview from './RetetaPreview.jsx';
 import RetetaTable from './RetetaTable.jsx';
 
 
@@ -23,13 +19,11 @@ export default function ManoperaForm() {
   const [isOpen, setIsOpen] = useState(false);
 
   const [reloadKey, setReloadKey] = useState(0);
-  const [clicked, setClicked] = useState(1);
+ 
 
   const handleReload = () => {
     setReloadKey(prevKey => prevKey + 1);  // Trigger child re-render by changing the key
   };
-
-  const {setManopereSelected, manopereSelected, materialeSelected, setMaterialeSelected, transportSelected, setTransportSelected, utilajeSelected, setUtilajeSelected} = useContext(RetetaContext);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -40,23 +34,7 @@ export default function ManoperaForm() {
         clasa: formData.clasa.trim(),
         unitate_masura: formData.unitate_masura.trim(),
         articol: formData.articol.trim(),
-      },
-      manopereSelected: manopereSelected.map(item => ({
-        id: item.id,
-        cantitate: item.cantitate, 
-      })),
-      materialeSelected: materialeSelected.map(item => ({
-        id: item.id,
-        cantitate: item.cantitate,
-      })),
-      transportSelected: transportSelected.map(item => ({
-        id: item.id,
-        cantitate: item.cantitate,
-      })),
-      utilajeSelected: utilajeSelected.map(item => ({
-        id: item.id,
-        cantitate: item.cantitate,
-      })),
+      }
     };
   
     if(formDataToSend.formFirst.cod === "" || formDataToSend.formFirst.clasa === "" || formDataToSend.formFirst.unitate_masura === "" || formDataToSend.formFirst.articol === ""){
@@ -78,10 +56,6 @@ export default function ManoperaForm() {
           articol: "",
           unitate_masura: "m^2",
         });
-        setManopereSelected([]);
-        setMaterialeSelected([]);
-        setTransportSelected([]);
-        setUtilajeSelected([]);
         handleReload();
     } catch (error) {
         console.error('Upload error:', error);
@@ -117,10 +91,6 @@ export default function ManoperaForm() {
       articol:"",
       unitate_masura:"m^2"
     });
-    setManopereSelected([]);
-    setMaterialeSelected([]);
-    setTransportSelected([]);
-    setUtilajeSelected([]);
   }
 
   const deleteRow = async (e) => {
@@ -140,35 +110,6 @@ export default function ManoperaForm() {
   return (
   
      <div className='h-screen w-full flex items-center justify-center'>
-      {/* <div className="container relative h-90h overflow-hidden flex flex-col items-center rounded-lg">
-        <div className='flex font-medium w-full justify-evenly containerWhiter py-5 '>
-              <button onClick={() => setClicked((prev) => prev == 1 ? 0 : 1)} className={`bg-white text-black  px-6 py-2 rounded-xl ${clicked == 1 ? "bg-gray-200 outline-2 outline" : ""} hover:bg-gray-200`}>
-                Manopera
-              </button>
-              <button onClick={() => setClicked((prev) => prev == 2 ? 0 : 2)} className={`bg-white text-black  px-6 py-2 rounded-xl ${clicked == 2 ? "bg-gray-200 outline-2 outline" : ""} hover:bg-gray-200`}>
-                Materiale
-              </button>
-              <button onClick={() => setClicked((prev) => prev == 3 ? 0 : 3)} className={`bg-white text-black  px-6 py-2 rounded-xl ${clicked == 3 ? "bg-gray-200 outline-2 outline" : ""} hover:bg-gray-200`}>
-                Transport
-              </button>
-              <button onClick={() => setClicked((prev) => prev == 4 ? 0 : 4)} className={`bg-white text-black  px-6 py-2 rounded-xl ${clicked == 4 ? "bg-gray-200 outline-2 outline" : ""} hover:bg-gray-200`}>
-                Utilaje
-              </button> 
-          </div>
-        <div className=' mt-4 overflow-auto flex h-full flex-col items-center w-full'>
-            {
-              clicked == 1 ? <RetetaManopera/>
-              :
-              clicked == 2 ? <RetetaMateriale/>
-              :
-              clicked == 3 ? ""
-              :
-              clicked == 4 ? <RetetaUtilaje/>
-              :
-              ""
-            }
-          </div>
-        </div> */}
         <div className="container h-90h w-90w relative flex overflow-hidden  flex-col items-center rounded-lg">
             <div className='w-full containerWhiter '>
               <div className="flex justify-center flex-col items-center text-black  ">
