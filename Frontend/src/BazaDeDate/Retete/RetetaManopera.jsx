@@ -5,9 +5,18 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowRight, faArrowRightLong, faCancel, faCopy, faEllipsis, faL, faPenToSquare, faPlus, faTrashCan } from '@fortawesome/free-solid-svg-icons';
 import { RetetaContext } from '../../context/RetetaContext';
 
-export default function RetetaManopera() {
+export default function RetetaManopera({
+    setIsPopupOpen,
+    setObjectsLen,
+    objectsLen,
+    lastObjectIndex,
+    setLastObjectIndex,
+    open,
+    setOpen,
+    delPreviewReteta,
+    fetchPreviewReteta,
+  }) {
 
-        const {manopereSelected , setManopereSelected} = useContext(RetetaContext);
 
         const [cantitate, setCantitate] = useState("");
         const [selectedManopera, setSelectedManopera] = useState(null);
@@ -56,6 +65,7 @@ export default function RetetaManopera() {
                             ocupatie: manoperaFilters.ocupatie, // Add any other filters here
                         },
                     });
+                    console.log("SAS")
                     setManopere(response.data.data);
                 }
             } catch (error) {
@@ -65,30 +75,23 @@ export default function RetetaManopera() {
         //Handle ADD MANOPERA
         //
         //
-        const handleAddItem = () => {
-            if(selectedManopera && cantitate.trim() > 0){
-                const newItem = {
-                    id: selectedManopera.original.id,
-                    whatIs:"Manopera",
-                    cod: selectedManopera.original.cod_COR,
-                    denumire: selectedManopera.original.ocupatie,
-                    cost: selectedManopera.original.cost_unitar,
-                    unitate_masura: selectedManopera.original.unitate_masura,
-                    cantitate: cantitate
-                };
-                
-                // Check if the item is already in the array to avoid duplicates
-                if (!manopereSelected.some((existingItem) => existingItem.id === selectedManopera.original.id)) {
-                    setManopereSelected((prevItems) => [...prevItems, newItem]);
-                    setSelectedManopera(null);
-                    return;
-                }
-                console.log(manopereSelected)
-                setSelectedManopera(null);
-                alert("Obiect deja adaugat");
+        const handleAddItem = async () => {
+            if(cantitate.trim() == ""){
+                alert("Introdu o cantitate");
+                return;
             }
-            else if(!selectedManopera) alert("Nici un rand selectat!");
-            else alert("Cantitate invalida");
+            else if(!selectedManopera){
+                alert("Alege o manopera");
+                return;
+            }
+            try {
+                await api.post("/Retete/addRetetaObjects", {cantitate:cantitate, objectId:selectedManopera.original.id,  retetaId:open, whatIs:"Manopera"})
+                let theNew = delPreviewReteta();
+                fetchPreviewReteta(theNew);
+                setIsPopupOpen(false);
+            } catch (error) {
+                console.log("Error at ading Manopera" , error);
+            }
         };
 
         //TABLE
@@ -170,7 +173,7 @@ export default function RetetaManopera() {
                                      <tr key={headerGroup.id} className="bg-white text-black text-left  font-bold select-none">
                                        {headerGroup.headers.map(header => (
                                           
-                                               <th key={header.id}  className={`relative border-b-2 border-black border  bg-white p-1 ${header.column.id === "threeDots" ? "text-center" : ""} `}     
+                                               <th key={header.id}  className={`relative border-b border-r border-black   bg-white p-1 ${header.column.id === "threeDots" ? "text-center" : ""} `}     
                                                style={{
                                                    width:  `${header.getSize()}px`
                                                }}>
@@ -192,7 +195,7 @@ export default function RetetaManopera() {
                         manopere == null || manopere.length == 0 ?
                             <tbody>
                                 <tr>
-                                    <th className=' text-black border  border-black border-t-0 p-2 bg-white' colSpan={4}>Nici un Rezultat / Introdu minim 3 Caractere</th>
+                                    <th className=' text-black border-b border-r  border-black  p-2 bg-white' colSpan={4}>Nici un Rezultat / Introdu minim 3 Caractere</th>
                                 </tr>
                             </tbody>
                         :            
@@ -202,7 +205,7 @@ export default function RetetaManopera() {
                                            {row.getVisibleCells().map((cell) => (
                                                 <td
                                                 key={cell.id}
-                                                className="border break-words max-w-72 relative border-black p-1 px-3 
+                                                className="border-b border-r break-words max-w-72 relative border-black p-1 px-3 
                                                             h-[3rem]  whitespace-normal 
                                                             overflow-auto"
                                             >

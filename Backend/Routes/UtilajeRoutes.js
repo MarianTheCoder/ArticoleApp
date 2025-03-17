@@ -21,13 +21,13 @@ const upload = multer({ storage: storage });
 router.post('/api/utilaje', upload.single('poza'), async (req, res) => {
     try {
       // Destructure data from the body
-      const { clasa_utilaj, utilaj, descriere_utilaj, status_utilaj, cost_amortizare, pret_utilaj, cantitate } = req.body;
+      const { clasa_utilaj, utilaj, descriere_utilaj, status_utilaj, cost_amortizare, pret_utilaj, unitate_masura, cantitate } = req.body;
       
       // Log file data (image)
       console.log(req.file);
   
       // Validate required fields
-      if (!clasa_utilaj || !utilaj || !descriere_utilaj || !status_utilaj || !cost_amortizare || !pret_utilaj || !cantitate) {
+      if (!clasa_utilaj || !utilaj || !descriere_utilaj || !status_utilaj || !cost_amortizare || !pret_utilaj || !cantitate || !unitate_masura) {
         return res.status(400).json({ message: 'Toate câmpurile sunt necesare!' });
       }
   
@@ -39,8 +39,8 @@ router.post('/api/utilaje', upload.single('poza'), async (req, res) => {
   
       // SQL query to insert data into the Utilaje table
       const sql = `
-        INSERT INTO Utilaje (clasa_utilaj, utilaj, descriere_utilaj, photoUrl, status_utilaj, cost_amortizare, pret_utilaj, cantitate, data)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        INSERT INTO Utilaje (clasa_utilaj, utilaj, descriere_utilaj, photoUrl, status_utilaj, cost_amortizare, pret_utilaj, cantitate, unitate_masura, data)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
       `;
   
       // Execute the query
@@ -52,6 +52,7 @@ router.post('/api/utilaje', upload.single('poza'), async (req, res) => {
         status_utilaj,
         cost_amortizare,
         pret_utilaj,
+        unitate_masura,
         cantitate
       ]);
   
@@ -230,7 +231,7 @@ router.delete('/api/utilaje/:id', async (req, res) => {
 // Route for editing a material
 router.put('/api/utilaje/:id', upload.single('poza'), async (req, res) => {
     const { id } = req.params;
-    const { clasa_utilaj, utilaj, descriere_utilaj, status_utilaj, cost_amortizare, pret_utilaj, cantitate } = req.body;
+    const { clasa_utilaj, utilaj, descriere_utilaj, status_utilaj, cost_amortizare, pret_utilaj, cantitate, unitate_masura } = req.body;
 
     try {
         if (!id || isNaN(id)) {
@@ -270,10 +271,10 @@ router.put('/api/utilaje/:id', upload.single('poza'), async (req, res) => {
         // Step 3: Update the material in the database
         const updateQuery = `
             UPDATE Utilaje 
-            SET clasa_utilaj = ?, utilaj = ?, descriere_utilaj = ?, photoUrl = ?, status_utilaj = ?, cost_amortizare = ?, pret_utilaj = ?, cantitate = ?
+            SET clasa_utilaj = ?, utilaj = ?, descriere_utilaj = ?, photoUrl = ?, status_utilaj = ?, cost_amortizare = ?, pret_utilaj = ?, unitate_masura = ?, cantitate = ?
             WHERE id = ?`;
 
-        const [result] = await global.db.execute(updateQuery, [clasa_utilaj, utilaj, descriere_utilaj, newPhotoPath, status_utilaj, cost_amortizare, pret_utilaj, cantitate, id]);
+        const [result] = await global.db.execute(updateQuery, [clasa_utilaj, utilaj, descriere_utilaj, newPhotoPath, status_utilaj, cost_amortizare, pret_utilaj, unitate_masura, cantitate, id]);
 
         if (result.affectedRows === 0) {
             return res.status(404).json({ message: "No changes made, or material not found." });

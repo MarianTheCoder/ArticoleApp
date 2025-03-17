@@ -6,9 +6,17 @@ import { faArrowRight, faArrowRightLong, faCancel, faCopy, faEllipsis, faL, faPe
 import { RetetaContext } from '../../context/RetetaContext';
 import photoAPI from '../../api/photoAPI';
 
-export default function RetetaUtilaje() {
-
-        const {utilajeSelected , setUtilajeSelected} = useContext(RetetaContext);
+export default function RetetaUtilaje({
+    setIsPopupOpen,
+    setObjectsLen,
+    objectsLen,
+    lastObjectIndex,
+    setLastObjectIndex,
+    open,
+    setOpen,
+    delPreviewReteta,
+    fetchPreviewReteta,
+}) {
 
         const [cantitate, setCantitate] = useState("");
         const [selectedUtilaje, setSelectedUtilaje] = useState(null);
@@ -28,12 +36,6 @@ export default function RetetaUtilaje() {
 
         const handleChangeFilterUtilaje = (e) => {
             const { name, value } = e.target;
-            // if(name === "cod"){
-            //     if(/^\d*$/.test(value)){
-            //         setUtilajeFilters((prev) => ({ ...prev, [name]: value }));
-            //     }
-            // }
-            // else{
                 setUtilajeFilters((prev) => ({
                     ...prev,
                     [name]: value,
@@ -68,32 +70,23 @@ export default function RetetaUtilaje() {
         //Handle ADD Utilaj
         //
         //
-        const handleAddItem = () => {
-            if(selectedUtilaje && cantitate.trim() > 0){
-                const newItem = {
-                    whatIs:"Utilaj",
-                    id: selectedUtilaje.original.id,
-                    photo: selectedUtilaje.original.photoUrl,
-                    clasa: selectedUtilaje.original.clasa_utilaj,
-                    denumire: selectedUtilaje.original.utilaj,
-                    descriere_utilaj: selectedUtilaje.original.descriere_utilaj,
-                    status_utilaj: selectedUtilaje.original.status_utilaj,
-                    cost_amortizare: selectedUtilaje.original.cost_amortizare,
-                    cost: selectedUtilaje.original.pret_utilaj,
-                    cantitate: cantitate
-                };
-                
-                // Check if the item is already in the array to avoid duplicates
-                if (!utilajeSelected.some((existingItem) => existingItem.id === selectedUtilaje.original.id)) {
-                    setUtilajeSelected((prevItems) => [...prevItems, newItem]);
-                    setSelectedUtilaje(null);
-                    return;
-                }
-                setSelectedUtilaje(null);
-                alert("Obiect deja adaugat");
+        const handleAddItem = async () => {
+            if(cantitate.trim() == ""){
+                alert("Introdu o cantitate");
+                return;
             }
-            else if(!selectedUtilaje) alert("Nici un rand selectat!");
-            else alert("Cantitate invalida");
+            else if(!selectedUtilaje){
+                alert("Alege un Utilaj");
+                return;
+            }
+            try {
+                await api.post("/Retete/addRetetaObjects", {cantitate:cantitate, objectId:selectedUtilaje.original.id,  retetaId:open, whatIs:"Utilaje"})
+                let theNew = delPreviewReteta();
+                fetchPreviewReteta(theNew);
+                setIsPopupOpen(false);
+            } catch (error) {
+                console.log("Error at ading Manopera" , error);
+            };
         };
 
         //TABLE
@@ -113,11 +106,12 @@ export default function RetetaUtilaje() {
                             />
                     </div>
                     ),
+                    size:50
             },
-            { accessorKey: "clasa_utilaj", header: "Clasa"},
-            { accessorKey: "utilaj", header: "Utilaj"},
+            { accessorKey: "clasa_utilaj", header: "Clasa",size:50},
+            { accessorKey: "utilaj", header: "Utilaj",size:100},
             { accessorKey: "descriere_utilaj", header: "Descriere"},
-            { accessorKey: "pret_utilaj", header: "Pret"}
+            { accessorKey: "pret_utilaj", header: "Pret",size:50}
         ], []);
         
             const table = useReactTable({
@@ -203,7 +197,7 @@ export default function RetetaUtilaje() {
                                      <tr key={headerGroup.id} className="bg-white text-black text-left  font-bold select-none">
                                        {headerGroup.headers.map(header => (
                                           
-                                               <th key={header.id}  className={`relative border-b-2 border-black border  bg-white p-1 ${header.column.id === "threeDots" ? "text-center" : ""} `}     
+                                               <th key={header.id}  className={`relative border-b border-r border-black   bg-white p-1 ${header.column.id === "threeDots" ? "text-center" : ""} `}     
                                                style={{
                                                    width:  `${header.getSize()}px`
                                                }}>
@@ -225,7 +219,7 @@ export default function RetetaUtilaje() {
                         utilaje == null || utilaje.length == 0 ?
                             <tbody>
                                 <tr>
-                                    <th className=' text-black border border-black border-t-0 p-2 bg-white' colSpan={5}>Nici un Rezultat / Introdu minim 3 Caractere</th>
+                                    <th className=' text-black border-b border-r border-black p-2 bg-white' colSpan={5}>Nici un Rezultat / Introdu minim 3 Caractere</th>
                                 </tr>
                             </tbody>
                         :            
@@ -235,7 +229,7 @@ export default function RetetaUtilaje() {
                                            {row.getVisibleCells().map((cell) => (
                                                <td
                                                    key={cell.id}
-                                                   className={`  border break-words max-w-72 relative border-black p-1 px-3`}
+                                                   className={`  border-b border-r break-words max-w-72 relative border-black p-1 px-3`}
                                                    style={cell.column.columnDef.meta?.style} // Apply the custom style
                                                >
                                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}

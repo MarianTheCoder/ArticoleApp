@@ -6,9 +6,16 @@ import { faArrowRight, faArrowRightLong, faCancel, faCopy, faEllipsis, faL, faPe
 import { RetetaContext } from '../../context/RetetaContext';
 import photoAPI from '../../api/photoAPI';
 
-export default function RetetaMateriale() {
-
-        const {materialeSelected , setMaterialeSelected} = useContext(RetetaContext);
+export default function RetetaMateriale({setIsPopupOpen,
+    setObjectsLen,
+    objectsLen,
+    lastObjectIndex,
+    setLastObjectIndex,
+    open,
+    setOpen,
+    delPreviewReteta,
+    fetchPreviewReteta,
+  }) {
 
         const [cantitate, setCantitate] = useState("");
         const [selectedMateriale, setSelectedMateriale] = useState(null);
@@ -28,12 +35,6 @@ export default function RetetaMateriale() {
 
         const handleChangeFilterMateriale = (e) => {
             const { name, value } = e.target;
-            // if(name === "cod"){
-            //     if(/^\d*$/.test(value)){
-            //         setMaterialeFilters((prev) => ({ ...prev, [name]: value }));
-            //     }
-            // }
-            // else{
                 setMaterialeFilters((prev) => ({
                     ...prev,
                     [name]: value,
@@ -68,35 +69,23 @@ export default function RetetaMateriale() {
         //Handle ADD Material
         //
         //
-        const handleAddItem = () => {
-            if(selectedMateriale && cantitate.trim() > 0){
-                const newItem = {
-                    whatIs:"Material",
-                    id: selectedMateriale.original.id,
-                    photo: selectedMateriale.original.photoUrl,
-                    furnizor: selectedMateriale.original.furnizor,
-                    clasa: selectedMateriale.original.clasa_material,
-                    cod: selectedMateriale.original.cod_produs,
-                    denumire: selectedMateriale.original.denumire_produs,
-                    descriere_produs: selectedMateriale.original.descriere_produs,
-                    unitate_masura: selectedMateriale.original.unitate_masura,
-                    cost_unitar: selectedMateriale.original.cost_unitar,
-                    cost_preferential: selectedMateriale.original.cost_preferential,
-                    cost: selectedMateriale.original.pret_vanzare,
-                    cantitate: cantitate
-                };
-                
-                // Check if the item is already in the array to avoid duplicates
-                if (!materialeSelected.some((existingItem) => existingItem.id === selectedMateriale.original.id)) {
-                    setMaterialeSelected((prevItems) => [...prevItems, newItem]);
-                    setSelectedMateriale(null);
-                    return;
-                }
-                setSelectedMateriale(null);
-                alert("Obiect deja adaugat");
+        const handleAddItem = async() => {
+            if(cantitate.trim() == ""){
+                alert("Introdu o cantitate");
+                return;
             }
-            else if(!selectedMateriale) alert("Nici un rand selectat!");
-            else alert("Cantitate invalida");
+            else if(!selectedMateriale){
+                alert("Alege un material");
+                return;
+            }
+            try {
+                await api.post("/Retete/addRetetaObjects", {cantitate:cantitate, objectId:selectedMateriale.original.id,  retetaId:open, whatIs:"Materiale"})
+                let theNew = delPreviewReteta();
+                fetchPreviewReteta(theNew);
+                setIsPopupOpen(false);
+            } catch (error) {
+                console.log("Error at ading Manopera" , error);
+            }
         };
 
         //TABLE
@@ -116,11 +105,12 @@ export default function RetetaMateriale() {
                             />
                     </div>
                     ),
+                    size:50
             },
-            { accessorKey: "clasa_material", header: "Clasa"},
-            { accessorKey: "cod_produs", header: "Cod"},
+            { accessorKey: "clasa_material", header: "Clasa",size:50},
+            { accessorKey: "cod_produs", header: "Cod",size:50},
             { accessorKey: "denumire_produs", header: "Denumire"},
-            { accessorKey: "pret_vanzare", header: "Pret"}
+            { accessorKey: "pret_vanzare", header: "Pret",size:50}
         ], []);
         
             const table = useReactTable({
@@ -206,7 +196,7 @@ export default function RetetaMateriale() {
                                      <tr key={headerGroup.id} className="bg-white text-black text-left  font-bold select-none">
                                        {headerGroup.headers.map(header => (
                                           
-                                               <th key={header.id}  className={`relative border-b-2 border-black border  bg-white p-1 ${header.column.id === "threeDots" ? "text-center" : ""} `}     
+                                               <th key={header.id}  className={`relative border-b border-r border-black   bg-white p-1 ${header.column.id === "threeDots" ? "text-center" : ""} `}     
                                                style={{
                                                    width:  `${header.getSize()}px`
                                                }}>
@@ -228,7 +218,7 @@ export default function RetetaMateriale() {
                         materiale == null || materiale.length == 0 ?
                             <tbody>
                                 <tr>
-                                    <th className=' text-black border border-black border-t-0 p-2 bg-white' colSpan={5}>Nici un Rezultat / Introdu minim 3 Caractere</th>
+                                    <th className=' text-black border-b border-r border-black p-2 bg-white' colSpan={5}>Nici un Rezultat / Introdu minim 3 Caractere</th>
                                 </tr>
                             </tbody>
                         :            
@@ -238,10 +228,14 @@ export default function RetetaMateriale() {
                                            {row.getVisibleCells().map((cell) => (
                                                <td
                                                    key={cell.id}
-                                                   className={`  border break-words max-w-72 relative border-black p-1 px-3`}
+                                                   className={` border-b border-r break-words max-w-72 h-[4.5rem] relative border-black p-1 px-3`}
                                                    style={cell.column.columnDef.meta?.style} // Apply the custom style
                                                >
-                                                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                                <div className="h-full w-full overflow-hidden text-ellipsis">
+                                                    <div className="max-h-[4.5rem] scrollbar-webkit overflow-y-auto">
+                                                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                                    </div>
+                                                </div>
                                                </td>
                                            ))}
                                        </tr>

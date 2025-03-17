@@ -2,10 +2,10 @@ import React, { useContext, useEffect, useMemo, useState } from 'react'
 import api from '../../api/axiosAPI';
 import { flexRender, getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowDown, faCancel, faChevronDown, faChevronRight, faCopy, faEllipsis, faL, faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons';
-import RetetaTablePreview from './RetetaTablePreview';
+import { faArrowDown, faCancel, faChevronDown, faChevronRight, faCopy, faEllipsis, faL, faPenToSquare, faPlus, faTrashCan } from '@fortawesome/free-solid-svg-icons';
 import { RetetaContext } from '../../context/RetetaContext';
 import photoAPI from '../../api/photoAPI';
+import ReteteAdaugareObiecte from './ReteteAdaugareObiecte';
 
 
 export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDelete, setSelectedEdit, setFormData, selectedEdit, cancelEdit, cancelDelete}) {
@@ -13,6 +13,8 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
     const {setManopereSelected, manopereSelected, materialeSelected, setMaterialeSelected, transportSelected, setTransportSelected, utilajeSelected, setUtilajeSelected} = useContext(RetetaContext)
 
     const [open, setOpen] = useState(null);
+    const [isPopupOpen, setIsPopupOpen] = useState(false);
+    const [reloadReteta, setReloadReteta] = useState(0);
 
     const [retete, setRetete] = useState(null);
     const [totalItems, setTotalItems] = useState(0);
@@ -20,30 +22,46 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
     const [limit, setLimit] = useState(20);
 
     const [filters, setFilters] = useState({
-        cod_reteta: '',
-        clasa_reteta: '',
+        cod: '',
+        clasa: '',
         articol: '',
     });
 
-    
+    const [objectsLen, setObjectsLen] = useState(0); 
+    const [objectsID, setObjectsID] = useState(null); 
+    const [lastObjectIndex , setLastObjectIndex] = useState(null);
 
  
     const fetchManopere = async (offset, limit) => {
+        console.log(filters.cod)
         try {
             const response = await api.get('/Retete/getRetete', {
                 params: {
                     offset,
                     limit,
-                    cod: filters.cod_reteta, // Pass cod_reteta as a query parameter
-                    clasa: filters.clasa_reteta, // Add any other filters here
+                    cod: filters.cod, // Pass cod as a query parameter
+                    clasa: filters.clasa, // Add any other filters here
                     articol: filters.articol, // Add any other filters here
                 },
             });
+            setObjectsLen(0);
+            setObjectsID(null);
+            setLastObjectIndex(null);
+            setOpen(null);
+            if(response.data.data.length == 0) return;
             if(offset >= Math.ceil(response.data.totalItems/limit)){
                 fetchManopere(0, limit);
             }
             else{
-                setRetete(response.data.data);
+                    const renamedItems = response.data.data.map(item => ({
+                    ...item,
+                    cod: item.cod_reteta,  // Renaming cod to cod_reteta
+                    clasa: item.clasa_reteta,  // Renaming cod to cod_reteta
+                }));
+                // Remove the old 'cod' field if needed
+                renamedItems.forEach(item => delete item.cod_reteta);
+                renamedItems.forEach(item => delete item.clasa_reteta);
+                setRetete(renamedItems);
                 setTotalItems(response.data.totalItems);
                 setCurrentOffset(response.data.currentOffset);
             }
@@ -52,18 +70,18 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
         }
     }
 
-    const fetchPreviewReteta = async () => {
+    const fetchPreviewReteta = async (param) => {
         try {
             const response = await api.get(`/Retete/getSpecificReteta/${open}`);
-            console.log(retete);
-            const updatedRetete = [...retete];
+            const updatedRetete = param ? [...param] : [...retete];
             const newObjects = [...response.data.manopera, ...response.data.materiale, ...response.data.utilaje];
-            console.log(newObjects)
             // Find the index of the target object
             const targetIndex = updatedRetete.findIndex(item => item.id === open);
-    
+            setObjectsLen(newObjects.length);
+            setObjectsID(open);
             if (targetIndex !== -1) {
                 // Insert new objects after the target object
+                setLastObjectIndex(targetIndex + newObjects.length);
                 updatedRetete.splice(targetIndex + 1, 0, ...newObjects);
                 setRetete(updatedRetete); // Update the state
             }
@@ -73,17 +91,41 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
         }
     }
 
+    const delPreviewReteta = () => {
+        if(retete){
+            const updatedRetete = [...retete];
+            const targetIndex = updatedRetete.findIndex(item => item.id === objectsID);
+            if (targetIndex !== -1) {
+                updatedRetete.splice(targetIndex + 1, objectsLen);
+                setRetete(updatedRetete);
+            }
+            if(open == null){
+                setLastObjectIndex(null);
+                setObjectsID(null);
+                setObjectsLen(0);  
+            }
+            return updatedRetete;
+        }
+    }
 
     useEffect(() => { 
-        if(open != null) fetchPreviewReteta();
+        if(objectsID == null && open != null) fetchPreviewReteta();
+        else if(objectsID != null && open != null){
+             let theNew = delPreviewReteta();
+            fetchPreviewReteta(theNew);
+        } 
+        else if(objectsID != null) delPreviewReteta(); 
     }, [open])
 
     useEffect(() => { 
         fetchManopere(currentOffset, limit);
     }, [reloadKey]);
 
-    useEffect(() => {
+    useEffect(() => {  
         const getData = setTimeout(() => {
+            setOpen(null);
+            setObjectsID(null);
+            setObjectsLen(0); 
             if(limit == '' || limit == 0)  fetchManopere(0, 10);
             else fetchManopere(0, limit);
         }, 500)
@@ -133,21 +175,43 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
             console.log(response);
             setSelectedEdit(passedRow.id);
             setFormData({
-                clasa: passedRow.clasa_reteta,
-                cod: passedRow.cod_reteta,
+                clasa: passedRow.clasa,
+                cod: passedRow.cod,
                 articol: passedRow.articol,
                 unitate_masura: passedRow.unitate_masura
             })
-            setManopereSelected(response.data.manopera);
-            setMaterialeSelected(response.data.materiale);
-            // setTransportSelected(response.data.transport);
-            setUtilajeSelected(response.data.utilaje);
-            
         } catch (error) {
             console.error('Error fetching data:', error);
         }
     }
 
+    const deleteItem = async (e, passedRow) => {
+        e.preventDefault();
+        try {
+            let res = await api.delete(`/Retete/deleteFromReteta/${passedRow.original.id}/${passedRow.original.whatIs}`);
+            console.log(res);
+            let newRetete = [...retete];
+            newRetete.splice(passedRow.index, 1);
+            setObjectsLen((prev) => prev - 1);
+            setLastObjectIndex((prev) => prev - 1);
+            setRetete(newRetete);
+        } catch (error) {
+            console.error('Error fetching data:', error);
+        }
+    }
+
+
+    const parentProps = {
+        setIsPopupOpen,
+        setObjectsLen,
+        objectsLen,
+        lastObjectIndex,
+        setLastObjectIndex,
+        open,
+        setOpen,
+        delPreviewReteta,
+        fetchPreviewReteta,
+      };
 
 
     const columns = useMemo(() => [
@@ -155,14 +219,22 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
             accessorKey: "Dropdown", 
             header: "",
             cell: ({ row, getValue, cell }) => (
-                <div onClick={() => setOpen((prev) => prev == cell.row.original.id ? null : cell.row.original.id)} className='flex justify-center select-none w-full cursor-pointer items-center'>
-                    <FontAwesomeIcon  className={`  text-center ${open == cell.row.original.id ? " rotate-90" : ""}  text-xl`} icon={faChevronRight}/>
-                </div>
+                    <div onClick={() => setOpen((prev) => prev == cell.row.original.id ? null : cell.row.original.id)} className='flex justify-center select-none w-full cursor-pointer items-center'>
+                        <FontAwesomeIcon  className={`  text-center ${open == cell.row.original.id ? " rotate-90" : ""}  text-xl`} icon={faChevronRight}/>
+                    </div>
+             
+                
             ),
         },
-        { accessorKey: "cod_reteta", header: "Cod",size:100 },
-        { accessorKey: "clasa_reteta", header: "Clasa", size:100},
+        { accessorKey: "cod", header: "Cod",size:100 },
+        { accessorKey: "clasa", header: "Clasa", size:200},
         { accessorKey: "articol", header: "Articol", size:500 },
+        {
+            accessorKey: 'whatIs', 
+            header: 'Tip',
+            cell: ({ getValue }) => getValue() || 'Reteta', // Display default value if the value is empty or undefined
+            size:50
+        },
         { accessorKey: "unitate_masura", header: "Unitate",size:60},
         { 
             accessorKey: "photo", 
@@ -173,7 +245,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                     <img 
                         src={`${photoAPI}/${getValue()}`}  // Concatenate the base URL with the value
                         alt="Product"
-                        className="h-[4rem] max-w-28 object-cover" 
+                        className="h-[3rem] max-w-28 object-cover" 
                         style={{ objectFit: 'cover' }}
                         />
                 </div>
@@ -187,6 +259,13 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
             accessorKey: "threeDots", 
             header: "Optiuni",
             cell: ({ row }) => (
+                row.original.whatIs == 'Manopera' || row.original.whatIs == 'Material' || row.original.whatIs == 'Utilaj' || row.original.whatIs == 'Transport' ? 
+                <div className=' dropdown-container w-full h-full relative flex '> 
+                    <div className='text-xl relative w-full h-full py-2 select-none items-center justify-evenly gap-1 flex'>
+                        <FontAwesomeIcon onClick={(e) => deleteItem(e, row)} className=' text-red-500 hover:text-red-600 cursor-pointer' icon={faTrashCan}/>
+                    </div>
+                </div>    
+                    :
                 <div className=' dropdown-container w-full relative flex '> 
                     <div className='text-xl relative w-full py-2 select-none items-center justify-evenly gap-1 flex'>
                         <FontAwesomeIcon onClick={() => handleSelectedForEdit(row.original)}  className=' text-green-500 hover:text-green-600 cursor-pointer' icon={faPenToSquare}/>
@@ -201,7 +280,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                 },
             },
         },
-    ], [selectedDelete, open]);
+    ], [selectedDelete, open, retete]);
 
     const table = useReactTable({
         data: retete,
@@ -223,28 +302,28 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                 <table className="w-full  border-separate border-spacing-0 ">
                     <thead className='top-0 w-full sticky  z-10 '>
                         <tr className='text-black'>
-                                    <th className='border border-black bg-white'></th>
-                                    <th className='border border-black'>
+                                    <th className='border-b border-r border-black bg-white'></th>
+                                    <th className='border-b border-r border-black'>
                                         <input
                                             type="text"
-                                            name="clasa_reteta"
-                                            value={filters.clasa_reteta}
+                                            name="cod"
+                                            value={filters.cod}
                                             onChange={handleInputChange}
                                             className="p-2 w-full outline-none py-3"
-                                            placeholder="Filter by Clasa"
-                                        />
-                                    </th>
-                                    <th className='border border-black'>
-                                        <input
-                                            type="text"
-                                            name="cod_reteta"
-                                            value={filters.cod_reteta}
-                                            onChange={handleInputChange}
-                                            className="p-2 w-full outline-none  py-3"
                                             placeholder="Filter by Cod"
                                         />
                                     </th>
-                                    <th className='border border-black'>
+                                    <th className='border-b border-r border-black'>
+                                        <input
+                                            type="text"
+                                            name="clasa"
+                                            value={filters.clasa}
+                                            onChange={handleInputChange}
+                                            className="p-2 w-full outline-none  py-3"
+                                            placeholder="Filter by Clasa"
+                                        />
+                                    </th>
+                                    <th className='border-b border-r border-black'>
                                         <input
                                             type="text"
                                             name="articol"
@@ -254,7 +333,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                                             placeholder="Filter by Articol"
                                         />
                                     </th>
-                                    <th className=" bg-white border border-black" colSpan={4}>
+                                    <th className=" bg-white border-b border-r border-black" colSpan={5}>
                                        <div className=' flex  justify-center items-center'>
                                             <p className='px-2'>Arata</p>
                                             <input className='border border-black p-1 w-12 text-center rounded-lg' type="text" onChange={(e) => handleLimit(e)} value={limit} name="" id="" />
@@ -266,7 +345,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                   <tr key={headerGroup.id} className="bg-white text-black text-left  font-bold select-none">
                     {headerGroup.headers.map(header => (
                        
-                            <th key={header.id}  className={`relative border-b-2 border-black border  bg-white p-2 py-4 ${header.column.id === "threeDots" ? "text-center" : ""} `}     
+                            <th key={header.id}  className={`relative border-b-2 border-r border-black   bg-white p-2 py-4 ${header.column.id === "threeDots" ? "text-center" : ""} `}     
                             style={{
                                 width: header.column.id === "threeDots" ? '55px' : header.column.id === "Dropdown" ? "15px": `${header.getSize()}px`, // Enforce width for "Options"
                                 minWidth: header.column.id === "threeDots" ?  '55px' : header.column.id === "Dropdown" ? "15px" : '', // Ensure no shrinkage
@@ -286,18 +365,69 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
               </thead>
               <tbody className=' relative z-0'>
                 {table.getRowModel().rows.map((row,index,rows) => (
-                    <tr key={row.id}   className={`dropdown-container   text-black ${row.original.id == selectedDelete ? "bg-red-300 sticky" : row.original.id == selectedEdit ? "bg-green-300 sticky" : row.original.id == open ? "bg-blue-300" : row.index % 2 === 0 ? 'bg-[rgb(255,255,255,0.75)] ' : 'bg-[rgb(255,255,255,1)] '}`}>
-                        {row.getVisibleCells().map((cell) => (
-                            <td
+                    row.original.whatIs == 'Manopera' || row.original.whatIs == 'Material' || row.original.whatIs == 'Utilaj' || row.original.whatIs == 'Transport' ?
+                    <React.Fragment key={row.id}>
+                        <tr className={`dropdown-container    text-black`}>
+                            {row.getVisibleCells().map((cell) => (  
+                                cell.column.id == "Dropdown" ?
+                                <td key={cell.id}>
+
+                                </td>
+                                :
+                                <td     
+                                key={cell.id}
+                                className={`h-[3rem]   ${row.original.whatIs == 'Manopera' ? "bg-[#f7aefa]" : row.original.whatIs == 'Material' ? "bg-[#8af1a0]" : row.original.whatIs == 'Utilaj' ? "bg-[#fbfd7c]" : row.original.whatIs == 'Transport' ? "bg-[#8ae8ff]" : ""}    border-b border-r break-words max-w-72  relative border-black px-3 p-1`}
+                                >
+                                   <div className="h-full w-full overflow-hidden text-ellipsis">
+                                        <div className="max-h-[3rem] h-full scrollbar-webkit overflow-y-auto">
+                                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                        </div>
+                                    </div>
+                                </td>
+                            ))}
+                        </tr>
+                        {index == lastObjectIndex ?
+                        <tr>
+                             <td></td>
+                             <td className='bg-white p-1 px-3 hover:bg-[rgb(255,255,255,0.9)] border-b border-r border-black select-none text-black' colSpan={8}>
+                                 <div onClick={() => setIsPopupOpen(true)} className='flex font-bold  text-center cursor-pointer  justify-center items-center gap-2'>
+                                     <p className=' text-center'>Adauga Obiecte</p>
+                                     <FontAwesomeIcon className='text-green-500  text-center text-2xl' icon={faPlus}/>
+                                 </div>
+                             </td>
+                         </tr>
+                            :
+                            ""
+                        }
+                    </React.Fragment>
+                    :
+                    <React.Fragment key={row.id}>
+                        <tr className={`dropdown-container   text-black 
+                            ${row.original.id == selectedDelete ? "bg-red-300 sticky" : row.original.id == selectedEdit ? "bg-green-300 sticky" :  row.index % 2 === 0 ? 'bg-[rgb(255,255,255,0.75)] ' : 'bg-[rgb(255,255,255,1)] '}`}>
+                            {row.getVisibleCells().map((cell) => (  
+                                    <td  key={cell.id}   
+                                        className={`${row.original.whatIs == 'Manopera' ? "bg-[#f7aefa]" : row.original.whatIs == 'Material' ? "bg-[#8af1a0]" : row.original.whatIs == 'Utilaj' ? "bg-[#fbfd7c]" : row.original.whatIs == 'Transport' ? "bg-[#8ae8ff]" : ""}    border-b border-r break-words max-w-72  relative border-black p-1 px-3`}
+                                        style={cell.column.columnDef.meta?.style} // Apply the custom style
+                                    >
+                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                    </td>
                             
-                            key={cell.id}
-                            className={`   border break-words max-w-72  relative border-black p-1 px-3`}
-                            style={cell.column.columnDef.meta?.style} // Apply the custom style
-                            >
-                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                            </td>
-                        ))}
-                    </tr>
+                            ))}
+                        </tr>
+                            {index == lastObjectIndex ?
+                            <tr>
+                                <td></td>
+                                <td onClick={() => setIsPopupOpen(true)} className='bg-white p-1 px-3 hover:bg-[rgb(255,255,255,0.9)] cursor-pointer border-b border-r border-black select-none text-black' colSpan={8}>
+                                    <div className='flex font-bold  text-center justify-center items-center gap-2'>
+                                        <p className=' text-center'>Adauga Obiecte</p>
+                                        <FontAwesomeIcon className='text-green-500  text-center text-2xl' icon={faPlus}/>
+                                    </div>
+                                </td>
+                            </tr>
+                            :
+                            ""
+                            }
+                    </React.Fragment>
                 ))}
                 </tbody>
             </table>
@@ -305,7 +435,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
             {/* Pagination Controls */}
             <div className="mt-4 flex items-center justify-between">
               <button
-                className="p-2 min-w-24 bg-white text-black m rounded"
+                className="p-2 min-w-24 bg-white text-black rounded"
                 onClick={() => setPage(-1)}
                 disabled={currentOffset === 0}
               >
@@ -317,7 +447,15 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
               </button>
             </div>
           </div>
+          
         }
+        {/* div that prevents clicks outside */}
+        {isPopupOpen && (
+        <>
+            <div className=" absolute top-0 left-0 right-0 bg-[#000043] bottom-0 h-screen w-screen z-[100]"></div>
+            <ReteteAdaugareObiecte parentProps = {parentProps} />
+        </>
+      )}
     </>
   )
 }

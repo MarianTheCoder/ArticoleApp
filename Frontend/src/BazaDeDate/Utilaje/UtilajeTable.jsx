@@ -30,6 +30,7 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
                     clasa_utilaj: filters.clasa_utilaj, // Add any other filters here
                 },
             });
+            if(response.data.data.length == 0) return;
             if(offset >= Math.ceil(response.data.totalItems/limit)){
                 fetchManopere(0, limit);
             }
@@ -98,6 +99,7 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
             status_utilaj: passedRow.status_utilaj,
             cost_amortizare: passedRow.cost_amortizare,
             pret_utilaj: passedRow.pret_utilaj,
+            unitate_masura: passedRow.unitate_masura,
             cantitate: passedRow.cantitate
         })
         setPreview(`${photoApi}/${passedRow.photoUrl}`);
@@ -194,7 +196,7 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
     };
 
     const columns = useMemo(() => [
-        { accessorKey: "clasa_utilaj", header: "Clasa", size:120 },
+        { accessorKey: "clasa_utilaj", header: "Clasa", size:80 },
         { 
             accessorKey: "photoUrl", 
             header: "Poza",
@@ -213,6 +215,7 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
         { accessorKey: "utilaj", header: "Utilaj"},
         { accessorKey: "descriere_utilaj", header: "Descriere",size: 200},
         { accessorKey: "status_utilaj", header: "Status",size:70},
+        { accessorKey: "unitate_masura", header: "Unitate",size:20},
         { accessorKey: "cost_amortizare", header: "Cost Amortizare",size:85},
         { accessorKey: "pret_utilaj", header: "Pret Utilaj", size:60},
         { accessorKey: "cantitate", header: "Cantitate", size:60},
@@ -256,7 +259,7 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
             <table className="w-full border-separate border-spacing-0 ">
               <thead className='top-0 w-full sticky  z-10 '>
               <tr className='text-black'>
-                                    <th className='border border-black'>
+                                    <th className='border-b border-r border-black'>
                                         <input
                                             type="text"
                                             name="clasa_utilaj"
@@ -266,10 +269,10 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
                                             placeholder="Filter by Clasa "
                                         />
                                     </th>
-                                    <th className=" bg-white border border-black">
+                                    <th className=" bg-white border-b border-r border-black">
                                     
                                     </th>
-                                    <th className='border border-black'>
+                                    <th className='border-b border-r border-black'>
                                         <input
                                             type="text"
                                             name="utilaj"
@@ -279,7 +282,7 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
                                             placeholder="Filter by Utilaj"
                                         />
                                     </th>
-                                    <th className='border border-black'>
+                                    <th className='border-b border-r border-black'>
                                         <input
                                             type="text"
                                             name="descriere_utilaj"
@@ -289,7 +292,7 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
                                             placeholder="Filter by Descriere"
                                         />
                                     </th>
-                                    <th className=" bg-white border border-black" colSpan={5}>
+                                    <th className=" bg-white border-b border-r border-black" colSpan={6}>
                                        <div className=' flex  justify-center items-center'>
                                             <p className='px-2'>Arata</p>
                                             <input className='border border-black p-1 w-12 text-center rounded-lg' type="text" onChange={(e) => handleLimit(e)} value={limit} name="" id="" />
@@ -301,7 +304,7 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
                   <tr key={headerGroup.id} className="bg-white text-black text-left  font-bold select-none">
                     {headerGroup.headers.map(header => (
                        
-                            <th key={header.id}  className={`relative border-b-2 border-black border  bg-white p-2 py-4 ${header.column.id === "threeDots" ? "text-center" : ""} `}     
+                            <th key={header.id}  className={`relative border-b-2 border-r border-black   bg-white p-2 py-4 ${header.column.id === "threeDots" ? "text-center" : ""} `}     
                             style={{
                                 width: header.column.id === "threeDots" ? '55px' : `${header.getSize()}px`, // Enforce width for "Options"
                                 minWidth: header.column.id === "threeDots" ? '55px' : '', // Ensure no shrinkage
@@ -333,7 +336,7 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
                         {row.getVisibleCells().map((cell) => (
                             <td
                                 key={cell.id}
-                                className={`max-w-72  border break-words relative border-black p-1 px-3`}
+                                className={`max-w-72  border-b border-r break-words relative border-black p-1 px-3`}
                                 style={cell.column.columnDef.meta?.style} // Apply the custom style
                             >
                                 {flexRender(cell.column.columnDef.cell, cell.getContext())}

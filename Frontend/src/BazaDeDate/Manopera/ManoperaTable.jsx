@@ -28,6 +28,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                     ocupatie: filters.ocupatie, // Add any other filters here
                 },
             });
+            if(response.data.data.length == 0) return;
             if(offset >= Math.ceil(response.data.totalItems/limit)){
                 fetchManopere(0, limit);
             }
@@ -231,9 +232,9 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
             <div className="px-6 pb-4 scrollbar-webkit text-white h-full flex flex-col justify-between">
             <div className="overflow-auto  scrollbar-webkit">
                 <table className="w-full  border-separate border-spacing-0 ">
-                    <thead className='top-0 w-full sticky  z-10 '>
+                    <thead className='top-0 w-full sticky bg-white  z-10 '>
                         <tr className='text-black'>
-                                    <th className='border border-black'>
+                                    <th className='border-b border-r border-black'>
                                         <input
                                             type="text"
                                             name="cod_COR"
@@ -245,7 +246,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                                             placeholder="Filter by Cod COR"
                                         />
                                     </th>
-                                    <th className='border border-black'>
+                                    <th className='border-b border-r border-black'>
                                         <input
                                             type="text"
                                             name="ocupatie"
@@ -255,7 +256,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                                             placeholder="Filter by Ocupatie"
                                         />
                                     </th>
-                                    <th className=" bg-white border border-black" colSpan={4}>
+                                    <th className=" bg-white border-b border-r border-black" colSpan={4}>
                                        <div className=' flex  justify-center items-center'>
                                             <p className='px-2'>Arata</p>
                                             <input className='border border-black p-1 w-12 text-center rounded-lg' type="text" onChange={(e) => handleLimit(e)} value={limit} name="" id="" />
@@ -268,7 +269,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                   <tr key={headerGroup.id} className="bg-white text-black text-left  font-bold select-none">
                     {headerGroup.headers.map(header => (
                        
-                            <th key={header.id}  className={`relative border-b-2 border-black border  bg-white p-2 py-4 ${header.column.id === "threeDots" ? "text-center" : ""} `}     
+                            <th key={header.id}  className={`relative border-b-2 border-r border-black   bg-white p-2 py-4 ${header.column.id === "threeDots" ? "text-center" : ""} `}     
                             style={{
                                 width: header.column.id === "threeDots" ? '45px' : `${header.getSize()}px`, // Enforce width for "Options"
                                 minWidth: header.column.id === "threeDots" ? '45px' : '', // Ensure no shrinkage
@@ -300,7 +301,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                         {row.getVisibleCells().map((cell) => (
                             <td
                                 key={cell.id}
-                                className={`  border break-words max-w-72  relative border-black p-1 px-3`}
+                                className={`  border-b border-r break-words max-w-72  relative border-black p-1 px-3`}
                                 style={cell.column.columnDef.meta?.style} // Apply the custom style
                             >
                                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
