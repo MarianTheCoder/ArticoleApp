@@ -66,6 +66,7 @@ const EditManopera = async (req, res) => {
 const GetManopere = async (req, res) => {
   try {
       const { offset = 0, limit = 10, cod_COR = '', ocupatie = '' } = req.query;
+      const asc_ocupatie = req.query.asc_ocupatie === "true";
 
       // Validate limit and offset to be integers
       const parsedOffset = parseInt(offset, 10);
@@ -95,9 +96,11 @@ const GetManopere = async (req, res) => {
       if (whereClauses.length > 0) {
           query += ` WHERE ${whereClauses.join(' AND ')}`;
       }
-
-      // Add pagination to the query
-      query += ` LIMIT ? OFFSET ?`;
+      if(asc_ocupatie == true){
+        query += ` ORDER BY ocupatie ASC LIMIT ? OFFSET ?`;
+      }
+      else query += ` LIMIT ? OFFSET ?`;
+    
       queryParams.push(parsedLimit, parsedOffset * parsedLimit);
 
       // Execute the query with filters and pagination
@@ -180,7 +183,7 @@ const GetManopereLight = async (req, res) => {
         if (whereClauses.length > 0) {
             query += ` WHERE ${whereClauses.join(' AND ')}`;
         }
-  
+        query += ` ORDER BY ocupatie ASC`;
         // Execute the query with filters and pagination
         const [rows] = await global.db.execute(query, queryParams);
         

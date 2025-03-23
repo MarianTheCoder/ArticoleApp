@@ -10,6 +10,7 @@ export default function MaterialeForm() {
 
   const [formData, setFormData] = useState({
       furnizor:"",
+      tip_material:"Direct",
       clasa_material:"",
       cod_produs:"",
       denumire_produs:"",
@@ -35,6 +36,7 @@ export default function MaterialeForm() {
     e.preventDefault();
     const formDataSend = new FormData();
     formDataSend.append("furnizor", formData.furnizor.trim())
+    formDataSend.append("tip_material", formData.tip_material.trim())
     formDataSend.append("clasa_material", formData.clasa_material.trim())
     formDataSend.append("cod_produs", formData.cod_produs.trim())
     formDataSend.append("denumire_produs", formData.denumire_produs.trim())
@@ -46,16 +48,13 @@ export default function MaterialeForm() {
     formDataSend.append("pret_vanzare", formData.pret_vanzare.trim())
     if(formData.furnizor.trim() === "" || formData.clasa_material.trim() === "" || formData.cod_produs.trim() === "" ||
        formData.denumire_produs.trim() === "" || formData.descriere_produs.trim() === "" || formData.unitate_masura.trim() === "" ||
-       formData.cost_unitar.trim() === "" || formData.cost_preferential.trim() === "" || formData.pret_vanzare.trim() === ""
+       formData.cost_unitar.trim() === "" || formData.cost_preferential.trim() === "" || formData.pret_vanzare.trim() === "" || formData.tip_material.trim() === ""
       )
     {
       alert("All fields are required");
       return;
     }
-    // if(form.cod_COR.length !== 6){
-    //   alert("Cod COR must have 6 digits");
-    //   return;
-    // }
+
     try {
       if(selectedEdit != null){
         await api.put(`/Materiale/api/materiale/${selectedEdit}`, formDataSend, {
@@ -76,26 +75,24 @@ export default function MaterialeForm() {
       }
       setFormData({
         furnizor:"",
+        tip_material:"Direct",
         clasa_material:"",
         cod_produs:"",
         denumire_produs:"",
         descriere_produs:"",
-        unitate_masura:"u",
+        unitate_masura:"U",
         cost_unitar:"",
         cost_preferential:"",
         pret_vanzare:"",
       });
       setSelectedFile(null);
       setPreview(defaultPhoto);
-      firstInputRef.current.focus();
       handleReload();
     } catch (error) {
       console.error('Upload error:', error);
-      firstInputRef.current.focus();
     }
   };
   
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     if(name === "cost_preferential"){
@@ -133,11 +130,12 @@ export default function MaterialeForm() {
     setSelectedEdit(null);
     setFormData({
       furnizor:"",
+      tip_material:"Direct",
       clasa_material:"",
       cod_produs:"",
       denumire_produs:"",
       descriere_produs:"",
-      unitate_masura:"u",
+      unitate_masura:"U",
       cost_unitar:"",
       cost_preferential:"",
       pret_vanzare:"",
@@ -159,8 +157,6 @@ export default function MaterialeForm() {
     }
   }
 
-  //Refernce to focus back on first input after submiting
-  const firstInputRef = useRef(null);
 
   //Handle Photo preview and saving
   const handleFileChange = (e) => {
@@ -169,6 +165,16 @@ export default function MaterialeForm() {
     if (file) {
       setSelectedFile(file);
       setPreview(URL.createObjectURL(file)); // Show image preview
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    console.log(file);
+    if (file && file.type.startsWith("image/")) {
+      setSelectedFile(file)
+      setPreview(URL.createObjectURL(file));
     }
   };
 
@@ -182,19 +188,34 @@ export default function MaterialeForm() {
     <div className='w-full containerWhiter'>
       <div className="flex justify-center items-center text-black  ">
         <form onSubmit={handleSubmit} className="w-full text-base p-4 px-6 rounded-lg shadow-xl">
-          <div className="grid grid-cols-[auto_auto_auto_auto_auto_auto_auto_auto_auto_auto_auto] xxxl:gap-4 md:gap-2 xl:gap-3 items-center">
+          <div className="grid grid-cols-[auto_auto_auto_auto_auto_auto_1fr_auto_auto_auto_auto_auto] xxxl:gap-4 md:gap-2 xl:gap-3 items-center">
             
           {/* photourl */}
           <div className="flex flex-col items-center ">
             <div className=' items-center gap-4 flex w-full'>
-              <div className="w-10 sm:w-12  md:w-12 lg:w-14 xl:w-16 xxl:w-20 xxxl:w-24 aspect-square">
-                <img className='rounded-xl object-cover w-full h-full ' src={preview == null ? "" : preview}></img>
+              <div className="w-10 sm:w-12 relative   md:w-12 lg:w-14 xl:w-16 xxl:w-20 xxxl:w-24 aspect-square">
+                <img onClick={handleButtonClick} onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}  className='rounded-xl  cursor-pointer object-contain w-full h-full ' src={preview == null ? "" : preview}></img>
               </div>
-                <button ref={firstInputRef} type="button" onClick={handleButtonClick} className="bg-white px-4  text-center rounded-xl mt-6 p-2 ">File</button>
+                
                 <input  id="hiddenFileInput" type="file" onChange={handleFileChange} className="hidden"/>
               </div>
             </div>
 
+            <div className="flex flex-col items-center">
+              <label htmlFor="unit" className="font-medium text-black">
+                Tip
+              </label>
+              <select
+                id="tip_material"
+                name="tip_material"
+                value={formData.tip_material}
+                onChange={handleChange}
+                className="px-2 py-2 border  rounded-lg outline-none shadow-sm "
+              >
+                <option value="Direct">Direct</option>
+                <option value="Indirect">Indirect</option>
+              </select>
+            </div>
           {/* Furnizor */}
           <div className="flex flex-col items-center ">
               <label htmlFor="code" className=" font-medium text-black">
@@ -208,14 +229,13 @@ export default function MaterialeForm() {
                   value={formData.furnizor}
                   onChange={handleChange}
                   className="px-2 outline-none text-center py-2 max-w-40  rounded-lg shadow-sm "
-                  placeholder="Furnizor"
               />
           </div>
 
             {/* clasa materiale */}
             <div className="flex flex-col items-center ">
               <label htmlFor="code" className=" font-medium text-black">
-                  Clasa Materiale
+                  Clasă Materiale
               </label>
               <input
                   type="text"
@@ -224,7 +244,6 @@ export default function MaterialeForm() {
                   value={formData.clasa_material}
                   onChange={handleChange}
                   className="px-2 outline-none text-center py-2 max-w-32  rounded-lg shadow-sm "
-                  placeholder="Clasa"
               />
           </div>
 
@@ -240,7 +259,6 @@ export default function MaterialeForm() {
                   value={formData.cod_produs}
                   onChange={handleChange}
                   className="px-2 outline-none text-center py-2 max-w-32  rounded-lg shadow-sm "
-                  placeholder="Cod"
               />
           </div>
 
@@ -252,14 +270,15 @@ export default function MaterialeForm() {
               >
                   Denumire
               </label>
-              <input
+              <textarea
+                  rows={3}
                   type="text"
                   id="denumire_produs"
                   name="denumire_produs"
                   value={formData.denumire_produs}
                   onChange={handleChange}
-                  className="px-2 w-full outline-none text-center py-2  rounded-lg shadow-sm "
-                  placeholder="Denumire"
+                  className="px-2 w-full outline-none resize-none   py-2  rounded-lg shadow-sm "
+            
               />
           </div>
 
@@ -271,14 +290,14 @@ export default function MaterialeForm() {
               >
                   Descriere
               </label>
-              <input
+              <textarea
                   type="text"
+                  rows={3}
                   id="descriere_produs"
                   name="descriere_produs"
                   value={formData.descriere_produs}
                   onChange={handleChange}
-                  className="px-2 w-full outline-none text-center py-2  rounded-lg shadow-sm "
-                  placeholder="Descriere"
+                  className="px-2 w-full resize-none outline-none py-2  rounded-lg shadow-sm "
               />
           </div>
 
@@ -311,7 +330,7 @@ export default function MaterialeForm() {
                   
                   className=" font-medium text-black"
               >
-                  Cost Unit
+                  Cost 
               </label>
               <input
                   type="text" 
@@ -331,7 +350,7 @@ export default function MaterialeForm() {
                   
                   className=" font-medium text-black"
               >
-                Cost Pref
+                Cost 
               </label>
               <input
                   type="text" 
@@ -351,7 +370,7 @@ export default function MaterialeForm() {
                   
                   className=" font-medium text-black"
               >
-                  Pret
+                  Preț
               </label>
               <input
                   type="text" 
@@ -361,26 +380,25 @@ export default function MaterialeForm() {
                   value={formData.pret_vanzare}
                   onChange={handleChange}
                   className=" px-2 py-2  text-center max-w-24 w-full outline-none rounded-lg shadow-sm "
-                  placeholder="Pret"
               />
           </div>
           {
               !selectedDelete && !selectedEdit ?
 
               <div className="flex text-base  justify-center items-center ">
-                <button type="submit" className="bg-green-500 hover:bg-green-600 text-black  mt-6 px-2 py-2 flex justify-center  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-2"/> Submit</button>
+                <button type="submit" className="bg-green-500 hover:bg-green-600 text-black  mt-6 px-2 py-2 flex justify-center  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-2"/> Încarcă</button>
               </div>
               :
               !selectedEdit ?
 
               <div className="flex gap-2 text-base justify-center items-center ">
-                <button onClick={(e) => deleteRow(e)} className="bg-red-500 hover:bg-red-600 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faCancel} className="pr-2"/> Delete</button>
-                <button onClick={(e) => cancelDelete(e)} className="bg-green-500 hover:bg-green-600 text- text mt-6 px-4 py-2 flex  items-center rounded-lg">Cancel</button>
+                <button onClick={(e) => deleteRow(e)} className="bg-red-500 hover:bg-red-600 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faCancel} className="pr-2"/>Șterge</button>
+                <button onClick={(e) => cancelDelete(e)} className="bg-green-500 hover:bg-green-600 text- text mt-6 px-4 py-2 flex  items-center rounded-lg">Anulează</button>
               </div>
               :
               <div className="flex gap-2  text-base justify-center items-center ">
-                <button  type="submit" className="bg-green-500 hover:bg-green-600 text-black  mt-6 px-2 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-2"/> Submit</button>
-                <button  onClick={(e) => cancelEdit(e)} className="bg-red-500 hover:bg-red-600 text-black  mt-6 px-2 py-2 flex  items-center rounded-lg"> Cancel</button>
+                <button  type="submit" className="bg-green-500 hover:bg-green-600 text-black  mt-6 px-2 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-2"/> Editează</button>
+                <button  onClick={(e) => cancelEdit(e)} className="bg-red-500 hover:bg-red-600 text-black  mt-6 px-2 py-2 flex  items-center rounded-lg"> Anulează</button>
               </div>
           }
           

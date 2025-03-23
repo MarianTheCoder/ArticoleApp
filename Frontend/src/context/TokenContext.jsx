@@ -10,6 +10,8 @@ export const AuthProvider = ({ children }) => {
 
     const navigate = useNavigate();
 
+    const [connectedSantiereToUser, setConnectedSantiereToUser] = useState([]);
+
     const [token, setToken] = useState(null);
     const [user, setUser] = useState({ id: null, role: null, name: null });
     const [loading, setLoading] = useState(true); // New loading state
@@ -126,7 +128,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ token, user, login, logout, getDecodedToken, decodeToken, santiere, setSantiere, loading , color, setUser, getUsersForSantiere, beneficiari, setBeneficiari }}>
+        <AuthContext.Provider value={{connectedSantiereToUser, setConnectedSantiereToUser, token, user, login, logout, getDecodedToken, decodeToken, santiere, setSantiere, loading , color, setUser, getUsersForSantiere, beneficiari, setBeneficiari }}>
             {children}
         </AuthContext.Provider>
     );

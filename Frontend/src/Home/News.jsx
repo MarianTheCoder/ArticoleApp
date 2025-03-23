@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/axiosAPI';
 import photoAPI from '../api/photoAPI';
-import '../assets/News.css';
+import './News.css';
 
 export default function ListaEchipa() {
   const [team, setTeam] = useState([]);

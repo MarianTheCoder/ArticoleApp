@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axiosAPI';
 import photoAPI from '../api/photoAPI';
+import "../assets/customCSS.css"
+
 
 export default function Echipa() {
   const [team, setTeam] = useState([]);
@@ -77,6 +79,11 @@ export default function Echipa() {
   };
 
   return (
+    <div className='h-screen flex items-center justify-center'>
+    <div className="containerZ  w-2/3 h-90h relative flex flex-col items-center rounded-lg">
+    <div className="w-full relative h-full  gap-2 rounded-xl flex flex-col overflow-hidden p-5 py-8">
+                 {/* FetchedArticles */}
+                 <div className="h-full grid grid-rows-1 w-full scrollbar-webkit overflow-hidden">
     <div className="min-h-screen bg-[#000043] flex flex-col items-center justify p-6">
       <h2 className="text-3xl font-bold mb-6 text-white">Adaugă un Membru în Echipa</h2>
 
@@ -137,7 +144,7 @@ export default function Echipa() {
 
 
  {/* Formularul de adăugare membru */}
-    
+
       {message && <p className="mt-4 text-center text-green-600">{message}</p>}
 
       {/* Lista echipei */}
@@ -171,6 +178,10 @@ export default function Echipa() {
           </div>
         ))}
       </div>
+    </div>
+    </div>
+    </div>
+    </div>
     </div>
   );
 }

@@ -15,7 +15,7 @@ export default function UtilajeForm() {
     status_utilaj:"",
     cost_amortizare:"",
     pret_utilaj:"",
-    unitate_masura:"ora",
+    unitate_masura:"oră",
     cantitate:""
   });
 
@@ -78,12 +78,11 @@ export default function UtilajeForm() {
         status_utilaj:"",
         cost_amortizare:"",
         pret_utilaj:"",
-        unitate_masura:"ora",
+        unitate_masura:"oră",
         cantitate:""
       });
       setSelectedFile(null);
       setPreview(defaultPhoto);
-      firstInputRef.current.focus();
       handleReload();
     } catch (error) {
       console.error('Upload error:', error);
@@ -134,7 +133,7 @@ export default function UtilajeForm() {
         status_utilaj:"",
         cost_amortizare:"",
         pret_utilaj:"",
-        unitate_masura:"ora",
+        unitate_masura:"oră",
         cantitate:""
     });
     setPreview(defaultPhoto);
@@ -166,6 +165,16 @@ export default function UtilajeForm() {
     }
   };
 
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    console.log(file);
+    if (file && file.type.startsWith("image/")) {
+      setSelectedFile(file)
+      setPreview(URL.createObjectURL(file));
+    }
+  };
+
   const handleButtonClick = () => {
     document.getElementById('hiddenFileInput').click();
   };
@@ -182,9 +191,8 @@ export default function UtilajeForm() {
           <div className="flex flex-col items-center ">
             <div className=' items-center gap-4 flex w-full'>
               <div className="w-10 sm:w-12  md:w-12 lg:w-14 xl:w-16 xxl:w-20 xxxl:w-24 aspect-square">
-                <img className='rounded-xl object-cover w-full h-full ' src={preview == null ? "" : preview}></img>
+                 <img onClick={handleButtonClick} onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}  className='rounded-xl  cursor-pointer object-contain w-full h-full ' src={preview == null ? "" : preview}></img>
               </div>
-                <button ref={firstInputRef} type="button" onClick={handleButtonClick} className="bg-white px-4  text-center rounded-xl mt-6 p-2 ">File</button>
                 <input id="hiddenFileInput" type="file" onChange={handleFileChange} className="hidden"/>
               </div>
             </div>
@@ -192,7 +200,7 @@ export default function UtilajeForm() {
           {/* Clasa Utilaj */}
           <div className="flex flex-col items-center ">
               <label htmlFor="code" className=" font-medium text-black">
-                  Clasa Utilaj
+                  Clasă Utilaj
               </label>
               <input
                   type="text"
@@ -201,7 +209,6 @@ export default function UtilajeForm() {
                   value={formData.clasa_utilaj}
                   onChange={handleChange}
                   className="px-2 outline-none text-center py-2 max-w-40  rounded-lg shadow-sm "
-                  placeholder="Clasa"
               />
           </div>
 
@@ -210,14 +217,15 @@ export default function UtilajeForm() {
               <label htmlFor="code" className=" font-medium text-black">
                   Utilaj
               </label>
-              <input
+              <textarea
+                  rows={3}
                   type="text"
                   id="utilaj"
                   name="utilaj"
                   value={formData.utilaj}
                   onChange={handleChange}
-                  className="px-2 outline-none text-center py-2 min-w-64  rounded-lg shadow-sm "
-                  placeholder="Utilaj"
+                  className="px-2 w-full outline-none resize-none   py-2  rounded-lg shadow-sm "
+            
               />
             </div>
             {/* Descriere */}
@@ -225,15 +233,15 @@ export default function UtilajeForm() {
                 <label htmlFor="code" className=" font-medium text-black">
                     Descriere
                 </label>
-                <input
-                    type="text"
-                    id="descriere_utilaj"
-                    name="descriere_utilaj"
-                    value={formData.descriere_utilaj}
-                    onChange={handleChange}
-                    className="px-2 outline-none text-center py-2 w-full rounded-lg shadow-sm "
-                    placeholder="Descriere"
-                />
+                <textarea
+                  type="text"
+                  rows={3}
+                  id="descriere_utilaj"
+                  name="descriere_utilaj"
+                  value={formData.descriere_utilaj}
+                  onChange={handleChange}
+                  className="px-2 w-full resize-none outline-none py-2  rounded-lg shadow-sm "
+              />
             </div>
 
           {/* Status Input */}
@@ -248,7 +256,6 @@ export default function UtilajeForm() {
                   value={formData.status_utilaj}
                   onChange={handleChange}
                   className="px-2 w-full outline-none text-center py-2  rounded-lg shadow-sm "
-                  placeholder="Status"
               />
           </div>
           <div className="flex flex-col items-center">
@@ -263,7 +270,7 @@ export default function UtilajeForm() {
                 className="px-4 py-2 border  rounded-lg outline-none shadow-sm "
               >
                 <option value="U">U</option>
-                <option value="ora">ora</option>
+                <option value="oră">Oră</option>
               </select>
             </div>
             {/* cost amortizare */}
@@ -278,15 +285,14 @@ export default function UtilajeForm() {
                   maxLength={8}
                   value={formData.cost_amortizare}
                   onChange={handleChange}
-                  className=" px-2 py-2  text-center max-w-32 w-full outline-none rounded-lg shadow-sm "
-                  placeholder="Amortizare"
+                  className=" px-2 py-2  text-center max-w-40 w-full outline-none rounded-lg shadow-sm "
               />
           </div>
 
            {/* Pret */}
             <div className="flex flex-col items-center">
               <label className=" font-medium text-black">
-                 Pret
+                 Preț
               </label>
               <input
                   type="text" 
@@ -296,7 +302,6 @@ export default function UtilajeForm() {
                   value={formData.pret_utilaj}
                   onChange={handleChange}
                   className=" px-2 py-2  text-center max-w-32 w-full outline-none rounded-lg shadow-sm "
-                  placeholder="Pret"
               />
             </div>
 
@@ -313,26 +318,25 @@ export default function UtilajeForm() {
                   value={formData.cantitate}
                   onChange={handleChange}
                   className=" px-2 py-2  text-center max-w-32 w-full outline-none rounded-lg shadow-sm "
-                  placeholder="Cantitate"
               />
           </div>
           {
               !selectedDelete && !selectedEdit ?
 
               <div className="flex text-base  justify-center items-center ">
-                <button type="submit" className="bg-green-500 hover:bg-green-600 text-black  mt-6 px-2 py-2 flex justify-center  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-2"/> Submit</button>
+                <button type="submit" className="bg-green-500 hover:bg-green-600 text-black  mt-6 px-2 py-2 flex justify-center  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-2"/>Încarcă</button>
               </div>
               :
               !selectedEdit ?
 
               <div className="flex gap-2 text-base justify-center items-center ">
-                <button onClick={(e) => deleteRow(e)} className="bg-red-500 hover:bg-red-600 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faCancel} className="pr-2"/> Delete</button>
-                <button onClick={(e) => cancelDelete(e)} className="bg-green-500 hover:bg-green-600 text- text mt-6 px-4 py-2 flex  items-center rounded-lg">Cancel</button>
+                <button onClick={(e) => deleteRow(e)} className="bg-red-500 hover:bg-red-600 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faCancel} className="pr-2"/>Șterge</button>
+                <button onClick={(e) => cancelDelete(e)} className="bg-green-500 hover:bg-green-600 text- text mt-6 px-4 py-2 flex  items-center rounded-lg">Anulează</button>
               </div>
               :
               <div className="flex gap-2  text-base justify-center items-center ">
-                <button  type="submit" className="bg-green-500 hover:bg-green-600 text-black  mt-6 px-2 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-2"/> Submit</button>
-                <button  onClick={(e) => cancelEdit(e)} className="bg-red-500 hover:bg-red-600 text-black  mt-6 px-2 py-2 flex  items-center rounded-lg"> Cancel</button>
+                <button  type="submit" className="bg-green-500 hover:bg-green-600 text-black  mt-6 px-2 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-2"/>Editează</button>
+                <button  onClick={(e) => cancelEdit(e)} className="bg-red-500 hover:bg-red-600 text-black  mt-6 px-2 py-2 flex  items-center rounded-lg">Anulează</button>
               </div>
           }
           

@@ -21,10 +21,9 @@ const upload = multer({ storage: storage });
 router.post('/api/Materiale', upload.single('poza'), async (req, res) => {
    
   try {
-    const {furnizor, clasa_material, cod_produs, denumire_produs, descriere_produs, unitate_masura, cost_unitar, cost_preferential, pret_vanzare} = req.body;
+    const {furnizor, clasa_material, cod_produs, denumire_produs, descriere_produs, unitate_masura, cost_unitar, cost_preferential, pret_vanzare, tip_material} = req.body;
     //  console.log(furnizor, clasa_material, cod_produs, denumire_produs, descriere_produs, unitate_masura, cost_unitar, cost_preferential, pret_vanzare)
     // // Verificăm dacă toate câmpudsarile sunt prezente
-    console.log(req.file);
     if (!furnizor || !clasa_material) {
       return res.status(400).json({ message: 'Toate câmpurile sunt necesare!' });
     }
@@ -36,12 +35,12 @@ router.post('/api/Materiale', upload.single('poza'), async (req, res) => {
     }
 
     // Interogare SQL pentru a introduce datele în baza de date
-    const sql = 'INSERT INTO Materiale (furnizor, clasa_material, cod_produs, denumire_produs, descriere_produs, photoUrl, unitate_masura, cost_unitar, cost_preferential, pret_vanzare) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+    const sql = 'INSERT INTO Materiale (furnizor, clasa_material, cod_produs, denumire_produs, descriere_produs, photoUrl, unitate_masura, cost_unitar, cost_preferential, pret_vanzare, tip_material) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
 
     // Executăm interogarea
-    const [result] = await global.db.execute(sql, [furnizor, clasa_material, cod_produs, denumire_produs, descriere_produs, photoPath, unitate_masura, cost_unitar, cost_preferential, pret_vanzare]);
+    const [result] = await global.db.execute(sql, [furnizor, clasa_material, cod_produs, denumire_produs, descriere_produs, photoPath, unitate_masura, cost_unitar, cost_preferential, pret_vanzare, tip_material]);
 
-    res.status(201).json({ message: 'Stire adăugata cu succes!', id: result.insertId });
+    res.status(201).json({ message: 'Material adăugata cu succes!', id: result.insertId });
   } catch (error) {
     console.error('Eroare server:', error);
     res.status(500).json({ message: 'A apărut o eroare internă.' });
@@ -52,9 +51,8 @@ router.post('/api/Materiale', upload.single('poza'), async (req, res) => {
 
 router.get('/api/materiale', async (req, res) => {
   try {
-      const { offset = 0, limit = 10, cod = '', denumire = '', descriere = '' } = req.query;
-
-      // Validate limit and offset to be integers
+      const { offset = 0, limit = 10, cod = '', denumire = '', descriere = '' , tip_material = "" , furnizor = "" , clasa_material = ""} = req.query;
+      const asc_denumire = req.query.asc_denumire === "true";
       const parsedOffset = parseInt(offset, 10);
       const parsedLimit = parseInt(limit, 10);
 
@@ -72,6 +70,18 @@ router.get('/api/materiale', async (req, res) => {
           whereClauses.push(`cod_produs LIKE ?`);
           queryParams.push(`%${cod}%`);
       }
+      if (clasa_material.trim() !== "") {
+        whereClauses.push(`clasa_material LIKE ?`);
+        queryParams.push(`%${clasa_material}%`);
+      }
+      if (furnizor.trim() !== "") {
+        whereClauses.push(`furnizor LIKE ?`);
+        queryParams.push(`%${furnizor}%`);
+      }
+      if (tip_material.trim() !== "") {
+        whereClauses.push(`tip_material = ?`);
+        queryParams.push(tip_material);
+      }
 
       if (denumire.trim() !== "") {
           whereClauses.push(`denumire_produs LIKE ?`);
@@ -87,11 +97,12 @@ router.get('/api/materiale', async (req, res) => {
       if (whereClauses.length > 0) {
           query += ` WHERE ${whereClauses.join(' AND ')}`;
       }
+      if(asc_denumire == true){
+        query += ` ORDER BY denumire_produs ASC LIMIT ? OFFSET ?`;
+      }
+      else query += ` LIMIT ? OFFSET ?`;
 
-      // Add pagination to the query
-      query += ` LIMIT ? OFFSET ?`;
       queryParams.push(parsedLimit, parsedOffset * parsedLimit);
-
       // Execute the query with filters and pagination
       const [rows] = await global.db.execute(query, queryParams);
 
@@ -122,7 +133,7 @@ router.get('/api/materiale', async (req, res) => {
 
 router.get('/api/materialeLight', async (req, res) => {
   try {
-      const {cod = '', denumire = '', clasa = "" } = req.query;
+      const {cod = '', denumire = '', clasa = "" , tip_material = "" } = req.query;
 
       // Base query
       let query = `SELECT * FROM Materiale`;
@@ -145,10 +156,17 @@ router.get('/api/materialeLight', async (req, res) => {
           queryParams.push(`%${clasa}%`);
       }
 
+      if (tip_material.trim() !== "") {
+        whereClauses.push(`tip_material = ?`);
+        queryParams.push(tip_material);
+    }
+
       // If filters exist, add them to the query
       if (whereClauses.length > 0) {
           query += ` WHERE ${whereClauses.join(' AND ')}`;
       }
+
+      query += ` ORDER BY denumire_produs ASC`;
 
       // Execute the query with filters and pagination
       const [rows] = await global.db.execute(query, queryParams);
@@ -218,8 +236,7 @@ router.delete('/api/materiale/:id', async (req, res) => {
 // Route for editing a material
 router.put('/api/materiale/:id', upload.single('poza'), async (req, res) => {
     const { id } = req.params;
-    const { furnizor, clasa_material, cod_produs, denumire_produs, descriere_produs, unitate_masura, cost_unitar, cost_preferential, pret_vanzare } = req.body;
-
+    const { furnizor, clasa_material, cod_produs, denumire_produs, descriere_produs, unitate_masura, cost_unitar, cost_preferential, pret_vanzare, tip_material} = req.body;
     try {
         if (!id || isNaN(id)) {
             return res.status(400).json({ message: "Invalid or missing ID." });
@@ -258,10 +275,10 @@ router.put('/api/materiale/:id', upload.single('poza'), async (req, res) => {
         // Step 3: Update the material in the database
         const updateQuery = `
             UPDATE Materiale 
-            SET furnizor = ?, clasa_material = ?, cod_produs = ?, denumire_produs = ?, descriere_produs = ?, photoUrl = ?, unitate_masura = ?, cost_unitar = ?, cost_preferential = ?, pret_vanzare = ?
+            SET furnizor = ?, clasa_material = ?, cod_produs = ?, denumire_produs = ?, descriere_produs = ?, photoUrl = ?, unitate_masura = ?, cost_unitar = ?, cost_preferential = ?, pret_vanzare = ?, tip_material = ?
             WHERE id = ?`;
 
-        const [result] = await global.db.execute(updateQuery, [furnizor, clasa_material, cod_produs, denumire_produs, descriere_produs, newPhotoPath, unitate_masura, cost_unitar, cost_preferential, pret_vanzare, id]);
+        const [result] = await global.db.execute(updateQuery, [furnizor, clasa_material, cod_produs, denumire_produs, descriere_produs, newPhotoPath, unitate_masura, cost_unitar, cost_preferential, pret_vanzare, tip_material, id]);
 
         if (result.affectedRows === 0) {
             return res.status(404).json({ message: "No changes made, or material not found." });

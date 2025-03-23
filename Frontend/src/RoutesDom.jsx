@@ -8,7 +8,8 @@ import AddUsers from './AddUsers/AddUsersRoute';
 import { ArticlesProvider } from './context/ArticlesContext';
 import Echipa from './Home/Echipa';
 import News from './Home/News';
-import AddEchipa from './Home/AddHome';
+import AddEchipa from './Home/AddEchipa';
+import AddNews from './Home/AddNews';
 import NavbarDefaultHome from './MainElements/NavbarDefaultHome';
 import Contact from './MainPages/Contact';
 import Test from './test/Test';
@@ -17,6 +18,7 @@ import DatabaseMainCategories from './BazaDeDate/DatabaseMainCategories';
 import RetetaForm from './BazaDeDate/Retete/RetetaForm'
 import { RetetaProvider } from './context/RetetaContext';
 import { AuthContext } from './context/TokenContext';
+import SantiereRoutes from './BazaDeDate/Santiere/SantiereRoutes';
 
 export default function RoutesDom() {
 
@@ -32,12 +34,13 @@ export default function RoutesDom() {
           <Route path="/" element={<Homepage/>} />
           <Route path="/addArticles" element={<ProtectedRoute allowedRoles = {['ofertant']}><RetetaProvider><RetetaForm/></RetetaProvider></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute allowedRoles = {["ofertant","angajat","beneficiar"]}><Settings/></ProtectedRoute>}/>
-          <Route path="/AddEchipa" element={<ProtectedRoute allowedRoles = {["ofertant"]}><AddEchipa/></ProtectedRoute>}/>
-          <Route path="/AddHome" element={<ProtectedRoute allowedRoles = {["ofertant"]}><AddEchipa/></ProtectedRoute>}/>
-          <Route path="/Santiere" element={<ProtectedRoute allowedRoles = {["ofertant"]}><Santiere/></ProtectedRoute>}/>
+          <Route path="/Santiere/:idUser/:idSantier" element={<ProtectedRoute allowedRoles = {["ofertant"]}><SantiereRoutes/></ProtectedRoute>}/>
           <Route path="/Echipa" element={<Echipa/>}/>
           <Route path="/News" element={<News/>}/>
           <Route path="/Contact" element={<Contact/>}/>
+
+          <Route path="/AddEchipa" element={<ProtectedRoute allowedRoles = {["ofertant"]}><AddEchipa/></ProtectedRoute>}/>
+          <Route path="/AddNews" element={<ProtectedRoute allowedRoles = {["ofertant"]}><AddNews/></ProtectedRoute>}/>
 
           <Route path="/addManopere" element={<ProtectedRoute allowedRoles = {["ofertant"]}><DatabaseMainCategories dateType={1}/></ProtectedRoute>}/>
           <Route path="/addMateriale" element={<ProtectedRoute allowedRoles = {["ofertant"]}><DatabaseMainCategories dateType={2}/></ProtectedRoute>}/>

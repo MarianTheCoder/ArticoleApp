@@ -13,6 +13,7 @@ const ManoperaRoutes = require("./Routes/ManoperaRoutes");
 const MaterialeRoutes = require("./Routes/MaterialeRoutes");
 const UtilajeRoutes = require("./Routes/UtilajeRoutes");
 const RetetaRoutes = require("./Routes/RetetaRoutes");
+const TransportRoutes = require("./Routes/TransportRoutes");
 
 const app = express();
 const port = 3000;
@@ -99,11 +100,29 @@ async function initializeDatabase() {
     unitate_masura VARCHAR(20) NOT NULL,
     cost_unitar DECIMAL(10, 2) NOT NULL,
     cantitate DECIMAL(10, 0) NOT NULL,
-    data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_cod_COR (cod_COR),
+    INDEX idx_ocupatie (ocupatie)
   );
 `;
   await pool.execute(createManoperaTableQuery);
-  console.log("News table created or already exists.");
+  console.log("Manopera table created or already exists.");
+  //tabel Transport
+  const createTransportTableQuery = `
+  CREATE TABLE IF NOT EXISTS Transport (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    cod_transport VARCHAR(255) NOT NULL,
+    clasa_transport VARCHAR(255) NOT NULL,
+    transport TEXT NOT NULL, 
+    unitate_masura VARCHAR(20) NOT NULL,
+    cost_unitar DECIMAL(10, 2) NOT NULL,
+    data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_cod_transport (cod_transport),
+    INDEX idx_clasa_transport (clasa_transport)
+  );
+`;
+  await pool.execute(createTransportTableQuery);
+  console.log("Transport table created or already exists.");
 
   //tabel materiale
   const createMaterialeTableQuery = `
@@ -112,6 +131,7 @@ async function initializeDatabase() {
           furnizor VARCHAR(255) NOT NULL,
           clasa_material VARCHAR(255) NOT NULL,
           cod_produs VARCHAR(50) NOT NULL,
+          tip_material VARCHAR(50) NOT NULL,
           denumire_produs VARCHAR(255) NOT NULL,
           descriere_produs TEXT,
           photoUrl TEXT NOT NULL,
@@ -119,6 +139,9 @@ async function initializeDatabase() {
           cost_unitar DECIMAL(10, 2) NOT NULL,
           cost_preferential DECIMAL(10, 2),
           pret_vanzare DECIMAL(10, 2) NOT NULL,
+          INDEX idx_cod_produs (cod_produs),
+          INDEX idx_denumire_produs (denumire_produs),
+          INDEX idx_tip_material (tip_material),
           data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   );
 `;
@@ -137,6 +160,8 @@ async function initializeDatabase() {
     cost_amortizare DECIMAL(10, 2) NOT NULL,
     pret_utilaj DECIMAL(10, 2) NOT NULL,
     cantitate DECIMAL(10, 0) NOT NULL,
+    INDEX idx_utilaj (utilaj),
+    INDEX idx_descriere_utilaj (descriere_utilaj),
     data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   );
 `;
@@ -155,6 +180,9 @@ async function initializeDatabase() {
       clasa_reteta VARCHAR(255) NOT NULL,
       articol TEXT NOT NULL,
       unitate_masura VARCHAR(255) NOT NULL,
+      INDEX idx_cod_reteta (cod_reteta),
+      INDEX idx_clasa_reteta (clasa_reteta),
+      INDEX idx_articol (articol),
       data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `;
@@ -174,6 +202,20 @@ async function initializeDatabase() {
   `;
   await pool.execute(createReteteManoperaTableQuery);
   console.log("Retete_Manopera table created or already exists.");
+
+  const createReteteTransportTableQuery = `
+  CREATE TABLE IF NOT EXISTS Retete_transport (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    reteta_id INT NOT NULL,
+    transport_id INT NOT NULL,
+    UNIQUE (reteta_id, transport_id),
+    cantitate DECIMAL(10, 2) NOT NULL,  
+    FOREIGN KEY (reteta_id) REFERENCES Retete(id),
+    FOREIGN KEY (transport_id) REFERENCES Transport(id)
+  );
+`;
+await pool.execute(createReteteTransportTableQuery);
+console.log("Retete_Transport table created or already exists.");
   
   const createReteteMaterialeTableQuery = `
     CREATE TABLE IF NOT EXISTS Retete_materiale (
@@ -230,7 +272,7 @@ async function initializeDatabase() {
 
 async function insertInitialAdminUser() {
   try {
-    const email = 'admin@example.com';
+    const email = 'admin@btbtrust.com';
     const name = 'admin';
     const plainPassword = 'admin';
     const role = 'ofertant';
@@ -266,6 +308,7 @@ app.use('/Manopera', ManoperaRoutes);
 app.use('/Materiale', MaterialeRoutes);
 app.use('/Utilaje', UtilajeRoutes);
 app.use('/Retete', RetetaRoutes);
+app.use('/Transport', TransportRoutes);
 
 
 // Serve static files from the React app

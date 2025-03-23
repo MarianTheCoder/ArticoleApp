@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import api from '../../api/axiosAPI';
 import { flexRender, getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons';
+import { faArrowDownAZ, faArrowUpAZ, faFileCirclePlus, faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons';
 
 
 export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDelete, setSelectedEdit, setFormData, selectedEdit, cancelEdit, cancelDelete}) {
@@ -11,6 +11,8 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
     const [totalItems, setTotalItems] = useState(0);
     const [currentOffset, setCurrentOffset] = useState(0);
     const [limit, setLimit] = useState(20);
+    const [ascendent ,setAscendent] = useState(false);
+    
 
     const [filters, setFilters] = useState({
         cod_COR: '',
@@ -26,9 +28,15 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                     limit,
                     cod_COR: filters.cod_COR, // Pass cod_COR as a query parameter
                     ocupatie: filters.ocupatie, // Add any other filters here
+                    asc_ocupatie: ascendent,
                 },
             });
-            if(response.data.data.length == 0) return;
+            if(response.data.data.length == 0){
+                setManopere([]);
+                setTotalItems(0);
+                setCurrentOffset(0);
+                return;
+            };
             if(offset >= Math.ceil(response.data.totalItems/limit)){
                 fetchManopere(0, limit);
             }
@@ -52,7 +60,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
             else fetchManopere(0, limit);
         }, 500)
         return () => clearTimeout(getData);
-      }, [filters,limit]);
+      }, [filters,limit,ascendent]);
 
 
 
@@ -68,8 +76,8 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
         setCurrentOffset((prev) => {
             // Calculate the new offset by adding `val` to the current offset
             const newOffset = Math.max(prev + val, 0); // Ensure offset does not go below 0
-            // Call fetchManopere with the new offset
-            fetchManopere(newOffset, limit);
+            if(limit == 0) fetchManopere(newOffset, 10);
+            else fetchManopere(newOffset, limit);
             // Return the new offset to update the state
             return newOffset;
         });
@@ -84,11 +92,14 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
 
     //handle selected edit/delete
     const handleSelectedForDelete = (e, id) => {
+        e.stopPropagation();
         setSelectedDelete(id)// Toggle the dropdown based on the current state   
         cancelEdit(e);
     }
 
-    const handleSelectedForEdit = (passedRow) => {
+    const handleSelectedForEdit = (e,passedRow) => {
+        e.stopPropagation();
+        setSelectedDelete(null)
         setSelectedEdit(passedRow.id)// Toggle the dropdown based on the current state
         setFormData({
             cod_COR: passedRow.cod_COR,
@@ -97,7 +108,17 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
             cost_unitar: passedRow.cost_unitar,
             cantitate: passedRow.cantitate,
         })
-        setLastSelectedIndex(null);
+    }
+
+    const handleSelectedForDuplicate = async (e,passedRow) => {
+        e.stopPropagation();
+        setFormData({
+            cod_COR: passedRow.cod_COR,
+            ocupatie: passedRow.ocupatie,
+            unitate_masura: passedRow.unitate_masura,
+            cost_unitar: passedRow.cost_unitar,
+            cantitate: passedRow.cantitate,
+        })
     }
 
     //copy mechanics
@@ -138,17 +159,16 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
         const selectedRowIds = Object.keys(selectedRows).filter(rowId => selectedRows[rowId]);
     
         if (selectedRowIds.length === 0) {
-            alert("No rows selected!");
             return;
         }
-    
+        
         const copiedData = selectedRowIds.map(rowId => {
             const row = rows.find(r => r.index === parseInt(rowId)); // Find row by rowId
             if (!row) return ''; // If row not
             const rowData = columns.map(column => row.getValue(column.accessorKey) || ''); // Get the row data using accessorKey for each column
         return rowData.join('\t'); // Join the row data with a tab
         }).join('\n'); // Join all rows with a newline
-
+        console.log(copiedData)
         // Copy the TSV formatted data to the clipboard
         navigator.clipboard.writeText(copiedData).then(() => {
             console.log("Selected rows copied to clipboard!");
@@ -189,18 +209,28 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
     };
 
     const columns = useMemo(() => [
-        { accessorKey: "cod_COR", header: "Cod COR" },
-        { accessorKey: "ocupatie", header: "Ocupatie", size:300 },
-        { accessorKey: "unitate_masura", header: "Unitate", size:70 },
+        { accessorKey: "cod_COR", header: "Cod COR",size:50 },
+        { 
+            accessorKey: "ocupatie", 
+            header: (
+                <div className="flex items-center w-[95%] justify-between text-black ">
+                    <span>Ocupație</span>
+                    <FontAwesomeIcon onClick={() => setAscendent((prev) => prev == false ? true : false)} className="text-xl border border-black p-2  rounded-full  cursor-pointer" icon={!ascendent ? faArrowUpAZ : faArrowDownAZ} /> 
+                </div>
+              ),
+            size:300 
+        },
+        { accessorKey: "unitate_masura", header: "Unitate", size:40 },
         { accessorKey: "cost_unitar", header: "Cost unitar", size:100 },
         { accessorKey: "cantitate", header: "Cantitate", size:100},
         { 
             accessorKey: "threeDots", 
-            header: "Optiuni",
+            header: "Opțiuni",
             cell: ({ row }) => (
-                <div className=' dropdown-container w-full relative flex '> 
-                    <div className='text-xl relative w-full py-2 select-none items-center justify-evenly gap-1 flex'>
-                        <FontAwesomeIcon onClick={() =>  handleSelectedForEdit(row.original)}  className=' text-green-500 hover:text-green-600 cursor-pointer' icon={faPenToSquare}/>
+                <div className='w-full relative flex '> 
+                    <div className='text-xl relative w-full py-2 select-none items-center justify-evenly gap-2 flex'>
+                        <FontAwesomeIcon onClick={(e) =>  handleSelectedForEdit(e,row.original)}  className=' text-green-500 hover:text-green-600 cursor-pointer' icon={faPenToSquare}/>
+                        <FontAwesomeIcon onClick={(e) => handleSelectedForDuplicate(e,row.original)}  className=' text-blue-500 hover:text-blue-600 cursor-pointer' icon={faFileCirclePlus}/>
                         <FontAwesomeIcon onClick={(e) =>  handleSelectedForDelete(e, row.original.id)} className=' text-red-500 hover:text-red-600 cursor-pointer' icon={faTrashCan}/>
                     </div>
                 </div>
@@ -212,7 +242,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                 },
             },
         },
-    ], [selectedDelete]);
+    ], [selectedDelete, ascendent]);
 
     const table = useReactTable({
         data: manopere,
@@ -231,36 +261,34 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
         {manopere &&
             <div className="px-6 pb-4 scrollbar-webkit text-white h-full flex flex-col justify-between">
             <div className="overflow-auto  scrollbar-webkit">
-                <table className="w-full  border-separate border-spacing-0 ">
+                <table className="w-full   border-separate border-spacing-0 ">
                     <thead className='top-0 w-full sticky bg-white  z-10 '>
                         <tr className='text-black'>
-                                    <th className='border-b border-r border-black'>
+                                    <th className='border-b bg-white border-r border-black'>
                                         <input
                                             type="text"
                                             name="cod_COR"
                                             value={filters.cod_COR}
                                             onChange={handleInputChange}
-                                            className="p-2 w-full outline-none py-3
-                                            
-                                            "
-                                            placeholder="Filter by Cod COR"
+                                            className="p-2 w-full outline-none py-3"
+                                            placeholder="Filtru COR"
                                         />
                                     </th>
-                                    <th className='border-b border-r border-black'>
+                                    <th className='border-b bg-white border-r border-black'>
                                         <input
                                             type="text"
                                             name="ocupatie"
                                             value={filters.ocupatie}
                                             onChange={handleInputChange}
                                             className="p-2 w-full outline-none  py-3"
-                                            placeholder="Filter by Ocupatie"
+                                            placeholder="Filtru Ocupație"
                                         />
                                     </th>
                                     <th className=" bg-white border-b border-r border-black" colSpan={4}>
                                        <div className=' flex  justify-center items-center'>
-                                            <p className='px-2'>Arata</p>
+                                            <p className='px-2'>Arată</p>
                                             <input className='border border-black p-1 w-12 text-center rounded-lg' type="text" onChange={(e) => handleLimit(e)} value={limit} name="" id="" />
-                                            <p className='px-2'>randuri</p>
+                                            <p className='px-2'>rânduri</p>
                                        </div>
                                     </th>
                                     
@@ -271,9 +299,9 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                        
                             <th key={header.id}  className={`relative border-b-2 border-r border-black   bg-white p-2 py-4 ${header.column.id === "threeDots" ? "text-center" : ""} `}     
                             style={{
-                                width: header.column.id === "threeDots" ? '45px' : `${header.getSize()}px`, // Enforce width for "Options"
-                                minWidth: header.column.id === "threeDots" ? '45px' : '', // Ensure no shrinkage
-                                maxWidth: header.column.id === "threeDots" ? '45px' : '', // Ensure no expansion
+                                width: header.column.id === "threeDots" ? '3.5rem' : `${header.getSize()}px`, // Enforce width for "Options"
+                                minWidth: header.column.id === "threeDots" ? '3.5rem' : '', // Ensure no shrinkage
+                                maxWidth: header.column.id === "threeDots" ? '3.5rem' : '', // Ensure no expansion
                             }}>
                                 <div
                                 onMouseDown={header.getResizeHandler()}
@@ -289,7 +317,16 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                   </tr>
                 ))}
               </thead>
-              <tbody className=' relative z-0'>
+            {manopere.length == 0 ?
+            <tbody className='relative z-0'>
+                <tr>
+                    <td className='bg-white text-black h-12' colSpan={6}>
+                        <div className=' flex justify-center items-center w-full text-lg font-semibold h-full'>Nici un rezultat</div>
+                    </td>
+                </tr>
+            </tbody>
+            :
+            <tbody className=' relative z-0'>
                 {table.getRowModel().rows.map((row,index,rows) => (
                     <tr key={row.id} onClick = {(event) =>!selectedDelete && !selectedEdit && handleRowClick(row,event,rows)}  className={`dropdown-container  text-black 
                         ${selectedDelete || selectedEdit ? row.original.id == selectedDelete ? "bg-red-300" : row.original.id == selectedEdit ? "bg-green-300" : 
@@ -301,29 +338,33 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                         {row.getVisibleCells().map((cell) => (
                             <td
                                 key={cell.id}
-                                className={`  border-b border-r break-words max-w-72  relative border-black p-1 px-3`}
+                                className={`  border-b border-r break-words max-w-72 whitespace-pre-line  relative border-black p-1 px-3`}
                                 style={cell.column.columnDef.meta?.style} // Apply the custom style
                             >
-                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                <div className="h-full w-full overflow-hidden ">
+                                    <div className="max-h-12  w-full  grid grid-cols-1 items-center  overflow-auto  scrollbar-webkit">
+                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                    </div>
+                                </div>
                             </td>
                         ))}
                     </tr>
                 ))}
-                </tbody>
+                </tbody>}
             </table>
             </div>
             {/* Pagination Controls */}
             <div className="mt-4 flex items-center justify-between">
               <button
-                className="p-2 min-w-24 bg-white text-black m rounded"
+                className="p-2 min-w-24 bg-white text-black rounded-lg"
                 onClick={() => setPage(-1)}
                 disabled={currentOffset === 0}
               >
-                Inapoi
+                Înapoi
               </button>
-              <span className=' font-bold'>Pagina {currentOffset+1}</span>
-              <button className="p-2 min-w-24 bg-white text-black m rounded" onClick={() => setPage(1)} disabled={currentOffset+1 >= Math.ceil(totalItems/limit)}>
-                Inainte
+              <span className=''>Pagina <span className=' font-semibold tracking-widest'>{currentOffset+1}/{Math.ceil(totalItems/limit) == Infinity ? Math.ceil(totalItems/10) : Math.ceil(totalItems/limit)}</span></span>
+              <button className="p-2 min-w-24 bg-white text-black rounded-lg" onClick={() => setPage(1)} disabled={currentOffset+1 >= Math.ceil(totalItems/limit)}>
+                Înainte
               </button>
             </div>
           </div>

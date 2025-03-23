@@ -21,10 +21,7 @@ const upload = multer({ storage: storage });
 router.post('/api/utilaje', upload.single('poza'), async (req, res) => {
     try {
       // Destructure data from the body
-      const { clasa_utilaj, utilaj, descriere_utilaj, status_utilaj, cost_amortizare, pret_utilaj, unitate_masura, cantitate } = req.body;
-      
-      // Log file data (image)
-      console.log(req.file);
+      const { clasa_utilaj, utilaj, descriere_utilaj, status_utilaj, cost_amortizare, pret_utilaj, unitate_masura, cantitate} = req.body;
   
       // Validate required fields
       if (!clasa_utilaj || !utilaj || !descriere_utilaj || !status_utilaj || !cost_amortizare || !pret_utilaj || !cantitate || !unitate_masura) {
@@ -52,8 +49,8 @@ router.post('/api/utilaje', upload.single('poza'), async (req, res) => {
         status_utilaj,
         cost_amortizare,
         pret_utilaj,
+        cantitate,
         unitate_masura,
-        cantitate
       ]);
   
       // Respond with success message
@@ -67,6 +64,7 @@ router.post('/api/utilaje', upload.single('poza'), async (req, res) => {
 router.get('/api/utilaje', async (req, res) => {
   try {
       const { offset = 0, limit = 10, clasa_utilaj  = '', utilaj = '', descriere_utilaj  = '' } = req.query;
+      const asc_utilaj = req.query.asc_utilaj === "true";
 
       // Validate limit and offset to be integers
       const parsedOffset = parseInt(offset, 10);
@@ -102,8 +100,10 @@ router.get('/api/utilaje', async (req, res) => {
           query += ` WHERE ${whereClauses.join(' AND ')}`;
       }
 
-      // Add pagination to the query
-      query += ` LIMIT ? OFFSET ?`;
+      if(asc_utilaj == true){
+        query += ` ORDER BY utilaj ASC LIMIT ? OFFSET ?`;
+      }
+      else query += ` LIMIT ? OFFSET ?`;
       queryParams.push(parsedLimit, parsedOffset * parsedLimit);
 
       // Execute the query with filters and pagination
@@ -163,6 +163,8 @@ router.get('/api/utilajeLight', async (req, res) => {
       if (whereClauses.length > 0) {
           query += ` WHERE ${whereClauses.join(' AND ')}`;
       }
+
+      query += ` ORDER BY utilaj ASC`;
 
       // Execute the query with filters and pagination
       const [rows] = await global.db.execute(query, queryParams);

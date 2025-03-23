@@ -92,43 +92,6 @@ const addReteta = async (req,res) =>{
           formFirst.unitate_masura,
         ]);
     
-        // const retetaId = result.insertId; // The ID of the saved retete
-        // // Save the selected manopere with quantity
-        // for (const { id, cantitate } of manopereSelected) {
-        //   const sqlManopera = `
-        //     INSERT INTO Retete_manopera (reteta_id, manopera_id, cantitate)
-        //     VALUES (?, ?, ?)
-        //   `;
-        //   await global.db.execute(sqlManopera, [retetaId, id, cantitate]);
-        // }
-    
-        // // Save the selected materiale with quantity
-        // for (const { id, cantitate } of materialeSelected) {
-        //   const sqlMateriale = `
-        //     INSERT INTO Retete_materiale (reteta_id, materiale_id, cantitate)
-        //     VALUES (?, ?, ?)
-        //   `;
-        //   await global.db.execute(sqlMateriale, [retetaId, id, cantitate]);
-        // }
-    
-        // // Save the selected transport with quantity
-        // for (const { id, cantitate } of transportSelected) {
-        //   const sqlTransport = `
-        //     INSERT INTO Retete_transport (reteta_id, transport_id, cantitate)
-        //     VALUES (?, ?, ?)
-        //   `;
-        //   await global.db.execute(sqlTransport, [retetaId, id, cantitate]);
-        // }
-    
-        // // Save the selected utilaje with quantity
-        // for (const { id, cantitate } of utilajeSelected) {
-        //   const sqlUtilaje = `
-        //     INSERT INTO Retete_utilaje (reteta_id, utilaje_id, cantitate)
-        //     VALUES (?, ?, ?)
-        //   `;
-        //   await global.db.execute(sqlUtilaje, [retetaId, id, cantitate]);
-        // }
-    
         res.status(201).json({ message: "Reteta saved successfully!" });
       } catch (error) {
         console.error("Error saving retete:", error);
@@ -217,6 +180,7 @@ const getSpecificReteta = async (req, res) => {
           r.cod_reteta, 
           r.articol, 
           r.unitate_masura, 
+
           m.id AS manopera_id, 
           m.cod_COR, 
           m.ocupatie,
@@ -227,11 +191,20 @@ const getSpecificReteta = async (req, res) => {
           mt.id AS materiale_id, 
           mt.denumire_produs, 
           mt.clasa_material, 
+          mt.tip_material, 
           mt.cod_produs, 
           mt.photoUrl AS material_photo, 
           mt.pret_vanzare, 
           mt.unitate_masura AS materiale_unitate_masura, 
           rm2.cantitate AS materiale_cantitate,
+
+          t.id AS transport_id, 
+          t.cod_transport, 
+          t.clasa_transport, 
+          t.transport, 
+          t.cost_unitar as transport_cost, 
+          t.unitate_masura AS transport_unitate_masura, 
+          rt.cantitate AS transport_cantitate,
 
           u.id AS utilaj_id, 
           u.utilaj, 
@@ -240,12 +213,16 @@ const getSpecificReteta = async (req, res) => {
           u.pret_utilaj, 
           u.unitate_masura AS utilaje_unitate_masura,
           ru.cantitate AS utilaj_cantitate
+
       FROM Retete r
       LEFT JOIN Retete_manopera rm ON r.id = rm.reteta_id
       LEFT JOIN Manopera m ON rm.manopera_id = m.id
 
       LEFT JOIN Retete_materiale rm2 ON r.id = rm2.reteta_id
       LEFT JOIN Materiale mt ON rm2.materiale_id = mt.id
+
+      LEFT JOIN Retete_transport rt ON r.id = rt.reteta_id
+      LEFT JOIN Transport t ON rt.transport_id = t.id
 
       LEFT JOIN Retete_utilaje ru ON r.id = ru.reteta_id
       LEFT JOIN Utilaje u ON ru.utilaje_id = u.id
@@ -293,6 +270,7 @@ const getSpecificReteta = async (req, res) => {
          materiale.push({
            whatIs:"Material",
            id: row.materiale_id,
+           tip_material: row.tip_material,
            articol: row.denumire_produs,
            clasa: row.clasa_material,
            cod: row.cod_produs,
@@ -310,11 +288,11 @@ const getSpecificReteta = async (req, res) => {
          transport.push({
            whatIs: "Transport",
            id: row.transport_id,
-           articol: row.transport_denumire,
+           clasa: row.clasa_transport,
+           cod: row.cod_transport,
+           articol: row.transport,
            cantitate: row.transport_cantitate,
-           unitate_masura: row.unitate_masura,
-           ///AICI BUBA
-
+           unitate_masura: row.transport_unitate_masura,
          });
          seenTransportIds.add(row.transport_id);
        }
@@ -371,10 +349,10 @@ const getSpecificReteta = async (req, res) => {
     `;
     await global.db.execute(deleteMaterialeQuery, [id]);
 
-    // const deleteTransportQuery = `
-    //   DELETE FROM Retete_transport WHERE reteta_id = ?
-    // `;
-    // await global.db.execute(deleteTransportQuery, [id]);
+    const deleteTransportQuery = `
+      DELETE FROM Retete_transport WHERE reteta_id = ?
+    `;
+    await global.db.execute(deleteTransportQuery, [id]);
 
     const deleteUtilajeQuery = `
       DELETE FROM Retete_utilaje WHERE reteta_id = ?
@@ -413,12 +391,12 @@ const deleteFromReteta = async (req, res) => {
       `;
       await global.db.execute(deleteMaterialeQuery, [id]);
     }
-    // else if(whatIs == "Transport"){
-    //   // const deleteTransportQuery = `
-    //   //   DELETE FROM Retete_transport WHERE reteta_id = ?
-    //   // `;
-    //   // await global.db.execute(deleteTransportQuery, [id]);
-    // }
+    else if(whatIs == "Transport"){
+      const deleteTransportQuery = `
+        DELETE FROM Retete_transport WHERE transport_id = ?
+      `;
+      await global.db.execute(deleteTransportQuery, [id]);
+    }
     else if(whatIs == "Utilaj"){
       const deleteUtilajeQuery = `
         DELETE FROM Retete_utilaje WHERE utilaje_id = ?

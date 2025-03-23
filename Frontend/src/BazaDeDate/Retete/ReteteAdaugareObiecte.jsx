@@ -4,13 +4,14 @@ import RetetaMateriale from './RetetaMateriale'
 import RetetaUtilaje from './RetetaUtilaje'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faX } from '@fortawesome/free-solid-svg-icons';
+import RetetaTransport from './RetetaTransport';
 
 export default function ReteteAdaugareObiecte({parentProps}) {
 
     const [clicked, setClicked] = useState(1);
 
   return (
-        <div className=" container absolute top-0 left-0 right-0 bottom-0 z-[200] h-full w-full flex flex-col items-center rounded-lg">
+        <div className=" containerZ  absolute top-0 left-0 right-0 bottom-0 z-[200] h-full w-full flex flex-col items-center rounded-lg">
             <div className='flex text-lg font-medium w-full justify-evenly containerWhiter py-4 '>
                 <button onClick={() => setClicked((prev) => prev == 1 ? 0 : 1)} className={`bg-white text-black  px-6 py-2 rounded-xl ${clicked == 1 ? "bg-gray-200 outline-2 outline" : ""} hover:bg-gray-200`}>
                     Manopera
@@ -34,7 +35,7 @@ export default function ReteteAdaugareObiecte({parentProps}) {
                 :
                 clicked == 2 ? <RetetaMateriale {...parentProps}/>
                 :
-                clicked == 3 ? ""
+                clicked == 3 ? <RetetaTransport {...parentProps}/>
                 :
                 clicked == 4 ? <RetetaUtilaje {...parentProps}/>
                 :

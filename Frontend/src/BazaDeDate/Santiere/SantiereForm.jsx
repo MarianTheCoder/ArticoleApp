@@ -127,7 +127,7 @@ export default function ManoperaForm() {
   return (
     <>
         <div className='h-screen w-full flex items-center justify-center'>
-            <div className="container  w-4/5 h-90h relative flex  flex-col items-center rounded-lg">
+            <div className="containerZ  w-4/5 h-90h relative flex  flex-col items-center rounded-lg">
 
 
     <div className='w-full containerWhiter'>

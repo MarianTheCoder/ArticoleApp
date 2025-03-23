@@ -25,6 +25,7 @@ export default function RetetaMateriale({setIsPopupOpen,
           clasa:"",
           cod: '',
           denumire: '',
+          tip_material: "",
         });
 
         const setCantitateHandler = (e) =>{
@@ -52,12 +53,13 @@ export default function RetetaMateriale({setIsPopupOpen,
 
         const fetchManopere = async () => {
             try {
-                if(materialeFilters.cod.trim().length >= 3 || materialeFilters.denumire.trim().length >= 3 || materialeFilters.clasa.trim().length >= 3){
+                if((materialeFilters.cod.trim().length >= 3 || materialeFilters.denumire.trim().length >= 3 || materialeFilters.clasa.trim().length >= 3) || materialeFilters.tip_material.trim().length >= 1){
                     const response = await api.get('/Materiale/api/materialeLight', {
                         params: {
                             cod: materialeFilters.cod, // Pass cod as a query parameter
                             clasa:materialeFilters.clasa,
-                            denumire: materialeFilters.denumire, // Add any other filters here
+                            denumire: materialeFilters.denumire, 
+                            tip_material: materialeFilters.tip_material 
                         },
                     });
                     setMateriale(response.data.data);
@@ -92,6 +94,7 @@ export default function RetetaMateriale({setIsPopupOpen,
         //
         //
         const columns = useMemo(() => [
+            { accessorKey: "tip_material", header: "Tip",size:40},
             { 
                 accessorKey: "photoUrl", 
                 header: "Poza",
@@ -109,7 +112,7 @@ export default function RetetaMateriale({setIsPopupOpen,
             },
             { accessorKey: "clasa_material", header: "Clasa",size:50},
             { accessorKey: "cod_produs", header: "Cod",size:50},
-            { accessorKey: "denumire_produs", header: "Denumire"},
+            { accessorKey: "denumire_produs", header: "Denumire",size:300},
             { accessorKey: "pret_vanzare", header: "Pret",size:50}
         ], []);
         
@@ -141,8 +144,26 @@ export default function RetetaMateriale({setIsPopupOpen,
     <>
         <div className=' flex flex-col h-full w-full overflow-hidden'>
             {/* Inputs for fetching materiale */}
-            <div className='grid font-medium grid-cols-[2fr_1fr_2fr] gap-4 p-4 pt-2 text-black containerWhiter w-full'>
-            <div className="flex flex-col w-full items-center ">
+            <div className='grid font-medium grid-cols-[1fr_2fr_1fr_2fr] gap-4 p-4 pt-2 text-black containerWhiter w-full'>
+
+                <div className="flex flex-col w-full items-center ">
+                      <label className=" text-black">
+                          Tip 
+                      </label>
+                      <select
+                            id="tip_material"
+                            name="tip_material"
+                            value={materialeFilters.tip_material}
+                            onChange={handleChangeFilterMateriale}
+                            className="px-2 outline-none text-center py-2  w-full  rounded-lg shadow-sm  "
+                        >
+                        <option value="Direct">Direct</option>
+                        <option value="Indirect">Indirect</option>
+                        <option value="">All</option>
+                    </select>
+                  </div>
+
+                <div className="flex flex-col w-full items-center ">
                       <label className=" text-black">
                           Clasa 
                       </label>
@@ -218,7 +239,7 @@ export default function RetetaMateriale({setIsPopupOpen,
                         materiale == null || materiale.length == 0 ?
                             <tbody>
                                 <tr>
-                                    <th className=' text-black border-b border-r border-black p-2 bg-white' colSpan={5}>Nici un Rezultat / Introdu minim 3 Caractere</th>
+                                    <th className=' text-black border-b border-r border-black p-2 bg-white' colSpan={6}>Nici un Rezultat / Introdu minim 3 Caractere</th>
                                 </tr>
                             </tbody>
                         :            

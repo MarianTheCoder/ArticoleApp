@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useMemo, useState } from 'react'
 import api from '../../api/axiosAPI';
 import { flexRender, getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowDown, faCancel, faChevronDown, faChevronRight, faCopy, faEllipsis, faL, faPenToSquare, faPlus, faTrashCan } from '@fortawesome/free-solid-svg-icons';
+import { faArrowDown, faCancel, faCar, faChevronDown, faChevronRight, faCopy, faEllipsis, faFolder, faL, faPenToSquare, faPerson, faPlus, faTrashCan, faTrowelBricks, faTruck, faUser } from '@fortawesome/free-solid-svg-icons';
 import { RetetaContext } from '../../context/RetetaContext';
 import photoAPI from '../../api/photoAPI';
 import ReteteAdaugareObiecte from './ReteteAdaugareObiecte';
@@ -10,7 +10,6 @@ import ReteteAdaugareObiecte from './ReteteAdaugareObiecte';
 
 export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDelete, setSelectedEdit, setFormData, selectedEdit, cancelEdit, cancelDelete}) {
 
-    const {setManopereSelected, manopereSelected, materialeSelected, setMaterialeSelected, transportSelected, setTransportSelected, utilajeSelected, setUtilajeSelected} = useContext(RetetaContext)
 
     const [open, setOpen] = useState(null);
     const [isPopupOpen, setIsPopupOpen] = useState(false);
@@ -74,7 +73,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
         try {
             const response = await api.get(`/Retete/getSpecificReteta/${open}`);
             const updatedRetete = param ? [...param] : [...retete];
-            const newObjects = [...response.data.manopera, ...response.data.materiale, ...response.data.utilaje];
+            const newObjects = [...response.data.manopera, ...response.data.materiale, ...response.data.utilaje, ...response.data.transport];
             // Find the index of the target object
             const targetIndex = updatedRetete.findIndex(item => item.id === open);
             setObjectsLen(newObjects.length);
@@ -219,12 +218,32 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
             accessorKey: "Dropdown", 
             header: "",
             cell: ({ row, getValue, cell }) => (
-                    <div onClick={() => setOpen((prev) => prev == cell.row.original.id ? null : cell.row.original.id)} className='flex justify-center select-none w-full cursor-pointer items-center'>
-                        <FontAwesomeIcon  className={`  text-center ${open == cell.row.original.id ? " rotate-90" : ""}  text-xl`} icon={faChevronRight}/>
-                    </div>
+            <div onClick={() => setOpen((prev) => prev == cell.row.original.id ? null : cell.row.original.id)} className='flex justify-center select-none w-full cursor-pointer items-center'>
+                <FontAwesomeIcon  className={`  text-center ${open == cell.row.original.id ? " rotate-90" : ""}  text-xl`} icon={faChevronRight}/>
+            </div>
              
                 
             ),
+        },
+        { 
+            accessorKey: "logo",
+            header: "Logo",
+            cell: ({ row, getValue, cell }) => (
+                row.original.whatIs == 'Manopera' ?
+                <div className='w-full h-full flex justify-center items-center overflow-hidden'><FontAwesomeIcon className='text-green-500 h-[2rem] w-full ' icon={faUser}/></div>
+                :
+                row.original.whatIs == 'Material' ?
+                <div className='w-full h-full flex justify-center items-center overflow-hidden'><FontAwesomeIcon className='text-amber-500 h-[2rem] w-full ' icon={faTrowelBricks}/></div>
+                :
+                row.original.whatIs == 'Utilaj' ?
+                    <div className='w-full h-full flex justify-center items-center overflow-hidden'><FontAwesomeIcon className='text-violet-500 h-[2rem] w-full  ' icon={faTruck}/></div>
+                :
+                row.original.whatIs == 'Transport' ?
+                <div className='w-full h-full flex justify-center items-center overflow-hidden'><FontAwesomeIcon className='text-pink-500 h-[2rem] w-full  ' icon={faCar}/></div>
+                :
+                <div className='w-full h-full flex justify-center items-center overflow-hidden '><FontAwesomeIcon className='text-blue-500 h-[2rem]   ' icon={faFolder}/></div>
+            ),
+            
         },
         { accessorKey: "cod", header: "Cod",size:100 },
         { accessorKey: "clasa", header: "Clasa", size:200},
@@ -232,8 +251,8 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
         {
             accessorKey: 'whatIs', 
             header: 'Tip',
-            cell: ({ getValue }) => getValue() || 'Reteta', // Display default value if the value is empty or undefined
-            size:50
+            size:70,
+            cell: ({ getValue, row }) => getValue() ? <div onClick={() => console.log(row)} className='w-full'>{row.original.whatIs == "Material" ?  getValue() + " " + row.original.tip_material : getValue()}</div> : 'Reteta', // Display default value if the value is empty or undefined
         },
         { accessorKey: "unitate_masura", header: "Unitate",size:60},
         { 
@@ -241,20 +260,20 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
             header: "Poza",
             cell: ({ getValue }) => (
                 getValue() ? 
-                <div className='flex justify-center items-center'>
+                <div className='flex w-full overflow-hidden justify-center items-center'>
                     <img 
                         src={`${photoAPI}/${getValue()}`}  // Concatenate the base URL with the value
                         alt="Product"
-                        className="h-[3rem] max-w-28 object-cover" 
+                        className="h-[2.8rem] min-w-[2rem] max-w-28 object-cover" 
                         style={{ objectFit: 'cover' }}
                         />
                 </div>
                 :
                 ""
                 ),
-                size:60
+                size:70
         },
-        { accessorKey: "cantitate", header: "Cantitate", size:60},
+        { accessorKey: "cantitate", header: "Cantitate", size:70},
         { 
             accessorKey: "threeDots", 
             header: "Optiuni",
@@ -302,7 +321,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                 <table className="w-full  border-separate border-spacing-0 ">
                     <thead className='top-0 w-full sticky  z-10 '>
                         <tr className='text-black'>
-                                    <th className='border-b border-r border-black bg-white'></th>
+                                    <th className='border-b border-r border-black bg-white' colSpan={2}></th>
                                     <th className='border-b border-r border-black'>
                                         <input
                                             type="text"
@@ -333,7 +352,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                                             placeholder="Filter by Articol"
                                         />
                                     </th>
-                                    <th className=" bg-white border-b border-r border-black" colSpan={5}>
+                                    <th className=" bg-white border-b border-r border-black" colSpan={6}>
                                        <div className=' flex  justify-center items-center'>
                                             <p className='px-2'>Arata</p>
                                             <input className='border border-black p-1 w-12 text-center rounded-lg' type="text" onChange={(e) => handleLimit(e)} value={limit} name="" id="" />
@@ -347,9 +366,9 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                        
                             <th key={header.id}  className={`relative border-b-2 border-r border-black   bg-white p-2 py-4 ${header.column.id === "threeDots" ? "text-center" : ""} `}     
                             style={{
-                                width: header.column.id === "threeDots" ? '55px' : header.column.id === "Dropdown" ? "15px": `${header.getSize()}px`, // Enforce width for "Options"
-                                minWidth: header.column.id === "threeDots" ?  '55px' : header.column.id === "Dropdown" ? "15px" : '', // Ensure no shrinkage
-                                maxWidth: header.column.id === "threeDots" ? '55px' : header.column.id === "Dropdown" ? "15px" : '', // Ensure no expansion
+                                width: header.column.id === "threeDots" ? '55px' : header.column.id === "Dropdown" ? "35px" : header.column.id === "logo" ? "35px": `${header.getSize()}px`, // Enforce width for "Options"
+                                minWidth: header.column.id === "threeDots" ?  '55px' : header.column.id === "Dropdown" ? header.column.id === "logo" ? "35px": "35px" : '', // Ensure no shrinkage
+                                maxWidth: header.column.id === "threeDots" ? '55px' : header.column.id === "Dropdown" ? header.column.id === "logo" ? "35px": "35px" : '', // Ensure no expansion
                             }}>
                                 <div
                                 onMouseDown={header.getResizeHandler()}
@@ -375,11 +394,14 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                                 </td>
                                 :
                                 <td     
+                                onClick={()=>console.log(cell)}
                                 key={cell.id}
-                                className={`h-[3rem]   ${row.original.whatIs == 'Manopera' ? "bg-[#f7aefa]" : row.original.whatIs == 'Material' ? "bg-[#8af1a0]" : row.original.whatIs == 'Utilaj' ? "bg-[#fbfd7c]" : row.original.whatIs == 'Transport' ? "bg-[#8ae8ff]" : ""}    border-b border-r break-words max-w-72  relative border-black px-3 p-1`}
+                                className={`h-[3rem]  
+                                     ${cell.column.id == "whatIs" ? row.original.whatIs == 'Manopera' ? "bg-green-300" : row.original.whatIs == 'Material' ? "bg-amber-300" : row.original.whatIs == 'Utilaj' ? "bg-violet-300" : row.original.whatIs == 'Transport' ? "bg-pink-300" : "bg-white" : "bg-white"}
+                                     border-b border-r break-words max-w-72  relative border-black px-3 `}
                                 >
-                                   <div className="h-full w-full overflow-hidden text-ellipsis">
-                                        <div className="max-h-[3rem] h-full scrollbar-webkit overflow-y-auto">
+                                   <div className="h-full w-full overflow-hidden ">
+                                        <div className="max-h-[3rem] h-full   grid grid-cols-1 items-center  overflow-auto  scrollbar-webkit">
                                                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                         </div>
                                     </div>
@@ -389,7 +411,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                         {index == lastObjectIndex ?
                         <tr>
                              <td></td>
-                             <td className='bg-white p-1 px-3 hover:bg-[rgb(255,255,255,0.9)] border-b border-r border-black select-none text-black' colSpan={8}>
+                             <td className='bg-blue-300 p-1 px-3 hover:bg-blue-500 border-b border-r border-black select-none text-black' colSpan={9}>
                                  <div onClick={() => setIsPopupOpen(true)} className='flex font-bold  text-center cursor-pointer  justify-center items-center gap-2'>
                                      <p className=' text-center'>Adauga Obiecte</p>
                                      <FontAwesomeIcon className='text-green-500  text-center text-2xl' icon={faPlus}/>
@@ -406,7 +428,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                             ${row.original.id == selectedDelete ? "bg-red-300 sticky" : row.original.id == selectedEdit ? "bg-green-300 sticky" :  row.index % 2 === 0 ? 'bg-[rgb(255,255,255,0.75)] ' : 'bg-[rgb(255,255,255,1)] '}`}>
                             {row.getVisibleCells().map((cell) => (  
                                     <td  key={cell.id}   
-                                        className={`${row.original.whatIs == 'Manopera' ? "bg-[#f7aefa]" : row.original.whatIs == 'Material' ? "bg-[#8af1a0]" : row.original.whatIs == 'Utilaj' ? "bg-[#fbfd7c]" : row.original.whatIs == 'Transport' ? "bg-[#8ae8ff]" : ""}    border-b border-r break-words max-w-72  relative border-black p-1 px-3`}
+                                        className={`    border-b border-r break-words max-w-72  relative border-black p-1 px-3`}
                                         style={cell.column.columnDef.meta?.style} // Apply the custom style
                                     >
                                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -417,7 +439,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                             {index == lastObjectIndex ?
                             <tr>
                                 <td></td>
-                                <td onClick={() => setIsPopupOpen(true)} className='bg-white p-1 px-3 hover:bg-[rgb(255,255,255,0.9)] cursor-pointer border-b border-r border-black select-none text-black' colSpan={8}>
+                                <td onClick={() => setIsPopupOpen(true)} className='bg-white p-1 px-3 hover:bg-[rgb(255,255,255,0.9)] cursor-pointer border-b border-r border-black select-none text-black' colSpan={9}>
                                     <div className='flex font-bold  text-center justify-center items-center gap-2'>
                                         <p className=' text-center'>Adauga Obiecte</p>
                                         <FontAwesomeIcon className='text-green-500  text-center text-2xl' icon={faPlus}/>
@@ -452,8 +474,12 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
         {/* div that prevents clicks outside */}
         {isPopupOpen && (
         <>
-            <div className=" absolute top-0 left-0 right-0 bg-[#000043] bottom-0 h-screen w-screen z-[100]"></div>
-            <ReteteAdaugareObiecte parentProps = {parentProps} />
+            <div className=" absolute top-0 left-0 right-0 bottom-0 h-screen w-screen z-[100]"></div>
+            <div className='w-full top-0 left-0 right-0 bottom-0 absolute h-full items-center justify-center flex z-[200]'>
+                    <div className=' relative rounded-xl bg-[#002a54] h-90h w-90w'>
+                        <ReteteAdaugareObiecte parentProps = {parentProps} />
+                    </div>
+            </div>
         </>
       )}
     </>

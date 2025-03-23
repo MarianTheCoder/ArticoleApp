@@ -14,10 +14,10 @@ export default function SelectedUserType({personType}) {
 
   return (
     <div className='h-screen flex items-center justify-center'>
-        <div className="container  w-4/5 h-90h relative flex flex-col items-center rounded-lg">
+        <div className="containerZ  w-4/5 h-90h relative flex flex-col items-center rounded-lg">
          {clicked && 
          <>
-            <div className={` w-full mt-8 rounded-xl `}>
+            <div className={` w-full  rounded-xl `}>
               <AddingUsersForm />
             </div>
            <div className="w-full relative h-full  gap-2 rounded-lg flex flex-col overflow-hidden p-5 py-8">

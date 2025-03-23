@@ -14,7 +14,6 @@ function Navbar() {
     const [selectedBeneficiari, setSelectedBeneficiari] = useState([]);
     const [addSantier, setAddSantier] = useState(false);
     const [santierName, setSantierName] = useState("");
-    const [connectedSantiereToUser, setConnectedSantiereToUser] = useState([]);
 
     const [bazaDeDateOpen, setBazaDeDateOpen] = useState(false);
     const [dateOpen, setDateOpen] = useState(false);
@@ -23,7 +22,7 @@ function Navbar() {
     const [santiereOpen, setSantiereOpen] = useState(false);
 
     let navigate = useNavigate();
-    const {user, logout, getUsersForSantiere, beneficiari, santiere} = useContext(AuthContext);
+    const {user, logout, getUsersForSantiere, beneficiari, santiere, connectedSantiereToUser, setConnectedSantiereToUser} = useContext(AuthContext);
     const [loading, setLoading] = useState(true);
     const photoStorage = localStorage.getItem("photoUser");
 
@@ -61,7 +60,7 @@ function Navbar() {
     }
 
     useEffect(() => {
-        if (beneficiari.length > 0 && santiere.length > 0) {
+        if (Array.isArray(beneficiari) && beneficiari.length > 0) {
           const usersWithSantiere = beneficiari.map(user => {
             // Find all santiere for the current user by matching user.id with santiere.user_id
             const userSantiere = santiere.filter(santier => santier.user_id === user.id);
@@ -199,13 +198,13 @@ function Navbar() {
                             </div>
                             {prezOpen &&
                                 <>
-                                <div onClick={() => navigate("/addHome")} className="text-lg pl-12  hover:bg-gray-200 cursor-pointer py-1">
+                                <div onClick={() => navigate("/addNews")} className="text-lg pl-12  hover:bg-gray-200 cursor-pointer py-1">
                                     <div className="flex items-center gap-2 w-full" >
                                                 <FontAwesomeIcon className='text-lg' icon={faNewspaper} />
                                                 News
                                     </div>
                                 </div>
-                                <div onClick={() => navigate("/addHome")} className="text-lg pl-12  hover:bg-gray-200 cursor-pointer py-1">
+                                <div onClick={() => navigate("/addEchipa")} className="text-lg pl-12  hover:bg-gray-200 cursor-pointer py-1">
                                     <div className="flex items-center gap-2 w-full" >
                                         <FontAwesomeIcon className='text-lg' icon={faPeopleGroup} />
                                                 Echipa 
@@ -245,7 +244,7 @@ function Navbar() {
                                 {selectedBeneficiari.includes(beneficiar.id) &&
                                 <>
                                 {connectedSantiereToUser[index].santiere && connectedSantiereToUser[index].santiere.map((santier, idx) => (
-                                    <div key={idx} className="text-lg pl-12   hover:bg-gray-200 cursor-pointer py-1" >
+                                    <div key={idx} onClick={() => navigate(`/Santiere/${beneficiar.id}/${santier.id}`)} className="text-lg pl-12   hover:bg-gray-200 cursor-pointer py-1" >
                                        <div className="flex gap-2 items-center w-full" >
                                            <FontAwesomeIcon className={`text-base duration-300 transition-all`} icon={faChevronRight} />
                                            <div className="flex text-ellipsis  overflow-hidden items-center gap-2">

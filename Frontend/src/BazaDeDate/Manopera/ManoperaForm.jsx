@@ -9,7 +9,7 @@ export default function ManoperaForm() {
   const [formData, setFormData] = useState({
       cod_COR:"",
       ocupatie:"",
-      unitate_masura:"ora",
+      unitate_masura:"oră",
       cost_unitar:"",
       cantitate:"",
   });
@@ -51,7 +51,7 @@ export default function ManoperaForm() {
       setFormData({
         cod_COR:"",
         ocupatie:"",
-        unitate_masura:"ora",
+        unitate_masura:"oră",
         cost_unitar:"",
         cantitate:"",
       });
@@ -102,7 +102,7 @@ export default function ManoperaForm() {
     setFormData({
       cod_COR:"",
       ocupatie:"",
-      unitate_masura:"ora",
+      unitate_masura:"oră",
       cost_unitar:"",
       cantitate:"",
     });
@@ -144,7 +144,6 @@ export default function ManoperaForm() {
                   onChange={handleChange}
                   maxLength={6}
                   className="px-2 outline-none text-center py-2 max-w-32  rounded-lg shadow-sm "
-                  placeholder="Enter COR"
               />
           </div>
             {/* Description Input */}
@@ -153,7 +152,7 @@ export default function ManoperaForm() {
                   htmlFor="description"
                   className=" font-medium text-black"
               >
-                  Ocupatie
+                  Ocupație
               </label>
               <input
                   type="text"
@@ -162,7 +161,6 @@ export default function ManoperaForm() {
                   value={formData.ocupatie}
                   onChange={handleChange}
                   className="px-2 w-full outline-none text-center py-2  rounded-lg shadow-sm "
-                  placeholder="Enter Ocupatie"
               />
           </div>
            <div className="flex flex-col items-center">
@@ -177,7 +175,7 @@ export default function ManoperaForm() {
                 onChange={handleChange}
                 className="px-4 py-2 border  rounded-lg outline-none shadow-sm "
               >
-                <option value="unit1">Ora</option>
+                <option value="oră">Oră</option>
               </select>
             </div>
           <div className="flex flex-col items-center">
@@ -195,7 +193,6 @@ export default function ManoperaForm() {
                   value={formData.cost_unitar}
                   onChange={handleChange}
                   className=" px-2 py-2  text-center max-w-32 w-full outline-none rounded-lg shadow-sm "
-                  placeholder="Cost"
               />
           </div>
           <div className="flex flex-col items-center">
@@ -214,26 +211,25 @@ export default function ManoperaForm() {
                   value={formData.cantitate}
                   onChange={handleChange}
                   className=" px-2 py-2 max-w-32 text-center w-full outline-none rounded-lg shadow-sm  [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                  placeholder="00"
               />
           </div>
           {
               !selectedDelete && !selectedEdit ?
 
               <div className="flex gap-2 items-center ">
-                <button type="submit" className="bg-green-500 hover:bg-green-600 text-black text-lg mt-6 px-6 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-3"/> Submit</button>
+                <button type="submit" className="bg-green-500 hover:bg-green-600 text-black text-lg mt-6 px-6 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-3"/>Încarcă</button>
               </div>
               :
               !selectedEdit ?
 
               <div className="flex gap-2 items-center ">
-                <button onClick={(e) => deleteRow(e)} className="bg-red-500 hover:bg-red-600 text-black text-lg mt-6 px-4 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faCancel} className="pr-3"/> Delete</button>
-                <button onClick={(e) => cancelDelete(e)} className="bg-green-500 hover:bg-green-600 text-black text-lg mt-6 px-4 py-2 flex  items-center rounded-lg">Cancel</button>
+                <button onClick={(e) => deleteRow(e)} className="bg-red-500 hover:bg-red-600 text-black text-lg mt-6 px-4 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faCancel} className="pr-3"/>Șterge</button>
+                <button onClick={(e) => cancelDelete(e)} className="bg-green-500 hover:bg-green-600 text-black text-lg mt-6 px-4 py-2 flex  items-center rounded-lg">Anulează</button>
               </div>
               :
               <div className="flex gap-2 items-center ">
-                <button  type="submit" className="bg-green-500 hover:bg-green-600 text-black text-lg mt-6 px-6 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-3"/> Submit</button>
-                <button  onClick={(e) => cancelEdit(e)} className="bg-red-500 hover:bg-red-600 text-black text-lg mt-6 px-6 py-2 flex  items-center rounded-lg"> Cancel</button>
+                <button  type="submit" className="bg-green-500 hover:bg-green-600 text-black text-lg mt-6 px-6 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-3"/>Editează</button>
+                <button  onClick={(e) => cancelEdit(e)} className="bg-red-500 hover:bg-red-600 text-black text-lg mt-6 px-6 py-2 flex  items-center rounded-lg"> Anulează</button>
               </div>
           }
           

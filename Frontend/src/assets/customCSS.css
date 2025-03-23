@@ -1,5 +1,6 @@
-.container {
+.containerZ {
     background: rgba( 255, 255, 255, 0.15 );
+    /* background: rgba( 255, 255, 255, 0.15 ); */
     box-shadow: 0 8px 32px 0 rgba( 31, 38, 135, 0.37 );
     backdrop-filter: blur( 3px );
     -webkit-backdrop-filter: blur( 3px );
@@ -7,9 +8,16 @@
 }
 
 .containerWhiter {
+    /* background: rgba(255, 255, 255, 0.08); */
     background: rgba(255, 255, 255, 0.08);
     box-shadow: 0 8px 32px 0 rgba( 31, 38, 135, 0.37 );
     backdrop-filter: blur( 5px );
     -webkit-backdrop-filter: blur( 5px );
+    border-radius: 10px;
+}
+
+.containerNoGlass{
+    box-shadow: 0 8px 32px 0 rgba( 31, 38, 135, 0.37 );
+    background-color: #2C265E;
     border-radius: 10px;
 }

@@ -110,7 +110,7 @@ export default function ManoperaForm() {
   return (
   
      <div className='h-screen w-full flex items-center justify-center'>
-        <div className="container h-90h w-90w relative flex overflow-hidden  flex-col items-center rounded-lg">
+        <div className="containerZ h-90h w-90w relative flex overflow-hidden  flex-col items-center rounded-lg">
             <div className='w-full containerWhiter '>
               <div className="flex justify-center flex-col items-center text-black  ">
                 <form onSubmit={handleSubmit} className="w-full p-6 pt-4 px-2 md:px-4 xl:px-6 rounded-xl">
