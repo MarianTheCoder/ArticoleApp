@@ -14,6 +14,7 @@ const MaterialeRoutes = require("./Routes/MaterialeRoutes");
 const UtilajeRoutes = require("./Routes/UtilajeRoutes");
 const RetetaRoutes = require("./Routes/RetetaRoutes");
 const TransportRoutes = require("./Routes/TransportRoutes");
+const SantiereRoutes = require("./Routes/SantiereRoutes");
 
 const app = express();
 const port = 3000;
@@ -41,6 +42,7 @@ app.use('/uploads/Echipa', express.static(path.join(__dirname, 'uploads/Echipa')
 app.use('/uploads/News', express.static(path.join(__dirname, 'uploads/News')));
 app.use('/uploads/Materiale', express.static(path.join(__dirname, 'uploads/Materiale')));
 app.use('/uploads/Utilaje', express.static(path.join(__dirname, 'uploads/Utilaje')));
+app.use('/uploads/Santiere', express.static(path.join(__dirname, 'uploads/Santiere')));
 
 // Function to initialize the database
 async function initializeDatabase() {
@@ -171,8 +173,6 @@ async function initializeDatabase() {
   //
   //
   // CREATE RETETE TABLE !!
-
-
   const createReteteTableQuery = `
     CREATE TABLE IF NOT EXISTS Retete (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -259,7 +259,113 @@ console.log("Retete_Transport table created or already exists.");
   //
   //
   //
-  
+
+  //
+  //
+  //
+  // CREATE SANTIERE TABLES
+  // Santier_retete
+  const createSantierReteteTable = `
+  CREATE TABLE IF NOT EXISTS Santier_retete (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    santier_id INT NOT NULL,
+    cod_reteta VARCHAR(255) NOT NULL,
+    clasa_reteta VARCHAR(255) NOT NULL,
+    articol TEXT NOT NULL,
+    unitate_masura VARCHAR(255) NOT NULL,
+    cantitate DECIMAL(10,2) NOT NULL,
+    data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (santier_id) REFERENCES Santiere(id)
+  );
+  `;
+  await pool.execute(createSantierReteteTable);
+  console.log("Santier_retete table created or already exists.");
+
+  // Santier_retete_manopera
+  const createSantierReteteManopera = `
+  CREATE TABLE IF NOT EXISTS Santier_retete_manopera (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    santier_reteta_id INT NOT NULL,
+    cod_COR VARCHAR(255) NOT NULL,
+    ocupatie TEXT NOT NULL,
+    unitate_masura VARCHAR(20) NOT NULL,
+    cost_unitar DECIMAL(10,2) NOT NULL,
+    cantitate DECIMAL(10,2) NOT NULL,
+    INDEX idx_cod_COR (cod_COR),
+    INDEX idx_ocupatie (ocupatie),
+    FOREIGN KEY (santier_reteta_id) REFERENCES Santier_retete(id)
+  );
+  `;
+  await pool.execute(createSantierReteteManopera);
+  console.log("Santier_retete_manopera table created or already exists.");
+
+  // Santier_retete_materiale
+  const createSantierReteteMateriale = `
+  CREATE TABLE IF NOT EXISTS Santier_retete_materiale (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    santier_reteta_id INT NOT NULL,
+    cod_produs VARCHAR(50) NOT NULL,
+    tip_material VARCHAR(50) NOT NULL,
+    denumire_produs VARCHAR(255) NOT NULL,
+    descriere_produs TEXT,
+    photoUrl TEXT NOT NULL,
+    unitate_masura VARCHAR(50) NOT NULL,
+    cost_unitar DECIMAL(10,2) NOT NULL,
+    cantitate DECIMAL(10,2) NOT NULL,
+    furnizor VARCHAR(255) NOT NULL,
+    clasa_material VARCHAR(255) NOT NULL,
+    INDEX idx_cod_produs (cod_produs),
+    INDEX idx_denumire_produs (denumire_produs),
+    INDEX idx_tip_material (tip_material),
+    FOREIGN KEY (santier_reteta_id) REFERENCES Santier_retete(id)
+  );
+  `;
+  await pool.execute(createSantierReteteMateriale);
+  console.log("Santier_retete_materiale table created or already exists.");
+
+  // Santier_retete_utilaje
+  const createSantierReteteUtilaje = `
+  CREATE TABLE IF NOT EXISTS Santier_retete_utilaje (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    santier_reteta_id INT NOT NULL,
+    clasa_utilaj VARCHAR(255) NOT NULL,
+    utilaj TEXT NOT NULL,
+    descriere_utilaj TEXT NOT NULL,
+    photoUrl TEXT NOT NULL,
+    status_utilaj VARCHAR(255) NOT NULL,
+    unitate_masura VARCHAR(50) NOT NULL,
+    cost_amortizare DECIMAL(10,2) NOT NULL,
+    pret_utilaj DECIMAL(10,2) NOT NULL,
+    cantitate DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (santier_reteta_id) REFERENCES Santier_retete(id),
+    INDEX idx_utilaj (utilaj),
+    INDEX idx_descriere_utilaj (descriere_utilaj)
+  );
+  `;
+  await pool.execute(createSantierReteteUtilaje);
+  console.log("Santier_retete_utilaje table created or already exists.");
+
+  // Santier_retete_transport
+  const createSantierReteteTransport = `
+  CREATE TABLE IF NOT EXISTS Santier_retete_transport (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    santier_reteta_id INT NOT NULL,
+    cod_transport VARCHAR(255) NOT NULL,
+    clasa_transport VARCHAR(255) NOT NULL,
+    transport TEXT NOT NULL,
+    unitate_masura VARCHAR(20) NOT NULL,
+    cost_unitar DECIMAL(10,2) NOT NULL,
+    cantitate DECIMAL(10,2) NOT NULL,
+    INDEX idx_cod_transport (cod_transport),
+    INDEX idx_clasa_transport (clasa_transport),
+    FOREIGN KEY (santier_reteta_id) REFERENCES Santier_retete(id)
+  );
+  `;
+  await pool.execute(createSantierReteteTransport);
+  console.log("Santier_retete_transport table created or already exists.");
+  //
+  //
+  //
     // Insert initial admin user if needed
     await insertInitialAdminUser();
 
@@ -309,6 +415,7 @@ app.use('/Materiale', MaterialeRoutes);
 app.use('/Utilaje', UtilajeRoutes);
 app.use('/Retete', RetetaRoutes);
 app.use('/Transport', TransportRoutes);
+app.use('/Santiere', SantiereRoutes);
 
 
 // Serve static files from the React app

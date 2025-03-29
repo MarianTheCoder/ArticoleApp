@@ -99,6 +99,51 @@ const addReteta = async (req,res) =>{
       }
 }
 
+const getReteteLight = async (req,res) =>{
+  try {
+    const { clasa = '', cod = '', articol = '' } = req.query;
+
+
+    // Start constructing the base query
+    let query = `SELECT * FROM Retete`;  // Assuming 'retete' is the name of your table
+    let queryParams = [];
+    let whereClauses = [];
+
+    // Conditionally add filters to the query
+    if (clasa.trim() !== "") {
+      whereClauses.push(`clasa_reteta LIKE ?`);
+      queryParams.push(`%${clasa}%`);
+    }
+
+    if (cod.trim() !== "") {
+      whereClauses.push(`cod_reteta LIKE ?`);
+      queryParams.push(`%${cod}%`);
+    }
+
+    if (articol.trim() !== "") {
+      whereClauses.push(`articol LIKE ?`);
+      queryParams.push(`%${articol}%`);
+    }
+
+    // If there are any filters, add them to the query
+    if (whereClauses.length > 0) {
+      query += ` WHERE ${whereClauses.join(' AND ')}`;
+    }
+
+    // Execute the query with filters and pagination
+    const [rows] = await global.db.execute(query, queryParams);
+
+    // Send paginated data with metadata
+    res.send({
+      data: rows,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
+  }
+}
+
+
 const getRetete = async (req,res) =>{
   try {
     const { offset = 0, limit = 10, clasa = '', cod = '', articol = '' } = req.query;
@@ -293,6 +338,7 @@ const getSpecificReteta = async (req, res) => {
            articol: row.transport,
            cantitate: row.transport_cantitate,
            unitate_masura: row.transport_unitate_masura,
+           cost: row.transport_cost
          });
          seenTransportIds.add(row.transport_id);
        }
@@ -415,4 +461,4 @@ const deleteFromReteta = async (req, res) => {
 
 
 
-module.exports = {addReteta, getRetete, getSpecificReteta, deleteReteta, editReteta, deleteFromReteta, addRetetaObjects};
+module.exports = {addReteta, getRetete, getSpecificReteta, deleteReteta, editReteta, getReteteLight, deleteFromReteta, addRetetaObjects};

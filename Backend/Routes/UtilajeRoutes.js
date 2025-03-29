@@ -1,65 +1,62 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
+const sharp = require('sharp');
 
 const router = express.Router();
 
 // Configurare multer pentru salvarea fișierelor în 'uploads/'
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '../uploads/Utilaje')); // Către directorul de încărcare a fișierelor
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, `${uniqueSuffix}-${file.originalname}`);
-  },
-});
+const storage = multer.memoryStorage(); // Store file in memory
+const upload = multer({ storage });
 
-const upload = multer({ storage: storage });
 
 
 router.post('/api/utilaje', upload.single('poza'), async (req, res) => {
-    try {
-      // Destructure data from the body
-      const { clasa_utilaj, utilaj, descriere_utilaj, status_utilaj, cost_amortizare, pret_utilaj, unitate_masura, cantitate} = req.body;
-  
-      // Validate required fields
-      if (!clasa_utilaj || !utilaj || !descriere_utilaj || !status_utilaj || !cost_amortizare || !pret_utilaj || !cantitate || !unitate_masura) {
-        return res.status(400).json({ message: 'Toate câmpurile sunt necesare!' });
-      }
-  
-      // Calea imaginii salvate
-      let photoPath = req.file ? req.file.path : "uploads/Utilaje/no-image-icon.png"; // Default image if no file is uploaded
-      if (photoPath) {
-        photoPath = path.relative(path.join(__dirname, '../'), photoPath); // Get relative path for the image
-      }
-  
-      // SQL query to insert data into the Utilaje table
-      const sql = `
-        INSERT INTO Utilaje (clasa_utilaj, utilaj, descriere_utilaj, photoUrl, status_utilaj, cost_amortizare, pret_utilaj, cantitate, unitate_masura, data)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-      `;
-  
-      // Execute the query
-      const [result] = await global.db.execute(sql, [
-        clasa_utilaj,
-        utilaj,
-        descriere_utilaj,
-        photoPath,
-        status_utilaj,
-        cost_amortizare,
-        pret_utilaj,
-        cantitate,
-        unitate_masura,
-      ]);
-  
-      // Respond with success message
-      res.status(201).json({ message: 'Utilaj adăugat cu succes!', id: result.insertId });
-    } catch (error) {
-      console.error('Eroare server:', error);
-      res.status(500).json({ message: 'A apărut o eroare internă.' });
+  try {
+    const {
+      clasa_utilaj, utilaj, descriere_utilaj, status_utilaj,
+      cost_amortizare, pret_utilaj, unitate_masura, cantitate
+    } = req.body;
+
+    if (!clasa_utilaj || !utilaj || !descriere_utilaj || !status_utilaj || !cost_amortizare || !pret_utilaj || !cantitate || !unitate_masura) {
+      return res.status(400).json({ message: 'Toate câmpurile sunt necesare!' });
     }
-  });
+
+    const uploadsDir = path.join(__dirname, '../uploads/Utilaje');
+    let photoPath = "uploads/Utilaje/no-image-icon.png";
+
+    if (req.file) {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+      const fileName = `${uniqueSuffix}-${req.file.originalname}`;
+      const finalPath = path.join(uploadsDir, fileName);
+
+      await sharp(req.file.buffer)
+        .resize({ width: 800 })
+        .jpeg({ quality: 70 })
+        .toFile(finalPath);
+
+      photoPath = path.relative(path.join(__dirname, '../'), finalPath);
+    }
+
+    const sql = `
+      INSERT INTO Utilaje (
+        clasa_utilaj, utilaj, descriere_utilaj, photoUrl, status_utilaj,
+        cost_amortizare, pret_utilaj, cantitate, unitate_masura, data
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+    `;
+
+    const [result] = await global.db.execute(sql, [
+      clasa_utilaj, utilaj, descriere_utilaj, photoPath,
+      status_utilaj, cost_amortizare, pret_utilaj, cantitate, unitate_masura
+    ]);
+
+    res.status(201).json({ message: 'Utilaj adăugat cu succes!', id: result.insertId });
+
+  } catch (error) {
+    console.error('Eroare server:', error);
+    res.status(500).json({ message: 'A apărut o eroare internă.' });
+  }
+});
 
 router.get('/api/utilaje', async (req, res) => {
   try {
@@ -230,64 +227,71 @@ router.delete('/api/utilaje/:id', async (req, res) => {
 });
 
 
-// Route for editing a material
 router.put('/api/utilaje/:id', upload.single('poza'), async (req, res) => {
-    const { id } = req.params;
-    const { clasa_utilaj, utilaj, descriere_utilaj, status_utilaj, cost_amortizare, pret_utilaj, cantitate, unitate_masura } = req.body;
+  const { id } = req.params;
+  const {
+    clasa_utilaj, utilaj, descriere_utilaj, status_utilaj,
+    cost_amortizare, pret_utilaj, cantitate, unitate_masura
+  } = req.body;
 
-    try {
-        if (!id || isNaN(id)) {
-            return res.status(400).json({ message: "Invalid or missing ID." });
-        }
-
-        // Step 1: Get the current photo path from the database
-        const getPhotoQuery = `SELECT photoUrl FROM Utilaje WHERE id = ?`;
-        const [rows] = await global.db.execute(getPhotoQuery, [id]);
-
-        if (rows.length === 0) {
-            return res.status(404).json({ message: "Material not found." });
-        }
-
-        let oldPhotoPath = rows[0].photoUrl;
-        let newPhotoPath = req.file ? req.file.path : oldPhotoPath;
-
-        // Step 2: If a new photo is uploaded, delete the old one
-        if (req.file && oldPhotoPath) {
-            const oldFilePath = path.join(__dirname, "..", oldPhotoPath);
-            if(oldFilePath.indexOf("no-image-icon") == -1){
-              fs.unlink(oldFilePath, (err) => {
-                if (err) {
-                  console.error("Error deleting old image:", err);
-                } else {
-                  console.log("Old image deleted successfully.");
-                }
-              });
-            }
-        }
-
-        // Make sure new photo path is stored correctly
-        if (newPhotoPath && req.file) {
-            newPhotoPath = path.relative(path.join(__dirname, '../'), newPhotoPath);
-        }
-
-        // Step 3: Update the material in the database
-        const updateQuery = `
-            UPDATE Utilaje 
-            SET clasa_utilaj = ?, utilaj = ?, descriere_utilaj = ?, photoUrl = ?, status_utilaj = ?, cost_amortizare = ?, pret_utilaj = ?, unitate_masura = ?, cantitate = ?
-            WHERE id = ?`;
-
-        const [result] = await global.db.execute(updateQuery, [clasa_utilaj, utilaj, descriere_utilaj, newPhotoPath, status_utilaj, cost_amortizare, pret_utilaj, unitate_masura, cantitate, id]);
-
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ message: "No changes made, or material not found." });
-        }
-
-        res.status(200).json({ message: "Material updated successfully!" });
-    } catch (error) {
-        console.error("Server error:", error);
-        res.status(500).json({ message: "An internal error occurred." });
+  try {
+    if (!id || isNaN(id)) {
+      return res.status(400).json({ message: "Invalid or missing ID." });
     }
+
+    const [rows] = await global.db.execute(`SELECT photoUrl FROM Utilaje WHERE id = ?`, [id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Utilajul nu a fost găsit." });
+    }
+
+    let oldPhotoPath = rows[0].photoUrl;
+    let newPhotoPath = oldPhotoPath;
+
+    if (req.file) {
+      if (oldPhotoPath && !oldPhotoPath.includes("no-image-icon")) {
+        const oldFilePath = path.join(__dirname, "..", oldPhotoPath);
+        fs.unlink(oldFilePath, (err) => {
+          if (err) console.error("Eroare la ștergerea imaginii vechi:", err);
+        });
+      }
+
+      const uploadsDir = path.join(__dirname, '../uploads/Utilaje');
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+      const fileName = `${uniqueSuffix}-${req.file.originalname}`;
+      const finalPath = path.join(uploadsDir, fileName);
+
+      await sharp(req.file.buffer)
+        .resize({ width: 800 })
+        .jpeg({ quality: 70 })
+        .toFile(finalPath);
+
+      newPhotoPath = path.relative(path.join(__dirname, '../'), finalPath);
+    }
+
+    const updateQuery = `
+      UPDATE Utilaje 
+      SET clasa_utilaj = ?, utilaj = ?, descriere_utilaj = ?, photoUrl = ?,
+          status_utilaj = ?, cost_amortizare = ?, pret_utilaj = ?, unitate_masura = ?, cantitate = ?
+      WHERE id = ?
+    `;
+
+    const [result] = await global.db.execute(updateQuery, [
+      clasa_utilaj, utilaj, descriere_utilaj, newPhotoPath,
+      status_utilaj, cost_amortizare, pret_utilaj, unitate_masura, cantitate, id
+    ]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Fără modificări sau utilaj inexistent." });
+    }
+
+    res.status(200).json({ message: "Utilaj actualizat cu succes!" });
+
+  } catch (error) {
+    console.error("Eroare server:", error);
+    res.status(500).json({ message: "A apărut o eroare internă." });
+  }
 });
+
 
 
 

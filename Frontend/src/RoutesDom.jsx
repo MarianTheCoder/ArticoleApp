@@ -28,7 +28,6 @@ export default function RoutesDom() {
 
   return (
     <div className=' grid h-screen text-white  w-full relative grid-cols-[auto_1fr]'>
-      <ArticlesProvider>
       {location.pathname.includes("/defaultHome") ? <NavbarDefaultHome/> : !user.name ? <NavbarDefaultHome/> : <Navbar/>}
         <Routes>
           <Route path="/" element={<Homepage/>} />
@@ -59,7 +58,6 @@ export default function RoutesDom() {
           </Route>
 
         </Routes>
-        </ArticlesProvider>
     </div>
   )
 }

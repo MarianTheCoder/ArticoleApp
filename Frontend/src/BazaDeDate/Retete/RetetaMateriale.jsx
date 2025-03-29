@@ -53,7 +53,7 @@ export default function RetetaMateriale({setIsPopupOpen,
 
         const fetchManopere = async () => {
             try {
-                if((materialeFilters.cod.trim().length >= 3 || materialeFilters.denumire.trim().length >= 3 || materialeFilters.clasa.trim().length >= 3) || materialeFilters.tip_material.trim().length >= 1){
+                if(materialeFilters.cod.trim().length >= 3 || materialeFilters.denumire.trim().length >= 3 || materialeFilters.clasa.trim().length >= 3){
                     const response = await api.get('/Materiale/api/materialeLight', {
                         params: {
                             cod: materialeFilters.cod, // Pass cod as a query parameter

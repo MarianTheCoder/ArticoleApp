@@ -1,8 +1,8 @@
 /**
- * @param {number} n
- * @param {number[][]} roads
+ * @param {number[]} nums
+ * @param {number} k
  * @return {number}
  */
-var countPaths = function(n, roads) {
+var maximumScore = function(nums, k) {
     
 };

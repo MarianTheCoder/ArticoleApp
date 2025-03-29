@@ -404,7 +404,7 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
                         {row.getVisibleCells().map((cell) => (
                             <td
                                 key={cell.id}
-                                className={`max-w-72  border-b border-r break-words relative border-black p-1 px-3`}
+                                className={`max-w-72  border-b border-r break-words whitespace-pre-line relative border-black p-1 px-3`}
                                 style={cell.column.columnDef.meta?.style} // Apply the custom style
                             >
                             <div className="h-full w-full overflow-hidden ">

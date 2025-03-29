@@ -54,7 +54,7 @@ export default function ManoperaForm() {
           clasa: "Regie",
           cod: "",
           articol: "",
-          unitate_masura: "m^2",
+          unitate_masura: "U",
         });
         handleReload();
     } catch (error) {
@@ -89,7 +89,7 @@ export default function ManoperaForm() {
       clasa:"Regie",
       cod:"",
       articol:"",
-      unitate_masura:"m^2"
+      unitate_masura:"U"
     });
   }
 
@@ -119,7 +119,7 @@ export default function ManoperaForm() {
                     {/* Clasa Dropdown */}
                     <div className="flex flex-col items-center">
                       <label htmlFor="unit" className="col-span-1 font-medium text-black">
-                        Clasa
+                        Clasă
                       </label>
                       <select
                         id="clasa"
@@ -130,19 +130,19 @@ export default function ManoperaForm() {
                       >
                         <option value="Regie">Regie</option>
                         <option value="Dezafectare">Dezafectare</option>
-                        <option value="Amenajari interioare">Amenajari interioare</option>
+                        <option value="Amenajări interioare">Amenajări interioare</option>
                         <option value="Electrice">Electrice</option>
                         <option value="Sanitare">Sanitare</option>
                         <option value="Termice">Termice</option>
-                        <option value="Climatizare Ventilatie">Climatizare Ventilatie</option>
-                        <option value="Amenajari exterioare">Amenajari exterioare</option>
-                        <option value="Tamplarie">Tamplarie</option>
-                        <option value="Mobila">Mobila</option>
-                        <option value="Confectii Metalice">Confectii Metalice</option>
-                        <option value="Prelucrari Ceramice/Piatra Naturala">Prelucrari Ceramice/Piatra Naturala</option>
+                        <option value="Climatizare Ventilație">Climatizare Ventilație</option>
+                        <option value="Amenajări exterioare">Amenajări exterioare</option>
+                        <option value="Tâmplărie">Tâmplărie</option>
+                        <option value="Mobilă">Mobilă</option>
+                        <option value="Confecții Metalice">Confecții Metalice</option>
+                        <option value="Prelucrări Ceramice/Piatră Naturală">Prelucrări Ceramice/Piatră Naturală</option>
                         <option value="Ofertare/Devizare">Ofertare/Devizare</option>
                         <option value="Management de proiect">Management de proiect</option>
-                        <option value="Reparatii">Reparatii</option>
+                        <option value="Reparații">Reparații</option>
                       </select>
                   </div>
                   <div className="flex flex-col items-center ">
@@ -157,7 +157,6 @@ export default function ManoperaForm() {
                           onChange={handleChange}
                           maxLength={10}
                           className="px-2 outline-none text-center py-2 max-w-32  rounded-lg shadow-sm "
-                          placeholder="Enter Cod"
                       />
                   </div>
                     {/* Description Input */}
@@ -172,7 +171,7 @@ export default function ManoperaForm() {
                           value={formData.articol}
                           onChange={handleChange}
                           className="px-2 w-full outline-none text-center py-2  rounded-lg shadow-sm "
-                          placeholder="Enter Articol"
+            
                       />
                   </div>
                   {/* input form */}
@@ -193,7 +192,7 @@ export default function ManoperaForm() {
                         <option value="m³">m³</option>
                         <option value="kg">kg</option>
                         <option value="Set">Set</option>
-                        <option value="Rola">Rola</option>
+                        <option value="Rolă">Rolă</option>
                       </select>
                   </div>
            
@@ -201,19 +200,19 @@ export default function ManoperaForm() {
                       !selectedDelete && !selectedEdit ?
 
                       <div className="flex gap-2 items-center ">
-                        <button type="submit" className="bg-green-500 hover:bg-green-600 text-black mt-6 px-6 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-3"/> Submit</button>
+                        <button type="submit" className="bg-green-500 hover:bg-green-600 text-black mt-6 px-6 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-3"/> Încarcă</button>
                       </div>
                       :
                       !selectedEdit ?
 
                       <div className="flex gap-2 items-center ">
-                        <button onClick={(e) => deleteRow(e)} className="bg-red-500 hover:bg-red-600 text-black text-lg mt-6 px-4 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faCancel} className="pr-3"/> Delete</button>
-                        <button onClick={(e) => cancelDelete(e)} className="bg-green-500 hover:bg-green-600 text-black text-lg mt-6 px-4 py-2 flex  items-center rounded-lg">Cancel</button>
+                        <button onClick={(e) => deleteRow(e)} className="bg-red-500 hover:bg-red-600 text-black text-lg mt-6 px-4 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faCancel} className="pr-3"/> Șterge</button>
+                        <button onClick={(e) => cancelDelete(e)} className="bg-green-500 hover:bg-green-600 text-black text-lg mt-6 px-4 py-2 flex  items-center rounded-lg">Anulează</button>
                       </div>
                       :
                       <div className="flex gap-2 items-center ">
-                        <button  type="submit" className="bg-green-500 hover:bg-green-600 text-black text-lg mt-6 px-6 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-3"/> Submit</button>
-                        <button  onClick={(e) => cancelEdit(e)} className="bg-red-500 hover:bg-red-600 text-black text-lg mt-6 px-6 py-2 flex  items-center rounded-lg"> Cancel</button>
+                        <button  type="submit" className="bg-green-500 hover:bg-green-600 text-black text-lg mt-6 px-6 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-3"/>Editează</button>
+                        <button  onClick={(e) => cancelEdit(e)} className="bg-red-500 hover:bg-red-600 text-black text-lg mt-6 px-6 py-2 flex  items-center rounded-lg"> Anulează</button>
                       </div>
                   }
                   

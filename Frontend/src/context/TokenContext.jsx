@@ -35,6 +35,7 @@ export const AuthProvider = ({ children }) => {
     };
     
     useEffect(() => {
+        console.log("das")
       decodeToken();
     }, [])
 
@@ -53,7 +54,6 @@ export const AuthProvider = ({ children }) => {
 
     const decodeToken = () =>{
         const storedToken = localStorage.getItem('token');
-        console.log("check" , storedToken);
         if (storedToken) {
             const decoded = getDecodedToken(storedToken);
             if (decoded) {

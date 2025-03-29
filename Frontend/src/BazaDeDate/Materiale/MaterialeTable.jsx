@@ -327,7 +327,7 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
               <thead className='top-0 w-full sticky  z-10 '>
               <tr className='text-black'>
                                     <th className=" bg-white border-b border-r border-black"></th>
-                                    <th className="border-b border-r border-black">
+                                    <th className="border-b bg-white border-r border-black">
                                         <select
                                             id="tip_material"
                                             name="tip_material"
@@ -447,7 +447,7 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
                                 style={cell.column.columnDef.meta?.style} // Apply the custom style
                             >
                                     <div className="h-full w-full overflow-hidden ">
-                                        <div className="max-h-24 h-24 w-full  grid grid-cols-1 items-center  overflow-auto  scrollbar-webkit">
+                                        <div className="max-h-24 h-24 w-full   grid grid-cols-1 items-center  overflow-auto  scrollbar-webkit">
                                                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                         </div>
                                     </div>

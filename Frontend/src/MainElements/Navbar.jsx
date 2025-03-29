@@ -258,13 +258,13 @@ function Navbar() {
                                        </div>
                                    </div>
                                 ))}
-                                    <div className="text-lg pl-12   hover:bg-gray-200 cursor-pointer py-1" >
-                                        <div className="flex items-center w-full" >
+                                    <div onClick={() => setAddSantier(beneficiar.id)} className="text-lg pl-12   hover:bg-gray-200 cursor-pointer py-1" >
+                                        <div  className="flex items-center w-full" >
                                             <div className="flex text-ellipsis overflow-hidden items-center gap-2">
                                                 <div className="w-6">
                                                 <FontAwesomeIcon className="text-green-500" icon={faPlus} />
                                                 </div>
-                                                <div onClick={() => setAddSantier(beneficiar.id)} className="w-full overflow-hidden whitespace-nowrap text-ellipsis">
+                                                <div  className="w-full overflow-hidden whitespace-nowrap text-ellipsis">
                                                     Adauga Santier
                                                 </div>
                                             </div>
@@ -274,7 +274,7 @@ function Navbar() {
                                 }
                             </div>
                         ))
-                    }
+                    } 
                 </div>
                 </>
                 :

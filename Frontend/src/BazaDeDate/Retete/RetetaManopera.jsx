@@ -65,7 +65,6 @@ export default function RetetaManopera({
                             ocupatie: manoperaFilters.ocupatie, // Add any other filters here
                         },
                     });
-                    console.log("SAS")
                     setManopere(response.data.data);
                 }
             } catch (error) {
