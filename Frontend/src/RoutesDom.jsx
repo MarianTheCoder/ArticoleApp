@@ -13,7 +13,6 @@ import AddNews from './Home/AddNews';
 import NavbarDefaultHome from './MainElements/NavbarDefaultHome';
 import Contact from './MainPages/Contact';
 import Test from './test/Test';
-import Santiere from './BazaDeDate/Santiere/SantiereForm';
 import DatabaseMainCategories from './BazaDeDate/DatabaseMainCategories';
 import RetetaForm from './BazaDeDate/Retete/RetetaForm'
 import { RetetaProvider } from './context/RetetaContext';

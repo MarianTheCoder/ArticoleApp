@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react'
+import React, { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import api from '../../api/axiosAPI';
 import { flexRender, getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -8,6 +8,7 @@ import photoAPI from '../../api/photoAPI';
 import ReteteAdaugareObiecte from '../Retete/ReteteAdaugareObiecte';
 import SantiereAddReteteTable from './SantiereAddReteteTableAbsolute';
 import { useParams } from 'react-router-dom';
+import CostInputCell from './CostCell';
 
 
 export default function SantiereAdd() {
@@ -16,9 +17,11 @@ export default function SantiereAdd() {
 
     const [openDropdowns, setOpenDropdowns] = useState(new Set());
     const [isPopupOpen, setIsPopupOpen] = useState(false);
+
     const [selectedDelete, setSelectedDelete] = useState(null);
     const [selectedEdit, setSelectedEdit] = useState(null);
-
+    const [editedCosts, setEditedCosts] = useState({});
+    const editedCostsRef = useRef(editedCosts);
 
     const [retete, setRetete] = useState([]);
     const [ascendent ,setAscendent] = useState(false);
@@ -66,6 +69,9 @@ export default function SantiereAdd() {
         fetchManopere();
     }, [ascendent]);
 
+    useEffect(() => {
+        editedCostsRef.current = editedCosts;
+      }, [editedCosts]);
 
 
     const handleInputChange = (e) => {
@@ -79,6 +85,8 @@ export default function SantiereAdd() {
 
     //handle selected edit/delete
     const handleSelectedForDelete = (e, id) => {
+        setEditedCosts({});
+        setSelectedEdit(null);
         setSelectedDelete((prev) => {
             if (prev === id) {
               deleteItem(id); // your custom logic here
@@ -88,31 +96,63 @@ export default function SantiereAdd() {
           });
     }
 
-    const handleSelectedForEdit = async (passedRow) => {
-        setSelectedDelete(null);
+    const deleteItem = async (id) => {
         try {
-            const response = await api.get(`/Retete/getSpecificReteta/${passedRow.id }`);
-            console.log(response);
-            setSelectedEdit(passedRow.id);
-            setFormData({
-                clasa: passedRow.clasa,
-                cod: passedRow.cod,
-                articol: passedRow.articol,
-                unitate_masura: passedRow.unitate_masura
-            })
+            await api.delete(`/Santiere/deleteRetetaFromSantier/${id}`);
+    
+            // Always update retete state
+            setRetete(prev => 
+                prev.filter(item => item.id !== id && item.parentId !== id)
+            );
+            // Remove dropdown open state if it was open
+            setOpenDropdowns((prev) => {
+                const newSet = new Set(prev);
+                newSet.delete(id);
+                return newSet;
+            });
+    
         } catch (error) {
-            console.error('Error fetching data:', error);
+            console.error('Error deleting item:', error);
+        }
+    };
+
+    const handleAcceptEdit = async () =>{
+        const currentEditedCosts = editedCostsRef.current;
+        console.log('Sending updated costs:', currentEditedCosts);
+        // your update logic here
+    }
+
+    const handleSelectedForEdit = (e, rowToEdit) =>{
+        if(selectedEdit == rowToEdit.id){
+            handleAcceptEdit();
+            setEditedCosts({});
+            setSelectedEdit(null);
+        }
+        else{
+            const isAlreadyOpen = openDropdowns.has(rowToEdit.id);
+            if (!isAlreadyOpen) toggleDropdown(rowToEdit.id);
+            setSelectedDelete(null);
+            const newEditedCosts = {};
+            
+            retete.forEach((item) => {
+                if (item.parentId === rowToEdit.id) {
+                    newEditedCosts[item.id] = item.cost;
+                }
+            });
+
+            setEditedCosts(newEditedCosts);
+            setSelectedEdit(rowToEdit.id);
         }
     }
 
-    const deleteItem = async (id) => {
-        try {
-            let res = await api.delete(`/Santiere/deleteRetetaFromSantier/${id}`);
-            console.log(res);
-        } catch (error) {
-            console.error('Error fetching data:', error);
-        }
-    }
+    const handleCostChange = (id, value) => {
+        console.log(id,value)
+        setEditedCosts((prev) => ({
+          ...prev,
+          [id]: value,
+        }));
+      };
+    
 
     const toggleDropdown = async (parentId) => {
         const isAlreadyOpen = openDropdowns.has(parentId);
@@ -139,14 +179,14 @@ export default function SantiereAdd() {
             }));
       
             setRetete((prev) => {
-              const index = prev.findIndex(item => item.id === parentId);
+              const index = prev.findIndex(item => item.id === parentId && !item.parentId );
               if (index === -1) return prev;
       
               const newList = [...prev];
               newList.splice(index + 1, 0, ...children);
               return newList;
             });
-      
+            
             setOpenDropdowns((prev) => {
               const newSet = new Set(prev);
               newSet.add(parentId);
@@ -158,6 +198,7 @@ export default function SantiereAdd() {
         }
       };
 
+      
         //Handle Click Outside!
         useEffect(() => {
             document.addEventListener('click', handleClickOutside);
@@ -169,6 +210,8 @@ export default function SantiereAdd() {
         const handleClickOutside = (event) => {
             if (!event.target.closest('.dropdown-container')) {
                 setSelectedDelete(false);
+                setEditedCosts({});
+                setSelectedEdit(null);
             }
         };
 
@@ -187,7 +230,7 @@ export default function SantiereAdd() {
             accessorKey: "Dropdown", 
             header: "",
             cell: ({ row, getValue, cell }) => (
-            <div onClick={() => toggleDropdown(cell.row.original.id)}className='flex justify-center select-none w-full cursor-pointer items-center'>
+            <div  onClick={() => row.original.id != selectedEdit && toggleDropdown(cell.row.original.id)}className='flex justify-center select-none w-full dropdown-container cursor-pointer items-center'>
                 <FontAwesomeIcon  className={` ${openDropdowns.has(cell.row.original.id) ? "rotate-90" : ""}  text-center  text-xl`} icon={faChevronRight}/>
             </div>
              
@@ -252,7 +295,22 @@ export default function SantiereAdd() {
                 size:70
         },
         { accessorKey: "cantitate", header: "Cantitate", size:70},
-        { accessorKey: "cost", header: "Pret Unitar", size:70},
+        {
+            accessorKey: "cost",
+            header: "Preț Unitar",
+            cell: ({ getValue, row }) => {
+              const isEditable = row.original.parentId === selectedEdit;
+          
+              return (
+                <CostInputCell
+                  rowId={row.original.id}
+                  initialValue={getValue()}
+                  isEditable={isEditable}
+                  onEdit={handleCostChange} // optional
+                />
+              );
+            },
+          },
         { accessorKey: "pret_total", header: "Pret Total", size:70},
         { 
             accessorKey: "threeDots", 
@@ -263,7 +321,7 @@ export default function SantiereAdd() {
                     :
                 <div className=' dropdown-container w-full relative flex '> 
                     <div className='text-xl relative w-full py-2 select-none items-center justify-evenly gap-1 flex'>
-                        <FontAwesomeIcon onClick={() => handleSelectedForEdit(row.original)}  className=' text-green-500 hover:text-green-600 dropw cursor-pointer dropdown-container' icon={faPenToSquare}/>
+                        <FontAwesomeIcon onClick={(e) => handleSelectedForEdit(e, row.original)}  className=' text-green-500 hover:text-green-600 dropw cursor-pointer dropdown-container' icon={faPenToSquare}/>
                         <FontAwesomeIcon onClick={(e) => handleSelectedForDelete(e, row.original.id)} className=' text-red-500 hover:text-red-600 cursor-pointer dropdown-container' icon={faTrashCan}/>
                     </div>
                 </div>
@@ -275,7 +333,7 @@ export default function SantiereAdd() {
                 },
             },
         },
-    ], [selectedDelete, retete, ascendent]);
+    ], [retete, ascendent, selectedEdit, selectedDelete]);
 
     const table = useReactTable({
         data: retete,
@@ -357,7 +415,7 @@ export default function SantiereAdd() {
               {retete.length == 0 ?
                     <tbody className='relative z-0'>
                         <tr>
-                            <td className='bg-white border-black border-r border-b text-black h-12' colSpan={12}>
+                            <td className='bg-[rgb(255,255,255,0.75)] border-black border-r border-b text-black h-12' colSpan={12}>
                                 <div className=' flex justify-center items-center w-full text-lg font-semibold h-full'>Nimic Adaugat</div>
                             </td>
                         </tr>
@@ -375,7 +433,7 @@ export default function SantiereAdd() {
                 {table.getRowModel().rows.map((row,index,rows) => (
                     row.original.whatIs == 'Manopera' || row.original.whatIs == 'Material' || row.original.whatIs == 'Utilaj' || row.original.whatIs == 'Transport' ?
                     <React.Fragment key={row.id}>
-                        <tr  className={`dropdown-container    text-black`}>
+                        <tr  className={`   text-black`}>
                             {row.getVisibleCells().map((cell) => (  
                                 cell.column.id == "Dropdown" ?
                                 <td key={cell.id}>

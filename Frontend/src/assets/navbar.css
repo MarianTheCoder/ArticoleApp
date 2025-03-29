@@ -11,7 +11,7 @@
 
 :root
 {
-    --clr: #000043;
+    --clr: #002043;
 }
 
 body
@@ -27,7 +27,9 @@ body
     width: 80px;
     overflow: hidden;
     height: 100vh;
-    background-color: #fff;
+    background: rgba( 0, 0, 0, 0.3 );
+    backdrop-filter: blur( 3px );
+    -webkit-backdrop-filter: blur( 3px );
     transition: 0.5s;
     padding-left: 10px;
 }
@@ -46,35 +48,40 @@ body
 
 .sidebar ul li.active
 {
-    background: var(--clr);
+    background: rgba( 0, 0, 0, 0.3 );
     border-top-left-radius: 50px;
     border-bottom-left-radius: 50px;
+    will-change: backdrop-filter;
 }
 /* nimic aici */
 .sidebar ul li.active::before
 {
     content: "";
-    top: -20px;
-    right: 0;
     position: absolute;
-    width: 20px;
-    height: 20px;
-    border-bottom-right-radius: 20px;
-    box-shadow: 5px 5px 0 5px var(--clr);
-    background-color: transparent;
+    top: -15px;
+    right: 0;
+    width: 15px;
+    height: 15px;
+    clip-path: polygon(100% 0%, 0% 0%, 0% 100%);
+    background: rgba( 0, 0, 0, 0.3 );
+ 
+    border-bottom-right-radius: 15px;
+    rotate: 180deg;
 }
 /* nici aici */
 .sidebar ul li.active::after
 {
     content: "";
-    bottom: -20px;
+    bottom: -15px;
     right: 0;
     position: absolute;
-    width: 20px;
-    height: 20px;
-    border-top-right-radius: 20px;
-    box-shadow: 5px -5px 0 5px var(--clr);
-    background-color: transparent;
+    width: 15px;
+    height: 15px;
+    clip-path: polygon(100% 0%, 0% 0%, 0% 100%);
+    background: rgba( 0, 0, 0, 0.3 );
+
+    border-bottom-right-radius: 15px;
+    rotate: 90deg;
 }
 
 .sidebar ul li.logo
@@ -114,7 +121,7 @@ body
     min-width: 60px;
     height: 70px;
     font-size: 1.5em;
-    color: #333;
+    color: white;
     transition: 0.5s;
 }
 .sidebar ul li.active a .icon
@@ -152,7 +159,7 @@ body
     display: flex;
     align-items: center;
     font-size: 1em;
-    color: #333;
+    color: white;
     padding-left: 15px;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -196,7 +203,9 @@ body
     right: 20px;
     width: 50px;
     height: 50px;
-    background: #ffffff;
+
+    backdrop-filter: blur( 3px );
+    -webkit-backdrop-filter: blur( 3px );
     cursor: pointer;
     display: flex;
     justify-content: center;
@@ -209,10 +218,10 @@ body
     position: absolute;
     width: 30px;
     height: 3px;
-    background: #000043;
+    background: white;
     transform: translateY(-9px);
     transition: 0.5s;
-    box-shadow: 0 9px 0 #000043;
+    box-shadow: 0 9px 0 white;
 }
 .menuToggle::after
 {
@@ -220,14 +229,14 @@ body
     position: absolute;
     width: 30px;
     height: 3px;
-    background: #000043;
+    background: white;
     transform: translateY(9px);
     transition: 0.5s;
 }
 .menuToggle.active::before
 {
     transform: translateY(0px) rotate(45deg);
-    box-shadow: 0 0 0 #000043;
+    box-shadow: 0 0 0 white;
 }
 
 .menuToggle.active::after

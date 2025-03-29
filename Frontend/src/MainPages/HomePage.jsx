@@ -1,57 +1,104 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./HomePage.css";
+import photoAPI from "../api/photoAPI";
+import Logo from '../assets/logo.svg';
 
 export default function BalyEnergies() {
-  const slideRef = useRef(null);
+  const carouselRef = useRef(null);
+  const nextRef = useRef(null);
+  const prevRef = useRef(null);
+  const [autoSlide, setAutoSlide] = useState(null);
 
-  const nextSlide = () => {
-    if (slideRef.current) {
-      let items = slideRef.current.children;
-      slideRef.current.appendChild(items[0]); // Mută primul element la sfârșit
-    }
-  };
+  const slidesData = [
+    { title: "Specializați în", topic: "Electricitate", description: "Lucrări de curenți puternici, lucrări de curenți slabi" },
+    { title: "Specializați în", topic: "Instalații sanitare", description: "Rețele de distribuție" },
+    { title: "Specializați în", topic: "Climatizare", description: "Încălzire, ventilație" },
+    { title: "Specializați în", topic: "Securitate", description: "Sisteme de securitate împotriva incendiilor, sisteme de control al accesului și de intruziune" }
+  ];
 
-  const prevSlide = () => {
-    if (slideRef.current) {
-      let items = slideRef.current.children;
-      slideRef.current.prepend(items[items.length - 1]); // Mută ultimul element la început
+  useEffect(() => {
+    const nextDom = nextRef.current;
+    const prevDom = prevRef.current;
+    const carouselDom = carouselRef.current;
+    const sliderDom = carouselDom.querySelector(".HP-list");
+    const thumbnailBorderDom = carouselDom.querySelector(".HP-thumbnail");
+    let thumbnailItemsDom = thumbnailBorderDom.querySelectorAll(".HP-item");
+
+    thumbnailBorderDom.appendChild(thumbnailItemsDom[0]);
+
+    const interval = setInterval(() => {
+      nextDom.click();
+    }, 7000);
+    setAutoSlide(interval);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  function showSlider(type) {
+    const carouselDom = carouselRef.current;
+    const sliderDom = carouselDom.querySelector(".HP-list");
+    const thumbnailBorderDom = carouselDom.querySelector(".HP-thumbnail");
+    const sliderItemsDom = sliderDom.querySelectorAll(".HP-item");
+    const thumbnailItemsDom = thumbnailBorderDom.querySelectorAll(".HP-item");
+
+    if (carouselDom.classList.contains("HP-next") || carouselDom.classList.contains("HP-prev")) {
+      return;
     }
-  };
+
+    if (type === "next") {
+      carouselDom.classList.add("HP-next");
+      setTimeout(() => {
+        sliderDom.appendChild(sliderItemsDom[0]);
+        thumbnailBorderDom.appendChild(thumbnailItemsDom[0]);
+        carouselDom.classList.remove("HP-next");
+      }, 500);
+    } else {
+      carouselDom.classList.add("HP-prev");
+      setTimeout(() => {
+        sliderDom.prepend(sliderItemsDom[sliderItemsDom.length - 1]);
+        thumbnailBorderDom.prepend(thumbnailItemsDom[thumbnailItemsDom.length - 1]);
+        carouselDom.classList.remove("HP-prev");
+      }, 500);
+    }
+  }
 
   return (
-    <div className="HP-container">
-      <div className="HP-slide" ref={slideRef}>
-        {[
-          { name: "Switzerland", img: "https://i.ibb.co/qCkd9jS/img1.jpg" },
-          { name: "Finland", img: "https://i.ibb.co/jrRb11q/img2.jpg" },
-          { name: "Iceland", img: "https://i.ibb.co/NSwVv8D/img3.jpg" },
-          { name: "Australia", img: "https://i.ibb.co/Bq4Q0M8/img4.jpg" },
-          { name: "Netherland", img: "https://i.ibb.co/jTQfmTq/img5.jpg" },
-          { name: "Ireland", img: "https://i.ibb.co/RNkk6L0/img6.jpg" },
-        ].map((item, index) => (
-          <div
-            key={index}
-            className="HP-item"
-            style={{ backgroundImage: `url(${item.img})` }}
-          >
-            <div className="HP-content">
-              <div className="HP-name">{item.name}</div>
-              <div className="HP-des">
-                Lorem ipsum dolor, sit amet consectetur adipisicing elit. Ab, eum!
+    <div className="HP-body">
+      <div className="HP-carousel" ref={carouselRef} style={{ height: "100vh" }}>
+        <div className="HP-list">
+          {slidesData.map((slide, index) => (
+            <div className="HP-item" key={index} style={{ height: "100vh" }}>
+              <img src={`${photoAPI}/uploads/Principala/img${index + 1}.jpg`} alt={`Slide ${index + 1}`} style={{ height: "100%" }} />
+              <div className="HP-content">
+                <img src={Logo} alt="Website Logo" className="HP-author" />
+                <div className="HP-title">{slide.title}</div>
+                <div className="HP-topic">{slide.topic}</div>
+                <div className="HP-description">{slide.description}</div>
+                <div className="HP-buttons">
+                  <button>SEE MORE</button>
+                  <button>SUBSCRIBE</button>
+                </div>
               </div>
-              <button>See More</button>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
 
-      <div className="HP-button">
-        <button className="HP-prev" onClick={prevSlide}>
-          ◀️
-        </button>
-        <button className="HP-next" onClick={nextSlide}>
-          ▶️
-        </button>
+        <div className="HP-thumbnail">
+          {slidesData.map((slide, index) => (
+            <div className="HP-item" key={index}>
+              <img src={`${photoAPI}/uploads/Principala/img${index + 1}.jpg`} alt={`Thumbnail ${index + 1}`} />
+              <div className="HP-content">
+                <div className="HP-title">{slide.title}</div>
+                <div className="HP-description">{slide.description}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="HP-arrows">
+          <button id="HP-prev" ref={prevRef} onClick={() => showSlider("prev")}>&#9665;</button>
+          <button id="HP-next" ref={nextRef} onClick={() => showSlider("next")}>&#9655;</button>
+        </div>
       </div>
     </div>
   );

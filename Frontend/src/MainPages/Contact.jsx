@@ -5,7 +5,7 @@ export default function Contact() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-[#000043] text-white flex flex-col items-center justify-center p-10">
+    <div className="ml-15 min-h-screen bg-[#000043] text-white flex flex-col items-center justify-center p-10">
       <motion.h1
         initial={{ opacity: 0, y: -50 }}
         animate={{ opacity: 1, y: 0 }}

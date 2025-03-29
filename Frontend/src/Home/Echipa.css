@@ -36,6 +36,7 @@
     max-width: 1200px;
     gap: 20px;
     margin-top: 80px; /* Asigurăm că nu se suprapune cu titlul */
+    margin-left: 80px;
 }
 
 /* Cardul fiecărui membru */

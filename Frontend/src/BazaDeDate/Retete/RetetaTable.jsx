@@ -467,7 +467,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                             {index == lastObjectIndex ?
                             <tr>
                                 <td></td>
-                                <td onClick={() => setIsPopupOpen(true)} className='bg-white p-1 px-3 hover:bg-[rgb(255,255,255,0.9)] cursor-pointer border-b border-r border-black select-none text-black' colSpan={9}>
+                                <td onClick={() => setIsPopupOpen(true)} className='bg-blue-300 p-1 px-3 hover:bg-blue-500 cursor-pointer border-b border-r border-black select-none text-black' colSpan={9}>
                                     <div className='flex font-bold  text-center justify-center items-center gap-2'>
                                         <p className=' text-center'>Adauga Obiecte</p>
                                         <FontAwesomeIcon className='text-green-500  text-center text-2xl' icon={faPlus}/>
