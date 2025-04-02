@@ -144,7 +144,7 @@ export default function RetetaMateriale({setIsPopupOpen,
     <>
         <div className=' flex flex-col h-full w-full overflow-hidden'>
             {/* Inputs for fetching materiale */}
-            <div className='grid font-medium grid-cols-[1fr_2fr_1fr_2fr] gap-4 p-4 pt-2 text-black containerWhiter w-full'>
+            <div className='grid font-medium grid-cols-[0.7fr_auto_1fr_2fr] gap-4 p-4 pt-2 text-black containerWhiter w-full'>
 
                 <div className="flex flex-col w-full items-center ">
                       <label className=" text-black">
@@ -157,9 +157,11 @@ export default function RetetaMateriale({setIsPopupOpen,
                             onChange={handleChangeFilterMateriale}
                             className="px-2 outline-none text-center py-2  w-full  rounded-lg shadow-sm  "
                         >
-                        <option value="Direct">Direct</option>
-                        <option value="Indirect">Indirect</option>
-                        <option value="">All</option>
+                            <option value="">Toate</option>
+                            <option value="De Bază">De Bază</option>
+                            <option value="De Finisaj">De Finisaj</option>
+                            <option value="Auxiliar">Auxiliare</option>
+                            <option value="Consumabil">Consumabile</option>
                     </select>
                   </div>
 
@@ -167,15 +169,30 @@ export default function RetetaMateriale({setIsPopupOpen,
                       <label className=" text-black">
                           Clasa 
                       </label>
-                      <input
-                          type="text"
-                          id="clasa"
-                          name="clasa"
-                          value={materialeFilters.clasa}
-                          onChange={handleChangeFilterMateriale}
-                          className="px-2 outline-none text-center py-2  w-full  rounded-lg shadow-sm "
-                          placeholder="Enter Clasa"
-                      />
+                                        <select
+                                            id="clasa"
+                                            name="clasa"
+                                            value={materialeFilters.clasa}
+                                            onChange={handleChangeFilterMateriale}
+                                            className=" px-2 outline-none text-center py-2  w-full  rounded-lg shadow-sm"
+                                        >
+                                            <option value="">Toate</option>
+                                            <option value="Regie">Regie</option>
+                                            <option value="Dezafectare">Dezafectare</option>
+                                            <option value="Amenajări interioare">Amenajări interioare</option>
+                                            <option value="Electrice">Electrice</option>
+                                            <option value="Sanitare">Sanitare</option>
+                                            <option value="Termice">Termice</option>
+                                            <option value="Climatizare Ventilație">Climatizare Ventilație</option>
+                                            <option value="Amenajări exterioare">Amenajări exterioare</option>
+                                            <option value="Tâmplărie">Tâmplărie</option>
+                                            <option value="Mobilă">Mobilă</option>
+                                            <option value="Confecții Metalice">Confecții Metalice</option>
+                                            <option value="Prelucrări Ceramice/Piatră Naturală">Prelucrări Ceramice/Piatră Naturală</option>
+                                            <option value="Ofertare/Devizare">Ofertare/Devizare</option>
+                                            <option value="Management de proiect">Management de proiect</option>
+                                            <option value="Reparații">Reparații</option>
+                                        </select>
                   </div>
                     <div className="flex w-full flex-col items-center ">
                       <label className=" text-black">

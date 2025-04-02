@@ -1,23 +1,23 @@
 // CostInputCell.jsx
 import React, { useEffect, useState } from "react";
 
-export default function CostInputCell({ initialValue, rowId, isEditable, onEdit }) {
+export default function CostInputCell({ initialValue, rowId, whatIs, isEditable, onEdit, bold }) {
   const [value, setValue] = useState(initialValue);
 
   const handleChange = (e) => {
     const newValue = e.target.value;
-    setValue(newValue);
+    if(/^\d+(\.\d{0,2})?$/.test(newValue)) setValue(newValue);
     if (onEdit) {
-      onEdit(rowId, newValue); // Optional: update parent state
+      onEdit(rowId, whatIs, newValue); 
     }
   };
 
   useEffect(() => {
-    setValue(initialValue); // Reset input if initialValue changes from parent
+      setValue(initialValue); 
   }, [initialValue]);
 
   if (!isEditable) {
-    return <span className=" font-semibold">{initialValue}</span>;
+    return <span className={`${bold ? "font-semibold" : ""} `}>{initialValue}</span>;
   }
 
   return (

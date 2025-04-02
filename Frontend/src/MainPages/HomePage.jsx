@@ -1,105 +1,110 @@
 import { useEffect, useRef, useState } from "react";
-import "./HomePage.css";
+import "./HomePage.css"; // Asigură-te că ai stilurile pentru carousel și elementele sale
 import photoAPI from "../api/photoAPI";
-import Logo from '../assets/logo.svg';
+import Logo from '../assets/logo.svg'; // Nu am folosit acest import, dar presupun că este pentru altceva
 
 export default function BalyEnergies() {
   const carouselRef = useRef(null);
   const nextRef = useRef(null);
   const prevRef = useRef(null);
-  const [autoSlide, setAutoSlide] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const slidesData = [
-    { title: "Specializați în", topic: "Electricitate", description: "Lucrări de curenți puternici, lucrări de curenți slabi" },
-    { title: "Specializați în", topic: "Instalații sanitare", description: "Rețele de distribuție" },
-    { title: "Specializați în", topic: "Climatizare", description: "Încălzire, ventilație" },
-    { title: "Specializați în", topic: "Securitate", description: "Sisteme de securitate împotriva incendiilor, sisteme de control al accesului și de intruziune" }
+    { title: "Specializați în", number: 1 ,topic: "Electricitate", description: "Lucrări de curenți puternici, lucrări de curenți slabi" },
+    { title: "Specializați în", number: 2 ,topic: "Instalații sanitare", description: "Rețele de distribuție" },
+    { title: "Specializați în", number: 3 ,topic: "Climatizare", description: "Încălzire, ventilație" },
+    { title: "Specializați în", number: 4 ,topic: "Securitate", description: "Sisteme de securitate împotriva incendiilor, sisteme de control al accesului și de intruziune" }
   ];
 
   useEffect(() => {
-    const nextDom = nextRef.current;
-    const prevDom = prevRef.current;
-    const carouselDom = carouselRef.current;
-    const sliderDom = carouselDom.querySelector(".HP-list");
-    const thumbnailBorderDom = carouselDom.querySelector(".HP-thumbnail");
-    let thumbnailItemsDom = thumbnailBorderDom.querySelectorAll(".HP-item");
+    const nextBtn = nextRef.current;
+    const prevBtn = prevRef.current;
+    const list = carouselRef.current.querySelector('.list');
+    const runningTime = carouselRef.current.querySelector('.timeRunning');
+    
+    const timeRunning = 3000;
+    const timeAutoNext = 7000;
 
-    thumbnailBorderDom.appendChild(thumbnailItemsDom[0]);
+    let runTimeOut;
+    let runNextAuto = setTimeout(() => {
+      nextBtn.click();
+    }, timeAutoNext);
 
-    const interval = setInterval(() => {
-      nextDom.click();
-    }, 7000);
-    setAutoSlide(interval);
+    const resetTimeAnimation = () => {
+      runningTime.style.animation = 'none';
+      runningTime.offsetHeight; // trigger reflow
+      runningTime.style.animation = null;
+      runningTime.style.animation = 'runningTime 7s linear 1 forwards';
+    };
+    setLoading(false);
+    const showSlider = (type) => {
+      const sliderItemsDom = list.querySelectorAll('.carousel .list .item');
+      if (type === 'next') {
+        list.appendChild(sliderItemsDom[0]);
+        carouselRef.current.classList.add('next');
+      } else {
+        list.prepend(sliderItemsDom[sliderItemsDom.length - 1]);
+        carouselRef.current.classList.add('prev');
+      }
 
-    return () => clearInterval(interval);
+      clearTimeout(runTimeOut);
+      runTimeOut = setTimeout(() => {
+        carouselRef.current.classList.remove('next');
+        carouselRef.current.classList.remove('prev');
+      }, timeRunning);
+
+      clearTimeout(runNextAuto);
+      runNextAuto = setTimeout(() => {
+        nextBtn.click();
+      }, timeAutoNext);
+
+      resetTimeAnimation(); // Reset the running time animation
+    };
+
+    nextBtn.onclick = () => showSlider('next');
+    prevBtn.onclick = () => showSlider('prev');
+
+    // Start the initial animation 
+    resetTimeAnimation();
+
+    return () => {
+      clearTimeout(runNextAuto);
+      clearTimeout(runTimeOut);
+    };
   }, []);
-
-  function showSlider(type) {
-    const carouselDom = carouselRef.current;
-    const sliderDom = carouselDom.querySelector(".HP-list");
-    const thumbnailBorderDom = carouselDom.querySelector(".HP-thumbnail");
-    const sliderItemsDom = sliderDom.querySelectorAll(".HP-item");
-    const thumbnailItemsDom = thumbnailBorderDom.querySelectorAll(".HP-item");
-
-    if (carouselDom.classList.contains("HP-next") || carouselDom.classList.contains("HP-prev")) {
-      return;
-    }
-
-    if (type === "next") {
-      carouselDom.classList.add("HP-next");
-      setTimeout(() => {
-        sliderDom.appendChild(sliderItemsDom[0]);
-        thumbnailBorderDom.appendChild(thumbnailItemsDom[0]);
-        carouselDom.classList.remove("HP-next");
-      }, 500);
-    } else {
-      carouselDom.classList.add("HP-prev");
-      setTimeout(() => {
-        sliderDom.prepend(sliderItemsDom[sliderItemsDom.length - 1]);
-        thumbnailBorderDom.prepend(thumbnailItemsDom[thumbnailItemsDom.length - 1]);
-        carouselDom.classList.remove("HP-prev");
-      }, 500);
-    }
-  }
-
-  return (
-    <div className="HP-body">
-      <div className="HP-carousel" ref={carouselRef} style={{ height: "100vh" }}>
-        <div className="HP-list">
+  
+    return (
+      <div className="carousel" ref={carouselRef}>
+        {loading && (
+          <div className="absolute w-full h-full bg-white bg-opacity-90 z-50 flex items-center justify-center">
+            <div className="w-20 h-20 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        )}
+        <div className="list">
           {slidesData.map((slide, index) => (
-            <div className="HP-item" key={index} style={{ height: "100vh" }}>
-              <img src={`${photoAPI}/uploads/Principala/img${index + 1}.jpg`} alt={`Slide ${index + 1}`} style={{ height: "100%" }} />
-              <div className="HP-content">
-                <img src={Logo} alt="Website Logo" className="HP-author" />
-                <div className="HP-title">{slide.title}</div>
-                <div className="HP-topic">{slide.topic}</div>
-                <div className="HP-description">{slide.description}</div>
-                <div className="HP-buttons">
-                  <button>SEE MORE</button>
-                  <button>SUBSCRIBE</button>
+           <div 
+           className="item" 
+           key={index} 
+           style={{ backgroundImage: `url(${photoAPI}/uploads/Principala/img${slide.number}.jpg)` }}>
+              <div className="content">
+                <div className="title">Specializați în</div>
+                <div className="name">{slide.topic}</div>
+                <div className="des">{slide.description}</div>
+                <div className="btn">
+                  <button>See More</button>
+                  <button>Subscribe</button>
                 </div>
               </div>
             </div>
           ))}
         </div>
 
-        <div className="HP-thumbnail">
-          {slidesData.map((slide, index) => (
-            <div className="HP-item" key={index}>
-              <img src={`${photoAPI}/uploads/Principala/img${index + 1}.jpg`} alt={`Thumbnail ${index + 1}`} />
-              <div className="HP-content">
-                <div className="HP-title">{slide.title}</div>
-                <div className="HP-description">{slide.description}</div>
-              </div>
-            </div>
-          ))}
+        <div className="arrows">
+          <button className="prev" ref={prevRef}>&lt;</button>
+          <button className="next" ref={nextRef}>&gt;</button>
         </div>
 
-        <div className="HP-arrows">
-          <button id="HP-prev" ref={prevRef} onClick={() => showSlider("prev")}>&#9665;</button>
-          <button id="HP-next" ref={nextRef} onClick={() => showSlider("next")}>&#9655;</button>
-        </div>
+        <div className="timeRunning"></div>
       </div>
-    </div>
   );
 }

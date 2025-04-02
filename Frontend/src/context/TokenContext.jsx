@@ -35,9 +35,47 @@ export const AuthProvider = ({ children }) => {
     };
     
     useEffect(() => {
-        console.log("das")
-      decodeToken();
-    }, [])
+        checkTokenValidity();
+    }, []);
+    
+    const checkTokenValidity = async () => {
+        const storedToken = localStorage.getItem('token');
+        console.log("check token");
+        if (!storedToken) {
+            setLoading(false);
+            return;
+        }
+    
+        try {
+            const res = await api.get('/auth/checkToken', {
+                headers: {
+                    Authorization: `Bearer ${storedToken}`,
+                },
+            });
+    
+            const decoded = getDecodedToken(storedToken);
+            if (decoded) {
+                setToken(storedToken);
+                setUser({
+                    id: decoded.id,
+                    role: decoded.role,
+                    name: decoded.user,
+                });
+    
+                if (decoded.role === 'angajat') setColor('text-emerald-500');
+                else if (decoded.role === 'ofertant') setColor('text-blue-600');
+                else setColor('text-amber-500');
+            }
+        } catch (err) {
+            console.error('Token invalid or expired:', err);
+            localStorage.removeItem('token');
+            localStorage.removeItem('photoUser');
+            setToken(null);
+            setUser({ id: null, role: null, name: null });
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const getUsersForSantiere = async () => {
         try {

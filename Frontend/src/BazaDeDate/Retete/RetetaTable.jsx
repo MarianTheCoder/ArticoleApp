@@ -267,7 +267,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
             accessorKey: 'whatIs', 
             header: 'Tip',
             size:70,
-            cell: ({ getValue, row }) => getValue() ? <div onClick={() => console.log(row)} className='w-full'>{row.original.whatIs == "Material" ?  getValue() + " " + row.original.tip_material : getValue()}</div> : 'Rețetă', // Display default value if the value is empty or undefined
+            cell: ({ getValue, row }) => getValue() ? <div className='w-full'>{row.original.whatIs == "Material" ?  getValue() + " " + row.original.tip_material : getValue()}</div> : 'Rețetă', // Display default value if the value is empty or undefined
         },
         { accessorKey: "unitate_masura", header: "Unitate",size:60},
         { 

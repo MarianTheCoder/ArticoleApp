@@ -10,8 +10,8 @@ export default function MaterialeForm() {
 
   const [formData, setFormData] = useState({
       furnizor:"",
-      tip_material:"Direct",
-      clasa_material:"",
+      tip_material:"De Bază",
+      clasa_material:"Dezafectare",
       cod_produs:"",
       denumire_produs:"",
       descriere_produs:"",
@@ -75,8 +75,8 @@ export default function MaterialeForm() {
       }
       setFormData({
         furnizor:"",
-        tip_material:"Direct",
-        clasa_material:"",
+        tip_material:"De Bază",
+        clasa_material:"Dezafectare",
         cod_produs:"",
         denumire_produs:"",
         descriere_produs:"",
@@ -130,8 +130,8 @@ export default function MaterialeForm() {
     setSelectedEdit(null);
     setFormData({
       furnizor:"",
-      tip_material:"Direct",
-      clasa_material:"",
+      tip_material:"De Bază",
+      clasa_material:"Dezafectare",
       cod_produs:"",
       denumire_produs:"",
       descriere_produs:"",
@@ -200,7 +200,35 @@ export default function MaterialeForm() {
                 <input  id="hiddenFileInput" type="file" onChange={handleFileChange} className="hidden"/>
               </div>
             </div>
-
+            {/* clasa materiale */}
+            <div className="flex flex-col items-center">
+                      <label htmlFor="unit" className="col-span-1 font-medium text-black">
+                        Clasă Materiale
+                      </label>
+                      <select
+                        id="clasa_material"
+                        name="clasa_material"
+                        value={formData.clasa_material}
+                        onChange={handleChange}
+                        className=" px-1 py-2  text-center rounded-lg outline-none shadow-sm "
+                      >
+                        <option value="Regie">Regie</option>
+                        <option value="Dezafectare">Dezafectare</option>
+                        <option value="Amenajări interioare">Amenajări interioare</option>
+                        <option value="Electrice">Electrice</option>
+                        <option value="Sanitare">Sanitare</option>
+                        <option value="Termice">Termice</option>
+                        <option value="Climatizare Ventilație">Climatizare Ventilație</option>
+                        <option value="Amenajări exterioare">Amenajări exterioare</option>
+                        <option value="Tâmplărie">Tâmplărie</option>
+                        <option value="Mobilă">Mobilă</option>
+                        <option value="Confecții Metalice">Confecții Metalice</option>
+                        <option value="Prelucrări Ceramice/Piatră Naturală">Prelucrări Ceramice/Piatră Naturală</option>
+                        <option value="Ofertare/Devizare">Ofertare/Devizare</option>
+                        <option value="Management de proiect">Management de proiect</option>
+                        <option value="Reparații">Reparații</option>
+                      </select>
+                  </div>
             <div className="flex flex-col items-center">
               <label htmlFor="unit" className="font-medium text-black">
                 Tip
@@ -212,8 +240,10 @@ export default function MaterialeForm() {
                 onChange={handleChange}
                 className="px-2 py-2 border  rounded-lg outline-none shadow-sm "
               >
-                <option value="Direct">Direct</option>
-                <option value="Indirect">Indirect</option>
+                <option value="De Bază">De Bază</option>
+                <option value="De Finisaj">De Finisaj</option>
+                <option value="Auxiliar">Auxiliare</option>
+                <option value="Consumabil">Consumabile</option>
               </select>
             </div>
           {/* Furnizor */}
@@ -231,22 +261,6 @@ export default function MaterialeForm() {
                   className="px-2 outline-none text-center py-2 max-w-40  rounded-lg shadow-sm "
               />
           </div>
-
-            {/* clasa materiale */}
-            <div className="flex flex-col items-center ">
-              <label htmlFor="code" className=" font-medium text-black">
-                  Clasă Materiale
-              </label>
-              <input
-                  type="text"
-                  id="clasa_material"
-                  name="clasa_material"
-                  value={formData.clasa_material}
-                  onChange={handleChange}
-                  className="px-2 outline-none text-center py-2 max-w-32  rounded-lg shadow-sm "
-              />
-          </div>
-
           {/* cod produs */}
           <div className="flex flex-col items-center ">
               <label htmlFor="code" className=" font-medium text-black">

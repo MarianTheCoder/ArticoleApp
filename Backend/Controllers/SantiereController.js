@@ -136,9 +136,8 @@ const addRetetaToInitialOfera = async (req, res) => {
         const relativePath = path.relative(path.join(__dirname, '../'), destPath);
   
         if (fs.existsSync(sourcePath)) fs.copyFileSync(sourcePath, destPath);
-  
         await connection.execute(`
-          INSERT INTO Santier_retete_utilaje (santier_reteta_id, clasa_utilaj, utilaj, descriere_utilaj, photoUrl, status_utilaj, unitate_masura, cost_amortizare, pret_utilaj, cantitate)
+          INSERT INTO Santier_retete_utilaje (santier_reteta_id, clasa_utilaj, utilaj, descriere_utilaj, photoUrl, status_utilaj, unitate_masura, cost_amortizare, cost_unitar, cantitate)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
           santier_reteta_id,
@@ -197,7 +196,6 @@ const addRetetaToInitialOfera = async (req, res) => {
       let query = `SELECT * FROM Santier_retete WHERE santier_id = ?`;  // Assuming 'retete' is the name of your table
 
       const [rows] = await global.db.execute(query, [id]);
-  
       // Send paginated data with metadata
       res.send({
         data: rows,
@@ -208,6 +206,102 @@ const addRetetaToInitialOfera = async (req, res) => {
     }
   }
 
+  const getReteteLightForSantiereWithPrices = async (req, res) => {
+    const { id } = req.params; // santier_id
+  
+    try {
+      // Get all retete for the santier
+      const [reteteRows] = await global.db.execute(
+        `SELECT * FROM Santier_retete WHERE santier_id = ?`,
+        [id]
+      );
+  
+      const results = [];
+      const costs = {};
+  
+      for (const reteta of reteteRows) {
+        const santier_reteta_id = reteta.id;
+        let totalCost = 0;
+  
+        // Initialize nested structure for this reteta
+        costs[santier_reteta_id] = {
+          Manopera: {},
+          Material: {},
+          Transport: {},
+          Utilaj: {},
+          cantitate_reteta:reteta.cantitate
+        };
+  
+        // === MANOPERA ===
+        const [manopera] = await global.db.execute(
+          `SELECT id, cost_unitar, cantitate FROM Santier_retete_manopera WHERE santier_reteta_id = ?`,
+          [santier_reteta_id]
+        );
+        manopera.forEach(item => {
+          totalCost += item.cost_unitar * item.cantitate;
+          costs[santier_reteta_id].Manopera[item.id] = {
+            cost: item.cost_unitar,
+            cantitate: item.cantitate,
+          };
+        });
+  
+        // === MATERIALE ===
+        const [materiale] = await global.db.execute(
+          `SELECT id, cost_unitar, cantitate FROM Santier_retete_materiale WHERE santier_reteta_id = ?`,
+          [santier_reteta_id]
+        );
+        materiale.forEach(item => {
+          totalCost += item.cost_unitar * item.cantitate;
+          costs[santier_reteta_id].Material[item.id] = {
+            cost: item.cost_unitar,
+            cantitate: item.cantitate,
+          };
+        });
+  
+        // === TRANSPORT ===
+        const [transport] = await global.db.execute(
+          `SELECT id, cost_unitar, cantitate FROM Santier_retete_transport WHERE santier_reteta_id = ?`,
+          [santier_reteta_id]
+        );
+        transport.forEach(item => {
+          totalCost += item.cost_unitar * item.cantitate;
+          costs[santier_reteta_id].Transport[item.id] = {
+            cost: item.cost_unitar,
+            cantitate: item.cantitate,
+          };
+        });
+  
+        // === UTILAJE ===
+        const [utilaje] = await global.db.execute(
+          `SELECT id, cost_unitar, cantitate FROM Santier_retete_utilaje WHERE santier_reteta_id = ?`,
+          [santier_reteta_id]
+        );
+        utilaje.forEach(item => {
+          totalCost += item.cost_unitar * item.cantitate;
+          costs[santier_reteta_id].Utilaj[item.id] = {
+            cost: item.cost_unitar,
+            cantitate: item.cantitate,
+          };
+        });
+  
+        // Save reteta with cost
+        results.push({
+          ...reteta,
+          cost: totalCost.toFixed(2), // always 2 decimals
+        });
+      }
+  
+      res.status(200).json({
+        data: results,
+        detailedCosts: costs,
+      });
+  
+    } catch (err) {
+      console.error('Error getting retete with prices:', err);
+      res.status(500).json({ error: 'Database error' });
+    }
+  };
+  
 
   const deleteRetetaFromSantier = async (req, res) => {
     const { id } = req.params; // santier_reteta_id
@@ -245,6 +339,8 @@ const addRetetaToInitialOfera = async (req, res) => {
       connection.release();
     }
   }
+
+  
 
     const getSpecificRetetaForOfertaInitiala = async (req, res) => {
       try {
@@ -291,7 +387,7 @@ const addRetetaToInitialOfera = async (req, res) => {
               u.status_utilaj, 
               u.cost_amortizare, 
               u.photoUrl AS utilaj_photo, 
-              u.pret_utilaj, 
+              u.cost_unitar as utilaj_cost, 
               u.unitate_masura AS utilaje_unitate_masura,
               u.cantitate AS utilaj_cantitate
     
@@ -386,7 +482,7 @@ const addRetetaToInitialOfera = async (req, res) => {
                descriere:row.descriere_utilaj,
                clasa: row.clasa_utilaj,
                photo: row.utilaj_photo,
-               cost: row.pret_utilaj,
+               cost: row.utilaj_cost,
                amortizare: row.cost_amortizare,
                cantitate: row.utilaj_cantitate,
                unitate_masura: row.utilaje_unitate_masura,
@@ -416,6 +512,61 @@ const addRetetaToInitialOfera = async (req, res) => {
        }
      };
   
-  
-
-  module.exports = {addRetetaToInitialOfera, getReteteLightForSantiere, deleteRetetaFromSantier, getSpecificRetetaForOfertaInitiala};
+     const updateSantierRetetaPrices = async (req, res) => {
+      const { santier_reteta_id, cantitate_reteta, updatedCosts } = req.body;
+    
+      const connection = await global.db.getConnection();
+      try {
+        await connection.beginTransaction();
+    
+        // Update main reteta quantity
+        await connection.execute(
+          `UPDATE Santier_retete SET cantitate = ? WHERE id = ?`,
+          [cantitate_reteta, santier_reteta_id]
+        );
+    
+        for (const key in updatedCosts) {
+          const [id, tableType] = key.split('-');
+          const cost = parseFloat(updatedCosts[key]);
+    
+          let table = '';
+          let column = '';
+    
+          switch (tableType) {
+            case 'Manopera':
+              table = 'Santier_retete_manopera';
+              column = 'cost_unitar';
+              break;
+            case 'Material':
+              table = 'Santier_retete_materiale';
+              column = 'cost_unitar';
+              break;
+            case 'Utilaj':
+              table = 'Santier_retete_utilaje';
+              column = 'cost_unitar';
+              break;
+            case 'Transport':
+              table = 'Santier_retete_transport';
+              column = 'cost_unitar';
+              break;
+            default:
+              continue;
+          }
+    
+          await connection.execute(
+            `UPDATE ${table} SET ${column} = ? WHERE id = ? AND santier_reteta_id = ?`,
+            [cost, id, santier_reteta_id]
+          );
+        }
+    
+        await connection.commit();
+        res.status(200).json({ message: 'Prețurile și cantitatea rețetei au fost actualizate cu succes.' });
+      } catch (error) {
+        await connection.rollback();
+        console.error('Eroare la actualizarea rețetei:', error);
+        res.status(500).json({ message: 'Eroare server.' });
+      } finally {
+        connection.release();
+      }
+    };
+  module.exports = {addRetetaToInitialOfera, getReteteLightForSantiere, deleteRetetaFromSantier, getSpecificRetetaForOfertaInitiala, getReteteLightForSantiereWithPrices, updateSantierRetetaPrices};

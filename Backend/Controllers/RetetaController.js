@@ -147,7 +147,8 @@ const getReteteLight = async (req,res) =>{
 const getRetete = async (req,res) =>{
   try {
     const { offset = 0, limit = 10, clasa = '', cod = '', articol = '' } = req.query;
-
+    const asc_articol= req.query.asc_articol === "true";
+    
     // Validate limit and offset to be integers
     const parsedOffset = parseInt(offset, 10);
     const parsedLimit = parseInt(limit, 10);
@@ -181,9 +182,11 @@ const getRetete = async (req,res) =>{
     if (whereClauses.length > 0) {
       query += ` WHERE ${whereClauses.join(' AND ')}`;
     }
-
-    // Add pagination to the query
-    query += ` LIMIT ? OFFSET ?`;
+    if(asc_articol == true){
+      query += ` ORDER BY articol ASC LIMIT ? OFFSET ?`;
+    }
+    else query += ` LIMIT ? OFFSET ?`;
+    
     queryParams.push(parsedLimit, parsedOffset * parsedLimit);
 
     // Execute the query with filters and pagination

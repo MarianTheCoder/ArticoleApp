@@ -15,6 +15,7 @@ const UtilajeRoutes = require("./Routes/UtilajeRoutes");
 const RetetaRoutes = require("./Routes/RetetaRoutes");
 const TransportRoutes = require("./Routes/TransportRoutes");
 const SantiereRoutes = require("./Routes/SantiereRoutes");
+const FormulareRoutes = require("./Routes/FormulareRoutes");
 
 const app = express();
 const port = 3000;
@@ -336,7 +337,7 @@ console.log("Retete_Transport table created or already exists.");
     status_utilaj VARCHAR(255) NOT NULL,
     unitate_masura VARCHAR(50) NOT NULL,
     cost_amortizare DECIMAL(10,2) NOT NULL,
-    pret_utilaj DECIMAL(10,2) NOT NULL,
+    cost_unitar DECIMAL(10,2) NOT NULL,
     cantitate DECIMAL(10,2) NOT NULL,
     FOREIGN KEY (santier_reteta_id) REFERENCES Santier_retete(id),
     INDEX idx_utilaj (utilaj),
@@ -417,6 +418,7 @@ app.use('/Utilaje', UtilajeRoutes);
 app.use('/Retete', RetetaRoutes);
 app.use('/Transport', TransportRoutes);
 app.use('/Santiere', SantiereRoutes);
+app.use('/Formulare', FormulareRoutes);
 
 
 // Serve static files from the React app

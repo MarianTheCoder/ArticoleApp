@@ -267,9 +267,9 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
                 ),
                 size:100
         },
+        { accessorKey: "clasa_material", header: "Clasă",size:120},
         { accessorKey: "tip_material", header: "Tip" ,size:80 },
         { accessorKey: "furnizor", header: "Furnizor" ,size:120},
-        { accessorKey: "clasa_material", header: "Clasă",size:120},
         { accessorKey: "cod_produs", header: "Cod", size:80},
         { 
             accessorKey: "denumire_produs", 
@@ -327,6 +327,32 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
               <thead className='top-0 w-full sticky  z-10 '>
               <tr className='text-black'>
                                     <th className=" bg-white border-b border-r border-black"></th>
+                                    <th className='border-b border-r bg-white border-black'>
+                                        <select
+                                            id="clasa_material"
+                                            name="clasa_material"
+                                            value={filters.clasa_material}
+                                            onChange={handleInputChange}
+                                            className=" p-2 w-full cursor-pointer outline-none py-3"
+                                        >
+                                            <option value="">Toate</option>
+                                            <option value="Regie">Regie</option>
+                                            <option value="Dezafectare">Dezafectare</option>
+                                            <option value="Amenajări interioare">Amenajări interioare</option>
+                                            <option value="Electrice">Electrice</option>
+                                            <option value="Sanitare">Sanitare</option>
+                                            <option value="Termice">Termice</option>
+                                            <option value="Climatizare Ventilație">Climatizare Ventilație</option>
+                                            <option value="Amenajări exterioare">Amenajări exterioare</option>
+                                            <option value="Tâmplărie">Tâmplărie</option>
+                                            <option value="Mobilă">Mobilă</option>
+                                            <option value="Confecții Metalice">Confecții Metalice</option>
+                                            <option value="Prelucrări Ceramice/Piatră Naturală">Prelucrări Ceramice/Piatră Naturală</option>
+                                            <option value="Ofertare/Devizare">Ofertare/Devizare</option>
+                                            <option value="Management de proiect">Management de proiect</option>
+                                            <option value="Reparații">Reparații</option>
+                                        </select>
+                                    </th>
                                     <th className="border-b bg-white border-r border-black">
                                         <select
                                             id="tip_material"
@@ -335,9 +361,11 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
                                             onChange={handleInputChange}
                                             className="p-2 w-full cursor-pointer outline-none py-3 "
                                         >
-                                            <option value="Direct">Direct</option>
-                                            <option value="Indirect">Indirect</option>
                                             <option value="">Toate</option>
+                                            <option value="De Bază">De Bază</option>
+                                            <option value="De Finisaj">De Finisaj</option>
+                                            <option value="Auxiliar">Auxiliare</option>
+                                            <option value="Consumabil">Consumabile</option>
                                         </select>
                                     </th>
                                     <th className='border-b bg-white border-r border-black'>
@@ -350,16 +378,7 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
                                             placeholder="Filtru Furnizor "
                                         />
                                     </th>
-                                    <th className='border-b border-r bg-white border-black'>
-                                        <input
-                                            type="text"
-                                            name="clasa_material"
-                                            value={filters.clasa_material}
-                                            onChange={handleInputChange}
-                                            className="p-2 w-full outline-none py-3"
-                                            placeholder="Filtru Clasă"
-                                        />
-                                    </th>
+                        
                                     <th className='border-b bg-white border-r border-black'>
                                         <input
                                             type="text"
