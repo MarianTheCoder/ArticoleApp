@@ -12,6 +12,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
     const [currentOffset, setCurrentOffset] = useState(0);
     const [limit, setLimit] = useState(20);
     const [ascendent ,setAscendent] = useState(false);
+    const [ascendentCOR ,setAscendentCOR] = useState(true);
     
 
     const [filters, setFilters] = useState({
@@ -29,6 +30,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                     cod_COR: filters.cod_COR, // Pass cod_COR as a query parameter
                     ocupatie: filters.ocupatie, // Add any other filters here
                     asc_ocupatie: ascendent,
+                    asc_cod_COR: ascendentCOR,  
                 },
             });
             if(response.data.data.length == 0){
@@ -60,7 +62,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
             else fetchManopere(0, limit);
         }, 500)
         return () => clearTimeout(getData);
-      }, [filters,limit,ascendent]);
+      }, [filters,limit,ascendent, ascendentCOR]);
 
 
 
@@ -209,7 +211,16 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
     };
 
     const columns = useMemo(() => [
-        { accessorKey: "cod_COR", header: "Cod COR",size:50 },
+        { 
+            accessorKey: "cod_COR", 
+            header: (
+                <div className="flex items-center w-[95%] justify-between text-black ">
+                    <span>Cod COR</span>
+                    <FontAwesomeIcon onClick={() => setAscendentCOR((prev) => prev == false ? true : false)} className="text-xl border border-black p-2  rounded-full  cursor-pointer" icon={!ascendentCOR ? faArrowUpAZ : faArrowDownAZ} /> 
+                </div>
+              ),
+            size:50
+        },
         { 
             accessorKey: "ocupatie", 
             header: (
@@ -242,7 +253,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                 },
             },
         },
-    ], [selectedDelete, ascendent]);
+    ], [selectedDelete, ascendent ,ascendentCOR]);
 
     const table = useReactTable({
         data: manopere,

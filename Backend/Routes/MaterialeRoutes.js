@@ -31,6 +31,7 @@ router.post('/api/Materiale', upload.single('poza'), async (req, res) => {
       const fullPath = path.join(uploadsDir, fileName);
 
       await sharp(req.file.buffer)
+        .rotate()
         .resize({ width: 800 })
         .jpeg({ quality: 70 })
         .toFile(fullPath);
@@ -284,6 +285,7 @@ router.put('/api/materiale/:id', upload.single('poza'), async (req, res) => {
       const fullPath = path.join(uploadsDir, fileName);
 
       await sharp(req.file.buffer)
+        .rotate()
         .resize({ width: 800 })
         .jpeg({ quality: 70 })
         .toFile(fullPath);

@@ -12,7 +12,7 @@ export default function UtilajeForm() {
     clasa_utilaj:"",
     utilaj:"",
     descriere_utilaj:"",
-    status_utilaj:"",
+    status_utilaj:"Ca Nou",
     cost_amortizare:"",
     pret_utilaj:"",
     unitate_masura:"oră",
@@ -75,7 +75,7 @@ export default function UtilajeForm() {
         clasa_utilaj:"",
         utilaj:"",
         descriere_utilaj:"",
-        status_utilaj:"",
+        status_utilaj:"Ca Nou",
         cost_amortizare:"",
         pret_utilaj:"",
         unitate_masura:"oră",
@@ -130,7 +130,7 @@ export default function UtilajeForm() {
         clasa_utilaj:"",
         utilaj:"",
         descriere_utilaj:"",
-        status_utilaj:"",
+        status_utilaj:"Ca Nou",
         cost_amortizare:"",
         pret_utilaj:"",
         unitate_masura:"oră",
@@ -246,18 +246,24 @@ export default function UtilajeForm() {
 
           {/* Status Input */}
           <div className="flex flex-col items-center">
-              <label className=" font-medium text-black">
-                  Status
+              <label htmlFor="unit" className="font-medium text-black">
+                Status
               </label>
-              <input
-                  type="text"
-                  id="status_utilaj"
-                  name="status_utilaj"
-                  value={formData.status_utilaj}
-                  onChange={handleChange}
-                  className="px-2 w-full outline-none text-center py-2  rounded-lg shadow-sm "
-              />
-          </div>
+              <select
+                id="status_utilaj"
+                name="status_utilaj"
+                value={formData.status_utilaj}
+                onChange={handleChange}
+                className=" py-2 border text-center  rounded-lg outline-none shadow-sm "
+              >
+                <option value="Nou">Nou</option>
+                <option value="Ca Nou">Ca Nou</option>
+                <option value="Bun">Bun</option>
+                <option value="Recondiționat">Recondiționat</option>
+                <option value="Utilizat">Utilizat</option>
+                <option value="Defect">Defect</option>
+              </select>
+            </div>
           <div className="flex flex-col items-center">
               <label htmlFor="unit" className="font-medium text-black">
                 Unitate

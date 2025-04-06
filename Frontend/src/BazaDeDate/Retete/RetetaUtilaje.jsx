@@ -25,7 +25,8 @@ export default function RetetaUtilaje({
         const [utilajeFilters, setUtilajeFilters] = useState({
           clasa_utilaj:"",
           utilaj:'',
-          descriere_utilaj:""
+          descriere_utilaj:"",
+          status_utilaj:"",
         });
 
         const setCantitateHandler = (e) =>{
@@ -58,6 +59,7 @@ export default function RetetaUtilaje({
                         params: {
                             utilaj: utilajeFilters.utilaj, // Pass cod as a query parameter
                             clasa_utilaj:utilajeFilters.clasa_utilaj,
+                            status_utilaj:utilajeFilters.status_utilaj,
                             descriere_utilaj: utilajeFilters.descriere_utilaj, // Add any other filters here
                         },
                     });
@@ -143,7 +145,7 @@ export default function RetetaUtilaje({
     <>
         <div className=' flex flex-col h-full w-full overflow-hidden'>
             {/* Inputs for fetching utilaje */}
-            <div className='grid font-medium grid-cols-[2fr_1fr_2fr] gap-4 p-4 pt-2 text-black containerWhiter w-full'>
+            <div className='grid font-medium grid-cols-[2fr_1fr_2fr_auto] gap-4 p-4 pt-2 text-black containerWhiter w-full'>
             <div className="flex flex-col w-full items-center ">
                       <label className=" text-black">
                           Clasa 
@@ -185,6 +187,26 @@ export default function RetetaUtilaje({
                           className="px-2 outline-none text-center py-2  w-full  rounded-lg shadow-sm "
                           placeholder="Enter Ocupatie"
                       />
+                  </div>
+                  <div className="flex flex-col w-full items-center ">
+                      <label className=" text-black">
+                          Status 
+                      </label>
+                      <select
+                            id="status_utilaj"
+                            name="status_utilaj"
+                            value={utilajeFilters.status_utilaj}
+                            onChange={handleChangeFilterUtilaje}
+                            className="px-2 outline-none text-center py-2  w-full  rounded-lg shadow-sm  "
+                        >
+                            <option value="">Toate</option>
+                            <option value="Nou">Nou</option>
+                            <option value="Ca Nou">Ca Nou</option>
+                            <option value="Bun">Bun</option>
+                            <option value="Recondiționat">Recondiționat</option>
+                            <option value="Utilizat">Utilizat</option>
+                            <option value="Defect">Defect</option>
+                    </select>
                   </div>
 
             </div> 

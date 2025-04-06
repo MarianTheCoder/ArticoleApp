@@ -31,6 +31,7 @@ router.post('/api/utilaje', upload.single('poza'), async (req, res) => {
       const finalPath = path.join(uploadsDir, fileName);
 
       await sharp(req.file.buffer)
+        .rotate()
         .resize({ width: 800 })
         .jpeg({ quality: 70 })
         .toFile(finalPath);
@@ -60,7 +61,7 @@ router.post('/api/utilaje', upload.single('poza'), async (req, res) => {
 
 router.get('/api/utilaje', async (req, res) => {
   try {
-      const { offset = 0, limit = 10, clasa_utilaj  = '', utilaj = '', descriere_utilaj  = '' } = req.query;
+      const { offset = 0, limit = 10, clasa_utilaj  = '', utilaj = '', descriere_utilaj  = '', status_utilaj = '' } = req.query;
       const asc_utilaj = req.query.asc_utilaj === "true";
 
       // Validate limit and offset to be integers
@@ -91,6 +92,11 @@ router.get('/api/utilaje', async (req, res) => {
           whereClauses.push(`descriere_utilaj LIKE ?`);
           queryParams.push(`%${descriere_utilaj}%`);
       }
+
+      if (status_utilaj.trim() !== "") {
+        whereClauses.push(`status_utilaj LIKE ?`);
+        queryParams.push(`%${status_utilaj}%`);
+    }
 
       // If filters exist, add them to the query
       if (whereClauses.length > 0) {
@@ -133,7 +139,7 @@ router.get('/api/utilaje', async (req, res) => {
 
 router.get('/api/utilajeLight', async (req, res) => {
   try {
-      const {clasa_utilaj  = '', utilaj = '', descriere_utilaj  = '' } = req.query;
+      const {clasa_utilaj  = '', utilaj = '', descriere_utilaj  = '', status_utilaj = '' } = req.query;
 
       // Base query
       let query = `SELECT * FROM Utilaje`;
@@ -155,6 +161,11 @@ router.get('/api/utilajeLight', async (req, res) => {
           whereClauses.push(`descriere_utilaj LIKE ?`);
           queryParams.push(`%${descriere_utilaj}%`);
       }
+
+      if (status_utilaj.trim() !== "") {
+        whereClauses.push(`status_utilaj LIKE ?`);
+        queryParams.push(`%${status_utilaj}%`);
+    }
 
       // If filters exist, add them to the query
       if (whereClauses.length > 0) {
@@ -261,6 +272,7 @@ router.put('/api/utilaje/:id', upload.single('poza'), async (req, res) => {
       const finalPath = path.join(uploadsDir, fileName);
 
       await sharp(req.file.buffer)
+        .rotate()
         .resize({ width: 800 })
         .jpeg({ quality: 70 })
         .toFile(finalPath);

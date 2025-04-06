@@ -18,6 +18,7 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
         descriere_utilaj: '',
         utilaj: '',
         clasa_utilaj: '',
+        status_utilaj: '',
     });
 
  
@@ -30,6 +31,7 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
                     descriere_utilaj: filters.descriere_utilaj, // Pass cod_COR as a query parameter
                     utilaj: filters.utilaj, // Add any other filters here
                     clasa_utilaj: filters.clasa_utilaj, // Add any other filters here
+                    status_utilaj: filters.status_utilaj, // Add any other filters here
                     asc_utilaj: ascendent,
 
                 },
@@ -351,7 +353,24 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
                                             placeholder="Filtru Descriere"
                                         />
                                     </th>
-                                    <th className=" bg-white border-b border-r border-black" colSpan={6}>
+                                    <th className="border-b bg-white border-r border-black">
+                                        <select
+                                            id="status_utilaj"
+                                            name="status_utilaj"
+                                            value={filters.status_utilaj}
+                                            onChange={handleInputChange}
+                                            className="p-2 w-full cursor-pointer outline-none py-3 "
+                                        >
+                                            <option value="">Toate</option>
+                                            <option value="Nou">Nou</option>
+                                            <option value="Ca Nou">Ca Nou</option>
+                                            <option value="Bun">Bun</option>
+                                            <option value="Recondiționat">Recondiționat</option>
+                                            <option value="Utilizat">Utilizat</option>
+                                            <option value="Defect">Defect</option>
+                                        </select>
+                                    </th>
+                                    <th className=" bg-white border-b border-r border-black" colSpan={5}>
                                        <div className=' flex  justify-center items-center'>
                                             <p className='px-2'>Arată</p>
                                             <input className='border border-black p-1 w-12 text-center rounded-lg' type="text" onChange={(e) => handleLimit(e)} value={limit} name="" id="" />

@@ -187,8 +187,8 @@ export default function MaterialeForm() {
     <>
     <div className='w-full containerWhiter'>
       <div className="flex justify-center items-center text-black  ">
-        <form onSubmit={handleSubmit} className="w-full text-base p-4 px-6 rounded-lg shadow-xl">
-          <div className="grid grid-cols-[auto_auto_auto_auto_auto_auto_1fr_auto_auto_auto_auto_auto] xxxl:gap-4 md:gap-2 xl:gap-3 items-center">
+        <form onSubmit={handleSubmit} className="w-full text-sm xxxl:text-[0.8rem] p-4  rounded-lg shadow-xl">
+          <div className="grid grid-cols-[auto_auto_auto_auto_auto_auto_1fr_auto_auto_auto_auto_auto]  md:gap-2 xl:gap-3 items-center">
             
           {/* photourl */}
           <div className="flex flex-col items-center ">
@@ -210,7 +210,7 @@ export default function MaterialeForm() {
                         name="clasa_material"
                         value={formData.clasa_material}
                         onChange={handleChange}
-                        className=" px-1 py-2  text-center rounded-lg outline-none shadow-sm "
+                        className="  py-2   text-center rounded-lg outline-none shadow-sm "
                       >
                         <option value="Regie">Regie</option>
                         <option value="Dezafectare">Dezafectare</option>
@@ -238,7 +238,7 @@ export default function MaterialeForm() {
                 name="tip_material"
                 value={formData.tip_material}
                 onChange={handleChange}
-                className="px-2 py-2 border  rounded-lg outline-none shadow-sm "
+                className=" py-2 border text-center  rounded-lg outline-none shadow-sm "
               >
                 <option value="De Bază">De Bază</option>
                 <option value="De Finisaj">De Finisaj</option>
@@ -325,7 +325,7 @@ export default function MaterialeForm() {
                 name="unitate_masura"
                 value={formData.unitate_masura}
                 onChange={handleChange}
-                className="px-4 py-2 border  rounded-lg outline-none shadow-sm "
+                className=" py-2 border text-center  rounded-lg outline-none shadow-sm "
               >
                 <option value="U">U</option>
                 <option value="m">m</option>
@@ -373,7 +373,7 @@ export default function MaterialeForm() {
                   maxLength={8}
                   value={formData.cost_preferential}
                   onChange={handleChange}
-                  className=" px-2 py-2  text-center max-w-32 w-full outline-none rounded-lg shadow-sm "
+                  className=" px-2 py-2  text-center max-w-24 w-full outline-none rounded-lg shadow-sm "
                   placeholder="Preferential"
               />
             </div>
@@ -399,18 +399,18 @@ export default function MaterialeForm() {
           {
               !selectedDelete && !selectedEdit ?
 
-              <div className="flex text-base  justify-center items-center ">
+              <div className="flex text-base xxxl:text-[0.8rem]  justify-center items-center ">
                 <button type="submit" className="bg-green-500 hover:bg-green-600 text-black  mt-6 px-2 py-2 flex justify-center  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-2"/> Încarcă</button>
               </div>
               :
               !selectedEdit ?
 
-              <div className="flex gap-2 text-base justify-center items-center ">
+              <div className="flex gap-2 text-base justify-center xxxl:text-[0.8rem] items-center ">
                 <button onClick={(e) => deleteRow(e)} className="bg-red-500 hover:bg-red-600 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faCancel} className="pr-2"/>Șterge</button>
                 <button onClick={(e) => cancelDelete(e)} className="bg-green-500 hover:bg-green-600 text- text mt-6 px-4 py-2 flex  items-center rounded-lg">Anulează</button>
               </div>
               :
-              <div className="flex gap-2  text-base justify-center items-center ">
+              <div className="flex gap-2  text-base justify-center items-center xxxl:text-[0.8rem] ">
                 <button  type="submit" className="bg-green-500 hover:bg-green-600 text-black  mt-6 px-2 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-2"/> Editează</button>
                 <button  onClick={(e) => cancelEdit(e)} className="bg-red-500 hover:bg-red-600 text-black  mt-6 px-2 py-2 flex  items-center rounded-lg"> Anulează</button>
               </div>

@@ -1,3 +1,4 @@
+require('dotenv').config(); 
 const express = require("express");
 const mysql = require("mysql2/promise");
 const bodyParser = require("body-parser");
@@ -17,20 +18,37 @@ const TransportRoutes = require("./Routes/TransportRoutes");
 const SantiereRoutes = require("./Routes/SantiereRoutes");
 const FormulareRoutes = require("./Routes/FormulareRoutes");
 
+
 const app = express();
 const port = 3000;
 
 // MySQL Connection Configuration
 const dbConfig = {
-  host: "localhost",
-  user: "iasirecr_baly_energies",
-  password: "saps2002c",
-  database: "iasirecr_baza_de_date",
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
 };
 
 // Middleware
 app.use(bodyParser.json());
-// {origin: ['http://192.168.1.107:5173', 'http://localhost:5173']}
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://192.168.1.107:5173',
+  'https://balyenergies.fr'
+];
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    } else {
+      return callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true // If using cookies / authentication
+}));
 
 app.use(cors());
 

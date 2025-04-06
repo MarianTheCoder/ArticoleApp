@@ -93,5 +93,57 @@ const generareC6 = async (req,res) =>{
         res.status(400).send("Eroare la generare de PDF" , error);
     }
 }
+const generareC8 = async (req, res) => {
+  const { id } = req.params; // santier_id
 
-module.exports = {generareC6};
+  try {
+    // Get all retete for the santier
+    const [reteteRows] = await global.db.execute(
+      `SELECT * FROM Santier_retete WHERE santier_id = ?`,
+      [id]
+    );
+
+    const utilajeGlobal = {}; // Store all utilaje here
+    let totalCost = 0;
+
+    for (const reteta of reteteRows) {
+      const santier_reteta_id = reteta.id;
+
+      // === UTILAJE ===
+      const [utilaje] = await global.db.execute(
+        `SELECT id, cost_unitar, cantitate, utilaj FROM Santier_retete_utilaje WHERE santier_reteta_id = ?`,
+        [santier_reteta_id]
+      );
+
+      utilaje.forEach(item => {
+        const name = item.utilaj;
+        const cost = item.cost_unitar;
+        const cantitate = item.cantitate;
+      
+        totalCost += cost * cantitate * reteta.cantitate;
+      
+        if (!utilajeGlobal[name]) {
+          utilajeGlobal[name] = {
+            name,
+            cost,
+            cantitate: (parseFloat(cantitate)*parseFloat(reteta.cantitate)).toFixed(2), 
+          };
+        } else {
+          utilajeGlobal[name].cantitate = (parseFloat(utilajeGlobal[name].cantitate) + parseFloat(cantitate)*parseFloat(reteta.cantitate)).toFixed(2);
+        }
+      });
+    }
+
+    res.status(200).json({
+      data: utilajeGlobal,
+      total: totalCost.toFixed(2),
+    });
+
+  } catch (error) {
+    console.error("Eroare la generare de PDF:", error);
+    res.status(400).send("Eroare la generare de PDF");
+  }
+};
+
+
+module.exports = {generareC6 , generareC8};
