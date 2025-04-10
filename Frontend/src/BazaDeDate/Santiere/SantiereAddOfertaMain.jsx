@@ -567,7 +567,7 @@ export default function SantiereAdd() {
     <>
        
         {retete &&
-            <div className="p-8 pb-4 text-sm   scrollbar-webkit  w-full text-white h-full flex flex-col justify-between">
+            <div className="p-8 pb-4 text-sm    scrollbar-webkit  w-full text-white h-full flex flex-col justify-between">
             <div className="overflow-auto  scrollbar-webkit">
                 <table className="w-full  border-separate border-spacing-0 ">
                     <thead className='top-0 w-full sticky  z-10 '>
@@ -805,7 +805,7 @@ export default function SantiereAdd() {
              
                       </select>
                   </div>
-                    <button   onClick={() => generatePDF(idSantier, selectedFormular)} className='bg-green-500 cursor-pointer flex gap-2 justify-center font-medium items-center p-2 mt-6 text-base tracking-wide hover:bg-green-600 text-black rounded-lg flex-grow'><FontAwesomeIcon icon={faFileExport}/>Genereaza</button>
+                    <button   onClick={() => generatePDF(idSantier, selectedFormular , recapitulatii , TVA)} className='bg-green-500 cursor-pointer flex gap-2 justify-center font-medium items-center p-2 mt-6 text-base tracking-wide hover:bg-green-600 text-black rounded-lg flex-grow'><FontAwesomeIcon icon={faFileExport}/>Genereaza</button>
             </div>
           </div>
           

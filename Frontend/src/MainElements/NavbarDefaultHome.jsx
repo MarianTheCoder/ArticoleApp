@@ -44,25 +44,25 @@ function Navbar() {
           </li>
           <div className=' Menulist'>
             <li onClick={() => setSelected(0)} style={{"--bg":"#ffa117"}} className={` cursor-pointer ${selected == 0 ? "active" : ""}`}>
-                <a onClick={() => navigate("/defaultHome")}>
+                <a onClick={() => navigate("/")}>
                     <div className='icon'><FontAwesomeIcon icon={faHouse}/></div>
                     <div className='text'>Home</div>
                 </a>
             </li>
                 <li onClick={() => setSelected(1)} style={{"--bg":"#f44336"}} className={`cursor-pointer ${selected == 1 ? "active" : ""}`}>
-                    <a onClick={() => navigate("/defaultHome/News")}>
+                    <a onClick={() => navigate("/News")}>
                         <div className='icon'><FontAwesomeIcon icon={faNewspaper}/></div>
                         <div className='text'>News</div>
                     </a>
                 </li>
                 <li onClick={() => setSelected(2)} style={{"--bg":"#0fc70f"}} className={`cursor-pointer ${selected == 2 ? "active" : ""}`}>
-                <a onClick={() => navigate("/defaultHome/Echipa")}>
+                <a onClick={() => navigate("/Echipa")}>
                         <div className='icon'><FontAwesomeIcon icon={faUser}/></div>
                         <div className='text'>Echipa</div>
                     </a>
                 </li>
                 <li onClick={() => setSelected(3)} style={{"--bg":"#2196f3"}} className={`cursor-pointer ${selected == 3 ? "active" : ""}`}>
-                    <a onClick={() => navigate("/defaultHome/Contact")}>
+                    <a onClick={() => navigate("/Contact")}>
                         <div className='icon'><FontAwesomeIcon icon={faPhone}/></div>
                         <div className='text'>Contact</div>
                     </a>
@@ -83,7 +83,7 @@ function Navbar() {
                 </a>
             </li>
             <li style={{"--bg":"#333"}}>
-                <a className=' cursor-pointer' onClick={() => navigate("/")}>
+                <a className=' cursor-pointer' onClick={() => navigate("/logedUser")}>
                     <div className='icon'><FontAwesomeIcon icon={faArrowsSpin}/></div>
                     <div className='text'>Loged Home</div>
                 </a>
