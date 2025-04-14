@@ -104,7 +104,7 @@ const GetManopere = async (req, res) => {
       } else if (asc_cod_COR) {
         query += ' ORDER BY cod_COR ASC';
       }
-      else query += ` LIMIT ? OFFSET ?`;
+      query += ` LIMIT ? OFFSET ?`;
     
       queryParams.push(parsedLimit, parsedOffset * parsedLimit);
 

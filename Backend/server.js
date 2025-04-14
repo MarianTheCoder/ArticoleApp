@@ -62,7 +62,6 @@ app.use('/uploads/News', express.static(path.join(__dirname, 'uploads/News')));
 app.use('/uploads/Materiale', express.static(path.join(__dirname, 'uploads/Materiale')));
 app.use('/uploads/Utilaje', express.static(path.join(__dirname, 'uploads/Utilaje')));
 app.use('/uploads/Santiere', express.static(path.join(__dirname, 'uploads/Santiere')));
-app.use('/uploads/Principala', express.static(path.join(__dirname, 'uploads/Principala')));
 
 // Function to initialize the database
 async function initializeDatabase() {

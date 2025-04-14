@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import "./HomePage.css"; // Asigură-te că ai stilurile pentru carousel și elementele sale
 import photoAPI from "../api/photoAPI";
-import Logo from '../assets/logo.svg'; // Nu am folosit acest import, dar presupun că este pentru altceva
+import img1 from '../assets/Principala/img1.jpg';
+import img2 from '../assets/Principala/img2.jpg';
+import img3 from '../assets/Principala/img3.jpg';
+import img4 from '../assets/Principala/img4.jpg';
+
+const images = [img1, img2, img3, img4];
 
 export default function BalyEnergies() {
   const carouselRef = useRef(null);
@@ -85,7 +90,7 @@ export default function BalyEnergies() {
            <div 
            className="item" 
            key={index} 
-           style={{ backgroundImage: `url(${photoAPI}/uploads/Principala/img${slide.number}.jpg)` }}>
+           style={{ backgroundImage: `url(${images[slide.number - 1]})` }}>
               <div className="content">
                 <div className="title">Specializați în</div>
                 <div className="name">{slide.topic}</div>
