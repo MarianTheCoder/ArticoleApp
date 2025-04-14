@@ -237,9 +237,14 @@ pdfMake.vfs = pdfFonts.vfs;
                 hLineColor: () => '#000000',
                 vLineColor: () => '#000000'
               },
-              margin: [0, 0, 0, 30]
+              margin: [0, 0, 0, 5]
             },
-          { text: 'Rezumatul retetelor din  șantier', style: 'sectionTitle' },
+    
+            { text: 'Client: ', margin: [0, 0, 0, 3]},
+            { text: 'Contact: ', margin: [0, 0, 0, 3]},
+            { text: "Șantier: ", margin: [0, 0, 0, 20]},
+       
+          { text: 'Rezumatul retetelor din  șantier:', style: 'sectionTitle' },
           {
             table: {
               headerRows: 1,

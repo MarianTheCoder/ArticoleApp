@@ -33,21 +33,37 @@ const getAngajati = async (req,res) =>{
     }
     }
 
-    const addSantier = async (req,res) =>{
-      const {userId, name} = req.body;
+    const addSantier = async (req, res) => {
+      const { userId, name } = req.body;
+      const connection = await global.db.getConnection();  // Get a database connection
+      
       try {
-        // SQL query to insert a new santier for the user
-        const query = `INSERT INTO Santiere (name, user_id) VALUES (?, ?)`;
+        // Start a transaction
+        await connection.beginTransaction();
     
-        // Execute the query
-        const [rows] = await global.db.execute(query, [name, userId]);
+        // Insert into Santiere table
+        const query = `INSERT INTO Santiere (name, user_id) VALUES (?, ?)`;
+        const [rows] = await connection.execute(query, [name, userId]);
+    
+        // Insert into Santiere_detalii table using the santier_id from the previous insert
+        const queryDetails = `INSERT INTO Santiere_detalii (santier_id) VALUES (?)`;
+        await connection.execute(queryDetails, [rows.insertId]);
+    
+        // Commit the transaction if both queries are successful
+        await connection.commit();
     
         // Return the ID of the newly inserted record
         res.status(200).send({ message: 'Santier added successfully', santierId: rows.insertId });
       } catch (error) {
-          res.status(500).json({ message: "Internal server error" });
+        // Rollback the transaction in case of any error
+        await connection.rollback();
+        res.status(500).json({ message: "Internal server error", error: error.message });
+      } finally {
+        // Release the connection
+        connection.release();
       }
-    }
+    };
+    
 
     const getSantiere = async (req,res) =>{
       try {

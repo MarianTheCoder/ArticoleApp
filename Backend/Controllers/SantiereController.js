@@ -569,4 +569,37 @@ const addRetetaToInitialOfera = async (req, res) => {
         connection.release();
       }
     };
-  module.exports = {addRetetaToInitialOfera, getReteteLightForSantiere, deleteRetetaFromSantier, getSpecificRetetaForOfertaInitiala, getReteteLightForSantiereWithPrices, updateSantierRetetaPrices};
+
+    const getSantiereDetails = async (req, res) => {
+      try {
+        const { id } = req.params;  // Get the santier_id from the route parameter
+        const queryName = `
+          SELECT name FROM Santiere
+          WHERE id = ?
+        `;
+        const [rowsName] = await global.db.execute(queryName, [id]); 
+
+        const query = `
+          SELECT * FROM Santiere_detalii
+          WHERE santier_id = ?
+        `;
+    
+        const [rows] = await global.db.execute(query, [id]);
+    
+        // If no data is found for the given santier_id
+        if (rows.length === 0) {
+          return res.status(404).json({ message: "No details found for this santier" });
+        }
+    
+        // Return the details as JSON response
+        res.status(200).json({
+          name : rowsName[0].name,
+          santierDetails: rows,
+        });
+      } catch (error) {
+        console.error("Error fetching santier details:", error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    };
+
+  module.exports = {addRetetaToInitialOfera, getReteteLightForSantiere, getSantiereDetails, deleteRetetaFromSantier, getSpecificRetetaForOfertaInitiala, getReteteLightForSantiereWithPrices, updateSantierRetetaPrices};

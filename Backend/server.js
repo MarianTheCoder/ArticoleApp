@@ -275,6 +275,25 @@ console.log("Retete_Transport table created or already exists.");
   `;
   await pool.execute(createSantiereTableQuery);
   console.log("Santiere table created or already exists.");
+
+  const createSantiereDetailsTableQuery = `
+  CREATE TABLE IF NOT EXISTS Santiere_detalii (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    beneficiar VARCHAR(255) DEFAULT '...',
+    longitudine varchar(255) DEFAULT '',
+    latitudine varchar(255)  DEFAULT '',
+    adresa VARCHAR(255) DEFAULT '...',
+    email VARCHAR(255) DEFAULT '...',
+    telefon VARCHAR(50) DEFAULT '...',
+    persoana_responsabila VARCHAR(255) DEFAULT '...',
+    detalii_executie TEXT DEFAULT '...',
+    santier_id INT NOT NULL ,
+    FOREIGN KEY (santier_id) REFERENCES Santiere(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+`;
+await pool.execute(createSantiereDetailsTableQuery);
+console.log("Santiere details table created or already exists.");
   //
   //
   //
