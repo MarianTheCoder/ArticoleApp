@@ -7,11 +7,8 @@ import { RetetaContext } from '../../context/RetetaContext';
 
 export default function RetetaManopera({
     setIsPopupOpen,
-    setObjectsLen,
-    objectsLen,
-    lastObjectIndex,
-    setLastObjectIndex,
     open,
+    isPopupOpen,
     setOpen,
     delPreviewReteta,
     fetchPreviewReteta,
@@ -84,10 +81,17 @@ export default function RetetaManopera({
                 return;
             }
             try {
-                await api.post("/Retete/addRetetaObjects", {cantitate:cantitate, objectId:selectedManopera.original.id,  retetaId:open, whatIs:"Manopera"})
-                let theNew = delPreviewReteta();
-                fetchPreviewReteta(theNew);
-                setIsPopupOpen(false);
+                await api.post("/Retete/addRetetaObjects", {cantitate:cantitate, objectId:selectedManopera.original.id,  retetaId:isPopupOpen, whatIs:"Manopera"})
+                let [updatedretete , index] = delPreviewReteta(isPopupOpen);
+                //lucram cu aceste retete si adaugam in inerior noul obiect pentru a fii folderul cu gri  sau albastru
+                const parentIndex = updatedretete.findIndex((row) => row.id == isPopupOpen);
+                if (parentIndex !== -1) {
+                    const parentReteta = updatedretete[parentIndex];
+                    parentReteta.has_manopera += 1; 
+                    updatedretete[parentIndex] = { ...parentReteta };
+                }
+                fetchPreviewReteta(isPopupOpen, index , updatedretete);
+                setIsPopupOpen(null);
             } catch (error) {
                 console.log("Error at ading Manopera" , error);
             }

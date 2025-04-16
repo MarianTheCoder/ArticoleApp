@@ -6,12 +6,10 @@ import { faArrowRight, faArrowRightLong, faCancel, faCopy, faEllipsis, faL, faPe
 import { RetetaContext } from '../../context/RetetaContext';
 import photoAPI from '../../api/photoAPI';
 
-export default function RetetaMateriale({setIsPopupOpen,
-    setObjectsLen,
-    objectsLen,
-    lastObjectIndex,
-    setLastObjectIndex,
+export default function RetetaMateriale({
+    setIsPopupOpen,
     open,
+    isPopupOpen,
     setOpen,
     delPreviewReteta,
     fetchPreviewReteta,
@@ -81,10 +79,16 @@ export default function RetetaMateriale({setIsPopupOpen,
                 return;
             }
             try {
-                await api.post("/Retete/addRetetaObjects", {cantitate:cantitate, objectId:selectedMateriale.original.id,  retetaId:open, whatIs:"Materiale"})
-                let theNew = delPreviewReteta();
-                fetchPreviewReteta(theNew);
-                setIsPopupOpen(false);
+                await api.post("/Retete/addRetetaObjects", {cantitate:cantitate, objectId:selectedMateriale.original.id,  retetaId:isPopupOpen, whatIs:"Materiale"})
+                let [updatedretete , index] = delPreviewReteta(isPopupOpen);
+                const parentIndex = updatedretete.findIndex((row) => row.id == isPopupOpen);
+                if (parentIndex !== -1) {
+                    const parentReteta = updatedretete[parentIndex];
+                    parentReteta.has_materiale += 1; 
+                    updatedretete[parentIndex] = { ...parentReteta };
+                }
+                fetchPreviewReteta(isPopupOpen, index , updatedretete);
+                setIsPopupOpen(null);
             } catch (error) {
                 console.log("Error at ading Manopera" , error);
             }

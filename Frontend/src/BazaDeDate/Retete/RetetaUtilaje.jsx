@@ -8,11 +8,8 @@ import photoAPI from '../../api/photoAPI';
 
 export default function RetetaUtilaje({
     setIsPopupOpen,
-    setObjectsLen,
-    objectsLen,
-    lastObjectIndex,
-    setLastObjectIndex,
     open,
+    isPopupOpen,
     setOpen,
     delPreviewReteta,
     fetchPreviewReteta,
@@ -82,10 +79,16 @@ export default function RetetaUtilaje({
                 return;
             }
             try {
-                await api.post("/Retete/addRetetaObjects", {cantitate:cantitate, objectId:selectedUtilaje.original.id,  retetaId:open, whatIs:"Utilaje"})
-                let theNew = delPreviewReteta();
-                fetchPreviewReteta(theNew);
-                setIsPopupOpen(false);
+                await api.post("/Retete/addRetetaObjects", {cantitate:cantitate, objectId:selectedUtilaje.original.id,  retetaId:isPopupOpen, whatIs:"Utilaje"})
+                let [updatedretete , index] = delPreviewReteta(isPopupOpen);
+                const parentIndex = updatedretete.findIndex((row) => row.id == isPopupOpen);
+                if (parentIndex !== -1) {
+                    const parentReteta = updatedretete[parentIndex];
+                    parentReteta.has_utilaje += 1; 
+                    updatedretete[parentIndex] = { ...parentReteta };
+                }
+                fetchPreviewReteta(isPopupOpen, index , updatedretete);
+                setIsPopupOpen(null);
             } catch (error) {
                 console.log("Error at ading Manopera" , error);
             };

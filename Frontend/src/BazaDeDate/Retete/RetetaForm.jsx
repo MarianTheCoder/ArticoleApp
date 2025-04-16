@@ -57,18 +57,23 @@ export default function ManoperaForm() {
           console.log('Reteta edited');
           setSelectedEdit(null);
         }
+        else if(selectedDouble != null){
+          await api.post(`/Retete/doubleReteta/${selectedDouble}`, formDataToSend);
+          console.log('Reteta doubled');
+          setSelectedDouble(null);
+        }
         else{
           await api.post("/Retete/addReteta", formDataToSend);
         }
         setFormData({
-          clasa:"Regie",
+          clasa: formData.clasa,
           cod:"",
           articol:"",
           articol_fr: "",
           descriere_reteta:"",
           descriere_reteta_fr:"",
-          unitate_masura:"U",
-          limba: "RO",
+          unitate_masura: formData.unitate_masura,
+          limba: formData.limba,
         });
         handleReload();
     } catch (error) {
@@ -81,6 +86,15 @@ export default function ManoperaForm() {
     if(name === "cod"){
         setFormData((prev) => ({ ...prev, [name]: value.toUpperCase() }));
     }
+    else if(name == "limba"){
+      setFormData((prev) => ({ ...prev, [name]: value }));
+      if(value == "RO"){
+        setFormData((prev) => ({ ...prev, ["clasa"]: "Dezafectare"}));
+      }
+      else {
+        setFormData((prev) => ({ ...prev, ["clasa"]: "Vrd"}));
+      }
+    }
     else setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -90,6 +104,7 @@ export default function ManoperaForm() {
 
   const [selectedDelete, setSelectedDelete] = useState(null);
   const [selectedEdit, setSelectedEdit] = useState(null);
+  const [selectedDouble, setSelectedDouble] = useState(null);
 
   const cancelDelete = (e) => {
     e.preventDefault();
@@ -110,6 +125,22 @@ export default function ManoperaForm() {
       limba: "RO",
     });
   }
+
+  const cancelDouble = (e) => {
+    e.preventDefault();
+    setSelectedDouble(null);
+    setFormData({
+      clasa:"Regie",
+      cod:"",
+      articol:"",
+      articol_fr: "",
+      descriere_reteta:"",
+      descriere_reteta_fr:"",
+      unitate_masura:"U",
+      limba: "RO",
+    });
+  }
+  
 
   const deleteRow = async (e) => {
     e.preventDefault();
@@ -132,7 +163,7 @@ export default function ManoperaForm() {
             <div className='w-full containerWhiter '>
               <div className="flex justify-center flex-col items-center text-black  ">
                 <form onSubmit={handleSubmit} className="w-full p-4 pt-4 px-2 md:px-4 xl:px-6 rounded-xl">
-                  <div className={`grid text-sm ${"grid-cols-[auto_auto_auto_1fr_1fr_1fr_1fr_auto_auto]"  } gap-2 md:gap-4 items-center`}>
+                  <div onClick={(console.log(selectedDelete , selectedEdit, selectedDouble))} className={`grid text-sm ${"grid-cols-[auto_auto_auto_1fr_1fr_1fr_1fr_auto_auto]"  } gap-2 md:gap-4 items-center`}>
                     {/* FR sau nu */}
                     <div className="flex flex-col items-center">
                       <label htmlFor="unit" className="col-span-1 font-medium text-black">
@@ -327,23 +358,29 @@ export default function ManoperaForm() {
                   </div>
            
                   {
-                      !selectedDelete && !selectedEdit ?
+                      !selectedDelete && !selectedEdit && !selectedDouble ?
 
                       <div className="flex gap-2 items-center ">
-                        <button type="submit" className="bg-green-500 hover:bg-green-600 text-black mt-6 px-6 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-3"/> Încarcă</button>
+                        <button type="submit" className="bg-green-500 hover:bg-green-600 text-black mt-6 px-4 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-3"/> Încarcă</button>
                       </div>
                       :
-                      !selectedEdit ?
+                      selectedDelete ?
+                        <div className="flex gap-2 items-center ">
+                          <button onClick={(e) => deleteRow(e)} className="bg-red-500 hover:bg-red-600 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faCancel} className="pr-3"/> Șterge</button>
+                          <button onClick={(e) => cancelDelete(e)} className="bg-green-500 hover:bg-green-600 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg">Anulează</button>
+                        </div>
+                      :
+                      selectedDouble ? 
 
-                      <div className="flex gap-2 items-center ">
-                        <button onClick={(e) => deleteRow(e)} className="bg-red-500 hover:bg-red-600 text-black text-lg mt-6 px-4 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faCancel} className="pr-3"/> Șterge</button>
-                        <button onClick={(e) => cancelDelete(e)} className="bg-green-500 hover:bg-green-600 text-black text-lg mt-6 px-4 py-2 flex  items-center rounded-lg">Anulează</button>
-                      </div>
+                        <div className="flex gap-2 items-center ">
+                          <button className="bg-amber-500 hover:bg-amber-600 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-3"/>Dublează</button>
+                          <button onClick={(e) => cancelDouble(e)} className="bg-red-500 hover:bg-red-600 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg"> Anulează</button>
+                        </div>
                       :
-                      <div className="flex gap-2 items-center ">
-                        <button  type="submit" className="bg-green-500 hover:bg-green-600 text-black text-lg mt-6 px-6 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-3"/>Editează</button>
-                        <button  onClick={(e) => cancelEdit(e)} className="bg-red-500 hover:bg-red-600 text-black text-lg mt-6 px-6 py-2 flex  items-center rounded-lg"> Anulează</button>
-                      </div>
+                        <div className="flex gap-2 items-center ">
+                          <button  type="submit" className="bg-green-500 hover:bg-green-600 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-3"/>Editează</button>
+                          <button  onClick={(e) => cancelEdit(e)} className="bg-red-500 hover:bg-red-600 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg"> Anulează</button>
+                        </div>
                   }
                   
                   </div>
@@ -352,7 +389,7 @@ export default function ManoperaForm() {
               </div>
               {/* AICI JOS E TABELUL */}
               <div className="w-full h-full scrollbar-webkit overflow-hidden mt-6">
-                  <RetetaTable cancelEdit = {cancelEdit} cancelDelete = {cancelDelete} reloadKey = {reloadKey} selectedDelete = {selectedDelete} setFormData = {setFormData}  setSelectedDelete = {setSelectedDelete} selectedEdit = {selectedEdit}  setSelectedEdit = {setSelectedEdit}/>
+                  <RetetaTable cancelEdit = {cancelEdit} cancelDelete = {cancelDelete} cancelDouble = {cancelDouble} setSelectedDouble = {setSelectedDouble} reloadKey = {reloadKey} selectedDelete = {selectedDelete} setFormData = {setFormData}  setSelectedDelete = {setSelectedDelete} selectedEdit = {selectedEdit}  setSelectedEdit = {setSelectedEdit}/>
               </div>
         </div>
       </div>

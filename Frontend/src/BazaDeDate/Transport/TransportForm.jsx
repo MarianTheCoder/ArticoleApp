@@ -10,7 +10,7 @@ export default function TransportForm() {
       cod_transport:"",
       clasa_transport:"",
       transport:"",
-      unitate_masura:"oră",
+      unitate_masura:"h",
       cost_unitar:""
   });
 
@@ -49,7 +49,7 @@ export default function TransportForm() {
         clasa_transport:"",
         transport:"",
         cost_unitar:"",
-        unitate_masura:"oră",
+        unitate_masura:"h",
       });
       firstInputRef.current.focus();
       handleReload();
@@ -90,7 +90,7 @@ export default function TransportForm() {
       clasa_transport:"",
       transport:"",
       cost_unitar:"",
-      unitate_masura:"oră",
+      unitate_masura:"h",
     });
   }
 
@@ -179,7 +179,10 @@ export default function TransportForm() {
                 onChange={handleChange}
                 className="px-4 py-2 border  rounded-lg outline-none shadow-sm "
               >
-                <option value="oră">Oră</option>
+                <option value="h">h</option>
+                <option value="m³">m³</option>
+                <option value="kg">kg</option>
+                <option value="Tonă">Tonă</option>
               </select>
             </div>
           <div className="flex flex-col items-center">

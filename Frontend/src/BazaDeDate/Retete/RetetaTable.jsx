@@ -8,12 +8,10 @@ import photoAPI from '../../api/photoAPI';
 import ReteteAdaugareObiecte from './ReteteAdaugareObiecte';
 
 
-export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDelete, setSelectedEdit, setFormData, selectedEdit, cancelEdit, cancelDelete}) {
+export default function ManoperaTable({reloadKey, selectedDelete,cancelDouble, setSelectedDelete,setSelectedDouble, setSelectedEdit, setFormData, selectedEdit, cancelEdit, cancelDelete}) {
 
 
-    const [open, setOpen] = useState(null);
-    const [isPopupOpen, setIsPopupOpen] = useState(false);
-    const [reloadReteta, setReloadReteta] = useState(0);
+    const [isPopupOpen, setIsPopupOpen] = useState(null);
 
     const [retete, setRetete] = useState([]);
     const [totalItems, setTotalItems] = useState(0);
@@ -31,10 +29,8 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
         articol: '',
     });
 
-    const [objectsLen, setObjectsLen] = useState(0); 
-    const [objectsID, setObjectsID] = useState(null); 
-    const [lastObjectIndex , setLastObjectIndex] = useState(null);
-    
+    // state to see which object is open
+    const [open, setOpen] = useState([]);
     //se salveza cele care si-au schimbat limba catre FR
     const [selectedRetetaIds, setSelectedRetetaIds] = useState([]);
 
@@ -54,10 +50,9 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                     asc_cod: ascendentCOD,
                 },
             });
-            setObjectsLen(0);
-            setObjectsID(null);
-            setLastObjectIndex(null);
-            setOpen(null);
+            console.log(response.data.data)
+            setOpen([]);
+            console.log("asd");
             if(response.data.data.length == 0){
                 setRetete([]);
                 setTotalItems(0);
@@ -68,15 +63,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                 fetchManopere(0, limit);
             }
             else{
-                    const renamedItems = response.data.data.map(item => ({
-                    ...item,
-                    cod: item.cod_reteta,  // Renaming cod to cod_reteta
-                    clasa: item.clasa_reteta,  // Renaming cod to cod_reteta
-                }));
-                // Remove the old 'cod' field if needed
-                renamedItems.forEach(item => delete item.cod_reteta);
-                renamedItems.forEach(item => delete item.clasa_reteta);
-                setRetete(renamedItems);
+                setRetete(response.data.data);
                 setTotalItems(response.data.totalItems);
                 setCurrentOffset(response.data.currentOffset);
             }
@@ -85,52 +72,46 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
         }
     }
 
-    const fetchPreviewReteta = async (param) => {
+
+    //ineriorul retetei aici
+    const fetchPreviewReteta = async (id, index , reteteParam) => {
         try {
-            const response = await api.get(`/Retete/getSpecificReteta/${open}`);
-            const updatedRetete = param ? [...param] : [...retete];
+            const response = await api.get(`/Retete/getSpecificReteta/${id}`);
             const newObjects = [...response.data.manopera, ...response.data.materiale, ...response.data.utilaje, ...response.data.transport];
-            // Find the index of the target object
-            const targetIndex = updatedRetete.findIndex(item => item.id === open);
-            setObjectsLen(newObjects.length);
-            setObjectsID(open);
-            if (targetIndex !== -1) {
-                // Insert new objects after the target object
-                setLastObjectIndex(targetIndex + newObjects.length);
-                updatedRetete.splice(targetIndex + 1, 0, ...newObjects);
-                setRetete(updatedRetete); // Update the state
-            }
-            
+            const addButton = {
+                id: `addButton-${id}`, // You can use a unique ID for the add button
+                whatIs: "addButton", // Identifying the type of the item
+                retetaIdForFetch: id, // Store the reteta ID for later use
+            };
+            let updatedRetete = reteteParam ? [...reteteParam] : [...retete];
+            updatedRetete.splice(index + 1, 0, ...newObjects, addButton); // Insert the new objects after the current index
+            setOpen((prev) => {
+                    return [...prev,  id];
+                });
+            setRetete(updatedRetete); // Update the state
         } catch (error) {
             console.error('Error fetching data:', error);
         }
     }
 
-    const delPreviewReteta = () => {
+    const delPreviewReteta = (id) => {
         if(retete){
+            setOpen((prev) => prev.filter((item) => item !== id));
             const updatedRetete = [...retete];
-            const targetIndex = updatedRetete.findIndex(item => item.id === objectsID);
-            if (targetIndex !== -1) {
-                updatedRetete.splice(targetIndex + 1, objectsLen);
-                setRetete(updatedRetete);
+            const retetaIndex = updatedRetete.findIndex(item => item.id === id);
+            const addButtonIndex = updatedRetete.findIndex(item => item.id === `addButton-${id}`);
+            console.log(retetaIndex, addButtonIndex);
+            if (addButtonIndex !== -1 && retetaIndex !== -1 && addButtonIndex > retetaIndex) {
+                updatedRetete.splice(retetaIndex + 1, addButtonIndex - retetaIndex);  
+                setRetete([...updatedRetete]);  
             }
-            if(open == null){
-                setLastObjectIndex(null);
-                setObjectsID(null);
-                setObjectsLen(0);  
-            }
-            return updatedRetete;
+            return [updatedRetete, retetaIndex];
         }
     }
 
-    useEffect(() => { 
-        if(objectsID == null && open != null) fetchPreviewReteta();
-        else if(objectsID != null && open != null){
-             let theNew = delPreviewReteta();
-            fetchPreviewReteta(theNew);
-        } 
-        else if(objectsID != null) delPreviewReteta(); 
-    }, [open])
+    useEffect(() => {
+
+    }, [open]);
 
     useEffect(() => { 
         fetchManopere(currentOffset, limit);
@@ -138,9 +119,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
 
     useEffect(() => {  
         const getData = setTimeout(() => {
-            setOpen(null);
-            setObjectsID(null);
-            setObjectsLen(0); 
+            setOpen([]);
             if(limit == '' || limit == 0)  fetchManopere(0, 10);
             else fetchManopere(0, limit);
         }, 500)
@@ -155,6 +134,15 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
             ...prev,
             [name]: value,
         }));
+    };
+
+
+    const toggleDropdown = (id, index) => {
+        if (open.includes(id)) {
+            delPreviewReteta(id);
+            return;   
+        }
+        fetchPreviewReteta(id, index);
     };
 
 
@@ -179,20 +167,40 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
 
     //handle selected edit/delete
     const handleSelectedForDelete = (e, id) => {
-        setSelectedDelete(id)
+        setSelectedDelete(id);
         cancelEdit(e);
+        cancelDouble(e);
     }
 
-    const handleSelectedForEdit = async (passedRow) => {
+    const handleSelectedDouble = (e, passedRow) => {
         setSelectedDelete(null);
+        cancelEdit(e);
+        setSelectedDouble(passedRow.id);
+        setFormData({
+            clasa: passedRow.clasa,
+            cod: passedRow.cod,
+            articol: passedRow.articol,
+            articol_fr: passedRow.articol_fr,
+            descriere_reteta: passedRow.descriere_reteta,
+            descriere_reteta_fr: passedRow.descriere_reteta_fr,
+            limba: passedRow.limba,
+            unitate_masura: passedRow.unitate_masura
+        })
+    }
+
+    const handleSelectedForEdit = async (e,passedRow) => {
+        setSelectedDelete(null);
+        cancelDouble(e);
         try {
-            const response = await api.get(`/Retete/getSpecificReteta/${passedRow.id }`);
-            console.log(response);
             setSelectedEdit(passedRow.id);
             setFormData({
                 clasa: passedRow.clasa,
                 cod: passedRow.cod,
                 articol: passedRow.articol,
+                articol_fr: passedRow.articol_fr,
+                descriere_reteta: passedRow.descriere_reteta,
+                descriere_reteta_fr: passedRow.descriere_reteta_fr,
+                limba: passedRow.limba,
                 unitate_masura: passedRow.unitate_masura
             })
         } catch (error) {
@@ -204,11 +212,30 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
         e.preventDefault();
         try {
             let res = await api.delete(`/Retete/deleteFromReteta/${passedRow.original.id}/${passedRow.original.whatIs}`);
-            console.log(res);
             let newRetete = [...retete];
             newRetete.splice(passedRow.index, 1);
-            setObjectsLen((prev) => prev - 1);
-            setLastObjectIndex((prev) => prev - 1);
+            if (passedRow.original.whatIs === 'Manopera' || passedRow.original.whatIs === 'Material' || passedRow.original.whatIs === 'Utilaj' || passedRow.original.whatIs === 'Transport') {
+                const parentId = passedRow.original.reteta_id;
+                const parentIndex = newRetete.findIndex((row) => row.id == parentId);
+                if (parentIndex !== -1) {
+                    const parentReteta = newRetete[parentIndex];
+                  
+                    if (parentReteta.has_manopera > 0 && passedRow.original.whatIs === 'Manopera') {
+                        parentReteta.has_manopera -= 1; // Decrease it by 1
+                    }
+                    else if (parentReteta.has_materiale > 0 && passedRow.original.whatIs === 'Material') {
+                        parentReteta.has_materiale -= 1; // Decrease it by 1
+                    }
+                    else if (parentReteta.has_utilaje > 0 && passedRow.original.whatIs === 'Utilaj') {
+                        parentReteta.has_utilaje -= 1; // Decrease it by 1
+                    }
+                    else if (parentReteta.has_transport > 0 && passedRow.original.whatIs === 'Transport') {
+                        parentReteta.has_transport -= 1; // Decrease it by 1
+                    }
+
+                    newRetete[parentIndex] = { ...parentReteta };
+                }
+            }
             setRetete(newRetete);
         } catch (error) {
             console.error('Error fetching data:', error);
@@ -217,18 +244,15 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
     const toggleRetetaSelection = (id) => {
         setSelectedRetetaIds((prev) => {
           return prev.includes(id)
-            ? prev.filter((r) => r !== id) // remove if already selected
-            : [...prev, id];               // add if not selected
+            ? prev.filter((r) => r !== id) 
+            : [...prev, id];               
         });
       };
 
 
     const parentProps = {
         setIsPopupOpen,
-        setObjectsLen,
-        objectsLen,
-        lastObjectIndex,
-        setLastObjectIndex,
+        isPopupOpen,
         open,
         setOpen,
         delPreviewReteta,
@@ -241,10 +265,15 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
             accessorKey: "Dropdown", 
             header: "",
             cell: ({ row, getValue, cell }) => (
-            <div onClick={() => setOpen((prev) => prev == cell.row.original.id ? null : cell.row.original.id)} className='flex justify-center overflow-hidden  select-none w-full cursor-pointer items-center'>
-                <FontAwesomeIcon  className={`  text-center ${open == cell.row.original.id ? " rotate-90" : ""}  text-xl`} icon={faChevronRight}/>
+            <div
+                onClick={() => toggleDropdown(cell.row.original.id, cell.row.index)} // Pass both id and index
+                className="flex justify-center h-full overflow-hidden select-none w-full cursor-pointer items-center"
+            >
+                <FontAwesomeIcon
+                    className={`text-center ${open.some((item) => item.id === cell.row.original.id) ? "rotate-90" : ""} text-xl`}
+                    icon={faChevronRight}
+                />
             </div>
-             
                 
             ),
         },
@@ -264,7 +293,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                 row.original.whatIs == 'Transport' ?
                 <div className='w-full h-full flex justify-center items-center overflow-hidden'><FontAwesomeIcon className='text-pink-500 h-[2rem] w-full  ' icon={faCar}/></div>
                 :
-                <div className='w-full h-full flex justify-center items-center overflow-hidden '><FontAwesomeIcon className='text-blue-500 h-[2rem]   ' icon={faFolder}/></div>
+                <div onClick={() => console.log(retete)} className='w-full h-full flex justify-center items-center overflow-hidden '><FontAwesomeIcon className={`${row.original?.has_manopera > 0 || row.original?.has_materiale > 0 || row.original?.has_transport > 0 || row.original?.has_utilaje > 0 ? " text-blue-500" : "text-gray-400"} h-[2rem] `} icon={faFolder}/></div>
             ),
             
         },
@@ -320,7 +349,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
             {
                 accessorKey: 'whatIs', 
                 header: 'Tip',
-                size:70,
+                size:110,
                 cell: ({ getValue, row }) => getValue() ? <div className='w-full'>{row.original.whatIs == "Material" ?  getValue() + " " + row.original.tip_material : getValue()}</div> : 'Rețetă', // Display default value if the value is empty or undefined
             },
             { accessorKey: "unitate_masura", header: "Unitate",size:60},
@@ -357,8 +386,8 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                     <div className=' dropdown-container w-full relative flex '> 
                         <div className='text-xl relative w-full py-2 select-none items-center justify-evenly gap-1 flex'>
                             <FontAwesomeIcon onClick={() => toggleRetetaSelection(row.original.id)} className=' text-blue-500 hover:text-blue-600 cursor-pointer' icon={faLanguage}/>
-                            <FontAwesomeIcon onClick={() => handleSelectedForEdit(row.original)}  className=' text-green-500 hover:text-green-600 cursor-pointer' icon={faPenToSquare}/>
-                            <FontAwesomeIcon className=' text-amber-500 hover:text-amber-600 cursor-pointer' icon={faFileCirclePlus}/>
+                            <FontAwesomeIcon onClick={(e) => handleSelectedForEdit(e,row.original)}  className=' text-green-500 hover:text-green-600 cursor-pointer' icon={faPenToSquare}/>
+                            <FontAwesomeIcon onClick={(e) => handleSelectedDouble(e,row.original)} className=' text-amber-500 hover:text-amber-600 cursor-pointer' icon={faFileCirclePlus}/>
                             <FontAwesomeIcon onClick={(e) => handleSelectedForDelete(e, row.original.id)} className=' text-red-500 hover:text-red-600 cursor-pointer' icon={faTrashCan}/>
                         </div>
                     </div>
@@ -519,6 +548,17 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                 :
                 <tbody className=' relative z-0'>
                 {table.getRowModel().rows.map((row,index,rows) => (
+                    row.original.whatIs == 'addButton' ?
+                    <tr key={row.original.id}>
+                        <td></td>
+                        <td onClick={() => setIsPopupOpen(row.original.retetaIdForFetch)} className='bg-blue-300 p-1 px-3 hover:bg-blue-500 cursor-pointer border-b border-r border-black select-none text-black' colSpan={11}>
+                            <div className='flex font-bold text-center justify-center items-center gap-2'>
+                                <p className=' text-center'>Adauga Obiecte</p>
+                                <FontAwesomeIcon className='text-green-500  text-center text-2xl' icon={faPlus}/>
+                            </div>
+                        </td>
+                    </tr>
+                    :
                     row.original.whatIs == 'Manopera' || row.original.whatIs == 'Material' || row.original.whatIs == 'Utilaj' || row.original.whatIs == 'Transport' ?
                     <React.Fragment key={row.id}>
                         <tr className={`dropdown-container    text-black`}>
@@ -543,19 +583,6 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                                 </td>
                             ))}
                         </tr>
-                        {index == lastObjectIndex ?
-                        <tr>
-                             <td></td>
-                             <td className='bg-blue-300 p-1 px-3 hover:bg-blue-500 border-b border-r border-black select-none text-black' colSpan={11}>
-                                 <div onClick={() => setIsPopupOpen(true)} className='flex font-bold  text-center cursor-pointer  justify-center items-center gap-2'>
-                                     <p className=' text-center'>Adauga Obiecte</p>
-                                     <FontAwesomeIcon className='text-green-500  text-center text-2xl' icon={faPlus}/>
-                                 </div>
-                             </td>
-                         </tr>
-                            :
-                            ""
-                        }
                     </React.Fragment>
                     :
                     <React.Fragment key={row.id}>
@@ -575,19 +602,6 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                             
                             ))}
                         </tr>
-                            {index == lastObjectIndex ?
-                            <tr>
-                                <td></td>
-                                <td onClick={() => setIsPopupOpen(true)} className='bg-blue-300 p-1 px-3 hover:bg-blue-500 cursor-pointer border-b border-r border-black select-none text-black' colSpan={11}>
-                                    <div className='flex font-bold  text-center justify-center items-center gap-2'>
-                                        <p className=' text-center'>Adauga Obiecte</p>
-                                        <FontAwesomeIcon className='text-green-500  text-center text-2xl' icon={faPlus}/>
-                                    </div>
-                                </td>
-                            </tr>
-                            :
-                            ""
-                            }
                     </React.Fragment>
                 ))}
                 </tbody>}
@@ -611,7 +625,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
           
         }
         {/* div that prevents clicks outside */}
-        {isPopupOpen && (
+        {isPopupOpen != null && (
         <>
             <div className=" absolute top-0 left-0 right-0 bottom-0 h-screen w-screen z-[100]"></div>
             <div className='w-full top-0 left-0 right-0 bottom-0 absolute h-full items-center justify-center flex z-[200]'>

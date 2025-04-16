@@ -7,11 +7,8 @@ import { RetetaContext } from '../../context/RetetaContext';
 
 export default function RetetaTransport({
     setIsPopupOpen,
-    setObjectsLen,
-    objectsLen,
-    lastObjectIndex,
-    setLastObjectIndex,
     open,
+    isPopupOpen,
     setOpen,
     delPreviewReteta,
     fetchPreviewReteta,
@@ -79,10 +76,16 @@ export default function RetetaTransport({
                 return;
             }
             try {
-                await api.post("/Retete/addRetetaObjects", {cantitate:cantitate, objectId:selectedTransport.original.id,  retetaId:open, whatIs:"Transport"})
-                let theNew = delPreviewReteta();
-                fetchPreviewReteta(theNew);
-                setIsPopupOpen(false);
+                await api.post("/Retete/addRetetaObjects", {cantitate:cantitate, objectId:selectedTransport.original.id,  retetaId:isPopupOpen, whatIs:"Transport"})
+                let [updatedretete , index] = delPreviewReteta(isPopupOpen);
+                const parentIndex = updatedretete.findIndex((row) => row.id == isPopupOpen);
+                if (parentIndex !== -1) {
+                    const parentReteta = updatedretete[parentIndex];
+                    parentReteta.has_transport += 1; 
+                    updatedretete[parentIndex] = { ...parentReteta };
+                }
+                fetchPreviewReteta(isPopupOpen, index , updatedretete);
+                setIsPopupOpen(null);
             } catch (error) {
                 console.log("Error at ading Transport" , error);
             }

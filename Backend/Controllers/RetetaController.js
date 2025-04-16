@@ -3,25 +3,109 @@ const editReteta = async (req, res) => {
     const { id } = req.params;  // Get the reteta_id from the route parameter
     const { formFirst} = req.body;
 
-    // 1. Update Reteta (main form data)
-    const sqlReteta = `
-      UPDATE Retete 
-      SET clasa_reteta = ?, cod_reteta = ?, articol = ?, unitate_masura = ?
-      WHERE id = ?
-    `;
-    await global.db.execute(sqlReteta, [
-      formFirst.clasa,
-      formFirst.cod,
-      formFirst.articol,
-      formFirst.unitate_masura,
-      id
-    ]);
+            // Save Reteta (form data)
+            const sql = `
+             UPDATE Retete
+             SET limba = ?, clasa_reteta = ?, cod_reteta = ?, articol = ?, descriere_reteta = ?, articol_fr = ?, descriere_reteta_fr = ?, unitate_masura = ?, data = NOW()
+              WHERE id = ?
+          `;
+          const [result] = await global.db.execute(sql, [
+            formFirst.limba,
+            formFirst.clasa,
+            formFirst.cod,
+            formFirst.articol,
+            formFirst.descriere_reteta,
+            formFirst.articol_fr,
+            formFirst.descriere_reteta_fr,
+            formFirst.unitate_masura,
+            id
+          ]);
+      
     res.status(200).json({ message: "Reteta updated successfully!" });
   } catch (error) {
     console.error("Error editing reteta:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+
+const doubleReteta = async (req, res) => {
+  try {
+    const { id } = req.params;  // Get the reteta_id from the route parameter
+    const { formFirst } = req.body;
+
+    // 1. Fetch the original Reteta details (same fields as in the UPDATE)
+    const getRetetaQuery = `
+      SELECT * FROM Retete WHERE id = ?
+    `;
+    const [originalReteta] = await global.db.execute(getRetetaQuery, [id]);
+
+    if (!originalReteta || originalReteta.length === 0) {
+      return res.status(404).json({ message: "Reteta not found" });
+    }
+
+    // 2. Insert the new Reteta (duplicate with new data)
+    const insertRetetaQuery = `
+      INSERT INTO Retete (limba, clasa_reteta, cod_reteta, articol, descriere_reteta, articol_fr, descriere_reteta_fr, unitate_masura, data)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW());
+    `;
+    const [newRetetaResult] = await global.db.execute(insertRetetaQuery, [
+      formFirst.limba || originalReteta.limba,
+      formFirst.clasa || originalReteta.clasa_reteta,
+      formFirst.cod || originalReteta.cod_reteta,
+      formFirst.articol || originalReteta.articol,
+      formFirst.descriere_reteta || originalReteta.descriere_reteta,
+      formFirst.articol_fr || originalReteta.articol_fr,
+      formFirst.descriere_reteta_fr || originalReteta.descriere_reteta_fr,
+      formFirst.unitate_masura || originalReteta.unitate_masura
+    ]);
+
+    const newRetetaId = newRetetaResult.insertId;
+
+    // 3. Copy the objects (Manopera, Materiale, Transport, Utilaje) from the original Reteta to the new one
+    // Function to copy data for each type of object (Manopera, Materiale, etc.)
+
+    const copyRetetaObjects = async (originalRetetaId, newRetetaId) => {
+      // Copy Manopera
+      const copyManoperaQuery = `
+        INSERT INTO Retete_manopera (reteta_id, manopera_id, cantitate)
+        SELECT ?, manopera_id, cantitate FROM Retete_manopera WHERE reteta_id = ?;
+      `;
+      await global.db.execute(copyManoperaQuery, [newRetetaId, originalRetetaId]);
+
+      // Copy Materiale
+      const copyMaterialeQuery = `
+        INSERT INTO Retete_materiale (reteta_id, materiale_id, cantitate)
+        SELECT ?, materiale_id, cantitate FROM Retete_materiale WHERE reteta_id = ?;
+      `;
+      await global.db.execute(copyMaterialeQuery, [newRetetaId, originalRetetaId]);
+
+      // Copy Transport
+      const copyTransportQuery = `
+        INSERT INTO Retete_transport (reteta_id, transport_id, cantitate)
+        SELECT ?, transport_id, cantitate FROM Retete_transport WHERE reteta_id = ?;
+      `;
+      await global.db.execute(copyTransportQuery, [newRetetaId, originalRetetaId]);
+
+      // Copy Utilaje
+      const copyUtilajeQuery = `
+        INSERT INTO Retete_utilaje (reteta_id, utilaje_id, cantitate)
+        SELECT ?, utilaje_id, cantitate FROM Retete_utilaje WHERE reteta_id = ?;
+      `;
+      await global.db.execute(copyUtilajeQuery, [newRetetaId, originalRetetaId]);
+    };
+
+    // Copy the objects from the original reteta to the new reteta
+    await copyRetetaObjects(id, newRetetaId);
+
+    res.status(200).json({ message: "Reteta duplicated successfully!", newRetetaId });
+  } catch (error) {
+    console.error("Error duplicating reteta:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+
 const addRetetaObjects = async (req,res) =>{
   try {
       const { whatIs, retetaId, objectId, cantitate  } = req.body;
@@ -148,12 +232,12 @@ const getReteteLight = async (req,res) =>{
 }
 
 
-const getRetete = async (req,res) =>{
+const getRetete = async (req, res) => {
   try {
-    const { offset = 0, limit = 10, clasa = '', cod = '', articol = '', limba ='' } = req.query;
+    const { offset = 0, limit = 10, clasa = '', cod = '', articol = '', limba = '' } = req.query;
     const asc_articol = req.query.asc_articol === "true";
     const asc_cod = req.query.asc_cod === "true";
-    
+
     // Validate limit and offset to be integers
     const parsedOffset = parseInt(offset, 10);
     const parsedLimit = parseInt(limit, 10);
@@ -163,28 +247,46 @@ const getRetete = async (req,res) =>{
     }
 
     // Start constructing the base query
-    let query = `SELECT * FROM Retete`;  // Assuming 'retete' is the name of your table
+    let query = `
+      SELECT 
+        r.id, 
+        r.limba, 
+        r.cod_reteta AS cod, 
+        r.clasa_reteta AS clasa, 
+        r.articol, 
+        r.articol_fr, 
+        r.descriere_reteta, 
+        r.descriere_reteta_fr, 
+        r.unitate_masura, 
+        r.data,
+        (SELECT COUNT(*) FROM Retete_manopera rm WHERE rm.reteta_id = r.id) > 0 AS has_manopera,
+        (SELECT COUNT(*) FROM Retete_materiale rmt WHERE rmt.reteta_id = r.id) > 0 AS has_materiale,
+        (SELECT COUNT(*) FROM Retete_utilaje ru WHERE ru.reteta_id = r.id) > 0 AS has_utilaje,
+        (SELECT COUNT(*) FROM Retete_transport rt WHERE rt.reteta_id = r.id) > 0 AS has_transport
+      FROM Retete r
+    `;
+
     let queryParams = [];
     let whereClauses = [];
 
     // Conditionally add filters to the query
     if (clasa.trim() !== "") {
-      whereClauses.push(`clasa_reteta LIKE ?`);
+      whereClauses.push("r.clasa_reteta LIKE ?");
       queryParams.push(`%${clasa}%`);
     }
 
     if (cod.trim() !== "") {
-      whereClauses.push(`cod_reteta LIKE ?`);
+      whereClauses.push("r.cod_reteta LIKE ?");
       queryParams.push(`%${cod}%`);
     }
 
     if (articol.trim() !== "") {
-      whereClauses.push(`(articol LIKE ? OR articol_fr LIKE ?)`);
+      whereClauses.push("(r.articol LIKE ? OR r.articol_fr LIKE ?)");
       queryParams.push(`%${articol}%`, `%${articol}%`);
     }
 
     if (limba.trim() !== "") {
-      whereClauses.push(`limba LIKE ?`);
+      whereClauses.push("r.limba LIKE ?");
       queryParams.push(`%${limba}%`);
     }
 
@@ -194,22 +296,21 @@ const getRetete = async (req,res) =>{
     }
 
     if (asc_articol && asc_cod) {
-      query += ' ORDER BY articol ASC, cod_reteta ASC';
+      query += ' ORDER BY r.articol ASC, r.cod_reteta ASC';
     } else if (asc_articol) {
-      query += ' ORDER BY articol ASC';
+      query += ' ORDER BY r.articol ASC';
     } else if (asc_cod) {
-      query += ' ORDER BY cod_reteta ASC';
+      query += ' ORDER BY r.cod_reteta ASC';
     }
-    
-    query += ' LIMIT ? OFFSET ?';
 
+    query += ' LIMIT ? OFFSET ?';
     queryParams.push(parsedLimit, parsedOffset * parsedLimit);
 
     // Execute the query with filters and pagination
     const [rows] = await global.db.execute(query, queryParams);
 
     // Count query to get total number of records without pagination
-    let countQuery = `SELECT COUNT(*) as total FROM Retete`;
+    let countQuery = `SELECT COUNT(*) as total FROM Retete r`;
     if (whereClauses.length > 0) {
       countQuery += ` WHERE ${whereClauses.join(' AND ')}`;
     }
@@ -218,7 +319,6 @@ const getRetete = async (req,res) =>{
     const countQueryParams = queryParams.slice(0, queryParams.length - 2); // Remove pagination params
 
     const [countResult] = await global.db.execute(countQuery, countQueryParams);
-
     const totalItems = countResult[0].total;
 
     // Send paginated data with metadata
@@ -232,7 +332,8 @@ const getRetete = async (req,res) =>{
     console.error(err);
     res.status(500).json({ error: 'Database error' });
   }
-}
+};
+
 
 const getSpecificReteta = async (req, res) => {
   try {
@@ -324,6 +425,7 @@ const getSpecificReteta = async (req, res) => {
            cost: row.manopera_cost,
            cantitate: row.manopera_cantitate,
            unitate_masura: row.manopera_unitate_masura,
+           reteta_id: id,
 
          });
          seenManoperaIds.add(row.manopera_id);
@@ -342,6 +444,7 @@ const getSpecificReteta = async (req, res) => {
            cost: row.pret_vanzare,
            cantitate: row.materiale_cantitate,
            unitate_masura: row.materiale_unitate_masura,
+           reteta_id: id,
 
          });
          seenMaterialeIds.add(row.materiale_id);
@@ -357,7 +460,9 @@ const getSpecificReteta = async (req, res) => {
            articol: row.transport,
            cantitate: row.transport_cantitate,
            unitate_masura: row.transport_unitate_masura,
-           cost: row.transport_cost
+           cost: row.transport_cost,
+           reteta_id: id,
+
          });
          seenTransportIds.add(row.transport_id);
        }
@@ -373,6 +478,8 @@ const getSpecificReteta = async (req, res) => {
            cost: row.pret_utilaj,
            cantitate: row.utilaj_cantitate,
            unitate_masura: row.utilaje_unitate_masura,
+           reteta_id: id,
+
          });
          seenUtilajeIds.add(row.utilaj_id);
        }
@@ -480,4 +587,4 @@ const deleteFromReteta = async (req, res) => {
 
 
 
-module.exports = {addReteta, getRetete, getSpecificReteta, deleteReteta, editReteta, getReteteLight, deleteFromReteta, addRetetaObjects};
+module.exports = {addReteta, doubleReteta,  getRetete, getSpecificReteta, deleteReteta, editReteta, getReteteLight, deleteFromReteta, addRetetaObjects};

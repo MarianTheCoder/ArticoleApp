@@ -26,7 +26,7 @@ export default function ReteteAdaugareObiecte({parentProps}) {
                     Utilaje
                 </button> 
                 <button className=' absolute right-6 top-5'>
-                 <FontAwesomeIcon onClick={() => parentProps.setIsPopupOpen(false)} className=' cursor-pointer text-4xl text-red-600 hover:text-red-700' icon={faX}/>
+                 <FontAwesomeIcon onClick={() => parentProps.setIsPopupOpen(null)} className=' cursor-pointer text-4xl text-red-600 hover:text-red-700' icon={faX}/>
                 </button>
             </div>
             <div className=' mt-4 overflow-auto flex h-full flex-col items-center w-full'>
