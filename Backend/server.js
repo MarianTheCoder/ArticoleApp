@@ -117,13 +117,17 @@ async function initializeDatabase() {
   CREATE TABLE IF NOT EXISTS Manopera (
     id INT AUTO_INCREMENT PRIMARY KEY,
     cod_COR VARCHAR(255) NOT NULL,
+    limba VARCHAR(20) NOT NULL DEFAULT 'ro',
     ocupatie TEXT NOT NULL, 
+    ocupatie_fr TEXT, 
     unitate_masura VARCHAR(20) NOT NULL,
     cost_unitar DECIMAL(10, 2) NOT NULL,
     cantitate DECIMAL(10, 0) NOT NULL,
     data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_cod_COR (cod_COR),
-    INDEX idx_ocupatie (ocupatie)
+    INDEX idx_limba (limba),
+    INDEX idx_ocupatie (ocupatie),
+    INDEX idx_ocupatie_fr (ocupatie_fr)
   );
 `;
   await pool.execute(createManoperaTableQuery);
@@ -133,12 +137,17 @@ async function initializeDatabase() {
   CREATE TABLE IF NOT EXISTS Transport (
     id INT AUTO_INCREMENT PRIMARY KEY,
     cod_transport VARCHAR(255) NOT NULL,
+    limba VARCHAR(20) NOT NULL DEFAULT 'ro',
     clasa_transport VARCHAR(255) NOT NULL,
     transport TEXT NOT NULL, 
+    transport_fr TEXT NOT NULL, 
     unitate_masura VARCHAR(20) NOT NULL,
     cost_unitar DECIMAL(10, 2) NOT NULL,
     data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_limba (limba),
     INDEX idx_cod_transport (cod_transport),
+    INDEX idx_transport (transport),
+    INDEX idx_transport_fr (transport_fr),
     INDEX idx_clasa_transport (clasa_transport)
   );
 `;
@@ -150,11 +159,14 @@ async function initializeDatabase() {
   CREATE TABLE IF NOT EXISTS Materiale (
     id INT AUTO_INCREMENT PRIMARY KEY,
           furnizor VARCHAR(255) NOT NULL,
+          limba VARCHAR(20) NOT NULL DEFAULT 'ro',
           clasa_material VARCHAR(255) NOT NULL,
           cod_produs VARCHAR(50) NOT NULL,
           tip_material VARCHAR(50) NOT NULL,
           denumire_produs VARCHAR(255) NOT NULL,
+          denumire_produs_fr VARCHAR(255),
           descriere_produs TEXT,
+          descriere_produs_fr TEXT,
           photoUrl TEXT NOT NULL,
           unitate_masura VARCHAR(50) NOT NULL,
           cost_unitar DECIMAL(10, 2) NOT NULL,
@@ -162,7 +174,10 @@ async function initializeDatabase() {
           pret_vanzare DECIMAL(10, 2) NOT NULL,
           INDEX idx_cod_produs (cod_produs),
           INDEX idx_denumire_produs (denumire_produs),
+          INDEX idx_denumire_produs_fr (denumire_produs_fr),
           INDEX idx_tip_material (tip_material),
+          INDEX idx_limba (limba),
+          INDEX idx_clasa_material (clasa_material),
           data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   );
 `;
@@ -173,8 +188,11 @@ async function initializeDatabase() {
   CREATE TABLE IF NOT EXISTS Utilaje (
     id INT AUTO_INCREMENT PRIMARY KEY,
     clasa_utilaj VARCHAR(255) NOT NULL,
+    limba VARCHAR(20) NOT NULL DEFAULT 'ro',
     utilaj TEXT NOT NULL, 
+    utilaj_fr TEXT, 
     descriere_utilaj TEXT NOT NULL,
+    descriere_utilaj_fr TEXT,
     photoUrl TEXT NOT NULL,
     status_utilaj VARCHAR(255) NOT NULL,
     unitate_masura VARCHAR(50) NOT NULL,
@@ -182,7 +200,9 @@ async function initializeDatabase() {
     pret_utilaj DECIMAL(10, 2) NOT NULL,
     cantitate DECIMAL(10, 0) NOT NULL,
     INDEX idx_utilaj (utilaj),
+    INDEX idx_limba (limba),
     INDEX idx_descriere_utilaj (descriere_utilaj),
+    INDEX idx_descriere_utilaj_fr (descriere_utilaj_fr),
     data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   );
 `;
@@ -195,13 +215,19 @@ async function initializeDatabase() {
   const createReteteTableQuery = `
     CREATE TABLE IF NOT EXISTS Retete (
       id INT AUTO_INCREMENT PRIMARY KEY,
+      limba VARCHAR(20) NOT NULL DEFAULT 'ro',
       cod_reteta VARCHAR(255) NOT NULL,
       clasa_reteta VARCHAR(255) NOT NULL,
       articol TEXT NOT NULL,
+      articol_fr TEXT,
+      descriere_reteta TEXT,
+      descriere_reteta_fr TEXT,
       unitate_masura VARCHAR(255) NOT NULL,
       INDEX idx_cod_reteta (cod_reteta),
       INDEX idx_clasa_reteta (clasa_reteta),
       INDEX idx_articol (articol),
+      index idx_articol_fr (articol_fr),
+      INDEX idx_limba (limba),
       data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `;
@@ -306,10 +332,14 @@ console.log("Santiere details table created or already exists.");
   const createSantierReteteTable = `
   CREATE TABLE IF NOT EXISTS Santier_retete (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    limba VARCHAR(20) NOT NULL DEFAULT 'ro',
     santier_id INT NOT NULL,
     cod_reteta VARCHAR(255) NOT NULL,
     clasa_reteta VARCHAR(255) NOT NULL,
     articol TEXT NOT NULL,
+    articol_fr TEXT,
+    descriere_reteta TEXT,
+    descriere_reteta_fr TEXT,
     unitate_masura VARCHAR(255) NOT NULL,
     cantitate DECIMAL(10,2) NOT NULL,
     data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -323,14 +353,17 @@ console.log("Santiere details table created or already exists.");
   const createSantierReteteManopera = `
   CREATE TABLE IF NOT EXISTS Santier_retete_manopera (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    limba VARCHAR(20) NOT NULL DEFAULT 'ro',
     santier_reteta_id INT NOT NULL,
     cod_COR VARCHAR(255) NOT NULL,
     ocupatie TEXT NOT NULL,
+    ocupatie_fr TEXT,
     unitate_masura VARCHAR(20) NOT NULL,
     cost_unitar DECIMAL(10,2) NOT NULL,
     cantitate DECIMAL(10,2) NOT NULL,
     INDEX idx_cod_COR (cod_COR),
     INDEX idx_ocupatie (ocupatie),
+    INDEX idx_limba (limba),
     FOREIGN KEY (santier_reteta_id) REFERENCES Santier_retete(id)
   );
   `;
@@ -342,10 +375,13 @@ console.log("Santiere details table created or already exists.");
   CREATE TABLE IF NOT EXISTS Santier_retete_materiale (
     id INT AUTO_INCREMENT PRIMARY KEY,
     santier_reteta_id INT NOT NULL,
+    limba VARCHAR(20) NOT NULL DEFAULT 'ro',
     cod_produs VARCHAR(50) NOT NULL,
     tip_material VARCHAR(50) NOT NULL,
     denumire_produs VARCHAR(255) NOT NULL,
+    denumire_produs_fr VARCHAR(255),
     descriere_produs TEXT,
+    descriere_produs_fr TEXT,
     photoUrl TEXT NOT NULL,
     unitate_masura VARCHAR(50) NOT NULL,
     cost_unitar DECIMAL(10,2) NOT NULL,
@@ -355,6 +391,7 @@ console.log("Santiere details table created or already exists.");
     INDEX idx_cod_produs (cod_produs),
     INDEX idx_denumire_produs (denumire_produs),
     INDEX idx_tip_material (tip_material),
+    INDEX idx_limba (limba),
     FOREIGN KEY (santier_reteta_id) REFERENCES Santier_retete(id)
   );
   `;
@@ -365,10 +402,13 @@ console.log("Santiere details table created or already exists.");
   const createSantierReteteUtilaje = `
   CREATE TABLE IF NOT EXISTS Santier_retete_utilaje (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    limba VARCHAR(20) NOT NULL DEFAULT 'ro',
     santier_reteta_id INT NOT NULL,
     clasa_utilaj VARCHAR(255) NOT NULL,
     utilaj TEXT NOT NULL,
+    utilaj_fr TEXT,
     descriere_utilaj TEXT NOT NULL,
+    descriere_utilaj_fr TEXT,
     photoUrl TEXT NOT NULL,
     status_utilaj VARCHAR(255) NOT NULL,
     unitate_masura VARCHAR(50) NOT NULL,
@@ -377,6 +417,7 @@ console.log("Santiere details table created or already exists.");
     cantitate DECIMAL(10,2) NOT NULL,
     FOREIGN KEY (santier_reteta_id) REFERENCES Santier_retete(id),
     INDEX idx_utilaj (utilaj),
+    INDEX idx_limba (limba),
     INDEX idx_descriere_utilaj (descriere_utilaj)
   );
   `;
@@ -387,15 +428,18 @@ console.log("Santiere details table created or already exists.");
   const createSantierReteteTransport = `
   CREATE TABLE IF NOT EXISTS Santier_retete_transport (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    limba VARCHAR(20) NOT NULL DEFAULT 'ro',
     santier_reteta_id INT NOT NULL,
     cod_transport VARCHAR(255) NOT NULL,
     clasa_transport VARCHAR(255) NOT NULL,
     transport TEXT NOT NULL,
+    transport_fr TEXT,
     unitate_masura VARCHAR(20) NOT NULL,
     cost_unitar DECIMAL(10,2) NOT NULL,
     cantitate DECIMAL(10,2) NOT NULL,
     INDEX idx_cod_transport (cod_transport),
     INDEX idx_clasa_transport (clasa_transport),
+    INDEX idx_limba (limba),
     FOREIGN KEY (santier_reteta_id) REFERENCES Santier_retete(id)
   );
   `;

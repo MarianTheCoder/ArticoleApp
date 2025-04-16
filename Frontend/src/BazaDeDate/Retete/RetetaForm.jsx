@@ -13,10 +13,12 @@ export default function ManoperaForm() {
       clasa:"Regie",
       cod:"",
       articol:"",
-      unitate_masura:"U"
+      articol_fr: "",
+      descriere_reteta:"",
+      descriere_reteta_fr:"",
+      unitate_masura:"U",
+      limba: "RO",
   });
-  
-  const [isOpen, setIsOpen] = useState(false);
 
   const [reloadKey, setReloadKey] = useState(0);
  
@@ -34,11 +36,19 @@ export default function ManoperaForm() {
         clasa: formData.clasa.trim(),
         unitate_masura: formData.unitate_masura.trim(),
         articol: formData.articol.trim(),
+        articol_fr: formData.articol_fr.trim(),
+        descriere_reteta: formData.descriere_reteta.trim(),
+        descriere_reteta_fr: formData.descriere_reteta_fr.trim(),
+        limba: formData.limba.trim(),
       }
     };
   
-    if(formDataToSend.formFirst.cod === "" || formDataToSend.formFirst.clasa === "" || formDataToSend.formFirst.unitate_masura === "" || formDataToSend.formFirst.articol === ""){
-      alert("All fields are required");
+    if(formDataToSend.formFirst.cod == '' || formDataToSend.formFirst.articol == '' || formDataToSend.formFirst.unitate_masura  == '' || formDataToSend.formFirst.clasa == '' || formDataToSend.formFirst.descriere_reteta == '' || formDataToSend.formFirst.limba == ''){
+      alert("Toate campurile sunt obligatorii (fara FR daca nu e selectata limba FR)");
+      return;
+    }
+    if(formDataToSend.formFirst.limba === "FR" && (formDataToSend.formFirst.articol_fr == '' || formDataToSend.formFirst.descriere_reteta_fr == '')){
+      alert("Toate campurile sunt obligatorii (cu FR)");  
       return;
     }
       try {
@@ -51,10 +61,14 @@ export default function ManoperaForm() {
           await api.post("/Retete/addReteta", formDataToSend);
         }
         setFormData({
-          clasa: "Regie",
-          cod: "",
-          articol: "",
-          unitate_masura: "U",
+          clasa:"Regie",
+          cod:"",
+          articol:"",
+          articol_fr: "",
+          descriere_reteta:"",
+          descriere_reteta_fr:"",
+          unitate_masura:"U",
+          limba: "RO",
         });
         handleReload();
     } catch (error) {
@@ -89,7 +103,11 @@ export default function ManoperaForm() {
       clasa:"Regie",
       cod:"",
       articol:"",
-      unitate_masura:"U"
+      articol_fr: "",
+      descriere_reteta:"",
+      descriere_reteta_fr:"",
+      unitate_masura:"U",
+      limba: "RO",
     });
   }
 
@@ -110,13 +128,44 @@ export default function ManoperaForm() {
   return (
   
      <div className='h-screen w-full flex items-center justify-center'>
-        <div className="containerZ h-90h w-90w relative flex overflow-hidden  flex-col items-center rounded-lg">
+        <div className="containerZ h-90h w-[97%] relative flex overflow-hidden  flex-col items-center rounded-lg">
             <div className='w-full containerWhiter '>
               <div className="flex justify-center flex-col items-center text-black  ">
-                <form onSubmit={handleSubmit} className="w-full p-6 pt-4 px-2 md:px-4 xl:px-6 rounded-xl">
-                  <div className="grid grid-cols-[auto_auto_1fr_auto_auto] gap-2 md:gap-4 xl:gap-6 items-center">
+                <form onSubmit={handleSubmit} className="w-full p-4 pt-4 px-2 md:px-4 xl:px-6 rounded-xl">
+                  <div className={`grid text-sm ${"grid-cols-[auto_auto_auto_1fr_1fr_1fr_1fr_auto_auto]"  } gap-2 md:gap-4 items-center`}>
+                    {/* FR sau nu */}
+                    <div className="flex flex-col items-center">
+                      <label htmlFor="unit" className="col-span-1 font-medium text-black">
+                        Limbă
+                      </label>
+                      <select
+                        id="limba"
+                        name="limba"
+                        value={formData.limba}
+                        onChange={handleChange}
+                        className=" px-1 py-2 rounded-lg outline-none shadow-sm "
+                      >
+                        <option value="RO">RO</option>
+                        <option value="FR">FR</option>
+                      </select>
+                  </div>
+                  <div className="flex flex-col items-center ">
+                      <label className=" font-medium text-black">
+                          Cod 
+                      </label>
+                      <input
+                          type="text"
+                          id="cod"
+                          name="cod"
+                          value={formData.cod}
+                          onChange={handleChange}
+                          maxLength={20}
+                          className="px-2 outline-none text-center py-2 max-w-40  rounded-lg shadow-sm "
+                      />
+                  </div>
 
-                    {/* Clasa Dropdown */}
+                  {
+                    formData.limba === "RO" ?
                     <div className="flex flex-col items-center">
                       <label htmlFor="unit" className="col-span-1 font-medium text-black">
                         Clasă
@@ -126,7 +175,7 @@ export default function ManoperaForm() {
                         name="clasa"
                         value={formData.clasa}
                         onChange={handleChange}
-                        className=" px-1 py-2  text-center rounded-lg outline-none shadow-sm "
+                        className=" px-1 py-2 rounded-lg outline-none shadow-sm "
                       >
                         <option value="Regie">Regie</option>
                         <option value="Dezafectare">Dezafectare</option>
@@ -144,34 +193,113 @@ export default function ManoperaForm() {
                         <option value="Management de proiect">Management de proiect</option>
                         <option value="Reparații">Reparații</option>
                       </select>
-                  </div>
-                  <div className="flex flex-col items-center ">
-                      <label className=" font-medium text-black">
-                          Cod 
-                      </label>
-                      <input
-                          type="text"
-                          id="cod"
-                          name="cod"
-                          value={formData.cod}
-                          onChange={handleChange}
-                          maxLength={10}
-                          className="px-2 outline-none text-center py-2 max-w-32  rounded-lg shadow-sm "
-                      />
-                  </div>
-                    {/* Description Input */}
+                    </div>
+                      :
                     <div className="flex flex-col items-center">
-                      <label className=" font-medium text-black">
-                          Articol
+                      <label htmlFor="unit" className="col-span-1 font-medium text-black">
+                        Clasă
                       </label>
-                      <input
+                      <select
+                        id="clasa"
+                        name="clasa"
+                        value={formData.clasa}
+                        onChange={handleChange}
+                        className=" px-1 py-2 rounded-lg outline-none shadow-sm "
+                      >
+                        <option value="Gros œuvre - maçonnerie">Gros œuvre - maçonnerie</option>
+                        <option value="Plâtrerie (plaque de plâtre)">Plâtrerie (plaque de plâtre)</option>
+                        <option value="Vrd">Vrd</option>
+                        <option value="Espace vert - aménagement extérieur">Espace vert - aménagement extérieur</option>
+                        <option value="Charpente - bardage et couverture métallique">Charpente - bardage et couverture métallique</option>
+                        <option value="Couverture - zinguerie">Couverture - zinguerie</option>
+                        <option value="Étanchéité">Étanchéité</option>
+                        <option value="Plomberie - sanitaire">Plomberie - sanitaire</option>
+                        <option value="Chauffage">Chauffage</option>
+                        <option value="Ventilation">Ventilation</option>
+                        <option value="Climatisation">Climatisation</option>
+                        <option value="Électricité">Électricité</option>
+                        <option value="Charpente et ossature bois">Charpente et ossature bois</option>
+                        <option value="Menuiserie extérieure">Menuiserie extérieure</option>
+                        <option value="Menuiserie agencement intérieur">Menuiserie agencement intérieur</option>
+                        <option value="Métallerie (acier - aluminium)">Métallerie (acier - aluminium)</option>
+                        <option value="Store et fermeture">Store et fermeture</option>
+                        <option value="Peinture - revêtement intérieur">Peinture - revêtement intérieur</option>
+                        <option value="Ravalement peinture - revêtement extérieur">Ravalement peinture - revêtement extérieur</option>
+                        <option value="Vitrerie - miroiterie">Vitrerie - miroiterie</option>
+                        <option value="Carrelage et revêtement mural">Carrelage et revêtement mural</option>
+                        <option value="Revêtement de sol (sauf carrelage)">Revêtement de sol (sauf carrelage)</option>
+                        <option value="Ouvrages communs TCE">Ouvrages communs TCE</option>
+                        <option value="Rénovation énergétique">Rénovation énergétique</option>
+                      </select>
+                  </div>
+                  }
+                  <div className="flex flex-col items-center">
+                    <label  
+                        className=" font-medium text-black"
+                    >
+                        Articol
+                    </label>
+                    <textarea
+                        rows={3}
+                        type="text"
+                        id="articol"
+                        name="articol"
+                        value={formData.articol}
+                        onChange={handleChange}
+                        className="px-2 w-full outline-none resize-none   py-2  rounded-lg shadow-sm "
+                  
+                    />
+                </div>
+                <div className="flex flex-col items-center">
+                    <label  
+                        className=" font-medium text-black"
+                    >
+                        Descriere
+                    </label>
+                    <textarea
+                        rows={3}
+                        type="text"
+                        id="descriere_reteta"
+                        name="descriere_reteta"
+                        value={formData.descriere_reteta}
+                        onChange={handleChange}
+                        className="px-2 w-full outline-none resize-none   py-2  rounded-lg shadow-sm "
+                  
+                    />
+                </div>
+                {/* PENTRU FRANCEZA SELECTED */}
+                  <div className="flex flex-col items-center">
+                    <label  
+                        className=" font-medium text-black"
+                    >
+                        Articol FR
+                    </label>
+                    <textarea
+                        rows={3}
+                        type="text"
+                        id="articol_fr"
+                        name="articol_fr"
+                        value={formData.articol_fr}
+                        onChange={handleChange}
+                        className="px-2 w-full outline-none resize-none   py-2  rounded-lg shadow-sm "
+                  
+                    />
+                  </div>
+                  <div className="flex flex-col items-center">
+                      <label  
+                          className=" font-medium text-black"
+                      >
+                          Descriere FR
+                      </label>
+                      <textarea
+                          rows={3}
                           type="text"
-                          id="articol"
-                          name="articol"
-                          value={formData.articol}
+                          id="descriere_reteta_fr"
+                          name="descriere_reteta_fr"
+                          value={formData.descriere_reteta_fr}
                           onChange={handleChange}
-                          className="px-2 w-full outline-none text-center py-2  rounded-lg shadow-sm "
-            
+                          className="px-2 w-full outline-none resize-none   py-2  rounded-lg shadow-sm "
+                    
                       />
                   </div>
                   {/* input form */}
@@ -193,6 +321,8 @@ export default function ManoperaForm() {
                         <option value="kg">kg</option>
                         <option value="Set">Set</option>
                         <option value="Rolă">Rolă</option>
+                        <option value="Tonă">Tonă</option>
+                        <option value="ens">ens</option>
                       </select>
                   </div>
            

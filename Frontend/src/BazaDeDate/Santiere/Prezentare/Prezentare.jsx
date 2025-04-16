@@ -146,17 +146,17 @@ export default function Prezentare() {
                 </div>
             </div>
             <div className='w-full h-full '>
-            <LoadScript googleMapsApiKey="AIzaSyCDs0sewwk9xpKKexCOhem7yCPicxef5gYY">
-              <GoogleMap
+                        <GoogleMap
+                mapContainerStyle={{ height: '100%', width: '100%', borderRadius: '1rem' }}
                 center={{ lat: formData.latitudine, lng: formData.longitudine }}
                 zoom={12}
-              >
-                {/* Use AdvancedMarkerElement instead of Marker */}
-                <google.maps.marker.AdvancedMarkerElement
-                  position={{ lat: formData.latitudine, lng: formData.longitudine }}
-                />
-              </GoogleMap>
-            </LoadScript>
+            >
+                <Marker position={{ lat: formData.latitudine, lng: formData.longitudine }} />
+                <div className='absolute top-0 right-0 m-2 bg-white p-2 rounded-lg shadow-md'>
+                <h1 className='text-lg font-bold'>Locația</h1>
+                <p>{formData.adresa}</p>
+                </div>
+            </GoogleMap>
             </div>
         </div>
     </div>

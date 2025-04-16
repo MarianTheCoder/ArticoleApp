@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useMemo, useState } from 'react'
 import api from '../../api/axiosAPI';
 import { flexRender, getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowDown, faArrowDownAZ, faArrowUpAZ, faCancel, faCar, faChevronDown, faChevronRight, faCopy, faEllipsis, faFolder, faL, faPenToSquare, faPerson, faPlus, faTrashCan, faTrowelBricks, faTruck, faUser } from '@fortawesome/free-solid-svg-icons';
+import { faArrowDown, faArrowDownAZ, faArrowUpAZ, faCancel, faCar, faChevronDown, faChevronRight, faCirclePlus, faCopy, faEllipsis, faFileCirclePlus, faFolder, faL, faLanguage, faPenToSquare, faPerson, faPlus, faTrashCan, faTrowelBricks, faTruck, faUser } from '@fortawesome/free-solid-svg-icons';
 import { RetetaContext } from '../../context/RetetaContext';
 import photoAPI from '../../api/photoAPI';
 import ReteteAdaugareObiecte from './ReteteAdaugareObiecte';
@@ -19,9 +19,13 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
     const [totalItems, setTotalItems] = useState(0);
     const [currentOffset, setCurrentOffset] = useState(0);
     const [limit, setLimit] = useState(20);
+    
+
     const [ascendent ,setAscendent] = useState(false);
+    const [ascendentCOD ,setAscendentCOD] = useState(false);
 
     const [filters, setFilters] = useState({
+        limba: '',
         cod: '',
         clasa: '',
         articol: '',
@@ -30,6 +34,10 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
     const [objectsLen, setObjectsLen] = useState(0); 
     const [objectsID, setObjectsID] = useState(null); 
     const [lastObjectIndex , setLastObjectIndex] = useState(null);
+    
+    //se salveza cele care si-au schimbat limba catre FR
+    const [selectedRetetaIds, setSelectedRetetaIds] = useState([]);
+
 
  
     const fetchManopere = async (offset, limit) => {
@@ -38,10 +46,12 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                 params: {
                     offset,
                     limit,
+                    limba: filters.limba,
                     cod: filters.cod, // Pass cod as a query parameter
                     clasa: filters.clasa, // Add any other filters here
                     articol: filters.articol, // Add any other filters here
                     asc_articol: ascendent,
+                    asc_cod: ascendentCOD,
                 },
             });
             setObjectsLen(0);
@@ -135,7 +145,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
             else fetchManopere(0, limit);
         }, 500)
         return () => clearTimeout(getData);
-      }, [filters,limit,ascendent]);
+      }, [filters,limit,ascendent,ascendentCOD]);
 
 
 
@@ -204,6 +214,13 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
             console.error('Error fetching data:', error);
         }
     }
+    const toggleRetetaSelection = (id) => {
+        setSelectedRetetaIds((prev) => {
+          return prev.includes(id)
+            ? prev.filter((r) => r !== id) // remove if already selected
+            : [...prev, id];               // add if not selected
+        });
+      };
 
 
     const parentProps = {
@@ -224,7 +241,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
             accessorKey: "Dropdown", 
             header: "",
             cell: ({ row, getValue, cell }) => (
-            <div onClick={() => setOpen((prev) => prev == cell.row.original.id ? null : cell.row.original.id)} className='flex justify-center select-none w-full cursor-pointer items-center'>
+            <div onClick={() => setOpen((prev) => prev == cell.row.original.id ? null : cell.row.original.id)} className='flex justify-center overflow-hidden  select-none w-full cursor-pointer items-center'>
                 <FontAwesomeIcon  className={`  text-center ${open == cell.row.original.id ? " rotate-90" : ""}  text-xl`} icon={faChevronRight}/>
             </div>
              
@@ -251,70 +268,109 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
             ),
             
         },
-        { accessorKey: "cod", header: "Cod",size:100 },
-        { accessorKey: "clasa", header: "Clasă", size:200},
-       { 
-            accessorKey: "articol", 
+        { 
+            accessorKey: "limba",
+            header: "Limba",
+            cell: ({ getValue, row }) =>
+                <div className='w-full flex justify-center  font-bold'> {getValue()}</div> , // Display default value if the value is empty or undefined
+            size:90 
+        },
+        { 
+            accessorKey: "cod", 
             header: (
                 <div className="flex items-center w-[95%] justify-between text-black ">
-                    <span>Articol</span>
-                    <FontAwesomeIcon onClick={() => setAscendent((prev) => prev == false ? true : false)} className="text-xl border border-black p-2  rounded-full  cursor-pointer" icon={!ascendent ? faArrowUpAZ : faArrowDownAZ} /> 
-                </div>
-              ),
-            size:500
-        },
-        {
-            accessorKey: 'whatIs', 
-            header: 'Tip',
-            size:70,
-            cell: ({ getValue, row }) => getValue() ? <div className='w-full'>{row.original.whatIs == "Material" ?  getValue() + " " + row.original.tip_material : getValue()}</div> : 'Rețetă', // Display default value if the value is empty or undefined
-        },
-        { accessorKey: "unitate_masura", header: "Unitate",size:60},
-        { 
-            accessorKey: "photo", 
-            header: "Poză",
-            cell: ({ getValue }) => (
-                getValue() ? 
-                <div className='flex w-full overflow-hidden justify-center items-center'>
-                    <img 
-                        src={`${photoAPI}/${getValue()}`}  // Concatenate the base URL with the value
-                        alt="Product"
-                        className="h-[2.8rem] min-w-[2rem] max-w-28 object-cover" 
-                        style={{ objectFit: 'cover' }}
-                        />
-                </div>
-                :
-                ""
-                ),
-                size:70
-        },
-        { accessorKey: "cantitate", header: "Cantitate", size:70},
-        { 
-            accessorKey: "threeDots", 
-            header: "Opțiuni",
-            cell: ({ row }) => (
-                row.original.whatIs == 'Manopera' || row.original.whatIs == 'Material' || row.original.whatIs == 'Utilaj' || row.original.whatIs == 'Transport' ? 
-                <div className=' dropdown-container w-full h-full relative flex '> 
-                    <div className='text-xl relative w-full h-full py-2 select-none items-center justify-evenly gap-1 flex'>
-                        <FontAwesomeIcon onClick={(e) => deleteItem(e, row)} className=' text-red-500 hover:text-red-600 cursor-pointer' icon={faTrashCan}/>
-                    </div>
-                </div>    
-                    :
-                <div className=' dropdown-container w-full relative flex '> 
-                    <div className='text-xl relative w-full py-2 select-none items-center justify-evenly gap-1 flex'>
-                        <FontAwesomeIcon onClick={() => handleSelectedForEdit(row.original)}  className=' text-green-500 hover:text-green-600 cursor-pointer' icon={faPenToSquare}/>
-                        <FontAwesomeIcon onClick={(e) => handleSelectedForDelete(e, row.original.id)} className=' text-red-500 hover:text-red-600 cursor-pointer' icon={faTrashCan}/>
-                    </div>
+                    <span>Cod</span>
+                    <FontAwesomeIcon onClick={() => setAscendentCOD((prev) => prev == false ? true : false)} className="text-xl border border-black p-2  rounded-full  cursor-pointer" icon={!ascendentCOD ? faArrowUpAZ : faArrowDownAZ} /> 
                 </div>
             ),
-            meta: {
-                style: {
-                    textAlign: 'center', 
-                    padding: '0', 
+            size:155 
+        },
+        { accessorKey: "clasa", header: "Clasă", size:300},
+        { 
+                accessorKey: "articol", 
+                header: (
+                    <div className="flex items-center w-[95%] justify-between text-black ">
+                        <span>Articol</span>
+                        <FontAwesomeIcon onClick={() => setAscendent((prev) => prev == false ? true : false)} className="text-xl border border-black p-2  rounded-full  cursor-pointer" icon={!ascendent ? faArrowUpAZ : faArrowDownAZ} /> 
+                    </div>
+                ),
+                cell: ({ getValue, row }) => (
+                    selectedRetetaIds.includes(row.original.id) ?
+                    <div className=''>
+                        {row.original.articol_fr || "..."}
+                    </div>
+                    :
+                    getValue()
+                ) , 
+                size:500
+            },
+            { 
+                accessorKey: "descriere_reteta", 
+                header: "Descriere",
+                cell: ({ getValue, row }) => (
+                    selectedRetetaIds.includes(row.original.id) ?
+                    <div className=''>
+                        {row.original.descriere_reteta_fr || "..."}
+                    </div>
+                    :
+                    getValue()
+                ) , 
+                size:500
+            },
+            {
+                accessorKey: 'whatIs', 
+                header: 'Tip',
+                size:70,
+                cell: ({ getValue, row }) => getValue() ? <div className='w-full'>{row.original.whatIs == "Material" ?  getValue() + " " + row.original.tip_material : getValue()}</div> : 'Rețetă', // Display default value if the value is empty or undefined
+            },
+            { accessorKey: "unitate_masura", header: "Unitate",size:60},
+            { 
+                accessorKey: "photo", 
+                header: "Poză",
+                cell: ({ getValue }) => (
+                    getValue() ? 
+                    <div className='flex w-full overflow-hidden justify-center items-center'>
+                        <img 
+                            src={`${photoAPI}/${getValue()}`}  // Concatenate the base URL with the value
+                            alt="Product"
+                            className="h-[2.8rem] min-w-[2rem] max-w-28 object-cover" 
+                            style={{ objectFit: 'cover' }}
+                            />
+                    </div>
+                    :
+                    ""
+                    ),
+                    size:70
+            },
+            { accessorKey: "cantitate", header: "Cantitate", size:70},
+            { 
+                accessorKey: "threeDots", 
+                header: "Opțiuni",
+                cell: ({ row }) => (
+                    row.original.whatIs == 'Manopera' || row.original.whatIs == 'Material' || row.original.whatIs == 'Utilaj' || row.original.whatIs == 'Transport' ? 
+                    <div className=' dropdown-container w-full h-full relative flex '> 
+                        <div className='text-xl relative w-full h-full py-2 select-none items-center justify-evenly gap-1 flex'>
+                            <FontAwesomeIcon onClick={(e) => deleteItem(e, row)} className=' text-red-500 hover:text-red-600 cursor-pointer' icon={faTrashCan}/>
+                        </div>
+                    </div>    
+                        :
+                    <div className=' dropdown-container w-full relative flex '> 
+                        <div className='text-xl relative w-full py-2 select-none items-center justify-evenly gap-1 flex'>
+                            <FontAwesomeIcon onClick={() => toggleRetetaSelection(row.original.id)} className=' text-blue-500 hover:text-blue-600 cursor-pointer' icon={faLanguage}/>
+                            <FontAwesomeIcon onClick={() => handleSelectedForEdit(row.original)}  className=' text-green-500 hover:text-green-600 cursor-pointer' icon={faPenToSquare}/>
+                            <FontAwesomeIcon className=' text-amber-500 hover:text-amber-600 cursor-pointer' icon={faFileCirclePlus}/>
+                            <FontAwesomeIcon onClick={(e) => handleSelectedForDelete(e, row.original.id)} className=' text-red-500 hover:text-red-600 cursor-pointer' icon={faTrashCan}/>
+                        </div>
+                    </div>
+                ),
+                meta: {
+                    style: {
+                        textAlign: 'center', 
+                        padding: '0', 
+                    },
                 },
             },
-        },
-    ], [selectedDelete, open, retete, ascendent]);
+    ], [selectedDelete, open, retete, ascendent, selectedRetetaIds, ascendentCOD]);
 
     const table = useReactTable({
         data: retete,
@@ -338,24 +394,79 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                         <tr className='text-black'>
                                     <th className='border-b border-r border-black bg-white' colSpan={2}></th>
                                     <th className='border-b border-r bg-white border-black'>
+                                        <select
+                                            id="limba"
+                                            name="limba"
+                                            value={filters.limba}
+                                            onChange={handleInputChange}
+                                            className=" p-2 w-full cursor-pointer outline-none py-3"
+                                        >
+                                            <option value="">RO&FR</option>
+                                            <option value="RO">RO</option>
+                                            <option value="FR">FR</option>
+               
+                                        </select>
+                                    </th>
+
+                                    <th className='border-b border-r bg-white border-black'>
                                         <input
-                                            type="text"
+                                            type="cod"
                                             name="cod"
                                             value={filters.cod}
                                             onChange={handleInputChange}
-                                            className="p-2 w-full outline-none py-3"
+                                            className="p-2 w-full outline-none  py-3"
                                             placeholder="Filtru Cod"
                                         />
                                     </th>
                                     <th className='border-b border-r bg-white border-black'>
-                                        <input
-                                            type="text"
+                                        <select
+                                            id="clasa"
                                             name="clasa"
                                             value={filters.clasa}
                                             onChange={handleInputChange}
-                                            className="p-2 w-full outline-none  py-3"
-                                            placeholder="Filtru Clasă"
-                                        />
+                                            className=" p-2 text-sm w-full cursor-pointer outline-none py-3"
+                                        >
+                                            <option value="">Toate</option>
+                                            <option value="Regie">Regie</option>
+                                            <option value="Dezafectare">Dezafectare</option>
+                                            <option value="Amenajări interioare">Amenajări interioare</option>
+                                            <option value="Electrice">Electrice</option>
+                                            <option value="Sanitare">Sanitare</option>
+                                            <option value="Termice">Termice</option>
+                                            <option value="Climatizare Ventilație">Climatizare Ventilație</option>
+                                            <option value="Amenajări exterioare">Amenajări exterioare</option>
+                                            <option value="Tâmplărie">Tâmplărie</option>
+                                            <option value="Mobilă">Mobilă</option>
+                                            <option value="Confecții Metalice">Confecții Metalice</option>
+                                            <option value="Prelucrări Ceramice/Piatră Naturală">Prelucrări Ceramice/Piatră Naturală</option>
+                                            <option value="Ofertare/Devizare">Ofertare/Devizare</option>
+                                            <option value="Management de proiect">Management de proiect</option>
+                                            <option value="Reparații">Reparații</option>
+                                            <option value="Gros œuvre - maçonnerie">Gros œuvre - maçonnerie</option>
+                                            <option value="Plâtrerie (plaque de plâtre)">Plâtrerie (plaque de plâtre)</option>
+                                            <option value="Vrd">Vrd</option>
+                                            <option value="Espace vert - aménagement extérieur">Espace vert - aménagement extérieur</option>
+                                            <option value="Charpente - bardage et couverture métallique">Charpente - bardage et couverture métallique</option>
+                                            <option value="Couverture - zinguerie">Couverture - zinguerie</option>
+                                            <option value="Étanchéité">Étanchéité</option>
+                                            <option value="Plomberie - sanitaire">Plomberie - sanitaire</option>
+                                            <option value="Chauffage">Chauffage</option>
+                                            <option value="Ventilation">Ventilation</option>
+                                            <option value="Climatisation">Climatisation</option>
+                                            <option value="Électricité">Électricité</option>
+                                            <option value="Charpente et ossature bois">Charpente et ossature bois</option>
+                                            <option value="Menuiserie extérieure">Menuiserie extérieure</option>
+                                            <option value="Menuiserie agencement intérieur">Menuiserie agencement intérieur</option>
+                                            <option value="Métallerie (acier - aluminium)">Métallerie (acier - aluminium)</option>
+                                            <option value="Store et fermeture">Store et fermeture</option>
+                                            <option value="Peinture - revêtement intérieur">Peinture - revêtement intérieur</option>
+                                            <option value="Ravalement peinture - revêtement extérieur">Ravalement peinture - revêtement extérieur</option>
+                                            <option value="Vitrerie - miroiterie">Vitrerie - miroiterie</option>
+                                            <option value="Carrelage et revêtement mural">Carrelage et revêtement mural</option>
+                                            <option value="Revêtement de sol (sauf carrelage)">Revêtement de sol (sauf carrelage)</option>
+                                            <option value="Ouvrages communs TCE">Ouvrages communs TCE</option>
+                                            <option value="Rénovation énergétique">Rénovation énergétique</option>
+                                        </select>
                                     </th>
                                     <th className='border-b border-r bg-white border-black'>
                                         <input
@@ -381,9 +492,9 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                        
                             <th key={header.id}  className={`relative border-b-2 border-r border-black   bg-white p-2 py-4 ${header.column.id === "threeDots" ? "text-center" : ""} `}     
                             style={{
-                                width: header.column.id === "threeDots" ? '55px' : header.column.id === "Dropdown" ? "35px" : header.column.id === "logo" ? "35px": `${header.getSize()}px`, // Enforce width for "Options"
-                                minWidth: header.column.id === "threeDots" ?  '55px' : header.column.id === "Dropdown" ? header.column.id === "logo" ? "35px": "35px" : '', // Ensure no shrinkage
-                                maxWidth: header.column.id === "threeDots" ? '55px' : header.column.id === "Dropdown" ? header.column.id === "logo" ? "35px": "35px" : '', // Ensure no expansion
+                                width: header.column.id === "threeDots" ? '8rem' : header.column.id === "Dropdown" ? "35px" : header.column.id === "logo" ? "35px": `${header.getSize()}px`, // Enforce width for "Options"
+                                minWidth: header.column.id === "threeDots" ?  '8rem' : header.column.id === "Dropdown" ? header.column.id === "logo" ? "35px": "35px" : '', // Ensure no shrinkage
+                                maxWidth: header.column.id === "threeDots" ? '8rem' : header.column.id === "Dropdown" ? header.column.id === "logo" ? "35px": "35px" : '', // Ensure no expansion
                             }}>
                                 <div
                                 onMouseDown={header.getResizeHandler()}
@@ -400,7 +511,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
               {retete.length == 0 ?
                     <tbody className='relative z-0'>
                         <tr>
-                            <td className='bg-white text-black h-12' colSpan={10}>
+                            <td className='bg-white text-black h-12' colSpan={14}>
                                 <div className=' flex justify-center items-center w-full text-lg font-semibold h-full'>Nici un rezultat</div>
                             </td>
                         </tr>
@@ -435,7 +546,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                         {index == lastObjectIndex ?
                         <tr>
                              <td></td>
-                             <td className='bg-blue-300 p-1 px-3 hover:bg-blue-500 border-b border-r border-black select-none text-black' colSpan={9}>
+                             <td className='bg-blue-300 p-1 px-3 hover:bg-blue-500 border-b border-r border-black select-none text-black' colSpan={11}>
                                  <div onClick={() => setIsPopupOpen(true)} className='flex font-bold  text-center cursor-pointer  justify-center items-center gap-2'>
                                      <p className=' text-center'>Adauga Obiecte</p>
                                      <FontAwesomeIcon className='text-green-500  text-center text-2xl' icon={faPlus}/>
@@ -467,7 +578,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                             {index == lastObjectIndex ?
                             <tr>
                                 <td></td>
-                                <td onClick={() => setIsPopupOpen(true)} className='bg-blue-300 p-1 px-3 hover:bg-blue-500 cursor-pointer border-b border-r border-black select-none text-black' colSpan={9}>
+                                <td onClick={() => setIsPopupOpen(true)} className='bg-blue-300 p-1 px-3 hover:bg-blue-500 cursor-pointer border-b border-r border-black select-none text-black' colSpan={11}>
                                     <div className='flex font-bold  text-center justify-center items-center gap-2'>
                                         <p className=' text-center'>Adauga Obiecte</p>
                                         <FontAwesomeIcon className='text-green-500  text-center text-2xl' icon={faPlus}/>

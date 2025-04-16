@@ -82,13 +82,17 @@ const addReteta = async (req,res) =>{
     
         // Save Reteta (form data)
         const sql = `
-          INSERT INTO Retete (clasa_reteta, cod_reteta, articol, unitate_masura, data)
-          VALUES (?, ?, ?, ?, NOW())
+          INSERT INTO Retete (limba, clasa_reteta, cod_reteta, articol, descriere_reteta, articol_fr, descriere_reteta_fr,  unitate_masura, data)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
         `;
         const [result] = await global.db.execute(sql, [
+          formFirst.limba,
           formFirst.clasa,
           formFirst.cod,
           formFirst.articol,
+          formFirst.descriere_reteta,
+          formFirst.articol_fr,
+          formFirst.descriere_reteta_fr,
           formFirst.unitate_masura,
         ]);
     
@@ -146,8 +150,9 @@ const getReteteLight = async (req,res) =>{
 
 const getRetete = async (req,res) =>{
   try {
-    const { offset = 0, limit = 10, clasa = '', cod = '', articol = '' } = req.query;
-    const asc_articol= req.query.asc_articol === "true";
+    const { offset = 0, limit = 10, clasa = '', cod = '', articol = '', limba ='' } = req.query;
+    const asc_articol = req.query.asc_articol === "true";
+    const asc_cod = req.query.asc_cod === "true";
     
     // Validate limit and offset to be integers
     const parsedOffset = parseInt(offset, 10);
@@ -174,19 +179,30 @@ const getRetete = async (req,res) =>{
     }
 
     if (articol.trim() !== "") {
-      whereClauses.push(`articol LIKE ?`);
-      queryParams.push(`%${articol}%`);
+      whereClauses.push(`(articol LIKE ? OR articol_fr LIKE ?)`);
+      queryParams.push(`%${articol}%`, `%${articol}%`);
+    }
+
+    if (limba.trim() !== "") {
+      whereClauses.push(`limba LIKE ?`);
+      queryParams.push(`%${limba}%`);
     }
 
     // If there are any filters, add them to the query
     if (whereClauses.length > 0) {
       query += ` WHERE ${whereClauses.join(' AND ')}`;
     }
-    if(asc_articol == true){
-      query += ` ORDER BY articol ASC LIMIT ? OFFSET ?`;
+
+    if (asc_articol && asc_cod) {
+      query += ' ORDER BY articol ASC, cod_reteta ASC';
+    } else if (asc_articol) {
+      query += ' ORDER BY articol ASC';
+    } else if (asc_cod) {
+      query += ' ORDER BY cod_reteta ASC';
     }
-    else query += ` LIMIT ? OFFSET ?`;
     
+    query += ' LIMIT ? OFFSET ?';
+
     queryParams.push(parsedLimit, parsedOffset * parsedLimit);
 
     // Execute the query with filters and pagination
