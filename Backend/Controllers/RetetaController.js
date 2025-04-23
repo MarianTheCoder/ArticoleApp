@@ -546,40 +546,39 @@ const getSpecificReteta = async (req, res) => {
 
 const deleteFromReteta = async (req, res) => {
   try {
-    const { id, whatIs } = req.params;  // Reteta ID to be deleted
+    const { id, whatIs, retetaId } = req.params;  // `id` = object ID (manopera/material etc.), `retetaId` = the parent Reteta ID
 
-    console.log(whatIs, id);
+    console.log(whatIs, id, retetaId);
 
-    // Start by deleting the related data from child tables
-    if(whatIs == "Manopera"){
+    if (whatIs === "Manopera") {
       const deleteManoperaQuery = `
-        DELETE FROM Retete_manopera WHERE manopera_id = ?
+        DELETE FROM Retete_manopera 
+        WHERE manopera_id = ? AND reteta_id = ?
       `;
-      await global.db.execute(deleteManoperaQuery, [id]);
-    }
-    else if(whatIs == "Material"){
+      await global.db.execute(deleteManoperaQuery, [id, retetaId]);
+    } else if (whatIs === "Material") {
       const deleteMaterialeQuery = `
-        DELETE FROM Retete_materiale WHERE materiale_id = ?
+        DELETE FROM Retete_materiale 
+        WHERE materiale_id = ? AND reteta_id = ?
       `;
-      await global.db.execute(deleteMaterialeQuery, [id]);
-    }
-    else if(whatIs == "Transport"){
+      await global.db.execute(deleteMaterialeQuery, [id, retetaId]);
+    } else if (whatIs === "Transport") {
       const deleteTransportQuery = `
-        DELETE FROM Retete_transport WHERE transport_id = ?
+        DELETE FROM Retete_transport 
+        WHERE transport_id = ? AND reteta_id = ?
       `;
-      await global.db.execute(deleteTransportQuery, [id]);
-    }
-    else if(whatIs == "Utilaj"){
+      await global.db.execute(deleteTransportQuery, [id, retetaId]);
+    } else if (whatIs === "Utilaj") {
       const deleteUtilajeQuery = `
-        DELETE FROM Retete_utilaje WHERE utilaje_id = ?
+        DELETE FROM Retete_utilaje 
+        WHERE utilaje_id = ? AND reteta_id = ?
       `;
-      await global.db.execute(deleteUtilajeQuery, [id]);
+      await global.db.execute(deleteUtilajeQuery, [id, retetaId]);
     }
 
-    // Send a response after successfully deleting the reteta and its associated data
-    res.status(200).json({ message: "Reteta and related data deleted successfully." });
+    res.status(200).json({ message: "Object removed from reteta successfully." });
   } catch (error) {
-    console.error("Error deleting reteta:", error);
+    console.error("Error deleting reteta object:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };

@@ -117,7 +117,7 @@ async function initializeDatabase() {
   CREATE TABLE IF NOT EXISTS Manopera (
     id INT AUTO_INCREMENT PRIMARY KEY,
     cod_COR VARCHAR(255) NOT NULL,
-    limba VARCHAR(20) NOT NULL DEFAULT 'ro',
+    limba VARCHAR(20) NOT NULL DEFAULT 'RO',
     ocupatie TEXT NOT NULL, 
     ocupatie_fr TEXT, 
     unitate_masura VARCHAR(20) NOT NULL,
@@ -137,7 +137,7 @@ async function initializeDatabase() {
   CREATE TABLE IF NOT EXISTS Transport (
     id INT AUTO_INCREMENT PRIMARY KEY,
     cod_transport VARCHAR(255) NOT NULL,
-    limba VARCHAR(20) NOT NULL DEFAULT 'ro',
+    limba VARCHAR(20) NOT NULL DEFAULT 'RO',
     clasa_transport VARCHAR(255) NOT NULL,
     transport TEXT NOT NULL, 
     transport_fr TEXT NOT NULL, 
@@ -159,7 +159,7 @@ async function initializeDatabase() {
   CREATE TABLE IF NOT EXISTS Materiale (
     id INT AUTO_INCREMENT PRIMARY KEY,
           furnizor VARCHAR(255) NOT NULL,
-          limba VARCHAR(20) NOT NULL DEFAULT 'ro',
+          limba VARCHAR(20) NOT NULL DEFAULT 'RO',
           clasa_material VARCHAR(255) NOT NULL,
           cod_produs VARCHAR(50) NOT NULL,
           tip_material VARCHAR(50) NOT NULL,
@@ -188,7 +188,7 @@ async function initializeDatabase() {
   CREATE TABLE IF NOT EXISTS Utilaje (
     id INT AUTO_INCREMENT PRIMARY KEY,
     clasa_utilaj VARCHAR(255) NOT NULL,
-    limba VARCHAR(20) NOT NULL DEFAULT 'ro',
+    limba VARCHAR(20) NOT NULL DEFAULT 'RO',
     utilaj TEXT NOT NULL, 
     utilaj_fr TEXT, 
     descriere_utilaj TEXT NOT NULL,
@@ -215,7 +215,7 @@ async function initializeDatabase() {
   const createReteteTableQuery = `
     CREATE TABLE IF NOT EXISTS Retete (
       id INT AUTO_INCREMENT PRIMARY KEY,
-      limba VARCHAR(20) NOT NULL DEFAULT 'ro',
+      limba VARCHAR(20) NOT NULL DEFAULT 'RO',
       cod_reteta VARCHAR(255) NOT NULL,
       clasa_reteta VARCHAR(255) NOT NULL,
       articol TEXT NOT NULL,
@@ -332,7 +332,7 @@ console.log("Santiere details table created or already exists.");
   const createSantierReteteTable = `
   CREATE TABLE IF NOT EXISTS Santier_retete (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    limba VARCHAR(20) NOT NULL DEFAULT 'ro',
+    limba VARCHAR(20) NOT NULL DEFAULT 'RO',
     santier_id INT NOT NULL,
     cod_reteta VARCHAR(255) NOT NULL,
     clasa_reteta VARCHAR(255) NOT NULL,
@@ -353,7 +353,7 @@ console.log("Santiere details table created or already exists.");
   const createSantierReteteManopera = `
   CREATE TABLE IF NOT EXISTS Santier_retete_manopera (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    limba VARCHAR(20) NOT NULL DEFAULT 'ro',
+    limba VARCHAR(20) NOT NULL DEFAULT 'RO',
     santier_reteta_id INT NOT NULL,
     cod_COR VARCHAR(255) NOT NULL,
     ocupatie TEXT NOT NULL,
@@ -375,7 +375,7 @@ console.log("Santiere details table created or already exists.");
   CREATE TABLE IF NOT EXISTS Santier_retete_materiale (
     id INT AUTO_INCREMENT PRIMARY KEY,
     santier_reteta_id INT NOT NULL,
-    limba VARCHAR(20) NOT NULL DEFAULT 'ro',
+    limba VARCHAR(20) NOT NULL DEFAULT 'RO',
     cod_produs VARCHAR(50) NOT NULL,
     tip_material VARCHAR(50) NOT NULL,
     denumire_produs VARCHAR(255) NOT NULL,
@@ -402,7 +402,7 @@ console.log("Santiere details table created or already exists.");
   const createSantierReteteUtilaje = `
   CREATE TABLE IF NOT EXISTS Santier_retete_utilaje (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    limba VARCHAR(20) NOT NULL DEFAULT 'ro',
+    limba VARCHAR(20) NOT NULL DEFAULT 'RO',
     santier_reteta_id INT NOT NULL,
     clasa_utilaj VARCHAR(255) NOT NULL,
     utilaj TEXT NOT NULL,
@@ -428,7 +428,7 @@ console.log("Santiere details table created or already exists.");
   const createSantierReteteTransport = `
   CREATE TABLE IF NOT EXISTS Santier_retete_transport (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    limba VARCHAR(20) NOT NULL DEFAULT 'ro',
+    limba VARCHAR(20) NOT NULL DEFAULT 'RO',
     santier_reteta_id INT NOT NULL,
     cod_transport VARCHAR(255) NOT NULL,
     clasa_transport VARCHAR(255) NOT NULL,

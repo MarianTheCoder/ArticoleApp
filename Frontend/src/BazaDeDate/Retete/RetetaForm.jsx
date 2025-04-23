@@ -389,7 +389,7 @@ export default function ManoperaForm() {
               </div>
               {/* AICI JOS E TABELUL */}
               <div className="w-full h-full scrollbar-webkit overflow-hidden mt-6">
-                  <RetetaTable cancelEdit = {cancelEdit} cancelDelete = {cancelDelete} cancelDouble = {cancelDouble} setSelectedDouble = {setSelectedDouble} reloadKey = {reloadKey} selectedDelete = {selectedDelete} setFormData = {setFormData}  setSelectedDelete = {setSelectedDelete} selectedEdit = {selectedEdit}  setSelectedEdit = {setSelectedEdit}/>
+                  <RetetaTable cancelEdit = {cancelEdit} cancelDelete = {cancelDelete} selectedDouble = {selectedDouble} cancelDouble = {cancelDouble} setSelectedDouble = {setSelectedDouble} reloadKey = {reloadKey} selectedDelete = {selectedDelete} setFormData = {setFormData}  setSelectedDelete = {setSelectedDelete} selectedEdit = {selectedEdit}  setSelectedEdit = {setSelectedEdit}/>
               </div>
         </div>
       </div>

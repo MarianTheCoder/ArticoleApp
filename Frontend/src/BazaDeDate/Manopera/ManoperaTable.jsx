@@ -212,6 +212,13 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
 
     const columns = useMemo(() => [
         { 
+            accessorKey: "limba",
+            header: "Limba",
+            cell: ({ getValue, row }) =>
+                <div className='w-full flex justify-center  font-bold'> {getValue()}</div> , // Display default value if the value is empty or undefined
+            size:50 
+        },
+        { 
             accessorKey: "cod_COR", 
             header: (
                 <div className="flex items-center w-[95%] justify-between text-black ">
@@ -275,6 +282,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                 <table className="w-full   border-separate border-spacing-0 ">
                     <thead className='top-0 w-full sticky bg-white  z-10 '>
                         <tr className='text-black'>
+                                    <th className='border-b bg-white border-r border-black'></th>
                                     <th className='border-b bg-white border-r border-black'>
                                         <input
                                             type="text"
@@ -331,7 +339,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
             {manopere.length == 0 ?
             <tbody className='relative z-0'>
                 <tr>
-                    <td className='bg-white text-black h-12' colSpan={6}>
+                    <td className='bg-white text-black h-12' colSpan={7}>
                         <div className=' flex justify-center items-center w-full text-lg font-semibold h-full'>Nici un rezultat</div>
                     </td>
                 </tr>

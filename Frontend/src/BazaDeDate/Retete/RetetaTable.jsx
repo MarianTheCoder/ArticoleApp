@@ -8,7 +8,7 @@ import photoAPI from '../../api/photoAPI';
 import ReteteAdaugareObiecte from './ReteteAdaugareObiecte';
 
 
-export default function ManoperaTable({reloadKey, selectedDelete,cancelDouble, setSelectedDelete,setSelectedDouble, setSelectedEdit, setFormData, selectedEdit, cancelEdit, cancelDelete}) {
+export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, setSelectedDelete, selectedDouble, setSelectedDouble, setSelectedEdit, setFormData, selectedEdit, cancelEdit, cancelDelete}) {
 
 
     const [isPopupOpen, setIsPopupOpen] = useState(null);
@@ -52,7 +52,6 @@ export default function ManoperaTable({reloadKey, selectedDelete,cancelDouble, s
             });
             console.log(response.data.data)
             setOpen([]);
-            console.log("asd");
             if(response.data.data.length == 0){
                 setRetete([]);
                 setTotalItems(0);
@@ -211,7 +210,7 @@ export default function ManoperaTable({reloadKey, selectedDelete,cancelDouble, s
     const deleteItem = async (e, passedRow) => {
         e.preventDefault();
         try {
-            let res = await api.delete(`/Retete/deleteFromReteta/${passedRow.original.id}/${passedRow.original.whatIs}`);
+            let res = await api.delete(`/Retete/deleteFromReteta/${passedRow.original.reteta_id}/${passedRow.original.id}/${passedRow.original.whatIs}`);
             let newRetete = [...retete];
             newRetete.splice(passedRow.index, 1);
             if (passedRow.original.whatIs === 'Manopera' || passedRow.original.whatIs === 'Material' || passedRow.original.whatIs === 'Utilaj' || passedRow.original.whatIs === 'Transport') {
@@ -349,7 +348,7 @@ export default function ManoperaTable({reloadKey, selectedDelete,cancelDouble, s
             {
                 accessorKey: 'whatIs', 
                 header: 'Tip',
-                size:110,
+                size:120,
                 cell: ({ getValue, row }) => getValue() ? <div className='w-full'>{row.original.whatIs == "Material" ?  getValue() + " " + row.original.tip_material : getValue()}</div> : 'Rețetă', // Display default value if the value is empty or undefined
             },
             { accessorKey: "unitate_masura", header: "Unitate",size:60},
@@ -587,7 +586,7 @@ export default function ManoperaTable({reloadKey, selectedDelete,cancelDouble, s
                     :
                     <React.Fragment key={row.id}>
                         <tr className={`dropdown-container   text-black 
-                            ${row.original.id == selectedDelete ? "bg-red-300 sticky" : row.original.id == selectedEdit ? "bg-green-300 sticky" :  row.index % 2 === 0 ? 'bg-[rgb(255,255,255,0.75)] ' : 'bg-[rgb(255,255,255,1)] '}`}>
+                            ${row.original.id == selectedDelete ? "bg-red-300 sticky" : row.original.id == selectedEdit ? "bg-green-300 sticky" : row.original.id == selectedDouble ? "bg-amber-300" :  row.index % 2 === 0 ? 'bg-[rgb(255,255,255,0.75)] ' : 'bg-[rgb(255,255,255,1)] '}`}>
                             {row.getVisibleCells().map((cell) => (  
                                     <td  key={cell.id}   
                                         className={`    border-b border-r break-words max-w-72  relative border-black p-1 px-3`}
