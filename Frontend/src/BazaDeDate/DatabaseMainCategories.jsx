@@ -14,7 +14,7 @@ export default function DatabaseMainCategories({dateType}) {
 
 return (
     <div className='h-screen w-full flex items-center justify-center'>
-        <div className="containerZ  w-[95%] h-90h relative flex  flex-col items-center rounded-lg">
+        <div className="containerZ  w-[97%] h-90h relative flex  flex-col items-center rounded-lg">
         {
             clicked == 1 ? <ManoperaForm/>
             :

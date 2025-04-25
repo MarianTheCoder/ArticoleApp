@@ -2,10 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react'
 import api from '../../api/axiosAPI';
 import { flexRender, getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowDownAZ, faArrowUpAZ, faFileCirclePlus, faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons';
+import { faArrowDownAZ, faArrowUpAZ, faFileCirclePlus, faLanguage, faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons';
 
 
-export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDelete, setSelectedEdit, setFormData, selectedEdit, cancelEdit, cancelDelete}) {
+export default function ManoperaTable({reloadKey, cancelDouble, selectedDouble, setSelectedDouble, selectedDelete, setSelectedDelete, setSelectedEdit, setFormData, selectedEdit, cancelEdit, cancelDelete}) {
 
     const [manopere, setManopere] = useState(null);
     const [totalItems, setTotalItems] = useState(0);
@@ -13,11 +13,15 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
     const [limit, setLimit] = useState(20);
     const [ascendent ,setAscendent] = useState(false);
     const [ascendentCOR ,setAscendentCOR] = useState(true);
+
+    //se salveza cele care si-au schimbat limba catre FR
+    const [selectedManopereIds, setSelectedManopereIds] = useState([]);
     
 
     const [filters, setFilters] = useState({
         cod_COR: '',
         ocupatie: '',
+        limba: '',
     });
 
  
@@ -29,6 +33,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                     limit,
                     cod_COR: filters.cod_COR, // Pass cod_COR as a query parameter
                     ocupatie: filters.ocupatie, // Add any other filters here
+                    limba: filters.limba,
                     asc_ocupatie: ascendent,
                     asc_cod_COR: ascendentCOR,  
                 },
@@ -48,7 +53,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                 setCurrentOffset(response.data.currentOffset);
             }
         } catch (error) {
-            console.error('Error fetching data:', error);
+            console.error('Eroare la obtinerea de informatii', error);
         }
     }
 
@@ -90,36 +95,54 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
             setLimit(e.target.value);
         } 
     }
-    //States for dropDown/edit/delete/copy
+    //States for dropDown/edit/delete/copy and CHANGED language
+
+    const toggleManopereChangeLanguage = (id) => {
+        setSelectedManopereIds((prev) => {
+          return prev.includes(id)
+            ? prev.filter((r) => r !== id) 
+            : [...prev, id];               
+        });
+      };
 
     //handle selected edit/delete
     const handleSelectedForDelete = (e, id) => {
         e.stopPropagation();
         setSelectedDelete(id)// Toggle the dropdown based on the current state   
         cancelEdit(e);
+        cancelDouble(e);
+
     }
 
     const handleSelectedForEdit = (e,passedRow) => {
         e.stopPropagation();
-        setSelectedDelete(null)
+        cancelDouble(e);
+        setSelectedDelete(null);
         setSelectedEdit(passedRow.id)// Toggle the dropdown based on the current state
         setFormData({
             cod_COR: passedRow.cod_COR,
             ocupatie: passedRow.ocupatie,
+            ocupatie_fr: passedRow.ocupatie_fr,
             unitate_masura: passedRow.unitate_masura,
             cost_unitar: passedRow.cost_unitar,
             cantitate: passedRow.cantitate,
+            limba: passedRow.limba,
         })
     }
 
-    const handleSelectedForDuplicate = async (e,passedRow) => {
+    const handleSelectedDouble = (e, passedRow) => {
         e.stopPropagation();
+        setSelectedDelete(null);
+        cancelEdit(e);
+        setSelectedDouble(passedRow.id);
         setFormData({
             cod_COR: passedRow.cod_COR,
             ocupatie: passedRow.ocupatie,
+            ocupatie_fr: passedRow.ocupatie_fr,
             unitate_masura: passedRow.unitate_masura,
             cost_unitar: passedRow.cost_unitar,
             cantitate: passedRow.cantitate,
+            limba: passedRow.limba,
         })
     }
 
@@ -236,19 +259,37 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                     <FontAwesomeIcon onClick={() => setAscendent((prev) => prev == false ? true : false)} className="text-xl border border-black p-2  rounded-full  cursor-pointer" icon={!ascendent ? faArrowUpAZ : faArrowDownAZ} /> 
                 </div>
               ),
+            cell: ({ getValue, row }) => (
+                selectedManopereIds.includes(row.original.id) ?
+                <div className=''>
+                    {row.original.ocupatie_fr || "..."}
+                </div>
+                :
+                getValue()
+            ) , 
             size:300 
         },
         { accessorKey: "unitate_masura", header: "Unitate", size:40 },
-        { accessorKey: "cost_unitar", header: "Cost unitar", size:100 },
-        { accessorKey: "cantitate", header: "Cantitate", size:100},
+        { 
+            accessorKey: "cost_unitar", 
+            header: "Cost unitar", 
+            cell: ({ getValue}) => {
+                let value = getValue() == null || isNaN(getValue()) ? 0 : parseFloat(getValue());
+                const formattedValue = value.toFixed(3); // Limit to 3 decimals
+                return  parseFloat(value.toFixed(3))
+             } , 
+            size:70 
+        },
+        { accessorKey: "cantitate", header: "Cantitate", size:70},
         { 
             accessorKey: "threeDots", 
             header: "Opțiuni",
             cell: ({ row }) => (
-                <div className='w-full relative flex '> 
+                <div className='w-full relative overflow-hidden flex '> 
                     <div className='text-xl relative w-full py-2 select-none items-center justify-evenly gap-2 flex'>
+                        <FontAwesomeIcon onClick={()  =>  toggleManopereChangeLanguage(row.original.id)} className=' text-blue-500 hover:text-blue-600 cursor-pointer' icon={faLanguage }/>
                         <FontAwesomeIcon onClick={(e) =>  handleSelectedForEdit(e,row.original)}  className=' text-green-500 hover:text-green-600 cursor-pointer' icon={faPenToSquare}/>
-                        <FontAwesomeIcon onClick={(e) => handleSelectedForDuplicate(e,row.original)}  className=' text-blue-500 hover:text-blue-600 cursor-pointer' icon={faFileCirclePlus}/>
+                        <FontAwesomeIcon onClick={(e) =>  handleSelectedDouble(e,row.original)}  className=' text-amber-500 hover:text-amber-600 cursor-pointer' icon={faFileCirclePlus}/>
                         <FontAwesomeIcon onClick={(e) =>  handleSelectedForDelete(e, row.original.id)} className=' text-red-500 hover:text-red-600 cursor-pointer' icon={faTrashCan}/>
                     </div>
                 </div>
@@ -260,7 +301,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                 },
             },
         },
-    ], [selectedDelete, ascendent ,ascendentCOR]);
+    ], [selectedDelete, ascendent ,ascendentCOR, selectedManopereIds]);
 
     const table = useReactTable({
         data: manopere,
@@ -282,7 +323,20 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                 <table className="w-full   border-separate border-spacing-0 ">
                     <thead className='top-0 w-full sticky bg-white  z-10 '>
                         <tr className='text-black'>
-                                    <th className='border-b bg-white border-r border-black'></th>
+                                    <th className='border-b border-r bg-white border-black'>
+                                        <select
+                                            id="limba"
+                                            name="limba"
+                                            value={filters.limba}
+                                            onChange={handleInputChange}
+                                            className=" p-2 w-full cursor-pointer outline-none py-3"
+                                        >
+                                            <option value="">RO&FR</option>
+                                            <option value="RO">RO</option>
+                                            <option value="FR">FR</option>
+               
+                                        </select>
+                                    </th>                                    
                                     <th className='border-b bg-white border-r border-black'>
                                         <input
                                             type="text"
@@ -318,9 +372,9 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
                        
                             <th key={header.id}  className={`relative border-b-2 border-r border-black   bg-white p-2 py-4 ${header.column.id === "threeDots" ? "text-center" : ""} `}     
                             style={{
-                                width: header.column.id === "threeDots" ? '3.5rem' : `${header.getSize()}px`, // Enforce width for "Options"
-                                minWidth: header.column.id === "threeDots" ? '3.5rem' : '', // Ensure no shrinkage
-                                maxWidth: header.column.id === "threeDots" ? '3.5rem' : '', // Ensure no expansion
+                                width: header.column.id === "threeDots" ? '5.5rem' : `${header.getSize()}px`, // Enforce width for "Options"
+                                minWidth: header.column.id === "threeDots" ? '5.5rem' : '', // Ensure no shrinkage
+                                maxWidth: header.column.id === "threeDots" ? '5.5rem' : '', // Ensure no expansion
                             }}>
                                 <div
                                 onMouseDown={header.getResizeHandler()}
@@ -339,7 +393,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
             {manopere.length == 0 ?
             <tbody className='relative z-0'>
                 <tr>
-                    <td className='bg-white text-black h-12' colSpan={7}>
+                    <td className='bg-white text-black h-12' colSpan={8}>
                         <div className=' flex justify-center items-center w-full text-lg font-semibold h-full'>Nici un rezultat</div>
                     </td>
                 </tr>
@@ -348,7 +402,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, setSelectedDel
             <tbody className=' relative z-0'>
                 {table.getRowModel().rows.map((row,index,rows) => (
                     <tr key={row.id} onClick = {(event) =>!selectedDelete && !selectedEdit && handleRowClick(row,event,rows)}  className={`dropdown-container  text-black 
-                        ${selectedDelete || selectedEdit ? row.original.id == selectedDelete ? "bg-red-300" : row.original.id == selectedEdit ? "bg-green-300" : 
+                        ${selectedDelete || selectedEdit || selectedDouble ? row.original.id == selectedDelete ? "bg-red-300" : row.original.id == selectedEdit ? "bg-green-300" :  row.original.id == selectedDouble ? "bg-amber-300" :
                             row.index % 2 === 0 ? 'bg-[rgb(255,255,255,0.75)] select-none' :'bg-[rgb(255,255,255,1)] select-none' 
                             : 
                         selectedRows[row.index] ? "bg-blue-300 hover:bg-blue-400 select-none" :

@@ -354,6 +354,7 @@ export default function ManoperaForm() {
                         <option value="Rolă">Rolă</option>
                         <option value="Tonă">Tonă</option>
                         <option value="ens">ens</option>
+                        <option value="j">j</option>
                       </select>
                   </div>
            
@@ -373,7 +374,7 @@ export default function ManoperaForm() {
                       selectedDouble ? 
 
                         <div className="flex gap-2 items-center ">
-                          <button className="bg-amber-500 hover:bg-amber-600 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-3"/>Dublează</button>
+                          <button type="submit"  className="bg-amber-500 hover:bg-amber-600 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-3"/>Dublează</button>
                           <button onClick={(e) => cancelDouble(e)} className="bg-red-500 hover:bg-red-600 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg"> Anulează</button>
                         </div>
                       :

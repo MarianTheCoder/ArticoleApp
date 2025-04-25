@@ -2,16 +2,16 @@ const AddManopera = async (req, res) =>{
     const {form} = req.body;
     console.log(form);
     try {
-      if (form.cod_COR === "" || form.ocupatie === "" || form.unitate_masura === "" || form.cost_unitar === "" || form.cantitate === "") {
+      if (form.cod_COR === "" || form.ocupatie === "" || form.unitate_masura === "" || form.cost_unitar === "" || form.cantitate === "" || form.limba === "") { 
         return res.status(400).json({ message: "Invalid input fields." });
       }
   
       // Insert data
       const insertQuery = `
-        INSERT INTO Manopera (cod_COR, ocupatie, unitate_masura, cost_unitar, cantitate, data) VALUES (?, ?, ?, ?, ?, NOW())
+        INSERT INTO Manopera (limba, cod_COR, ocupatie, ocupatie_fr, unitate_masura, cost_unitar, cantitate, data) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
       `;
   
-      const [result] = await global.db.execute(insertQuery, [form.cod_COR, form.ocupatie, form.unitate_masura, form.cost_unitar, form.cantitate]);
+      const [result] = await global.db.execute(insertQuery, [form.limba, form.cod_COR, form.ocupatie, form.ocupatie_fr, form.unitate_masura, form.cost_unitar, form.cantitate]);
   
       res.status(200).json({ message: "Data added successfully!", id: result.insertId});
     } catch (err) {
@@ -25,7 +25,7 @@ const EditManopera = async (req, res) => {
   
   try {
       // Check if all necessary fields are filled
-      if (form.cod_COR === "" || form.ocupatie === "" || form.unitate_masura === "" || form.cost_unitar === "" || form.cantitate === "") {
+      if (form.limba === "" || form.cod_COR === "" || form.ocupatie === "" || form.unitate_masura === "" || form.cost_unitar === "" || form.cantitate === "") {
           return res.status(400).json({ message: "Invalid input fields." });
       }
 
@@ -33,8 +33,10 @@ const EditManopera = async (req, res) => {
       const updateQuery = `
           UPDATE Manopera 
           SET 
+              limba = ?,
               cod_COR = ?, 
               ocupatie = ?, 
+              ocupatie_fr = ?,
               unitate_masura = ?, 
               cost_unitar = ?, 
               cantitate = ?, 
@@ -44,8 +46,10 @@ const EditManopera = async (req, res) => {
 
       // Execute the query
       const [result] = await global.db.execute(updateQuery, [
+          form.limba,
           form.cod_COR, 
           form.ocupatie, 
+          form.ocupatie_fr, 
           form.unitate_masura, 
           form.cost_unitar, 
           form.cantitate,
@@ -65,7 +69,7 @@ const EditManopera = async (req, res) => {
 
 const GetManopere = async (req, res) => {
   try {
-      const { offset = 0, limit = 10, cod_COR = '', ocupatie = '' } = req.query;
+      const { offset = 0, limit = 10, cod_COR = '', ocupatie = '', limba = '' } = req.query;
       const asc_ocupatie = req.query.asc_ocupatie === "true";
       const asc_cod_COR = req.query.asc_cod_COR === "true";
 
@@ -88,9 +92,14 @@ const GetManopere = async (req, res) => {
           queryParams.push(`%${cod_COR}%`);
       }
 
+      if (limba.trim() !== "") {
+        whereClauses.push(`limba LIKE ?`);
+        queryParams.push(`%${limba}%`);
+    }
+
       if (ocupatie.trim() !== "") {
-          whereClauses.push(`ocupatie LIKE ?`);
-          queryParams.push(`%${ocupatie}%`);
+        whereClauses.push("(ocupatie LIKE ? OR ocupatie_fr LIKE ?)");
+        queryParams.push(`%${ocupatie}%`, `%${ocupatie}%`);
       }
 
       // If there are any filters, add them to the query

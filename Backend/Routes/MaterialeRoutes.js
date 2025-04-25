@@ -13,8 +13,8 @@ const upload = multer({ storage });
 router.post('/api/Materiale', upload.single('poza'), async (req, res) => {
   try {
     const {
-      furnizor, clasa_material, cod_produs, denumire_produs,
-      descriere_produs, unitate_masura, cost_unitar,
+       limba, furnizor, clasa_material, cod_produs, denumire_produs, denumire_produs_fr,
+      descriere_produs, descriere_produs_fr, unitate_masura, cost_unitar,
       cost_preferential, pret_vanzare, tip_material
     } = req.body;
 
@@ -41,15 +41,15 @@ router.post('/api/Materiale', upload.single('poza'), async (req, res) => {
 
     const sql = `
       INSERT INTO Materiale (
-        furnizor, clasa_material, cod_produs, denumire_produs,
-        descriere_produs, photoUrl, unitate_masura, cost_unitar,
+        limba, furnizor, clasa_material, cod_produs, denumire_produs, denumire_produs_fr,
+        descriere_produs, descriere_produs_fr, photoUrl, unitate_masura, cost_unitar,
         cost_preferential, pret_vanzare, tip_material
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const [result] = await global.db.execute(sql, [
-      furnizor, clasa_material, cod_produs, denumire_produs,
-      descriere_produs, photoPath, unitate_masura, cost_unitar,
+      limba, furnizor, clasa_material, cod_produs, denumire_produs, denumire_produs_fr,
+      descriere_produs, descriere_produs_fr, photoPath, unitate_masura, cost_unitar,
       cost_preferential, pret_vanzare, tip_material
     ]);
 
@@ -65,7 +65,7 @@ router.post('/api/Materiale', upload.single('poza'), async (req, res) => {
 
 router.get('/api/materiale', async (req, res) => {
   try {
-      const { offset = 0, limit = 10, cod = '', denumire = '', descriere = '' , tip_material = "" , furnizor = "" , clasa_material = ""} = req.query;
+      const { offset = 0, limit = 10, cod = '', denumire = '', descriere = '' , tip_material = "" , limba = "" , furnizor = "" , clasa_material = ""} = req.query;
       const asc_denumire = req.query.asc_denumire === "true";
       const parsedOffset = parseInt(offset, 10);
       const parsedLimit = parseInt(limit, 10);
@@ -80,6 +80,11 @@ router.get('/api/materiale', async (req, res) => {
       let whereClauses = [];
 
       // Apply filters dynamically
+      if (limba.trim() !== "") {
+        whereClauses.push("limba LIKE ?");
+        queryParams.push(`%${limba}%`);
+      }
+
       if (cod.trim() !== "") {
           whereClauses.push(`cod_produs LIKE ?`);
           queryParams.push(`%${cod}%`);
@@ -98,13 +103,13 @@ router.get('/api/materiale', async (req, res) => {
       }
 
       if (denumire.trim() !== "") {
-          whereClauses.push(`denumire_produs LIKE ?`);
-          queryParams.push(`%${denumire}%`);
+        whereClauses.push("(denumire_produs LIKE ? OR denumire_produs_fr LIKE ?)");
+        queryParams.push(`%${denumire}%`, `%${denumire}%`);
       }
 
       if (descriere.trim() !== "") {
-          whereClauses.push(`descriere_produs LIKE ?`);
-          queryParams.push(`%${descriere}%`);
+        whereClauses.push("(descriere_produs LIKE ? OR descriere_produs_fr LIKE ?)");
+        queryParams.push(`%${descriere}%`, `%${descriere}%`);
       }
 
       // If filters exist, add them to the query
@@ -251,8 +256,8 @@ router.delete('/api/materiale/:id', async (req, res) => {
 router.put('/api/materiale/:id', upload.single('poza'), async (req, res) => {
   const { id } = req.params;
   const {
-    furnizor, clasa_material, cod_produs, denumire_produs,
-    descriere_produs, unitate_masura, cost_unitar,
+    limba, furnizor, clasa_material, cod_produs, denumire_produs, denumire_produs_fr,
+    descriere_produs, descriere_produs_fr, unitate_masura, cost_unitar,
     cost_preferential, pret_vanzare, tip_material
   } = req.body;
 
@@ -295,15 +300,15 @@ router.put('/api/materiale/:id', upload.single('poza'), async (req, res) => {
 
     const updateQuery = `
       UPDATE Materiale SET
-        furnizor = ?, clasa_material = ?, cod_produs = ?, denumire_produs = ?,
-        descriere_produs = ?, photoUrl = ?, unitate_masura = ?, cost_unitar = ?,
+        limba = ?, furnizor = ?, clasa_material = ?, cod_produs = ?, denumire_produs = ?, denumire_produs_fr = ?,
+        descriere_produs = ?, descriere_produs_fr = ?, photoUrl = ?, unitate_masura = ?, cost_unitar = ?,
         cost_preferential = ?, pret_vanzare = ?, tip_material = ?
       WHERE id = ?
     `;
 
     const [result] = await global.db.execute(updateQuery, [
-      furnizor, clasa_material, cod_produs, denumire_produs,
-      descriere_produs, newPhotoPath, unitate_masura, cost_unitar,
+      limba, furnizor, clasa_material, cod_produs, denumire_produs, denumire_produs_fr,
+      descriere_produs, descriere_produs_fr, newPhotoPath, unitate_masura, cost_unitar,
       cost_preferential, pret_vanzare, tip_material, id
     ]);
 

@@ -50,7 +50,6 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
                     asc_cod: ascendentCOD,
                 },
             });
-            console.log(response.data.data)
             setOpen([]);
             if(response.data.data.length == 0){
                 setRetete([]);
@@ -67,7 +66,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
                 setCurrentOffset(response.data.currentOffset);
             }
         } catch (error) {
-            console.error('Error fetching data:', error);
+            console.error('Eroare la obtinerea de informatii', error);
         }
     }
 
