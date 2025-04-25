@@ -439,7 +439,7 @@ const toggleDropdown = async (e,parentId) => {
                             placeholder="Introdu Cantitatea"
                         />
                         </div>
-                            <button onClick={() => handleAddItem()} className='bg-green-500 dropdown-container flex  items-center justify-center gap-2 text-black flex-grow hover:bg-green-600  px-6 py-2 rounded-xl'><FontAwesomeIcon className='' icon={faPlus}/><span className="leading-none">Adaugă Manoperă</span></button>
+                            <button onClick={() => handleAddItem()} className='bg-green-500 dropdown-container flex  items-center justify-center gap-2 text-black flex-grow hover:bg-green-600  px-6 py-2 rounded-xl'><FontAwesomeIcon className='' icon={faPlus}/><span className="leading-none">Adaugă Rețetă</span></button>
                             <button onClick={() => setIsPopupOpen(false)} className='bg-red-500 dropdown-container flex  items-center justify-center gap-2 text-black  hover:bg-red-600  px-6 py-2 rounded-xl'><FontAwesomeIcon className='' icon={faX}/><span className="leading-none">Închide</span></button>
                         </div>
           </div>

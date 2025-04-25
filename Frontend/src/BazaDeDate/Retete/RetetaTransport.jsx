@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useMemo, useState } from 'react'
 import api from '../../api/axiosAPI';
 import { flexRender, getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowRight, faArrowRightLong, faCancel, faCopy, faEllipsis, faL, faPenToSquare, faPlus, faTrashCan } from '@fortawesome/free-solid-svg-icons';
+import { faArrowRight, faArrowRightLong, faCancel, faCopy, faEllipsis, faL, faLanguage, faPenToSquare, faPlus, faTrashCan } from '@fortawesome/free-solid-svg-icons';
 import { RetetaContext } from '../../context/RetetaContext';
 
 export default function RetetaTransport({
@@ -20,10 +20,15 @@ export default function RetetaTransport({
 
         const [transport, setTransport] = useState(null);
         const [transportFilters, setTransportFilters] = useState({
+            limba: "",
             cod_transport: "",
             transport: '',
             clasa_transport:"",
         });
+
+        const [selectedTransportIds, setSelectedTransportIds] = useState([]);
+        
+
 
         const setCantitateHandler = (e) =>{
             if (/^\d*\.?\d{0,3}$/.test(e.target.value)) {
@@ -52,6 +57,7 @@ export default function RetetaTransport({
                 if(transportFilters.cod_transport.trim().length >= 3 || transportFilters.transport.trim().length >= 3 || transportFilters.clasa_transport.trim().length >= 3){
                     const response = await api.get('/Transport/FetchTransportLight', {
                         params: {
+                            limba: transportFilters.limba, // Pass cod_COR as a query parameter
                             cod_transport: transportFilters.cod_transport, // Pass cod_COR as a query parameter
                             transport: transportFilters.transport, // Add any other filters here
                             clasa_transport: transportFilters.clasa_transport, // Add any other filters here
@@ -63,6 +69,15 @@ export default function RetetaTransport({
                 console.error('Error fetching data:', error);
             }
         }
+
+        const toggleTransportChangeLanguage = (id) => {
+            setSelectedTransportIds((prev) => {
+            return prev.includes(id)
+                ? prev.filter((r) => r !== id) 
+                : [...prev, id];               
+            });
+        };
+
         //Handle ADD MANOPERA
         //
         //
@@ -95,12 +110,36 @@ export default function RetetaTransport({
         //
         //
           const columns = useMemo(() => [
+            { accessorKey: "limba", header: "Limba",size:50 },
                 { accessorKey: "cod_transport", header: "Cod" },
                 { accessorKey: "clasa_transport", header: "Clasa" },
-                { accessorKey: "transport", header: "Transport" },
+                { 
+                    accessorKey: "transport", 
+                    header: "Transport",
+                    cell: ({ getValue, row }) => (
+                        selectedTransportIds.includes(row.original.id) ?
+                        <div className=''>
+                            {row.original.transport_fr || "..."}
+                        </div>
+                        :
+                        getValue()
+                    ),  
+                },                
                 { accessorKey: "cost_unitar", header: "Cost"},
                 { accessorKey: "unitate_masura", header: "Unitate"},
-            ], []);
+                { 
+                    accessorKey: "threeDots", 
+                    header: "Opțiuni",
+                    cell: ({ row }) => (
+                        <div className='w-full relative overflow-hidden flex '> 
+                            <div className='text-xl relative w-full py-2 select-none items-center justify-evenly gap-2 flex'>
+                                <FontAwesomeIcon onClick={()  =>  toggleTransportChangeLanguage(row.original.id)} className=' text-blue-500 hover:text-blue-600 cursor-pointer' icon={faLanguage }/>
+                            </div>
+                        </div>
+                    ),
+                    size:50,
+                },
+            ], [selectedTransportIds]);
         
             const table = useReactTable({
                 data: transport,
@@ -131,7 +170,24 @@ export default function RetetaTransport({
     <>
         <div className=' flex flex-col h-full w-full overflow-hidden'>
             {/* Inputs for fetching transport */}
-            <div className='grid font-medium grid-cols-3 gap-4 p-4 pt-2 text-black containerWhiter w-full'>
+            <div className='grid font-medium grid-cols-[auto_1fr_1fr_1fr] gap-4 p-4 pt-2 text-black containerWhiter w-full'>
+            <div className="flex w-full flex-col items-center ">
+                                <label className=" text-black">
+                                 Limba
+                                </label>
+                                        <select
+                                            id="limba"
+                                            name="limba"
+                                            value={transportFilters.limba}
+                                            onChange={handleChangeFilterManopera}
+                                            className=" p-2 w-full cursor-pointer rounded-lg shadow-sm outline-none py-2"
+                                        >
+                                            <option value="">RO&FR</option>
+                                            <option value="RO">RO</option>
+                                            <option value="FR">FR</option>
+               
+                                        </select>
+                        </div>  
                     <div className="flex w-full flex-col items-center ">
                       <label className=" text-black">
                           Cod
@@ -208,7 +264,7 @@ export default function RetetaTransport({
                         transport == null || transport.length == 0 ?
                             <tbody>
                                 <tr>
-                                    <th className=' text-black border-b border-r  border-black  p-2 bg-white' colSpan={5}>Nici un Rezultat / Introdu minim 3 Caractere</th>
+                                    <th className=' text-black border-b border-r  border-black  p-2 bg-white' colSpan={7}>Nici un Rezultat / Introdu minim 3 Caractere</th>
                                 </tr>
                             </tbody>
                         :            
@@ -250,7 +306,7 @@ export default function RetetaTransport({
                                                 placeholder="Enter Cantitate"
                                             />
                                         </div>
-                                        <button onClick={() => handleAddItem()} className='bg-green-500 dropdown-container flex  items-center justify-center gap-2 text-black flex-grow hover:bg-green-600  px-6 py-2 rounded-xl'><FontAwesomeIcon className='' icon={faPlus}/>Adauga Manopera</button>
+                                        <button onClick={() => handleAddItem()} className='bg-green-500 dropdown-container flex  items-center justify-center gap-2 text-black flex-grow hover:bg-green-600  px-6 py-2 rounded-xl'><FontAwesomeIcon className='' icon={faPlus}/>Adauga Transport</button>
                                     </div>
                                 </div>                              
        </div>

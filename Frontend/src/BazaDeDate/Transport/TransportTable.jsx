@@ -2,10 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react'
 import api from '../../api/axiosAPI';
 import { flexRender, getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowDownAZ, faArrowUpAZ, faFileCirclePlus, faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons';
+import { faArrowDownAZ, faArrowUpAZ, faFileCirclePlus, faLanguage, faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons';
 
 
-export default function TransportTable({reloadKey, selectedDelete, setSelectedDelete, setSelectedEdit, setFormData, selectedEdit, cancelEdit, cancelDelete}) {
+export default function TransportTable({reloadKey, cancelDouble, selectedDouble, setSelectedDouble, selectedDelete, setSelectedDelete, setSelectedEdit, setFormData, selectedEdit, cancelEdit, cancelDelete}) {
 
     const [transport, setTransport] = useState(null);
     const [totalItems, setTotalItems] = useState(0);
@@ -15,11 +15,14 @@ export default function TransportTable({reloadKey, selectedDelete, setSelectedDe
     
 
     const [filters, setFilters] = useState({
+        limba: '',
         cod_transport: '',
         clasa_transport: '',
-        unitate_masura:"ora",
         transport: '',
     });
+
+    //se salveza cele care si-au schimbat limba catre FR
+    const [selectedTransportIds, setSelectedTransportIds] = useState([]);
 
  
     const fetchTransport = async (offset, limit) => {
@@ -28,6 +31,7 @@ export default function TransportTable({reloadKey, selectedDelete, setSelectedDe
                 params: {
                     offset,
                     limit,
+                    limba: filters.limba,
                     cod_transport: filters.cod_transport,
                     clasa_transport: filters.clasa_transport,
                     transport: filters.transport,
@@ -91,6 +95,15 @@ export default function TransportTable({reloadKey, selectedDelete, setSelectedDe
             setLimit(e.target.value);
         } 
     }
+
+    const toggleTransportChangeLanguage = (id) => {
+        setSelectedTransportIds((prev) => {
+          return prev.includes(id)
+            ? prev.filter((r) => r !== id) 
+            : [...prev, id];               
+        });
+      };
+
     //States for dropDown/edit/delete/copy
 
     //handle selected edit/delete
@@ -98,32 +111,41 @@ export default function TransportTable({reloadKey, selectedDelete, setSelectedDe
         e.stopPropagation();
         setSelectedDelete(id)// Toggle the dropdown based on the current state   
         cancelEdit(e);
+        cancelDouble(e);
     }
 
     const handleSelectedForEdit = (e,passedRow) => {
         e.stopPropagation();
+        cancelDouble(e);
+        setSelectedDelete(null);
         setSelectedEdit(passedRow.id)// Toggle the dropdown based on the current state
         setFormData({
+          limba: passedRow.limba,
           cod_transport: passedRow.cod_transport,
           clasa_transport: passedRow.clasa_transport,
           transport: passedRow.transport,
+          transport_fr: passedRow.transport_fr,
           cost_unitar: passedRow.cost_unitar,
           unitate_masura:passedRow.unitate_masura,
 
         })
     }
 
-    const handleSelectedForDuplicate = async (e,passedRow) => {
+    const handleSelectedDouble = (e, passedRow) => {
         e.stopPropagation();
+        setSelectedDelete(null);
+        cancelEdit(e);
+        setSelectedDouble(passedRow.id);
         setFormData({
+            limba: passedRow.limba,
             cod_transport: passedRow.cod_transport,
             clasa_transport: passedRow.clasa_transport,
             transport: passedRow.transport,
+            transport_fr: passedRow.transport_fr,
             cost_unitar: passedRow.cost_unitar,
             unitate_masura:passedRow.unitate_masura,
         })
     }
-
     //copy mechanics
     const [selectedRows, setSelectedRows] = useState({});
     const [lastSelectedIndex, setLastSelectedIndex] = useState(null);
@@ -223,17 +245,32 @@ export default function TransportTable({reloadKey, selectedDelete, setSelectedDe
     };
 
     const columns = useMemo(() => [
+        { 
+            accessorKey: "limba",
+            header: "Limba",
+            cell: ({ getValue, row }) =>
+                <div className='w-full flex justify-center  font-bold'> {getValue()}</div> , // Display default value if the value is empty or undefined
+            size:50 
+        },
         { accessorKey: "cod_transport", header: "Cod",size:80 },
         { accessorKey: "clasa_transport", header: "Clasă", size:100 },
-            { 
-                    accessorKey: "transport", 
-                    header: (
-                        <div className="flex items-center w-[95%] justify-between text-black ">
-                            <span>Transport</span>
-                            <FontAwesomeIcon onClick={() => setAscendent((prev) => prev == false ? true : false)} className="text-xl border border-black p-2  rounded-full  cursor-pointer" icon={!ascendent ? faArrowUpAZ : faArrowDownAZ} /> 
-                        </div>
-                      ),
-                    size:300 
+        { 
+                accessorKey: "transport", 
+                header: (
+                    <div className="flex items-center w-[95%] justify-between text-black ">
+                        <span>Transport</span>
+                        <FontAwesomeIcon onClick={() => setAscendent((prev) => prev == false ? true : false)} className="text-xl border border-black p-2  rounded-full  cursor-pointer" icon={!ascendent ? faArrowUpAZ : faArrowDownAZ} /> 
+                    </div>
+                    ),
+                cell: ({ getValue, row }) => (
+                    selectedTransportIds.includes(row.original.id) ?
+                    <div className=''>
+                        {row.original.transport_fr || "..."}
+                    </div>
+                    :
+                    getValue()
+                ), 
+                size:300 
                 },
         { accessorKey: "cost_unitar", header: "Cost unitar", size:100 },
         { accessorKey: "unitate_masura", header: "Unitate", size:100 },
@@ -243,8 +280,9 @@ export default function TransportTable({reloadKey, selectedDelete, setSelectedDe
             cell: ({ row }) => (
                     <div className='w-full relative flex '> 
                          <div className='text-xl relative w-full py-2 select-none items-center justify-evenly gap-2 flex'>
+                             <FontAwesomeIcon onClick={()  =>  toggleTransportChangeLanguage(row.original.id)} className=' text-blue-500 hover:text-blue-600 cursor-pointer' icon={faLanguage}/>
                              <FontAwesomeIcon onClick={(e) =>  handleSelectedForEdit(e,row.original)}  className=' text-green-500 hover:text-green-600 cursor-pointer' icon={faPenToSquare}/>
-                             <FontAwesomeIcon onClick={(e) => handleSelectedForDuplicate(e,row.original)}  className=' text-blue-500 hover:text-blue-600 cursor-pointer' icon={faFileCirclePlus}/>
+                             <FontAwesomeIcon onClick={(e) =>  handleSelectedDouble(e,row.original)}  className=' text-amber-500 hover:text-amber-600 cursor-pointer' icon={faFileCirclePlus}/>
                              <FontAwesomeIcon onClick={(e) =>  handleSelectedForDelete(e, row.original.id)} className=' text-red-500 hover:text-red-600 cursor-pointer' icon={faTrashCan}/>
                          </div>
                      </div>
@@ -256,7 +294,7 @@ export default function TransportTable({reloadKey, selectedDelete, setSelectedDe
                 },
             },
         },
-    ], [selectedDelete]);
+    ], [selectedDelete, ascendent , selectedTransportIds, transport]);
 
     const table = useReactTable({
         data: transport,
@@ -278,6 +316,20 @@ export default function TransportTable({reloadKey, selectedDelete, setSelectedDe
                 <table className="w-full   border-separate border-spacing-0 ">
                     <thead className='top-0 w-full sticky bg-white  z-10 '>
                         <tr className='text-black'>
+                                    <th className='border-b border-r bg-white border-black'>
+                                        <select
+                                            id="limba"
+                                            name="limba"
+                                            value={filters.limba}
+                                            onChange={handleInputChange}
+                                            className=" p-2 w-full cursor-pointer outline-none py-3"
+                                        >
+                                            <option value="">RO&FR</option>
+                                            <option value="RO">RO</option>
+                                            <option value="FR">FR</option>
+               
+                                        </select>
+                                    </th>  
                                     <th className='border-b border-r bg-white border-black'>
                                         <input
                                             type="text"
@@ -327,9 +379,9 @@ export default function TransportTable({reloadKey, selectedDelete, setSelectedDe
                        
                             <th key={header.id}  className={`relative border-b-2 border-r border-black   bg-white p-2 py-4 ${header.column.id === "threeDots" ? "text-center" : ""} `}     
                             style={{
-                                width: header.column.id === "threeDots" ? '4.5rem' : `${header.getSize()}px`, // Enforce width for "Options"
-                                minWidth: header.column.id === "threeDots" ? '4.5rem' : '', // Ensure no shrinkage
-                                maxWidth: header.column.id === "threeDots" ? '4.5rem' : '', // Ensure no expansion
+                                width: header.column.id === "threeDots" ? '5rem' : `${header.getSize()}px`, // Enforce width for "Options"
+                                minWidth: header.column.id === "threeDots" ? '5rem' : '', // Ensure no shrinkage
+                                maxWidth: header.column.id === "threeDots" ? '5rem' : '', // Ensure no expansion
                             }}>
                                 <div
                                 onMouseDown={header.getResizeHandler()}
@@ -339,8 +391,6 @@ export default function TransportTable({reloadKey, selectedDelete, setSelectedDe
                                  {header.column.columnDef.header}
 
                             </th>
-                            
-                      
                     ))}
                   </tr>
                 ))}
@@ -348,7 +398,7 @@ export default function TransportTable({reloadKey, selectedDelete, setSelectedDe
                 {transport.length == 0 ?
                 <tbody className='relative z-0'>
                     <tr>
-                        <td className='bg-white text-black h-12' colSpan={6}>
+                        <td className='bg-white text-black h-12' colSpan={7}>
                             <div className=' flex justify-center items-center w-full text-lg font-semibold h-full'>Nici un rezultat</div>
                         </td>
                     </tr>
@@ -357,7 +407,7 @@ export default function TransportTable({reloadKey, selectedDelete, setSelectedDe
                 <tbody className=' relative z-0'>
                     {table.getRowModel().rows.map((row,index,rows) => (
                         <tr key={row.id} onClick = {(event) =>!selectedDelete && !selectedEdit && handleRowClick(row,event,rows)}  className={`dropdown-container  text-black 
-                            ${selectedDelete || selectedEdit ? row.original.id == selectedDelete ? "bg-red-300" : row.original.id == selectedEdit ? "bg-green-300" : 
+                            ${selectedDelete || selectedEdit || selectedDouble ? row.original.id == selectedDelete ? "bg-red-300" : row.original.id == selectedEdit ? "bg-green-300" :  row.original.id == selectedDouble ? "bg-amber-300" :
                                 row.index % 2 === 0 ? 'bg-[rgb(255,255,255,0.75)] select-none' :'bg-[rgb(255,255,255,1)] select-none' 
                                 : 
                             selectedRows[row.index] ? "bg-blue-300 hover:bg-blue-400 select-none" :

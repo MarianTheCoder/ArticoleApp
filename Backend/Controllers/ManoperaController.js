@@ -175,7 +175,7 @@ const DeleteManopera = async (req, res) => {
 
 const GetManopereLight = async (req, res) => {
     try {
-        const { cod_COR = '', ocupatie = '' } = req.query;
+        const { cod_COR = '', ocupatie = '' , limba = "" } = req.query;
   
   
         // Start constructing the base query
@@ -189,9 +189,13 @@ const GetManopereLight = async (req, res) => {
             queryParams.push(`%${cod_COR}%`);
         }
   
+        if (limba.trim() !== "") {
+          whereClauses.push(`limba LIKE ?`);
+          queryParams.push(`%${limba}%`);
+       }
         if (ocupatie.trim() !== "") {
-            whereClauses.push(`ocupatie LIKE ?`);
-            queryParams.push(`%${ocupatie}%`);
+          whereClauses.push("(ocupatie LIKE ? OR ocupatie_fr LIKE ?)");
+          queryParams.push(`%${ocupatie}%`, `%${ocupatie}%`);
         }
   
         // If there are any filters, add them to the query

@@ -189,6 +189,7 @@ async function initializeDatabase() {
     id INT AUTO_INCREMENT PRIMARY KEY,
     clasa_utilaj VARCHAR(255) NOT NULL,
     limba VARCHAR(20) NOT NULL DEFAULT 'RO',
+    cod_utilaj VARCHAR(255) NOT NULL,
     utilaj TEXT NOT NULL, 
     utilaj_fr TEXT, 
     descriere_utilaj TEXT NOT NULL,

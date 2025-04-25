@@ -7,9 +7,11 @@ import TransportTable from './TransportTable';
 export default function TransportForm() {
 
   const [formData, setFormData] = useState({
+      limba:"RO",
       cod_transport:"",
       clasa_transport:"",
       transport:"",
+      transport_fr:"",
       unitate_masura:"h",
       cost_unitar:""
   });
@@ -24,14 +26,20 @@ export default function TransportForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const form = {
+      limba: formData.limba.trim(),
       cod_transport: formData.cod_transport.trim(),
       clasa_transport: formData.clasa_transport.trim(),
       transport: formData.transport.trim(),
+      transport_fr: formData.transport_fr.trim(),
       cost_unitar: formData.cost_unitar.trim(),
       unitate_masura:formData.unitate_masura.trim(),
     };
-    if(form.cod_transport === "" || form.transport === "" || form.cost_unitar === "" || form.clasa_transport === "" || form.unitate_masura === ""){
-      alert("All fields are required");
+    if(form.limba === "" || form.cod_transport === "" || form.transport === "" || form.cost_unitar === "" || form.clasa_transport === "" || form.unitate_masura === ""){
+      alert("Toate campurile sunt obligatorii (fara FR daca nu e selectata limba FR)");
+      return;
+    }
+    if(form.limba === "FR" && form.transport_fr === ""){
+      alert("Toate campurile sunt obligatorii (cu FR)");  
       return;
     }
     try {
@@ -43,11 +51,16 @@ export default function TransportForm() {
       else{
         await api.post("/Transport/SetTransport", {form:form});
         console.log('Transport added');
+        if(selectedDouble != null){
+          setSelectedDouble(null);  
+        }
       }
       setFormData({
+        limba: formData.limba,
         cod_transport:"",
         clasa_transport:"",
         transport:"",
+        transport_fr:"",
         cost_unitar:"",
         unitate_masura:"h",
       });
@@ -63,7 +76,7 @@ export default function TransportForm() {
   const handleChange = (e) => {
     const { name, value } = e.target;
      if(name === "cost_unitar"){
-      if (/^\d*\.?\d{0,2}$/.test(value)) {
+      if (/^\d*\.?\d{0,3}$/.test(value)) {
         setFormData((prev) => ({ ...prev, [name]: value }));
       }
     }
@@ -76,6 +89,8 @@ export default function TransportForm() {
 
   const [selectedDelete, setSelectedDelete] = useState(null);
   const [selectedEdit, setSelectedEdit] = useState(null);
+  const [selectedDouble, setSelectedDouble] = useState(null);
+  
 
   const cancelDelete = (e) => {
     e.preventDefault();
@@ -86,9 +101,25 @@ export default function TransportForm() {
     e.preventDefault();
     setSelectedEdit(null);
     setFormData({
+      limba:"RO",
       cod_transport:"",
       clasa_transport:"",
       transport:"",
+      transport_fr:"",
+      cost_unitar:"",
+      unitate_masura:"h",
+    });
+  }
+
+  const cancelDouble = (e) => {
+    e.preventDefault();
+    setSelectedDouble(null);
+    setFormData({
+      limba:"RO",
+      cod_transport:"",
+      clasa_transport:"",
+      transport:"",
+      transport_fr:"",
       cost_unitar:"",
       unitate_masura:"h",
     });
@@ -115,7 +146,22 @@ export default function TransportForm() {
     <div className='w-full containerWhiter'>
       <div className="flex justify-center items-center text-black  ">
         <form onSubmit={handleSubmit} className="w-full p-6 pt-4 px-12 rounded-xl shadow-xl">
-          <div className="grid grid-cols-[auto_auto_1fr_auto_auto_auto_auto] xxxl:gap-12 md:gap-6 xl:gap-8 items-center">
+          <div className="grid grid-cols-[auto_auto_auto_1fr_1fr_auto_auto_auto] xxxl:gap-8 md:gap-4 xl:gap-6 items-center">
+          <div className="flex flex-col items-center">
+                      <label htmlFor="unit" className="col-span-1 font-medium text-black">
+                        Limbă
+                      </label>
+                      <select
+                        id="limba"
+                        name="limba"
+                        value={formData.limba}
+                        onChange={handleChange}
+                        className=" px-2 py-2 rounded-lg outline-none shadow-sm "
+                      >
+                        <option value="RO">RO</option>
+                        <option value="FR">FR</option>
+                      </select>
+                 </div>
         {/* photourl */}
           <div className="flex flex-col items-center ">
               <label htmlFor="code" className=" font-medium text-black">
@@ -168,6 +214,24 @@ export default function TransportForm() {
               />
           </div>
           <div className="flex flex-col items-center">
+              <label
+                  htmlFor="description"
+                  className=" font-medium text-black"
+              >
+                  Transport FR
+              </label>
+                <textarea
+                  rows={3}
+                  type="text"
+                  id="transport_fr"
+                  name="transport_fr"
+                  value={formData.transport_fr}
+                  onChange={handleChange}
+                  className="px-2 w-full outline-none resize-none   py-2  rounded-lg shadow-sm "
+            
+              />
+          </div>
+          <div className="flex flex-col items-center">
             {/* Unit Dropdown */}
               <label htmlFor="unit" className="col-span-1 font-medium text-black">
                 Unitate
@@ -183,6 +247,8 @@ export default function TransportForm() {
                 <option value="m³">m³</option>
                 <option value="kg">kg</option>
                 <option value="Tonă">Tonă</option>
+                <option value="ens">ens</option>
+                <option value="j">j</option>
               </select>
             </div>
           <div className="flex flex-col items-center">
@@ -203,23 +269,28 @@ export default function TransportForm() {
               />
           </div>
           {
-              !selectedDelete && !selectedEdit ?
+              !selectedDelete && !selectedEdit && !selectedDouble ?
 
               <div className="flex gap-2 items-center ">
                 <button type="submit" className="bg-green-500 hover:bg-green-600 text-black text-lg mt-6 px-6 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-3"/>Încarcă</button>
               </div>
               :
-              !selectedEdit ?
-
-              <div className="flex gap-2 items-center ">
-                <button onClick={(e) => deleteRow(e)} className="bg-red-500 hover:bg-red-600 text-black text-lg mt-6 px-4 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faCancel} className="pr-3"/> Șterge</button>
-                <button onClick={(e) => cancelDelete(e)} className="bg-green-500 hover:bg-green-600 text-black text-lg mt-6 px-4 py-2 flex  items-center rounded-lg">Anulează</button>
-              </div>
+              selectedDelete ?
+                <div className="flex gap-2 items-center ">
+                  <button onClick={(e) => deleteRow(e)} className="bg-red-500 hover:bg-red-600 text-black text-lg mt-6 px-4 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faCancel} className="pr-3"/>Șterge</button>
+                  <button onClick={(e) => cancelDelete(e)} className="bg-green-500 hover:bg-green-600 text-black text-lg mt-6 px-4 py-2 flex  items-center rounded-lg">Anulează</button>
+                </div>
               :
-              <div className="flex gap-2 items-center ">
-                <button  type="submit" className="bg-green-500 hover:bg-green-600 text-black text-lg mt-6 px-6 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-3"/> Editează</button>
-                <button  onClick={(e) => cancelEdit(e)} className="bg-red-500 hover:bg-red-600 text-black text-lg mt-6 px-6 py-2 flex  items-center rounded-lg"> Anulează</button>
-              </div>
+              selectedDouble ?
+                <div className="flex gap-2 items-center ">
+                  <button type="submit"  className="bg-amber-500 hover:bg-amber-600 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-3"/>Dublează</button>
+                  <button onClick={(e) => cancelDouble(e)} className="bg-red-500 hover:bg-red-600 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg"> Anulează</button>
+                </div>
+              :
+                <div className="flex gap-2 items-center ">
+                  <button  type="submit" className="bg-green-500 hover:bg-green-600 text-black text-lg mt-6 px-6 py-2 flex  items-center rounded-lg"><FontAwesomeIcon icon={faPlus} className="pr-3"/>Editează</button>
+                  <button  onClick={(e) => cancelEdit(e)} className="bg-red-500 hover:bg-red-600 text-black text-lg mt-6 px-6 py-2 flex  items-center rounded-lg"> Anulează</button>
+                </div>
           }
           
           </div>
@@ -228,7 +299,7 @@ export default function TransportForm() {
       </div>
       {/* AICI JOS E TABELUL */}
       <div className="w-full h-full scrollbar-webkit overflow-hidden mt-6">
-          <TransportTable cancelEdit = {cancelEdit} cancelDelete = {cancelDelete} reloadKey = {reloadKey} selectedDelete = {selectedDelete} setFormData = {setFormData}  setSelectedDelete = {setSelectedDelete} selectedEdit = {selectedEdit}  setSelectedEdit = {setSelectedEdit}/>
+          <TransportTable selectedDouble = {selectedDouble} cancelDouble = {cancelDouble} setSelectedDouble = {setSelectedDouble}  cancelEdit = {cancelEdit} cancelDelete = {cancelDelete} reloadKey = {reloadKey} selectedDelete = {selectedDelete} setFormData = {setFormData}  setSelectedDelete = {setSelectedDelete} selectedEdit = {selectedEdit}  setSelectedEdit = {setSelectedEdit}/>
       </div>
     </>
   );

@@ -39,7 +39,9 @@ export default function MaterialeForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
     const formDataSend = new FormData();
+    console.log(formData)
     formDataSend.append("limba", formData.limba.trim())
     formDataSend.append("furnizor", formData.furnizor.trim())
     formDataSend.append("tip_material", formData.tip_material.trim())
@@ -54,6 +56,8 @@ export default function MaterialeForm() {
     formDataSend.append("cost_unitar", formData.cost_unitar.trim())
     formDataSend.append("cost_preferential", formData.cost_preferential.trim())
     formDataSend.append("pret_vanzare", formData.pret_vanzare.trim())
+   
+
     if(formData.limba.trim() === "" || formData.furnizor.trim() === "" || formData.clasa_material.trim() === "" || formData.cod_produs.trim() === "" ||
        formData.denumire_produs.trim() === "" || formData.descriere_produs.trim() === "" || formData.unitate_masura.trim() === "" ||
        formData.cost_unitar.trim() === "" || formData.cost_preferential.trim() === "" || formData.pret_vanzare.trim() === "" || formData.tip_material.trim() === ""
@@ -127,13 +131,15 @@ export default function MaterialeForm() {
     }
     else if(name == "limba"){
       setFormData((prev) => ({ ...prev, [name]: value }));
+      console.log(value)
       if(value == "RO"){
-        setFormData((prev) => ({ ...prev, ["clasa"]: "Dezafectare"}));
+        setFormData((prev) => ({ ...prev, ["clasa_material"]: "Dezafectare"}));
         setFormData((prev) => ({ ...prev, ["tip_material"]: "De Bază"}));
       }
       else {
-        setFormData((prev) => ({ ...prev, ["clasa"]: "Vrd"}));
-        setFormData((prev) => ({ ...prev, ["clasa"]: "Basique"}));
+        console.log("aici")
+        setFormData((prev) => ({ ...prev, ["clasa_material"]: "Vrd"}));
+        setFormData((prev) => ({ ...prev, ["tip_material"]: "Basique"}));
       }
     }
     else setFormData((prev) => ({ ...prev, [name]: value }));
@@ -174,7 +180,7 @@ export default function MaterialeForm() {
     setSelectedFile(null);
   }
 
-    const cancelDouble = (e) => {
+  const cancelDouble = (e) => {
     e.preventDefault();
     setSelectedDouble(null);
     setFormData({
@@ -232,6 +238,9 @@ export default function MaterialeForm() {
 
   const handleButtonClick = () => {
     document.getElementById('hiddenFileInput').click();
+    const fileInput = document.getElementById('hiddenFileInput');
+    fileInput.value = ''; // Reset the value of the file input
+    fileInput.click(); // Trigger the file input click manually
   };
 
 
@@ -271,7 +280,7 @@ export default function MaterialeForm() {
             { formData.limba == "RO" ?            
               <div className="flex flex-col items-center">
                       <label htmlFor="unit" className="col-span-1 font-medium text-black">
-                        Clasă Materiale
+                        Clasă 
                       </label>
                       <select
                         id="clasa_material"
@@ -404,7 +413,7 @@ export default function MaterialeForm() {
           </div>
     {/* div de schimbat unde pun datele!! ro si fr pentru ca spatiul e mic rau */}
           <div className=' grid grid-cols-[auto_auto_1fr] gap-2 border p-2 rounded-lg border-black'>
-          <div className="flex  justify-center gap-1 font-medium flex-col  items-center">
+          <div className="flex  justify-center gap-1 font-medium flex-col select-none items-center">
               <p className={`${itIsFR ? "text-blue-500 font-bold" : "text-black"}`}>FR</p>
               <FontAwesomeIcon icon={faArrowRightArrowLeft} onClick={() => setItIsFR((prev) => prev ? false : true)} className=' text-blue-500 border-blue-500 hover:text-blue-600 hover:border-blue-600 cursor-pointer border-2 p-2 rounded-full text-xl rotate-90'/>
               <p className={`${itIsFR ? "text-black" : "text-blue-500  font-bold"}`}>RO</p>
@@ -503,6 +512,7 @@ export default function MaterialeForm() {
                 <option value="m²">m²</option>
                 <option value="m³">m³</option>
                 <option value="kg">kg</option>
+                <option value="t">t</option>
                 <option value="Set">Set</option>
                 <option value="Rola">Rola</option>
                 <option value="ens">ens</option>

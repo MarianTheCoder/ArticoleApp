@@ -1,16 +1,16 @@
 const AddTransport = async (req, res) =>{
     const {form} = req.body;
     try {
-      if (form.cod_transport === "" || form.transport === "" || form.cost_unitar === "" || form.clasa_transport === "" || form.unitate_masura === "") {
+      if (form.limba === "" || form.cod_transport === "" || form.transport === "" || form.cost_unitar === "" || form.clasa_transport === "" || form.unitate_masura === "") {
         return res.status(400).json({ message: "Invalid input fields." });
       }
   
       // Insert data
       const insertQuery = `
-        INSERT INTO Transport (cod_transport, transport, cost_unitar, unitate_masura, clasa_transport, data) VALUES (?, ?, ?, ?, ?, NOW())
+        INSERT INTO Transport (limba, cod_transport, transport, transport_fr, cost_unitar, unitate_masura, clasa_transport, data) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
       `;
   
-      const [result] = await global.db.execute(insertQuery, [form.cod_transport, form.transport, form.cost_unitar, form.unitate_masura, form.clasa_transport]);
+      const [result] = await global.db.execute(insertQuery, [form.limba, form.cod_transport, form.transport, form.transport_fr, form.cost_unitar, form.unitate_masura, form.clasa_transport]);
   
       res.status(200).json({ message: "Data added successfully!", id: result.insertId});
     } catch (err) {
@@ -32,8 +32,10 @@ const EditTransport = async (req, res) => {
       const updateQuery = `
           UPDATE Transport 
           SET 
+              limba = ?,
               cod_transport = ?, 
               transport = ?, 
+              transport_fr = ?,
               cost_unitar = ?, 
               clasa_transport = ?, 
               data = NOW() 
@@ -42,8 +44,10 @@ const EditTransport = async (req, res) => {
 
       // Execute the query
       const [result] = await global.db.execute(updateQuery, [
+          form.limba,
           form.cod_transport, 
           form.transport, 
+          form.transport_fr,
           form.cost_unitar, 
           form.clasa_transport,
           id
@@ -62,7 +66,7 @@ const EditTransport = async (req, res) => {
 
 const GetTransport = async (req, res) => {
   try {
-      const { offset = 0, limit = 10, cod_transport = '', transport = '', clasa_transport = '' } = req.query;
+      const { offset = 0, limit = 10, cod_transport = '', transport = '', clasa_transport = '', limba = "" } = req.query;
       const asc_transport = req.query.asc_transport === "true";
 
       // Validate limit and offset to be integers
@@ -79,16 +83,18 @@ const GetTransport = async (req, res) => {
       let whereClauses = [];
 
       // Conditionally add filters to the query
+      if (limba.trim() !== "") {
+        whereClauses.push(`limba LIKE ?`);
+        queryParams.push(`%${limba}%`);
+      }
       if (cod_transport.trim() !== "") {
           whereClauses.push(`cod_transport LIKE ?`);
           queryParams.push(`%${cod_transport}%`);
       }
-
       if (transport.trim() !== "") {
-          whereClauses.push(`transport LIKE ?`);
-          queryParams.push(`%${transport}%`);
+        whereClauses.push("(transport LIKE ? OR transport_fr LIKE ?)");
+        queryParams.push(`%${transport}%`, `%${transport}%`);
       }
-
       if (clasa_transport.trim() !== "") {
         whereClauses.push(`clasa_transport LIKE ?`);
         queryParams.push(`%${clasa_transport}%`);
@@ -161,8 +167,8 @@ const DeleteTransport = async (req, res) => {
 };
 
 const GetTransportLight = async (req, res) => {
-    try {
-        const { cod_transport = '', transport = '', clasa_transport = '' } = req.query;
+    try { 
+        const { cod_transport = '', transport = '', clasa_transport = '' , limba = "" } = req.query;
   
         // Start constructing the base query
         let query = `SELECT * FROM Transport`;
@@ -174,11 +180,15 @@ const GetTransportLight = async (req, res) => {
             whereClauses.push(`cod_transport LIKE ?`);
             queryParams.push(`%${cod_transport}%`);
         }
-  
+
+        if (limba.trim() !== "") {
+            whereClauses.push(`limba LIKE ?`);
+            queryParams.push(`%${limba}%`);
+         }
         if (transport.trim() !== "") {
-            whereClauses.push(`transport LIKE ?`);
-            queryParams.push(`%${transport}%`);
-        }
+            whereClauses.push("(transport LIKE ? OR transport_fr LIKE ?)");
+            queryParams.push(`%${transport}%`, `%${transport}%`);
+          }
 
         if (clasa_transport.trim() !== "") {
             whereClauses.push(`clasa_transport LIKE ?`);

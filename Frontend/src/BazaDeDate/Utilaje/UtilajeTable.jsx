@@ -2,19 +2,24 @@ import React, { useEffect, useMemo, useState } from 'react'
 import api from '../../api/axiosAPI';
 import { flexRender, getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowDownAZ, faArrowUpAZ, faCancel, faCopy, faEllipsis, faFileCirclePlus, faL, faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons';
+import { faArrowDownAZ, faArrowUpAZ, faCancel, faCopy, faEllipsis, faFileCirclePlus, faL, faLanguage, faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons';
 import photoApi from '../../api/photoAPI'
 
-export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, selectedDelete, setSelectedDelete, setSelectedEdit, setFormData, selectedEdit, cancelEdit, cancelDelete}) {
+export default function ManoperaTable({reloadKey, selectedDouble, cancelDouble, setSelectedDouble, setSelectedFile, setPreview, selectedDelete, setSelectedDelete, setSelectedEdit, setFormData, selectedEdit, cancelEdit, cancelDelete}) {
 
     const [utilaje, setUtilaje] = useState(null);
     const [totalItems, setTotalItems] = useState(0);
     const [currentOffset, setCurrentOffset] = useState(0);
     const [limit, setLimit] = useState(20);
-        const [ascendent ,setAscendent] = useState(false);
+    const [ascendent ,setAscendent] = useState(false);
+
+    // sa vedem ce utilaje au limba schimbata
+    const [selectedUtilajeIds, setselectedUtilajeIds] = useState([]);
     
 
     const [filters, setFilters] = useState({
+        limba: '',
+        cod_utilaj: '',
         descriere_utilaj: '',
         utilaj: '',
         clasa_utilaj: '',
@@ -28,6 +33,8 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
                 params: {
                     offset,
                     limit,
+                    cod_utilaj: filters.cod_utilaj, 
+                    limba: filters.limba,
                     descriere_utilaj: filters.descriere_utilaj, // Pass cod_COR as a query parameter
                     utilaj: filters.utilaj, // Add any other filters here
                     clasa_utilaj: filters.clasa_utilaj, // Add any other filters here
@@ -101,15 +108,21 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
         e.stopPropagation();
         setSelectedDelete(id)// Toggle the dropdown based on the current state
         cancelEdit(e);
+        cancelDouble(e);
     }
 
     const handleSelectedForEdit = (e,passedRow) => {
         e.stopPropagation();
+        cancelDouble(e);
         setSelectedEdit(passedRow.id)// Toggle the dropdown based on the current state
         setFormData({
+            limba: passedRow.limba,
+            cod_utilaj: passedRow.cod_utilaj,
             clasa_utilaj: passedRow.clasa_utilaj,
             utilaj: passedRow.utilaj,
+            utilaj_fr: passedRow.utilaj_fr,
             descriere_utilaj: passedRow.descriere_utilaj,
+            descriere_utilaj_fr: passedRow.descriere_utilaj_fr,
             status_utilaj: passedRow.status_utilaj,
             cost_amortizare: passedRow.cost_amortizare,
             pret_utilaj: passedRow.pret_utilaj,
@@ -120,8 +133,10 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
         setSelectedFile(null);
         setSelectedDelete(null);
     }
-
-    const handleSelectedForDuplicate = async (e,passedRow) => {
+    const handleSelectedDouble = async (e, passedRow) => {
+        setSelectedDelete(null);
+        cancelEdit(e);
+        setSelectedDouble(passedRow.id);
         e.stopPropagation();
         try {
             setSelectedDelete(null);
@@ -131,9 +146,13 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
             const shortFileName = fileName.substring(0, 20);
             const file = new File([response.data], shortFileName, { type: response.data.type });
             setFormData({
+                limba: passedRow.limba,
+                cod_utilaj: passedRow.cod_utilaj,
                 clasa_utilaj: passedRow.clasa_utilaj,
                 utilaj: passedRow.utilaj,
+                utilaj_fr: passedRow.utilaj_fr,
                 descriere_utilaj: passedRow.descriere_utilaj,
+                descriere_utilaj_fr: passedRow.descriere_utilaj_fr,
                 status_utilaj: passedRow.status_utilaj,
                 cost_amortizare: passedRow.cost_amortizare,
                 pret_utilaj: passedRow.pret_utilaj,
@@ -145,8 +164,16 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
         } catch (error) {
             console.log("Error in duplicating" , error);
         }
-
     }
+
+    
+    const toggleRetetaSelection = (id) => {
+        setselectedUtilajeIds((prev) => {
+          return prev.includes(id)
+            ? prev.filter((r) => r !== id) 
+            : [...prev, id];               
+        });
+      };
 
     //copy mechanics
     const [selectedRows, setSelectedRows] = useState({});
@@ -249,6 +276,13 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
 
     const columns = useMemo(() => [
         { 
+            accessorKey: "limba",
+            header: "Limba",
+            cell: ({ getValue, row }) =>
+                <div className='w-full flex justify-center  font-bold'> {getValue()}</div> , // Display default value if the value is empty or undefined
+            size:80 
+        },
+        { 
             accessorKey: "photoUrl", 
             header: "Poză",
             cell: ({ getValue }) => (
@@ -262,7 +296,8 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
                 ),
                 size:100
         },
-        { accessorKey: "clasa_utilaj", header: "Clasă", size:80 },
+        { accessorKey: "clasa_utilaj", header: "Clasă", size:200 },
+        { accessorKey: "cod_utilaj", header: "Cod", size:80 },
         { 
             accessorKey: "utilaj", 
             header: (
@@ -271,9 +306,29 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
                     <FontAwesomeIcon onClick={() => setAscendent((prev) => prev == false ? true : false)} className="text-xl border border-black p-2  rounded-full  cursor-pointer" icon={!ascendent ? faArrowUpAZ : faArrowDownAZ} /> 
                 </div>
               ),
-            size:250
+            cell: ({ getValue, row }) => (
+                selectedUtilajeIds.includes(row.original.id) ?
+                <div className=''>
+                    {row.original.utilaj_fr || "..."}
+                </div>
+                :
+                getValue()
+            ) , 
+            size:200
         },
-        { accessorKey: "descriere_utilaj", header: "Descriere",size: 250},
+        { 
+            accessorKey: "descriere_utilaj",
+            header: "Descriere",
+            cell: ({ getValue, row }) => (
+                selectedUtilajeIds.includes(row.original.id) ?
+                <div className=''>
+                    {row.original.descriere_utilaj_fr || "..."}
+                </div>
+                :
+                getValue()
+            ) , 
+            size:300
+        },
         { accessorKey: "status_utilaj", header: "Status",size:100},
         { accessorKey: "unitate_masura", header: "Unitate",size:20},
         { accessorKey: "cost_amortizare", header: "Cost Amortizare",size:85},
@@ -285,8 +340,9 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
             cell: ({ row }) => (
                 <div className=' w-full relative flex'> 
                     <div className='text-xl relative w-full py-2 select-none items-center justify-evenly gap-1 flex'>
+                        <FontAwesomeIcon onClick={() => toggleRetetaSelection(row.original.id)} className=' text-blue-500 hover:text-blue-600 cursor-pointer' icon={faLanguage}/>
                         <FontAwesomeIcon onClick={(e) =>  handleSelectedForEdit(e,row.original)}  className=' text-green-500 hover:text-green-600 cursor-pointer' icon={faPenToSquare}/>
-                        <FontAwesomeIcon onClick={(e) => handleSelectedForDuplicate(e,row.original)}  className=' text-blue-500 hover:text-blue-600 cursor-pointer' icon={faFileCirclePlus}/>
+                        <FontAwesomeIcon onClick={(e) =>  handleSelectedDouble(e,row.original)}  className=' text-amber-500 hover:text-amber-600 cursor-pointer' icon={faFileCirclePlus}/>
                         <FontAwesomeIcon onClick={(e) =>  handleSelectedForDelete(e, row.original.id)} className=' text-red-500 hover:text-red-600 cursor-pointer' icon={faTrashCan}/>
                     </div>
                 </div>
@@ -298,7 +354,7 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
                 },
             },
         },
-    ], [selectedDelete, ascendent]);
+    ], [selectedDelete, ascendent, utilaje , selectedUtilajeIds]);
 
     const table = useReactTable({
         data: utilaje,
@@ -320,18 +376,80 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
             <table className="w-full border-separate border-spacing-0 ">
               <thead className='top-0 w-full sticky  z-10 '>
               <tr className='text-black'>
-                                    <th className='border-b bg-white border-r border-black'>
-                                        <input
-                                            type="text"
+                                    <th className='border-b border-r bg-white border-black'>
+                                        <select
+                                            id="limba"
+                                            name="limba"
+                                            value={filters.limba}
+                                            onChange={handleInputChange}
+                                            className=" p-2 w-full cursor-pointer outline-none py-3"
+                                        >
+                                            <option value="">RO&FR</option>
+                                            <option value="RO">RO</option>
+                                            <option value="FR">FR</option>
+               
+                                        </select>
+                                    </th>
+                                    <th className='border-b border-r border-black bg-white'></th>
+                                    <th className='border-b border-r bg-white border-black'>
+                                        <select
+                                            id="clasa_utilaj"
                                             name="clasa_utilaj"
                                             value={filters.clasa_utilaj}
                                             onChange={handleInputChange}
-                                            className="p-2 w-full outline-none py-3"
-                                            placeholder="Filtru Clasă "
-                                        />
+                                            className=" p-2 w-full cursor-pointer outline-none py-3"
+                                        >
+                                            <option value="">Toate</option>
+                                            <option value="Regie">Regie</option>
+                                            <option value="Dezafectare">Dezafectare</option>
+                                            <option value="Amenajări interioare">Amenajări interioare</option>
+                                            <option value="Electrice">Electrice</option>
+                                            <option value="Sanitare">Sanitare</option>
+                                            <option value="Termice">Termice</option>
+                                            <option value="Climatizare Ventilație">Climatizare Ventilație</option>
+                                            <option value="Amenajări exterioare">Amenajări exterioare</option>
+                                            <option value="Tâmplărie">Tâmplărie</option>
+                                            <option value="Mobilă">Mobilă</option>
+                                            <option value="Confecții Metalice">Confecții Metalice</option>
+                                            <option value="Prelucrări Ceramice/Piatră Naturală">Prelucrări Ceramice/Piatră Naturală</option>
+                                            <option value="Ofertare/Devizare">Ofertare/Devizare</option>
+                                            <option value="Management de proiect">Management de proiect</option>
+                                            <option value="Reparații">Reparații</option>
+                                            <option value="Gros œuvre - maçonnerie">Gros œuvre - maçonnerie</option>
+                                            <option value="Plâtrerie (plaque de plâtre)">Plâtrerie (plaque de plâtre)</option>
+                                            <option value="Vrd">Vrd</option>
+                                            <option value="Espace vert - aménagement extérieur">Espace vert - aménagement extérieur</option>
+                                            <option value="Charpente - bardage et couverture métallique">Charpente - bardage et couverture métallique</option>
+                                            <option value="Couverture - zinguerie">Couverture - zinguerie</option>
+                                            <option value="Étanchéité">Étanchéité</option>
+                                            <option value="Plomberie - sanitaire">Plomberie - sanitaire</option>
+                                            <option value="Chauffage">Chauffage</option>
+                                            <option value="Ventilation">Ventilation</option>
+                                            <option value="Climatisation">Climatisation</option>
+                                            <option value="Électricité">Électricité</option>
+                                            <option value="Charpente et ossature bois">Charpente et ossature bois</option>
+                                            <option value="Menuiserie extérieure">Menuiserie extérieure</option>
+                                            <option value="Menuiserie agencement intérieur">Menuiserie agencement intérieur</option>
+                                            <option value="Métallerie (acier - aluminium)">Métallerie (acier - aluminium)</option>
+                                            <option value="Store et fermeture">Store et fermeture</option>
+                                            <option value="Peinture - revêtement intérieur">Peinture - revêtement intérieur</option>
+                                            <option value="Ravalement peinture - revêtement extérieur">Ravalement peinture - revêtement extérieur</option>
+                                            <option value="Vitrerie - miroiterie">Vitrerie - miroiterie</option>
+                                            <option value="Carrelage et revêtement mural">Carrelage et revêtement mural</option>
+                                            <option value="Revêtement de sol (sauf carrelage)">Revêtement de sol (sauf carrelage)</option>
+                                            <option value="Ouvrages communs TCE">Ouvrages communs TCE</option>
+                                            <option value="Rénovation énergétique">Rénovation énergétique</option>
+                                        </select>
                                     </th>
-                                    <th className=" bg-white border-b border-r border-black">
-                                    
+                                    <th className='border-b bg-white  border-r border-black'>
+                                        <input
+                                            type="text"
+                                            name="cod_utilaj"
+                                            value={filters.cod_utilaj}
+                                            onChange={handleInputChange}
+                                            className="p-2 w-full outline-none  py-3"
+                                            placeholder="Filtru Cod"
+                                        />
                                     </th>
                                     <th className='border-b bg-white  border-r border-black'>
                                         <input
@@ -368,6 +486,12 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
                                             <option value="Recondiționat">Recondiționat</option>
                                             <option value="Utilizat">Utilizat</option>
                                             <option value="Defect">Defect</option>
+                                            <option value="Nouveau">Nouveau</option>
+                                            <option value="Comme neuf">Comme neuf</option>
+                                            <option value="Bien">Bien</option>
+                                            <option value="Remis à neuf">Remis à neuf</option>
+                                            <option value="Utilisé">Utilisé</option>
+                                            <option value="Défectueux">Défectueux</option>
                                         </select>
                                     </th>
                                     <th className=" bg-white border-b border-r border-black" colSpan={5}>
@@ -384,9 +508,9 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
                        
                             <th key={header.id}  className={`relative border-b-2 border-r border-black   bg-white p-2 py-4 ${header.column.id === "threeDots" ? "text-center" : ""} `}     
                             style={{
-                                width: header.column.id === "threeDots" ? '5.5rem' : `${header.getSize()}px`, // Enforce width for "Options"
-                                minWidth: header.column.id === "threeDots" ? '5.5rem' : '', // Ensure no shrinkage
-                                maxWidth: header.column.id === "threeDots" ? '5.5rem' : '', // Ensure no expansion
+                                width: header.column.id === "threeDots" ? '8rem' : `${header.getSize()}px`, // Enforce width for "Options"
+                                minWidth: header.column.id === "threeDots" ? '8rem' : '', // Ensure no shrinkage
+                                maxWidth: header.column.id === "threeDots" ? '8rem' : '', // Ensure no expansion
                             }}>
                                 <div
                                 onMouseDown={header.getResizeHandler()}
@@ -405,7 +529,7 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
             {utilaje.length == 0 ?
                 <tbody className='relative z-0'>
                     <tr>
-                        <td className='bg-white text-black h-12' colSpan={10}>
+                        <td className='bg-white text-black h-12' colSpan={12}>
                             <div className=' flex justify-center items-center w-full text-lg font-semibold h-full'>Nici un rezultat</div>
                         </td>
                     </tr>
@@ -414,7 +538,7 @@ export default function ManoperaTable({reloadKey, setSelectedFile, setPreview, s
                 <tbody className=' relative z-0'>
                 {table.getRowModel().rows.map((row,index,rows) => (
                     <tr key={row.id} onClick = {(event) =>!selectedDelete && !selectedEdit && handleRowClick(row,event,rows)}  className={`dropdown-container  text-black 
-                        ${selectedDelete || selectedEdit ? row.original.id == selectedDelete ? "bg-red-300" : row.original.id == selectedEdit ? "bg-green-300" : 
+                        ${selectedDelete || selectedEdit || selectedDouble  ? row.original.id == selectedDelete ? "bg-red-300" : row.original.id == selectedEdit ? "bg-green-300" : row.original.id == selectedDouble ? "bg-amber-300" :
                             row.index % 2 === 0 ? 'bg-[rgb(255,255,255,0.75)] select-none' :'bg-[rgb(255,255,255,1)] select-none' 
                             : 
                         selectedRows[row.index] ? "bg-blue-300 hover:bg-blue-400 select-none" :

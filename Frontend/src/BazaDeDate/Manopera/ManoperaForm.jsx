@@ -170,7 +170,7 @@ export default function ManoperaForm() {
                         name="limba"
                         value={formData.limba}
                         onChange={handleChange}
-                        className=" px-1 py-2 rounded-lg outline-none shadow-sm "
+                        className=" px-2 py-2 rounded-lg outline-none shadow-sm "
                       >
                         <option value="RO">RO</option>
                         <option value="FR">FR</option>

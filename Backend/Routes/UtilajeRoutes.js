@@ -14,11 +14,11 @@ const upload = multer({ storage });
 router.post('/api/utilaje', upload.single('poza'), async (req, res) => {
   try {
     const {
-      clasa_utilaj, utilaj, descriere_utilaj, status_utilaj,
+      limba, cod_utilaj, clasa_utilaj, utilaj, utilaj_fr, descriere_utilaj, descriere_utilaj_fr, status_utilaj,
       cost_amortizare, pret_utilaj, unitate_masura, cantitate
     } = req.body;
 
-    if (!clasa_utilaj || !utilaj || !descriere_utilaj || !status_utilaj || !cost_amortizare || !pret_utilaj || !cantitate || !unitate_masura) {
+    if (!limba || !clasa_utilaj || !utilaj || !descriere_utilaj || !status_utilaj || !cost_amortizare || !pret_utilaj || !cantitate || !unitate_masura) {
       return res.status(400).json({ message: 'Toate câmpurile sunt necesare!' });
     }
 
@@ -26,6 +26,11 @@ router.post('/api/utilaje', upload.single('poza'), async (req, res) => {
     let photoPath = "uploads/Utilaje/no-image-icon.png";
 
     if (req.file) {
+      const allowedMimeTypes = ['image/jpeg', 'image/png'];
+      if (!allowedMimeTypes.includes(req.file.mimetype)) {
+        return res.status(400).json({ message: 'Fișierul trebuie să fie imagine (JPG sau PNG).' });
+      }
+
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
       const fileName = `${uniqueSuffix}-${req.file.originalname}`;
       const finalPath = path.join(uploadsDir, fileName);
@@ -33,7 +38,7 @@ router.post('/api/utilaje', upload.single('poza'), async (req, res) => {
       await sharp(req.file.buffer)
         .rotate()
         .resize({ width: 800 })
-        .jpeg({ quality: 70 })
+        .toFormat(req.file.mimetype === 'image/png' ? 'png' : 'jpeg', { quality: 70 }) // If it's PNG, save as PNG, else save as JPEG
         .toFile(finalPath);
 
       photoPath = path.relative(path.join(__dirname, '../'), finalPath);
@@ -41,13 +46,13 @@ router.post('/api/utilaje', upload.single('poza'), async (req, res) => {
 
     const sql = `
       INSERT INTO Utilaje (
-        clasa_utilaj, utilaj, descriere_utilaj, photoUrl, status_utilaj,
+        limba, cod_utilaj, clasa_utilaj, utilaj, utilaj_fr, descriere_utilaj, descriere_utilaj_fr, photoUrl, status_utilaj,
         cost_amortizare, pret_utilaj, cantitate, unitate_masura, data
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
     `;
 
     const [result] = await global.db.execute(sql, [
-      clasa_utilaj, utilaj, descriere_utilaj, photoPath,
+      limba, cod_utilaj, clasa_utilaj, utilaj, utilaj_fr, descriere_utilaj, descriere_utilaj_fr, photoPath,
       status_utilaj, cost_amortizare, pret_utilaj, cantitate, unitate_masura
     ]);
 
@@ -61,7 +66,7 @@ router.post('/api/utilaje', upload.single('poza'), async (req, res) => {
 
 router.get('/api/utilaje', async (req, res) => {
   try {
-      const { offset = 0, limit = 10, clasa_utilaj  = '', utilaj = '', descriere_utilaj  = '', status_utilaj = '' } = req.query;
+      const { offset = 0, limit = 10, clasa_utilaj  = '', utilaj = '', descriere_utilaj  = '', status_utilaj = '', limba = "" , cod_utilaj = "" } = req.query;
       const asc_utilaj = req.query.asc_utilaj === "true";
 
       // Validate limit and offset to be integers
@@ -82,15 +87,24 @@ router.get('/api/utilaje', async (req, res) => {
           whereClauses.push(`clasa_utilaj LIKE ?`);
           queryParams.push(`%${clasa_utilaj}%`);
       }
+      if (cod_utilaj.trim() !== "") {
+        whereClauses.push(`cod_utilaj LIKE ?`);
+        queryParams.push(`%${cod_utilaj}%`);
+    }
+
+      if (limba.trim() !== "") {
+        whereClauses.push("limba LIKE ?");
+        queryParams.push(`%${limba}%`);
+      }
 
       if (utilaj.trim() !== "") {
-          whereClauses.push(`utilaj LIKE ?`);
-          queryParams.push(`%${utilaj}%`);
+        whereClauses.push("(utilaj LIKE ? OR utilaj_fr LIKE ?)");
+        queryParams.push(`%${utilaj}%`, `%${utilaj}%`);
       }
 
       if (descriere_utilaj.trim() !== "") {
-          whereClauses.push(`descriere_utilaj LIKE ?`);
-          queryParams.push(`%${descriere_utilaj}%`);
+        whereClauses.push("(descriere_utilaj LIKE ? OR descriere_utilaj_fr LIKE ?)");
+        queryParams.push(`%${descriere_utilaj}%`, `%${descriere_utilaj}%`);
       }
 
       if (status_utilaj.trim() !== "") {
@@ -139,7 +153,7 @@ router.get('/api/utilaje', async (req, res) => {
 
 router.get('/api/utilajeLight', async (req, res) => {
   try {
-      const {clasa_utilaj  = '', utilaj = '', descriere_utilaj  = '', status_utilaj = '' } = req.query;
+      const {clasa_utilaj  = '', utilaj = '', descriere_utilaj  = '', status_utilaj = '', limba = "" , cod_utilaj = "" } = req.query;
 
       // Base query
       let query = `SELECT * FROM Utilaje`;
@@ -152,14 +166,19 @@ router.get('/api/utilajeLight', async (req, res) => {
           queryParams.push(`%${clasa_utilaj}%`);
       }
 
+      if (limba.trim() !== "") {
+        whereClauses.push(`limba LIKE ?`);
+        queryParams.push(`%${limba}%`);
+      }
+
       if (utilaj.trim() !== "") {
-          whereClauses.push(`utilaj LIKE ?`);
-          queryParams.push(`%${utilaj}%`);
+        whereClauses.push("(utilaj LIKE ? OR utilaj_fr LIKE ?)");
+        queryParams.push(`%${utilaj}%`, `%${utilaj}%`);
       }
 
       if (descriere_utilaj.trim() !== "") {
-          whereClauses.push(`descriere_utilaj LIKE ?`);
-          queryParams.push(`%${descriere_utilaj}%`);
+        whereClauses.push("(descriere_utilaj LIKE ? OR descriere_utilaj_fr LIKE ?)");
+        queryParams.push(`%${descriere_utilaj}%`, `%${descriere_utilaj}%`);
       }
 
       if (status_utilaj.trim() !== "") {
@@ -241,10 +260,11 @@ router.delete('/api/utilaje/:id', async (req, res) => {
 router.put('/api/utilaje/:id', upload.single('poza'), async (req, res) => {
   const { id } = req.params;
   const {
-    clasa_utilaj, utilaj, descriere_utilaj, status_utilaj,
-    cost_amortizare, pret_utilaj, cantitate, unitate_masura
+    limba, cod_utilaj, clasa_utilaj, utilaj, utilaj_fr, descriere_utilaj, descriere_utilaj_fr, status_utilaj,
+    cost_amortizare, pret_utilaj, unitate_masura, cantitate
   } = req.body;
-
+  console.log(   limba, cod_utilaj, clasa_utilaj, utilaj, utilaj_fr, descriere_utilaj, descriere_utilaj_fr, status_utilaj,
+    cost_amortizare, pret_utilaj, unitate_masura, cantitate)
   try {
     if (!id || isNaN(id)) {
       return res.status(400).json({ message: "Invalid or missing ID." });
@@ -259,6 +279,10 @@ router.put('/api/utilaje/:id', upload.single('poza'), async (req, res) => {
     let newPhotoPath = oldPhotoPath;
 
     if (req.file) {
+      const allowedMimeTypes = ['image/jpeg', 'image/png'];
+      if (!allowedMimeTypes.includes(req.file.mimetype)) {
+        return res.status(400).json({ message: 'Fișierul trebuie să fie imagine (JPG sau PNG).' });
+      }
       if (oldPhotoPath && !oldPhotoPath.includes("no-image-icon")) {
         const oldFilePath = path.join(__dirname, "..", oldPhotoPath);
         fs.unlink(oldFilePath, (err) => {
@@ -274,7 +298,7 @@ router.put('/api/utilaje/:id', upload.single('poza'), async (req, res) => {
       await sharp(req.file.buffer)
         .rotate()
         .resize({ width: 800 })
-        .jpeg({ quality: 70 })
+        .toFormat(req.file.mimetype === 'image/png' ? 'png' : 'jpeg', { quality: 70 }) // If it's PNG, save as PNG, else save as JPEG
         .toFile(finalPath);
 
       newPhotoPath = path.relative(path.join(__dirname, '../'), finalPath);
@@ -282,13 +306,13 @@ router.put('/api/utilaje/:id', upload.single('poza'), async (req, res) => {
 
     const updateQuery = `
       UPDATE Utilaje 
-      SET clasa_utilaj = ?, utilaj = ?, descriere_utilaj = ?, photoUrl = ?,
+      SET limba = ?, cod_utilaj = ?, clasa_utilaj = ?, utilaj = ?, utilaj_fr = ?, descriere_utilaj = ?, descriere_utilaj_fr = ?, photoUrl = ?,
           status_utilaj = ?, cost_amortizare = ?, pret_utilaj = ?, unitate_masura = ?, cantitate = ?
       WHERE id = ?
     `;
 
     const [result] = await global.db.execute(updateQuery, [
-      clasa_utilaj, utilaj, descriere_utilaj, newPhotoPath,
+      limba, cod_utilaj, clasa_utilaj, utilaj, utilaj_fr, descriere_utilaj, descriere_utilaj_fr, newPhotoPath,
       status_utilaj, cost_amortizare, pret_utilaj, unitate_masura, cantitate, id
     ]);
 

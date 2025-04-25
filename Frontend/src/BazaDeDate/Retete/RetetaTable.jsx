@@ -322,7 +322,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
                     </div>
                 ),
                 cell: ({ getValue, row }) => (
-                    selectedRetetaIds.includes(row.original.id) ?
+                    selectedRetetaIds.includes(row.original.id) || (row.original.reteta_id && selectedRetetaIds.includes(parseInt(row.original.reteta_id, 10))) ?
                     <div className=''>
                         {row.original.articol_fr || "..."}
                     </div>
@@ -335,7 +335,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
                 accessorKey: "descriere_reteta", 
                 header: "Descriere",
                 cell: ({ getValue, row }) => (
-                    selectedRetetaIds.includes(row.original.id) ?
+                    selectedRetetaIds.includes(row.original.id) || (row.original.reteta_id && selectedRetetaIds.includes(parseInt(row.original.reteta_id, 10))) ?
                     <div className=''>
                         {row.original.descriere_reteta_fr || "..."}
                     </div>

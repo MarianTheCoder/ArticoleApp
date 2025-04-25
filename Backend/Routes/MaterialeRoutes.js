@@ -26,15 +26,20 @@ router.post('/api/Materiale', upload.single('poza'), async (req, res) => {
     let photoPath = "uploads/Materiale/no-image-icon.png";
 
     if (req.file) {
+      const allowedMimeTypes = ['image/jpeg', 'image/png'];
+      if (!allowedMimeTypes.includes(req.file.mimetype)) {
+        return res.status(400).json({ message: 'Fișierul trebuie să fie imagine (JPG sau PNG).' });
+      }
+
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
       const fileName = `${uniqueSuffix}-${req.file.originalname}`;
       const fullPath = path.join(uploadsDir, fileName);
 
       await sharp(req.file.buffer)
-        .rotate()
-        .resize({ width: 800 })
-        .jpeg({ quality: 70 })
-        .toFile(fullPath);
+          .rotate()
+          .resize({ width: 800 })
+          .toFormat(req.file.mimetype === 'image/png' ? 'png' : 'jpeg', { quality: 70 }) // If it's PNG, save as PNG, else save as JPEG
+          .toFile(fullPath);
 
       photoPath = path.relative(path.join(__dirname, '../'), fullPath);
     }
@@ -152,7 +157,7 @@ router.get('/api/materiale', async (req, res) => {
 
 router.get('/api/materialeLight', async (req, res) => {
   try {
-      const {cod = '', denumire = '', clasa = "" , tip_material = "" } = req.query;
+      const {cod = '', denumire = '', clasa = "" , tip_material = "", limba = "" } = req.query;
 
       // Base query
       let query = `SELECT * FROM Materiale`;
@@ -164,10 +169,13 @@ router.get('/api/materialeLight', async (req, res) => {
           whereClauses.push(`cod_produs LIKE ?`);
           queryParams.push(`%${cod}%`);
       }
-
+      if (limba.trim() !== "") {
+        whereClauses.push(`limba LIKE ?`);
+        queryParams.push(`%${limba}%`);
+     }
       if (denumire.trim() !== "") {
-          whereClauses.push(`denumire_produs LIKE ?`);
-          queryParams.push(`%${denumire}%`);
+        whereClauses.push("(denumire_produs LIKE ? OR denumire_produs_fr LIKE ?)");
+        queryParams.push(`%${denumire}%`, `%${denumire}%`);
       }
 
       if (clasa.trim() !== "") {
@@ -275,6 +283,11 @@ router.put('/api/materiale/:id', upload.single('poza'), async (req, res) => {
     let newPhotoPath = oldPhotoPath;
 
     if (req.file) {
+      const allowedMimeTypes = ['image/jpeg', 'image/png'];
+      if (!allowedMimeTypes.includes(req.file.mimetype)) {
+        return res.status(400).json({ message: 'Fișierul trebuie să fie imagine (JPG sau PNG).' });
+      }
+
       // Delete old image if it's not the fallback
       if (oldPhotoPath && !oldPhotoPath.includes("no-image-icon")) {
         const oldFilePath = path.join(__dirname, "..", oldPhotoPath);
@@ -282,7 +295,6 @@ router.put('/api/materiale/:id', upload.single('poza'), async (req, res) => {
           if (err) console.error("Error deleting old image:", err);
         });
       }
-
       // Save resized new image
       const uploadsDir = path.join(__dirname, '../uploads/Materiale');
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
@@ -292,7 +304,7 @@ router.put('/api/materiale/:id', upload.single('poza'), async (req, res) => {
       await sharp(req.file.buffer)
         .rotate()
         .resize({ width: 800 })
-        .jpeg({ quality: 70 })
+        .toFormat(req.file.mimetype === 'image/png' ? 'png' : 'jpeg', { quality: 70 }) // If it's PNG, save as PNG, else save as JPEG
         .toFile(fullPath);
 
       newPhotoPath = path.relative(path.join(__dirname, '../'), fullPath);

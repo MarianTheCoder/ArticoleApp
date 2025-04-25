@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useMemo, useState } from 'react'
 import api from '../../api/axiosAPI';
 import { flexRender, getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowRight, faArrowRightLong, faCancel, faCopy, faEllipsis, faL, faPenToSquare, faPlus, faTrashCan } from '@fortawesome/free-solid-svg-icons';
+import { faArrowRight, faArrowRightLong, faCancel, faCopy, faEllipsis, faL, faLanguage, faPenToSquare, faPlus, faTrashCan } from '@fortawesome/free-solid-svg-icons';
 import { RetetaContext } from '../../context/RetetaContext';
 
 export default function RetetaManopera({
@@ -20,9 +20,12 @@ export default function RetetaManopera({
 
         const [manopere, setManopere] = useState(null);
         const [manoperaFilters, setManoperaFilters] = useState({
+          limba: "",
           cod_COR: '',
           ocupatie: '',
         });
+
+        const [selectedManopereIds, setSelectedManopereIds] = useState([]);
 
         const setCantitateHandler = (e) =>{
             if (/^\d*\.?\d{0,3}$/.test(e.target.value)) {
@@ -58,6 +61,7 @@ export default function RetetaManopera({
                 if(manoperaFilters.cod_COR.trim().length >= 3 || manoperaFilters.ocupatie.trim().length >= 3){
                     const response = await api.get('/Manopera/FetchManopereLight', {
                         params: {
+                            limba: manoperaFilters.limba,
                             cod_COR: manoperaFilters.cod_COR, // Pass cod_COR as a query parameter
                             ocupatie: manoperaFilters.ocupatie, // Add any other filters here
                         },
@@ -68,6 +72,18 @@ export default function RetetaManopera({
                 console.error('Error fetching data:', error);
             }
         }
+
+            //States for dropDown/edit/delete/copy and CHANGED language
+
+        const toggleManopereChangeLanguage = (id) => {
+            setSelectedManopereIds((prev) => {
+            return prev.includes(id)
+                ? prev.filter((r) => r !== id) 
+                : [...prev, id];               
+            });
+        };
+
+
         //Handle ADD MANOPERA
         //
         //
@@ -101,11 +117,35 @@ export default function RetetaManopera({
         //
         //
           const columns = useMemo(() => [
-                { accessorKey: "cod_COR", header: "Cod COR" },
-                { accessorKey: "ocupatie", header: "Ocupatie" },
-                { accessorKey: "unitate_masura", header: "Unitate" },
-                { accessorKey: "cost_unitar", header: "Cost"},
-            ], []);
+                { accessorKey: "limba", header: "Limba",size:50 },
+                { accessorKey: "cod_COR", header: "Cod COR",size:50 },
+                { 
+                    accessorKey: "ocupatie", 
+                    header: "Ocupatie",
+                    cell: ({ getValue, row }) => (
+                        selectedManopereIds.includes(row.original.id) ?
+                        <div className=''>
+                            {row.original.ocupatie_fr || "..."}
+                        </div>
+                        :
+                        getValue()
+                    ),  
+                },
+                { accessorKey: "unitate_masura", header: "Unitate",size:50 },
+                { accessorKey: "cost_unitar", header: "Cost",size:50},
+                { 
+                    accessorKey: "threeDots", 
+                    header: "Opțiuni",
+                    cell: ({ row }) => (
+                        <div className='w-full relative overflow-hidden flex '> 
+                            <div className='text-xl relative w-full py-2 select-none items-center justify-evenly gap-2 flex'>
+                                <FontAwesomeIcon onClick={()  =>  toggleManopereChangeLanguage(row.original.id)} className=' text-blue-500 hover:text-blue-600 cursor-pointer' icon={faLanguage }/>
+                            </div>
+                        </div>
+                    ),
+                    size:50,
+                },
+            ], [selectedManopereIds]);
         
             const table = useReactTable({
                 data: manopere,
@@ -136,7 +176,24 @@ export default function RetetaManopera({
     <>
         <div className=' flex flex-col h-full w-full overflow-hidden'>
             {/* Inputs for fetching manopere */}
-            <div className='grid font-medium grid-cols-2 gap-4 p-4 pt-2 text-black containerWhiter w-full'>
+            <div className='grid font-medium grid-cols-[auto_1fr_1fr] gap-4 p-4 pt-2 text-black containerWhiter w-full'>
+                        <div className="flex w-full flex-col items-center ">
+                                <label className=" text-black">
+                                 Limba
+                                </label>
+                                        <select
+                                            id="limba"
+                                            name="limba"
+                                            value={manoperaFilters.limba}
+                                            onChange={handleChangeFilterManopera}
+                                            className=" p-2 w-full cursor-pointer rounded-lg shadow-sm outline-none py-2"
+                                        >
+                                            <option value="">RO&FR</option>
+                                            <option value="RO">RO</option>
+                                            <option value="FR">FR</option>
+               
+                                        </select>
+                        </div>  
                     <div className="flex w-full flex-col items-center ">
                       <label className=" text-black">
                           Cod COR 
@@ -176,7 +233,7 @@ export default function RetetaManopera({
                                      <tr key={headerGroup.id} className="bg-white text-black text-left  font-bold select-none">
                                        {headerGroup.headers.map(header => (
                                           
-                                               <th key={header.id}  className={`relative border-b border-r border-black   bg-white p-1 ${header.column.id === "threeDots" ? "text-center" : ""} `}     
+                                               <th key={header.id}  className={`relative border-b border-r border-black   bg-white p-2 ${header.column.id === "threeDots" ? "text-center" : ""} `}     
                                                style={{
                                                    width:  `${header.getSize()}px`
                                                }}>
@@ -198,7 +255,7 @@ export default function RetetaManopera({
                         manopere == null || manopere.length == 0 ?
                             <tbody>
                                 <tr>
-                                    <th className=' text-black border-b border-r  border-black  p-2 bg-white' colSpan={4}>Nici un Rezultat / Introdu minim 3 Caractere</th>
+                                    <th className=' text-black border-b border-r  border-black  p-2 bg-white' colSpan={6}>Nici un Rezultat / Introdu minim 3 Caractere</th>
                                 </tr>
                             </tbody>
                         :            

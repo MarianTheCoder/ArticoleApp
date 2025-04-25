@@ -266,7 +266,7 @@ export default function ManoperaTable({reloadKey, cancelDouble, selectedDouble, 
                 </div>
                 :
                 getValue()
-            ) , 
+            ), 
             size:300 
         },
         { accessorKey: "unitate_masura", header: "Unitate", size:40 },
@@ -274,10 +274,8 @@ export default function ManoperaTable({reloadKey, cancelDouble, selectedDouble, 
             accessorKey: "cost_unitar", 
             header: "Cost unitar", 
             cell: ({ getValue}) => {
-                let value = getValue() == null || isNaN(getValue()) ? 0 : parseFloat(getValue());
-                const formattedValue = value.toFixed(3); // Limit to 3 decimals
-                return  parseFloat(value.toFixed(3))
-             } , 
+                return getValue()
+            },
             size:70 
         },
         { accessorKey: "cantitate", header: "Cantitate", size:70},
@@ -301,7 +299,7 @@ export default function ManoperaTable({reloadKey, cancelDouble, selectedDouble, 
                 },
             },
         },
-    ], [selectedDelete, ascendent ,ascendentCOR, selectedManopereIds]);
+    ], [selectedDelete, ascendent ,ascendentCOR, selectedManopereIds, manopere]);
 
     const table = useReactTable({
         data: manopere,

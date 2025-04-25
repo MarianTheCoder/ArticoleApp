@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowDownAZ, faArrowUpAZ, faCancel, faCopy, faEllipsis, faFileCirclePlus, faL, faLanguage, faPenToSquare, faRepeat, faTrashCan } from '@fortawesome/free-solid-svg-icons';
 import photoApi from '../../api/photoAPI'
 
-export default function ManoperaTable({reloadKey, selectedDouble,cancelDouble,setSelectedDouble,  setSelectedFile, setPreview, selectedDelete, setSelectedDelete, setSelectedEdit, setFormData, selectedEdit, cancelEdit, cancelDelete}) {
+export default function ManoperaTable({reloadKey, selectedDouble, cancelDouble, setSelectedDouble,  setSelectedFile, setPreview, selectedDelete, setSelectedDelete, setSelectedEdit, setFormData, selectedEdit, cancelEdit, cancelDelete}) {
 
     const [materiale, setMateriale] = useState([]);
     const [totalItems, setTotalItems] = useState(0);
@@ -150,12 +150,15 @@ export default function ManoperaTable({reloadKey, selectedDouble,cancelDouble,se
         cancelDouble(e);
         setSelectedEdit(passedRow.id)// Toggle the dropdown based on the current state
         setFormData({
+            limba: passedRow.limba,
             furnizor: passedRow.furnizor,
             tip_material: passedRow.tip_material,
             clasa_material: passedRow.clasa_material,
             cod_produs: passedRow.cod_produs,
             denumire_produs: passedRow.denumire_produs,
+            denumire_produs_fr: passedRow.denumire_produs_fr,
             descriere_produs: passedRow.descriere_produs,
+            descriere_produs_fr: passedRow.descriere_produs_fr,
             unitate_masura: passedRow.unitate_masura,
             cost_unitar: passedRow.cost_unitar,
             cost_preferential: passedRow.cost_preferential,
@@ -354,7 +357,7 @@ export default function ManoperaTable({reloadKey, selectedDouble,cancelDouble,se
                 },
             },
         },
-    ], [selectedDelete, ascendent, ascendent, selectedMaterialeIds]);
+    ], [selectedDelete, ascendent, selectedMaterialeIds, materiale]);
 
     const table = useReactTable({
         data: materiale,

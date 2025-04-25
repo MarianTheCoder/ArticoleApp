@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useMemo, useState } from 'react'
 import api from '../../api/axiosAPI';
 import { flexRender, getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowRight, faArrowRightLong, faCancel, faCopy, faEllipsis, faL, faPenToSquare, faPlus, faTrashCan } from '@fortawesome/free-solid-svg-icons';
+import { faArrowRight, faArrowRightLong, faCancel, faCopy, faEllipsis, faL, faLanguage, faPenToSquare, faPlus, faTrashCan } from '@fortawesome/free-solid-svg-icons';
 import { RetetaContext } from '../../context/RetetaContext';
 import photoAPI from '../../api/photoAPI';
 
@@ -20,11 +20,15 @@ export default function RetetaMateriale({
 
         const [materiale, setMateriale] = useState(null);
         const [materialeFilters, setMaterialeFilters] = useState({
+          limba: "",
           clasa:"",
           cod: '',
           denumire: '',
           tip_material: "",
         });
+
+        const [selectedMaterialeIds, setSelectedMaterialeIds] = useState([]);
+        
 
         const setCantitateHandler = (e) =>{
             if (/^\d*\.?\d{0,3}$/.test(e.target.value)) {
@@ -54,6 +58,7 @@ export default function RetetaMateriale({
                 if(materialeFilters.cod.trim().length >= 3 || materialeFilters.denumire.trim().length >= 3 || materialeFilters.clasa.trim().length >= 3){
                     const response = await api.get('/Materiale/api/materialeLight', {
                         params: {
+                            limba: materialeFilters.limba,
                             cod: materialeFilters.cod, // Pass cod as a query parameter
                             clasa:materialeFilters.clasa,
                             denumire: materialeFilters.denumire, 
@@ -66,6 +71,14 @@ export default function RetetaMateriale({
                 console.error('Error fetching data:', error);
             }
         }
+        const toggleMaterialeChangeLanguage = (id) => {
+            setSelectedMaterialeIds((prev) => {
+            return prev.includes(id)
+                ? prev.filter((r) => r !== id) 
+                : [...prev, id];               
+            });
+        };
+
         //Handle ADD Material
         //
         //
@@ -98,6 +111,7 @@ export default function RetetaMateriale({
         //
         //
         const columns = useMemo(() => [
+            { accessorKey: "limba", header: "Limba",size:50 },
             { accessorKey: "tip_material", header: "Tip",size:40},
             { 
                 accessorKey: "photoUrl", 
@@ -116,9 +130,44 @@ export default function RetetaMateriale({
             },
             { accessorKey: "clasa_material", header: "Clasa",size:50},
             { accessorKey: "cod_produs", header: "Cod",size:50},
-            { accessorKey: "denumire_produs", header: "Denumire",size:300},
-            { accessorKey: "pret_vanzare", header: "Pret",size:50}
-        ], []);
+            { 
+                accessorKey: "denumire_produs", 
+                header: "Denumire",
+                cell: ({ getValue, row }) => (
+                    selectedMaterialeIds.includes(row.original.id) ?
+                    <div className=''>
+                        {row.original.denumire_produs_fr || "..."}
+                    </div>
+                    :
+                    getValue()
+                ),  
+            },
+            { 
+                accessorKey: "descriere_produs", 
+                header: "Descriere",
+                cell: ({ getValue, row }) => (
+                    selectedMaterialeIds.includes(row.original.id) ?
+                    <div className=''>
+                        {row.original.descriere_produs_fr || "..."}
+                    </div>
+                    :
+                    getValue()
+                ),  
+            },
+            { accessorKey: "pret_vanzare", header: "Pret",size:50},
+            { 
+                accessorKey: "threeDots", 
+                header: "Opțiuni",
+                cell: ({ row }) => (
+                    <div className='w-full relative overflow-hidden flex '> 
+                        <div className='text-xl relative w-full py-2 select-none items-center justify-evenly gap-2 flex'>
+                            <FontAwesomeIcon onClick={()  =>  toggleMaterialeChangeLanguage(row.original.id)} className=' text-blue-500 hover:text-blue-600 cursor-pointer' icon={faLanguage }/>
+                        </div>
+                    </div>
+                ),
+                size:50,
+                },
+        ], [selectedMaterialeIds]);
         
             const table = useReactTable({
                 data: materiale,
@@ -148,8 +197,24 @@ export default function RetetaMateriale({
     <>
         <div className=' flex flex-col h-full w-full overflow-hidden'>
             {/* Inputs for fetching materiale */}
-            <div className='grid font-medium grid-cols-[0.7fr_auto_1fr_2fr] gap-4 p-4 pt-2 text-black containerWhiter w-full'>
-
+            <div className='grid font-medium grid-cols-[auto_0.7fr_auto_1fr_2fr] gap-4 p-4 pt-2 text-black containerWhiter w-full'>
+            <div className="flex w-full flex-col items-center ">
+                                <label className=" text-black">
+                                 Limba
+                                </label>
+                                        <select
+                                            id="limba"
+                                            name="limba"
+                                            value={materialeFilters.limba}
+                                            onChange={handleChangeFilterMateriale}
+                                            className=" p-2 w-full cursor-pointer rounded-lg shadow-sm outline-none py-2"
+                                        >
+                                            <option value="">RO&FR</option>
+                                            <option value="RO">RO</option>
+                                            <option value="FR">FR</option>
+               
+                                        </select>
+                        </div> 
                 <div className="flex flex-col w-full items-center ">
                       <label className=" text-black">
                           Tip 
@@ -166,6 +231,10 @@ export default function RetetaMateriale({
                             <option value="De Finisaj">De Finisaj</option>
                             <option value="Auxiliar">Auxiliare</option>
                             <option value="Consumabil">Consumabile</option>
+                            <option value="Basique">Basique</option>
+                            <option value="Finition">Finition</option>
+                            <option value="Soutien">Soutien</option>
+                            <option value="Fournitures">Fournitures</option>
                     </select>
                   </div>
 
@@ -196,6 +265,30 @@ export default function RetetaMateriale({
                                             <option value="Ofertare/Devizare">Ofertare/Devizare</option>
                                             <option value="Management de proiect">Management de proiect</option>
                                             <option value="Reparații">Reparații</option>
+                                            <option value="Gros œuvre - maçonnerie">Gros œuvre - maçonnerie</option>
+                                            <option value="Plâtrerie (plaque de plâtre)">Plâtrerie (plaque de plâtre)</option>
+                                            <option value="Vrd">Vrd</option>
+                                            <option value="Espace vert - aménagement extérieur">Espace vert - aménagement extérieur</option>
+                                            <option value="Charpente - bardage et couverture métallique">Charpente - bardage et couverture métallique</option>
+                                            <option value="Couverture - zinguerie">Couverture - zinguerie</option>
+                                            <option value="Étanchéité">Étanchéité</option>
+                                            <option value="Plomberie - sanitaire">Plomberie - sanitaire</option>
+                                            <option value="Chauffage">Chauffage</option>
+                                            <option value="Ventilation">Ventilation</option>
+                                            <option value="Climatisation">Climatisation</option>
+                                            <option value="Électricité">Électricité</option>
+                                            <option value="Charpente et ossature bois">Charpente et ossature bois</option>
+                                            <option value="Menuiserie extérieure">Menuiserie extérieure</option>
+                                            <option value="Menuiserie agencement intérieur">Menuiserie agencement intérieur</option>
+                                            <option value="Métallerie (acier - aluminium)">Métallerie (acier - aluminium)</option>
+                                            <option value="Store et fermeture">Store et fermeture</option>
+                                            <option value="Peinture - revêtement intérieur">Peinture - revêtement intérieur</option>
+                                            <option value="Ravalement peinture - revêtement extérieur">Ravalement peinture - revêtement extérieur</option>
+                                            <option value="Vitrerie - miroiterie">Vitrerie - miroiterie</option>
+                                            <option value="Carrelage et revêtement mural">Carrelage et revêtement mural</option>
+                                            <option value="Revêtement de sol (sauf carrelage)">Revêtement de sol (sauf carrelage)</option>
+                                            <option value="Ouvrages communs TCE">Ouvrages communs TCE</option>
+                                            <option value="Rénovation énergétique">Rénovation énergétique</option>
                                         </select>
                   </div>
                     <div className="flex w-full flex-col items-center ">
@@ -260,7 +353,7 @@ export default function RetetaMateriale({
                         materiale == null || materiale.length == 0 ?
                             <tbody>
                                 <tr>
-                                    <th className=' text-black border-b border-r border-black p-2 bg-white' colSpan={6}>Nici un Rezultat / Introdu minim 3 Caractere</th>
+                                    <th className=' text-black border-b border-r border-black p-2 bg-white' colSpan={9}>Nici un Rezultat / Introdu minim 3 Caractere</th>
                                 </tr>
                             </tbody>
                         :            

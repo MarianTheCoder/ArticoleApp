@@ -350,9 +350,10 @@ export default function ManoperaForm() {
                         <option value="m²">m²</option>
                         <option value="m³">m³</option>
                         <option value="kg">kg</option>
+                        <option value="t">t</option>
+                        <option value="l">l</option>
                         <option value="Set">Set</option>
                         <option value="Rolă">Rolă</option>
-                        <option value="Tonă">Tonă</option>
                         <option value="ens">ens</option>
                         <option value="j">j</option>
                       </select>
