@@ -271,8 +271,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
                     className={`text-center ${open.some((item) => item.id === cell.row.original.id) ? "rotate-90" : ""} text-xl`}
                     icon={faChevronRight}
                 />
-            </div>
-                
+            </div>       
             ),
         },
         { 
@@ -519,9 +518,9 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
                        
                             <th key={header.id}  className={`relative border-b-2 border-r border-black   bg-white p-2 py-4 ${header.column.id === "threeDots" ? "text-center" : ""} `}     
                             style={{
-                                width: header.column.id === "threeDots" ? '8rem' : header.column.id === "Dropdown" ? "35px" : header.column.id === "logo" ? "35px": `${header.getSize()}px`, // Enforce width for "Options"
-                                minWidth: header.column.id === "threeDots" ?  '8rem' : header.column.id === "Dropdown" ? header.column.id === "logo" ? "35px": "35px" : '', // Ensure no shrinkage
-                                maxWidth: header.column.id === "threeDots" ? '8rem' : header.column.id === "Dropdown" ? header.column.id === "logo" ? "35px": "35px" : '', // Ensure no expansion
+                                width: header.column.id === "threeDots" ? '8rem' : header.column.id === "Dropdown" ? "3rem" : header.column.id === "logo" ? "3rem": `${header.getSize()}px`, // Enforce width for "Options"
+                                minWidth: header.column.id === "threeDots" ?  '8rem' : header.column.id === "Dropdown" ? header.column.id === "logo" ? "35px": "3rem" : '', // Ensure no shrinkage
+                                maxWidth: header.column.id === "threeDots" ? '8rem' : header.column.id === "Dropdown" ? header.column.id === "logo" ? "35px": "3rem" : '', // Ensure no expansion
                             }}>
                                 <div
                                 onMouseDown={header.getResizeHandler()}

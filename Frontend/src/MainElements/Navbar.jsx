@@ -244,9 +244,9 @@ function Navbar() {
                                 {selectedBeneficiari.includes(beneficiar.id) &&
                                 <>
                                 {connectedSantiereToUser[index].santiere && connectedSantiereToUser[index].santiere.map((santier, idx) => (
-                                    <div key={idx} onClick={() => navigate(`/logedUser/Santiere/${beneficiar.id}/${santier.id}`)} className="text-lg pl-12   hover:bg-gray-200 cursor-pointer py-1" >
+                                    <div key={idx} onClick={() => navigate(`/logedUser/Santiere/${beneficiar.limba}/${beneficiar.id}/${santier.id}`)} className="text-lg pl-12   hover:bg-gray-200 cursor-pointer py-1" >
                                        <div className="flex gap-2 items-center w-full" >
-                                           <FontAwesomeIcon className={`text-base duration-300 transition-all`} icon={faChevronRight} />
+                                           <FontAwesomeIcon className={`text-base duration-300 transition-all`} onClick={() => console.log(connectedSantiereToUser)} icon={faChevronRight} />
                                            <div className="flex text-ellipsis  overflow-hidden items-center gap-2">
                                                <div className="w-6">
                                                <FontAwesomeIcon className="" icon={faHelmetSafety} />

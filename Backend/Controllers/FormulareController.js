@@ -32,7 +32,7 @@ const generareC5 = async (req,res) =>{
 
       // === MANOPERA ===
       const [manopera] = await global.db.execute(
-        `SELECT id, cost_unitar, cantitate, cod_COR , ocupatie, unitate_masura FROM Santier_retete_manopera WHERE santier_reteta_id = ?`,
+        `SELECT id, cost_unitar, cantitate, cod_COR , ocupatie, ocupatie_fr, unitate_masura FROM Santier_retete_manopera WHERE santier_reteta_id = ?`,
         [santier_reteta_id]
       );
       let cantitateManopere = 0;
@@ -46,6 +46,7 @@ const generareC5 = async (req,res) =>{
         costs[santier_reteta_id].Manopera[item.id] = {
           cod: item.cod_COR,
           articol: item.ocupatie,
+          articol_fr: item.ocupatie_fr,
           unitate_masura: item.unitate_masura,
           cantitate: item.cantitate,
           cost: item.cost_unitar,
@@ -58,7 +59,7 @@ const generareC5 = async (req,res) =>{
       
       // === MATERIALE ===
       const [materiale] = await global.db.execute(
-        `SELECT id, cost_unitar, cantitate, denumire_produs, cod_produs, tip_material, unitate_masura, clasa_material FROM Santier_retete_materiale WHERE santier_reteta_id = ?`,
+        `SELECT id, cost_unitar, cantitate, denumire_produs, denumire_produs_fr, cod_produs, tip_material, unitate_masura, clasa_material FROM Santier_retete_materiale WHERE santier_reteta_id = ?`,
         [santier_reteta_id]
       );
 
@@ -70,6 +71,7 @@ const generareC5 = async (req,res) =>{
           cod: item.cod_produs,
           clasa: item.clasa_material,
           articol: item.denumire_produs,
+          articol_fr: item.denumire_produs_fr,
           tip: item.tip_material,
           unitate_masura: item.unitate_masura,
           cantitate: item.cantitate,
@@ -82,7 +84,7 @@ const generareC5 = async (req,res) =>{
 
       // === TRANSPORT ===
       const [transport] = await global.db.execute(
-        `SELECT id, cost_unitar, cantitate, cod_transport, transport, unitate_masura, clasa_transport FROM Santier_retete_transport WHERE santier_reteta_id = ?`,
+        `SELECT id, cost_unitar, cantitate, cod_transport, transport, transport_fr , unitate_masura, clasa_transport FROM Santier_retete_transport WHERE santier_reteta_id = ?`,
         [santier_reteta_id]
       );
       let totalTransportPretReteta = 0;
@@ -93,6 +95,7 @@ const generareC5 = async (req,res) =>{
           cod: item.cod_transport,
           clasa: item.clasa_transport,
           articol: item.transport,
+          articol_fr: item.transport_fr,
           unitate_masura: item.unitate_masura,
           cost: item.cost_unitar,
           cantitate: item.cantitate,
@@ -103,7 +106,7 @@ const generareC5 = async (req,res) =>{
 
       // === UTILAJE ===
       const [utilaje] = await global.db.execute(
-        `SELECT id, cost_unitar, cantitate, clasa_utilaj, utilaj, unitate_masura FROM Santier_retete_utilaje WHERE santier_reteta_id = ?`,
+        `SELECT id, cost_unitar, cantitate, cod_utilaj, clasa_utilaj, utilaj, utilaj_fr, unitate_masura FROM Santier_retete_utilaje WHERE santier_reteta_id = ?`,
         [santier_reteta_id]
       );
 
@@ -113,7 +116,9 @@ const generareC5 = async (req,res) =>{
         totalUtilajePretReteta += item.cost_unitar * item.cantitate;
         costs[santier_reteta_id].Utilaj[item.id] = {
           clasa: item.clasa_utilaj,
+          cod: item.cod_utilaj,
           articol: item.utilaj,
+          articol_fr: item.utilaj_fr,
           unitate_masura: item.unitate_masura,
           cost: item.cost_unitar,
           cantitate: item.cantitate,

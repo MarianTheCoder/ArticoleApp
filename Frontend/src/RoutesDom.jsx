@@ -45,7 +45,7 @@ export default function RoutesDom() {
             <Route path="" element={<ProtectedRoute allowedRoles = {["ofertant","angajat","beneficiar"]}></ProtectedRoute>} />
             <Route path="addArticles" element={<ProtectedRoute allowedRoles = {['ofertant']}><RetetaProvider><RetetaForm/></RetetaProvider></ProtectedRoute>} />
             <Route path="settings" element={<ProtectedRoute allowedRoles = {["ofertant","angajat","beneficiar"]}><Settings/></ProtectedRoute>}/>
-            <Route path="Santiere/:idUser/:idSantier" element={<ProtectedRoute allowedRoles = {["ofertant"]}><SantiereRoutes/></ProtectedRoute>}/>
+            <Route path="Santiere/:limbaUser/:idUser/:idSantier" element={<ProtectedRoute allowedRoles = {["ofertant"]}><SantiereRoutes/></ProtectedRoute>}/>
             <Route path="Echipa" element={<Echipa/>}/>
             <Route path="News" element={<News/>}/>
             <Route path="Contact" element={<Contact/>}/>

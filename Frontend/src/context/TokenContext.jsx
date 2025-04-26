@@ -80,6 +80,7 @@ export const AuthProvider = ({ children }) => {
     const getUsersForSantiere = async () => {
         try {
             const response = await api.get(`/users/GetUsersName`);
+            console.log(response.data);
             const responseSantiere = await api.get(`/users/getSantiere`);
             setBeneficiari(response.data);
             setSantiere(responseSantiere.data);

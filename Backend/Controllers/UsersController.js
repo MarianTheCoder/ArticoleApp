@@ -10,7 +10,7 @@ const getAngajati = async (req,res) =>{
       return res.status(400).json({ error: 'Role is required in the request body' });
     }
     const [rows] = await global.db.execute(
-      'SELECT id, email, name, telephone, role, photo_url, created_at FROM users WHERE role = ?',
+      'SELECT id, limba, email, name, telephone, role, photo_url, created_at FROM users WHERE role = ?',
       [role]
     );
     return res.send(rows);
@@ -23,7 +23,7 @@ const getAngajati = async (req,res) =>{
   const getAngajatiName = async (req,res) =>{
     try {
       const [rows] = await global.db.execute(
-        'SELECT id, name, created_at FROM users WHERE role = ?',
+        'SELECT id, name, limba, created_at FROM users WHERE role = ?',
         ["beneficiar"]
       );
       return res.send(rows);

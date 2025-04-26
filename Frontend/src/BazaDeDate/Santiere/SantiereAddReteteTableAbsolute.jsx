@@ -10,13 +10,6 @@ import { useParams } from 'react-router-dom';
 
 export default function SantiereAddReteteTableAbsolute({
     setIsPopupOpen,
-    setObjectsLen,
-    objectsLen,
-    lastObjectIndex,
-    setLastObjectIndex,
-    open,
-    setOpen,
-    delPreviewReteta,
     fetchParentRetete
   }) {
 
@@ -91,9 +84,13 @@ export default function SantiereAddReteteTableAbsolute({
                 await api.post("/Santiere/addRetetaToInitialOferta", 
                 {
                     santier_id:idSantier,
+                    limba: selectedRetete.original.limba,
                     cod_reteta:selectedRetete.original.cod,
                     clasa_reteta:selectedRetete.original.clasa,
                     articol:selectedRetete.original.articol,
+                    articol_fr: selectedRetete.original.articol_fr,
+                    descriere_reteta:selectedRetete.original.descriere_reteta,
+                    descriere_reteta_fr:selectedRetete.original.descriere_reteta_fr,
                     unitate_masura:selectedRetete.original.unitate_masura,
                     reteta_id:selectedRetete.original.id,
                     cantitate:cantitate,
@@ -328,8 +325,8 @@ const toggleDropdown = async (e,parentId) => {
            
             </div> 
         <div className=' w-full  flex flex-col h-full justify-between gap-4 overflow-hidden p-4 '>
-            <div className="px-6 pb-4 scrollbar-webkit text-white h-full flex flex-col justify-between">
-            <div className="overflow-auto  scrollbar-webkit">
+            <div className="px-6 pb-4 scrollbar-webkit text-white overflow-auto h-full flex flex-col justify-between">
+            <div className="  scrollbar-webkit">
                 <table className="w-full  border-separate border-spacing-0 ">
                     <thead className='top-0 w-full sticky  z-10 '>
                     {table.getHeaderGroups().map(headerGroup => (

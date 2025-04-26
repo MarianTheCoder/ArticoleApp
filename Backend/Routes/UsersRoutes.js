@@ -21,12 +21,11 @@ const storage = multer.diskStorage({
 
 
 router.post('/SetUser', upload.single('photo'), async (req, res) => {
-    const { name, email, password, role, telephone } = req.body;
-    if(!name || !email || !password || !role || !telephone){
+    const { name, email, password, role, telephone, limba } = req.body;
+    if(!name || !email || !password || !role || !telephone || !limba){
       return res.status(400).json({ error: 'All fields are required' });
     }
     let photoPath = req.file ? req.file.path : `uploads/Angajati/no-user-image-square.jpg`;
-    console.log(photoPath);
     if (photoPath) {
       photoPath = path.relative(path.join(__dirname, '../'), photoPath); // Store relative path
   }
@@ -35,8 +34,8 @@ router.post('/SetUser', upload.single('photo'), async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, saltRounds);
     try {
       const [result] = await global.db.execute(
-        'INSERT INTO users (email, name, password, role, photo_url, telephone) VALUES (?, ?, ?, ?, ?, ?)',
-        [email, name, hashedPassword, role, photoPath, telephone]
+        'INSERT INTO users (limba, email, name, password, role, photo_url, telephone) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [limba, email, name, hashedPassword, role, photoPath, telephone]
       );
       res.status(200).send({
         message: 'User saved successfully.',
@@ -50,11 +49,11 @@ router.post('/SetUser', upload.single('photo'), async (req, res) => {
 
 
 router.post('/UpdateUser/:id', upload.single('photo'), async (req, res) => {
-    const { name, email, password, role, telephone } = req.body;
+    const { name, email, password, role, telephone, limba } = req.body;
     const { id } = req.params;
 
     // Validate if all fields are provided
-    if (!id || !name || !email || !password || !role || !telephone) {
+    if (!id || !name || !email || !password || !role || !telephone || !limba) {
         return res.status(400).json({ error: 'All fields are required' });
     }
     //get photo and update it
@@ -91,8 +90,8 @@ router.post('/UpdateUser/:id', upload.single('photo'), async (req, res) => {
     try {
         // Update the user in the database
         const [result] = await global.db.execute(
-            'UPDATE users SET email = ?, name = ?, telephone = ?, password = ?, role = ?, photo_url = ? WHERE id = ?',
-            [email, name, telephone, hashedPassword, role, newPhotoPath, id]
+            'UPDATE users SET limba = ?, email = ?, name = ?, telephone = ?, password = ?, role = ?, photo_url = ? WHERE id = ?',
+            [limba, email, name, telephone, hashedPassword, role, newPhotoPath, id]
         );
 
         // Check if the update was successful

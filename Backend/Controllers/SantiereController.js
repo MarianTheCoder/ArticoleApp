@@ -10,15 +10,19 @@ const addRetetaToInitialOfera = async (req, res) => {
   
       const {
         santier_id,
+        limba,
         cod_reteta,
         clasa_reteta,
         articol,
+        articol_fr,
+        descriere_reteta,
+        descriere_reteta_fr,
         unitate_masura,
         reteta_id,
         cantitate
       } = req.body;
   
-      if (!santier_id || !cod_reteta || !clasa_reteta || !articol || !unitate_masura || !reteta_id || !cantitate) {
+      if (!limba || !santier_id || !cod_reteta || !clasa_reteta || !articol || !unitate_masura || !reteta_id || !cantitate) {
         return res.status(400).json({ message: 'Missing required reteta fields.' });
       }
           // Delete existing reteta if already exists for this santier and cod_reteta
@@ -50,10 +54,10 @@ const addRetetaToInitialOfera = async (req, res) => {
       }
   
       const [retetaResult] = await connection.execute(`
-        INSERT INTO Santier_retete (santier_id, cod_reteta, clasa_reteta, articol, unitate_masura, cantitate)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO Santier_retete (santier_id, limba, cod_reteta, clasa_reteta, articol, articol_fr, descriere_reteta, descriere_reteta_fr, unitate_masura, cantitate)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
-        santier_id, cod_reteta, clasa_reteta, articol, unitate_masura, cantitate
+        santier_id, limba, cod_reteta, clasa_reteta, articol, articol_fr, descriere_reteta, descriere_reteta_fr, unitate_masura, cantitate
       ]);
   
       const santier_reteta_id = retetaResult.insertId;
@@ -69,12 +73,14 @@ const addRetetaToInitialOfera = async (req, res) => {
   
       for (const m of manoperaRows) {
         await connection.execute(`
-          INSERT INTO Santier_retete_manopera (santier_reteta_id, cod_COR, ocupatie, unitate_masura, cost_unitar, cantitate)
-          VALUES (?, ?, ?, ?, ?, ?)
+          INSERT INTO Santier_retete_manopera (santier_reteta_id, limba, cod_COR, ocupatie, ocupatie_fr, unitate_masura, cost_unitar, cantitate)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `, [
           santier_reteta_id,
+          m.limba,
           m.cod_COR,
           m.ocupatie,
+          m.ocupatie_fr,
           m.unitate_masura,
           m.cost_unitar,
           m.cantitate_reteta
@@ -101,14 +107,17 @@ const addRetetaToInitialOfera = async (req, res) => {
         if (fs.existsSync(sourcePath)) fs.copyFileSync(sourcePath, destPath);
   
         await connection.execute(`
-          INSERT INTO Santier_retete_materiale (santier_reteta_id, cod_produs, tip_material, denumire_produs, descriere_produs, photoUrl, unitate_masura, cost_unitar, cantitate, furnizor, clasa_material)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO Santier_retete_materiale (santier_reteta_id, limba, cod_produs, tip_material, denumire_produs, denumire_produs_fr, descriere_produs, descriere_produs_fr, photoUrl, unitate_masura, cost_unitar, cantitate, furnizor, clasa_material)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
           santier_reteta_id,
+          mat.limba,
           mat.cod_produs,
           mat.tip_material,
           mat.denumire_produs,
-          mat.descriere_produs || '',
+          mat.denumire_produs_fr,
+          mat.descriere_produs,
+          mat.descriere_produs_fr,
           relativePath,
           mat.unitate_masura,
           mat.pret_vanzare,
@@ -137,13 +146,17 @@ const addRetetaToInitialOfera = async (req, res) => {
   
         if (fs.existsSync(sourcePath)) fs.copyFileSync(sourcePath, destPath);
         await connection.execute(`
-          INSERT INTO Santier_retete_utilaje (santier_reteta_id, clasa_utilaj, utilaj, descriere_utilaj, photoUrl, status_utilaj, unitate_masura, cost_amortizare, cost_unitar, cantitate)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO Santier_retete_utilaje (santier_reteta_id, limba, clasa_utilaj, cod_utilaj, utilaj, utilaj_fr,  descriere_utilaj, descriere_utilaj_fr, photoUrl, status_utilaj, unitate_masura, cost_amortizare, cost_unitar, cantitate)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
           santier_reteta_id,
+          u.limba,
           u.clasa_utilaj,
+          u.cod_utilaj,
           u.utilaj,
+          u.utilaj_fr,
           u.descriere_utilaj,
+          u.descriere_utilaj_fr,
           relativePath,
           u.status_utilaj,
           u.unitate_masura,
@@ -163,13 +176,15 @@ const addRetetaToInitialOfera = async (req, res) => {
   
       for (const t of transportRows) {
         await connection.execute(`
-          INSERT INTO Santier_retete_transport (santier_reteta_id, cod_transport, clasa_transport, transport, unitate_masura, cost_unitar, cantitate)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO Santier_retete_transport (santier_reteta_id, limba, cod_transport, clasa_transport, transport, transport_fr, unitate_masura, cost_unitar, cantitate)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `, [
           santier_reteta_id,
+          t.limba,
           t.cod_transport,
           t.clasa_transport,
           t.transport,
+          t.transport_fr,
           t.unitate_masura,
           t.cost_unitar,
           t.cantitate_reteta
@@ -574,7 +589,7 @@ const addRetetaToInitialOfera = async (req, res) => {
       try {
         const { id } = req.params;  // Get the santier_id from the route parameter
         const queryName = `
-          SELECT name FROM Santiere
+          SELECT name, user_id FROM Santiere
           WHERE id = ?
         `;
         const [rowsName] = await global.db.execute(queryName, [id]); 
@@ -601,5 +616,75 @@ const addRetetaToInitialOfera = async (req, res) => {
         res.status(500).json({ message: "Internal server error" });
       }
     };
+    const updateSantierDetails = async (req, res) => {
+      try {
+        const { id } = req.params;  // Get the santier_id from the route parameter
+        const {
+          nume,
+          beneficiar,
+          adresa,
+          email,
+          telefon,
+          creatDe,
+          aprobatDe,
+          detalii_executie,
+          latitudine,
+          longitudine
+        } = req.body;
 
-  module.exports = {addRetetaToInitialOfera, getReteteLightForSantiere, getSantiereDetails, deleteRetetaFromSantier, getSpecificRetetaForOfertaInitiala, getReteteLightForSantiereWithPrices, updateSantierRetetaPrices};
+        // Construct the SQL query to update the details of the santier in the Santiere_detalii table
+        const query = `
+          UPDATE Santiere_detalii
+          SET 
+            beneficiar = ?, 
+            adresa = ?, 
+            email = ?, 
+            telefon = ?, 
+            creatDe = ?, 
+            aprobatDe = ?, 
+            detalii_executie = ?, 
+            latitudine = ?, 
+            longitudine = ?
+          WHERE santier_id = ?
+        `;
+    
+        // Execute the update query
+        const [result] = await global.db.execute(query, [
+          beneficiar,
+          adresa,
+          email,
+          telefon,
+          creatDe,
+          aprobatDe,
+          detalii_executie,
+          latitudine,
+          longitudine,
+          id // santier_id from the route params
+        ]);
+
+        const querySantier = `
+          UPDATE Santiere
+          SET 
+            name = ?
+          WHERE id = ?
+        `;
+        const [resultSantier] = await global.db.execute(querySantier, [
+          nume,
+          id 
+        ]);
+
+        // If no rows were affected, return an error (Santier not found or update failed)
+        if (result.affectedRows === 0) {
+          return res.status(404).json({ message: "Santier not found or no changes made" });
+        }
+    
+        // If update is successful, send a success response
+        res.status(200).json({ message: "Santier details updated successfully!" });
+      } catch (error) {
+        console.error("Error updating santier details:", error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    };
+    
+
+  module.exports = {addRetetaToInitialOfera, getReteteLightForSantiere, updateSantierDetails, getSantiereDetails, deleteRetetaFromSantier, getSpecificRetetaForOfertaInitiala, getReteteLightForSantiereWithPrices, updateSantierRetetaPrices};

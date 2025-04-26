@@ -72,6 +72,7 @@ async function initializeDatabase() {
     const createAngajatiTableQuery = `
       CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
+        limba VARCHAR(20) NOT NULL DEFAULT 'RO',
         email VARCHAR(100) NOT NULL UNIQUE,
         name VARCHAR(50) NOT NULL,
         password VARCHAR(255) NOT NULL,
@@ -312,7 +313,8 @@ console.log("Retete_Transport table created or already exists.");
     adresa VARCHAR(255) DEFAULT '...',
     email VARCHAR(255) DEFAULT '...',
     telefon VARCHAR(50) DEFAULT '...',
-    persoana_responsabila VARCHAR(255) DEFAULT '...',
+    aprobatDe VARCHAR(255) DEFAULT '...',
+    creatDe VARCHAR(255) DEFAULT '...',
     detalii_executie TEXT DEFAULT '...',
     santier_id INT NOT NULL ,
     FOREIGN KEY (santier_id) REFERENCES Santiere(id),
@@ -406,6 +408,7 @@ console.log("Santiere details table created or already exists.");
     limba VARCHAR(20) NOT NULL DEFAULT 'RO',
     santier_reteta_id INT NOT NULL,
     clasa_utilaj VARCHAR(255) NOT NULL,
+    cod_utilaj VARCHAR(255) NOT NULL,
     utilaj TEXT NOT NULL,
     utilaj_fr TEXT,
     descriere_utilaj TEXT NOT NULL,

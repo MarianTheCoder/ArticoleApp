@@ -1,5 +1,4 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { generatePDF } from './GeneratePDF';
 import api from '../../api/axiosAPI';
 import { flexRender, getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -11,12 +10,17 @@ import SantiereAddReteteTable from './SantiereAddReteteTableAbsolute';
 import { useParams } from 'react-router-dom';
 import CostInputCell from './CostCell';
 
+import {FormularRasfirat} from './Formulare/Romania/FormularRasfirat';
+import { FormularCompact } from './Formulare/Romania/FormularCompact';
+import { FormularCompactFR } from './Formulare/Franta/FormularCompactFR';
+import { FormularRasfiratFR } from './Formulare/Franta/FormularRasfiratFR';
+
 
 
 
 export default function SantiereAdd() {
 
-    const {idSantier} = useParams();
+    const {idSantier, limbaUser} = useParams();
 
     const [openDropdowns, setOpenDropdowns] = useState(new Set());
     const [isPopupOpen, setIsPopupOpen] = useState(false);
@@ -48,7 +52,7 @@ export default function SantiereAdd() {
         utilaje: 0,
         cheltuieliDirecte: 0,
     })
-    const [selectedFormular , setSelectedFormular] = useState('C6')
+    const [selectedFormular , setSelectedFormular] = useState(limbaUser == 'RO' ? 'Răsfirat' : 'RăsfiratFR');
 
     const [objectsLen, setObjectsLen] = useState(0); 
     const [objectsID, setObjectsID] = useState(null); 
@@ -118,6 +122,31 @@ export default function SantiereAdd() {
     //         [name]: value,
     //     }));
     // };
+
+
+
+    //CE FROMULAR SELECTAM?
+    const handleFormular = () =>{
+      console.log(selectedFormular);
+      switch (selectedFormular) {
+        case 'Răsfirat':
+          FormularRasfirat(idSantier, recapitulatii, TVA)
+          break;
+        case 'Compact':
+          FormularCompact(idSantier, recapitulatii, TVA);
+          break;  
+        case "CompactFR":
+          FormularCompactFR(idSantier, recapitulatii, TVA);
+          break;
+        case "RăsfiratFR":
+          FormularRasfiratFR(idSantier, recapitulatii, TVA);
+          break;
+
+        default:
+          break;
+      }
+    }
+
 
 
     //handle selected edit/delete
@@ -788,24 +817,27 @@ export default function SantiereAdd() {
                       <label htmlFor="unit" className=" font-medium text-black">
                         Selecteaza un formular 
                       </label>
-                      <select
-                        id="unitate_masura"
-                        name="unitate_masura"
+                 { limbaUser == "RO" ?     
+                    <select
                         value={selectedFormular}
                         onChange={(e) => setSelectedFormular(e.target.value)}
                         className=" px-2 py-2 w-56 text-black  rounded-lg outline-none shadow-sm "
                       >
-                        <option value="C4">Formular C4</option>
-                        <option value="C5">Formular C5</option>
-                        <option value="C6">Formular C6</option>
-                        <option value="C7">Formular C7</option>
-                        <option value="C8">Formular C8</option>
-                        <option value="C9">Formular C9</option>
-                        <option value="F3">Formular F3</option>
-             
-                      </select>
+                        <option value="Răsfirat">Formular Răsfirat</option>
+                        <option value="Compact">Formular Compact</option>     
+                     </select>
+                     :
+                     <select
+                      value={selectedFormular}
+                      onChange={(e) => setSelectedFormular(e.target.value)}
+                      className=" px-2 py-2 w-56 text-black  rounded-lg outline-none shadow-sm "
+                    >
+                      <option value="RăsfiratFR">Formular Răsfirat FR</option>
+                      <option value="CompactFR">Formular Compact FR</option>     
+                    </select>
+                  }
                   </div>
-                    <button   onClick={() => generatePDF(idSantier, selectedFormular , recapitulatii , TVA)} className='bg-green-500 cursor-pointer flex gap-2 justify-center font-medium items-center p-2 mt-6 text-base tracking-wide hover:bg-green-600 text-black rounded-lg flex-grow'><FontAwesomeIcon icon={faFileExport}/>Genereaza</button>
+                    <button onClick={() => handleFormular()} className='bg-green-500 cursor-pointer flex gap-2 justify-center font-medium items-center p-2 mt-6 text-base tracking-wide hover:bg-green-600 text-black rounded-lg flex-grow'><FontAwesomeIcon icon={faFileExport}/>Genereaza</button>
             </div>
           </div>
           

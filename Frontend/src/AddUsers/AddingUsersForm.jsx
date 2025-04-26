@@ -14,6 +14,7 @@ export default function AddingUsersForm() {
   const {clicked, getAngajati, setConfirmDel, confirmDel, deleteAngajat, setEditAngajat, editAngajat, preview, setPreview, setSelectedFile, selectedFile} = useContext(AngajatiContext);
 
   const [formData, setFormData] = useState({
+      limba: "RO",
       email:"",
       name:"",
       password:"",
@@ -24,6 +25,7 @@ export default function AddingUsersForm() {
   useEffect(() => {
     if(clicked != formData.role){
       setFormData({
+        limba: "RO",
         email:"",
         name:"",
         password:"",
@@ -38,6 +40,7 @@ export default function AddingUsersForm() {
     else{
       if(editAngajat != null){
         setFormData({
+          limba: editAngajat.limba,
           email: editAngajat.email,
           name: editAngajat.name,
           password: "",
@@ -50,6 +53,7 @@ export default function AddingUsersForm() {
       }
       else{
         setFormData({
+          limba: "RO",
           email:"",
           name:"",
           password:"",
@@ -79,7 +83,7 @@ export default function AddingUsersForm() {
     data.append('telephone', formData.telephone);
     data.append('role', roles[formData.role-1]);
     data.append('photo', selectedFile);
-
+    data.append("limba", formData.limba);
     try {
       if(editAngajat != null){
         let res = await api.post(`/users/UpdateUser/${editAngajat.id}`, data, {
@@ -99,6 +103,7 @@ export default function AddingUsersForm() {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
         setFormData({
+          limba: "RO",
           email:"",
           name:"",
           password:"",
@@ -171,7 +176,26 @@ export default function AddingUsersForm() {
     <div className='w-full containerWhiter'>
       <div className="flex  justify-center items-center text-black  ">
         <form onSubmit={handleSubmit} className="w-full p-6 px-12 rounded-xl shadow-xl">
-          <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_auto] xxxl:gap-12 md:gap-6 xl:gap-8 items-center">
+          <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr_auto] xxxl:gap-12 md:gap-6 xl:gap-8 items-center">
+            { formData.role == 3 ?          
+              <div className="flex flex-col items-center">
+                      <label htmlFor="unit" className="col-span-1 font-medium text-black">
+                        Limbă
+                      </label>
+                      <select
+                        id="limba"
+                        name="limba"
+                        value={formData.limba}
+                        onChange={handleChange}
+                        className=" px-6 py-2 rounded-lg outline-none shadow-sm "
+                      >
+                        <option value="RO">RO</option>
+                        <option value="FR">FR</option>
+                      </select>
+                  </div>
+                  :
+                  ""
+                }
         {/* photourl */}
           <div className="flex flex-col items-center w-full">
               <div className=' items-center gap-4 flex w-full'>
