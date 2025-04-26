@@ -332,11 +332,23 @@ console.log("Santiere details table created or already exists.");
   //
   // CREATE SANTIERE TABLES
   // Santier_retete
+  const createOfertaReteteTable = `
+    CREATE TABLE IF NOT EXISTS Oferta (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,  
+        santier_id INT NOT NULL,  
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (santier_id) REFERENCES Santiere(id) 
+    );
+  `;
+  await pool.execute(createOfertaReteteTable);
+  console.log("Santier_Oferta table created or already exists.");
+
   const createSantierReteteTable = `
   CREATE TABLE IF NOT EXISTS Santier_retete (
     id INT AUTO_INCREMENT PRIMARY KEY,
     limba VARCHAR(20) NOT NULL DEFAULT 'RO',
-    santier_id INT NOT NULL,
+    oferta_id INT NOT NULL,
     cod_reteta VARCHAR(255) NOT NULL,
     clasa_reteta VARCHAR(255) NOT NULL,
     articol TEXT NOT NULL,
@@ -346,7 +358,7 @@ console.log("Santiere details table created or already exists.");
     unitate_masura VARCHAR(255) NOT NULL,
     cantitate DECIMAL(10,3) NOT NULL,
     data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (santier_id) REFERENCES Santiere(id)
+    FOREIGN KEY (oferta_id) REFERENCES Oferta(id)  
   );
   `;
   await pool.execute(createSantierReteteTable);

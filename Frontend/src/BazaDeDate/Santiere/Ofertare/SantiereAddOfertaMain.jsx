@@ -1,19 +1,17 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react'
-import api from '../../api/axiosAPI';
+import api from '../../../api/axiosAPI';
 import { flexRender, getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowDown, faArrowDownAZ, faArrowRotateRight, faArrowUpAZ, faCancel, faCar, faChevronDown, faChevronRight, faCopy, faEllipsis, faEquals, faFileExport, faFolder, faL, faPenToSquare, faPerson, faPlus, faTrashCan, faTrowelBricks, faTruck, faUser } from '@fortawesome/free-solid-svg-icons';
-import { RetetaContext } from '../../context/RetetaContext';
-import photoAPI from '../../api/photoAPI';
-import ReteteAdaugareObiecte from '../Retete/ReteteAdaugareObiecte';
+import photoAPI from '../../../api/photoAPI';
 import SantiereAddReteteTable from './SantiereAddReteteTableAbsolute';
 import { useParams } from 'react-router-dom';
 import CostInputCell from './CostCell';
 
-import {FormularRasfirat} from './Formulare/Romania/FormularRasfirat';
-import { FormularCompact } from './Formulare/Romania/FormularCompact';
-import { FormularCompactFR } from './Formulare/Franta/FormularCompactFR';
-import { FormularRasfiratFR } from './Formulare/Franta/FormularRasfiratFR';
+import {FormularRasfirat} from '../Formulare/Romania/FormularRasfirat';
+import { FormularCompact } from '../Formulare/Romania/FormularCompact';
+import { FormularCompactFR } from '../Formulare/Franta/FormularCompactFR';
+import { FormularRasfiratFR } from '../Formulare/Franta/FormularRasfiratFR';
 
 
 

@@ -1,9 +1,9 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react'
-import api from '../../api/axiosAPI';
+import api from '../../../api/axiosAPI';
 import { flexRender, getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowDown, faArrowDownAZ, faArrowUpAZ, faCancel, faCar, faChevronDown, faChevronRight, faCopy, faEllipsis, faFolder, faL, faPenToSquare, faPerson, faPlus, faTrashCan, faTrowelBricks, faTruck, faUser, faX } from '@fortawesome/free-solid-svg-icons';
-import photoAPI from '../../api/photoAPI';
+import photoAPI from '../../../api/photoAPI';
 import { useParams } from 'react-router-dom';
 
 

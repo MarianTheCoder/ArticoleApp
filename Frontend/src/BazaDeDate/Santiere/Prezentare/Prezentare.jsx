@@ -181,6 +181,28 @@ export default function Prezentare() {
                     >
                     
                     </textarea>
+                    <div className='w-full flex gap-4 items-center justify-center'>
+                        <label htmlFor="latitudine" className="">Latitudine:</label>
+                        <input
+                            disabled={isDisabled}
+                            type="text"
+                            id="latitudine"
+                            name="latitudine"
+                            value={formData.latitudine}
+                            onChange={handleChange}
+                            className={`px-2 outline outline-1 text-center py-2 rounded-lg shadow-lg ${isDisabled ? "outline-gray-300" : "outline-green-500"} w-full`} 
+                        />
+                            <label htmlFor="latitudine" className="">Longitudine:</label>
+                        <input
+                            disabled={isDisabled}
+                            type="text"
+                            id="longitudine"
+                            name="longitudine"
+                            value={formData.longitudine}
+                            onChange={handleChange}
+                            className={`px-2 outline outline-1 text-center py-2 rounded-lg shadow-lg ${isDisabled ? "outline-gray-300" : "outline-green-500"} w-full`} 
+                        />
+                    </div>
                 </div>
                 <div className='flex bg-white rounded-xl flex-col  justify-between '>
                     <div className=' rounded-xl p-4 pb-0 flex  items-center  '>Creat de :&nbsp;&nbsp;
