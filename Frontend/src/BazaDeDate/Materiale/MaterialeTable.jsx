@@ -146,6 +146,7 @@ export default function ManoperaTable({reloadKey, selectedDouble, cancelDouble, 
     }
 
     const handleSelectedForEdit = (e,passedRow) => {
+        console.log(passedRow)
         e.stopPropagation();
         cancelDouble(e);
         setSelectedEdit(passedRow.id)// Toggle the dropdown based on the current state
@@ -168,6 +169,16 @@ export default function ManoperaTable({reloadKey, selectedDouble, cancelDouble, 
         setSelectedFile(null);
         setSelectedDelete(null);
     }
+
+
+    const translateAll = () => {
+        // If there are any rows that are selected, iterate through and update the `selectedRetetaIds`
+        setSelectedMaterialeIds((prev) => {
+            const updatedSelectedIds = materiale.map((material) => material.id); // All `retete` ids
+            // If a `reteta` is already selected, it will be removed from the list
+            return prev.length === materiale.length ? [] : updatedSelectedIds; // Toggle all if all are selected
+        });
+    };
 
     const toggleRetetaSelection = (id) => {
         setSelectedMaterialeIds((prev) => {
@@ -503,11 +514,19 @@ export default function ManoperaTable({reloadKey, selectedDouble, cancelDouble, 
                                             placeholder="Filtru Descriere"
                                         />
                                     </th>
-                                    <th className=" bg-white border-b border-r border-black" colSpan={6}>
+                                    <th className=" bg-white border-b border-r border-black" colSpan={4}>
                                        <div className=' flex  justify-center items-center'>
                                             <p className='px-2'>Arată</p>
                                             <input className='border border-black p-1 w-12 text-center rounded-lg' type="text" onChange={(e) => handleLimit(e)} value={limit} name="" id="" />
                                             <p className='px-2'>rânduri</p>
+                                       </div>
+                                    </th>
+                                    <th className='border-b border-r border-black bg-white' colSpan={1}>
+                                        <div className='flex  w-full justify-center  items-center'>
+                                            <div onClick={() => translateAll()} className='bg-blue-500 rounded-xl px-4 hover:bg-blue-600 hover:cursor-pointer flex gap-2 p-2 items-center justify-center'>
+                                                <FontAwesomeIcon className='text-white text-lg' icon={faLanguage}/>
+                                                <span className='font-semibold'>Tot</span>
+                                            </div>
                                        </div>
                                     </th>
                                 </tr>

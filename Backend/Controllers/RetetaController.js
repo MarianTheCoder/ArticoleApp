@@ -189,35 +189,59 @@ const addReteta = async (req,res) =>{
 
 const getReteteLight = async (req,res) =>{
   try {
-    const { clasa = '', cod = '', articol = '' } = req.query;
-
+    const { clasa = '', cod = '', articol = '', limba = "" } = req.query;
+    const asc_articol = req.query.asc_articol === "true";
 
     // Start constructing the base query
-    let query = `SELECT * FROM Retete`;  // Assuming 'retete' is the name of your table
+    let query = `
+      SELECT 
+        r.id, 
+        r.limba, 
+        r.cod_reteta AS cod, 
+        r.clasa_reteta AS clasa, 
+        r.articol, 
+        r.articol_fr, 
+        r.descriere_reteta, 
+        r.descriere_reteta_fr, 
+        r.unitate_masura, 
+        r.data,
+        (SELECT COUNT(*) FROM Retete_manopera rm WHERE rm.reteta_id = r.id) > 0 AS has_manopera,
+        (SELECT COUNT(*) FROM Retete_materiale rmt WHERE rmt.reteta_id = r.id) > 0 AS has_materiale,
+        (SELECT COUNT(*) FROM Retete_utilaje ru WHERE ru.reteta_id = r.id) > 0 AS has_utilaje,
+        (SELECT COUNT(*) FROM Retete_transport rt WHERE rt.reteta_id = r.id) > 0 AS has_transport
+      FROM Retete r
+    `;
     let queryParams = [];
     let whereClauses = [];
 
     // Conditionally add filters to the query
     if (clasa.trim() !== "") {
-      whereClauses.push(`clasa_reteta LIKE ?`);
+      whereClauses.push(`r.clasa_reteta LIKE ?`);
       queryParams.push(`%${clasa}%`);
     }
 
+    if (limba.trim() !== "") {
+      whereClauses.push(`r.limba LIKE ?`);
+      queryParams.push(`%${limba}%`);
+    }
+
     if (cod.trim() !== "") {
-      whereClauses.push(`cod_reteta LIKE ?`);
+      whereClauses.push(`r.cod_reteta LIKE ?`);
       queryParams.push(`%${cod}%`);
     }
 
     if (articol.trim() !== "") {
-      whereClauses.push(`articol LIKE ?`);
-      queryParams.push(`%${articol}%`);
+      whereClauses.push("(r.articol LIKE ? OR r.articol_fr LIKE ?)");
+      queryParams.push(`%${articol}%`, `%${articol}%`);
     }
 
     // If there are any filters, add them to the query
     if (whereClauses.length > 0) {
       query += ` WHERE ${whereClauses.join(' AND ')}`;
     }
-
+    if (asc_articol) {
+      query += ' ORDER BY r.articol ASC';
+    }
     // Execute the query with filters and pagination
     const [rows] = await global.db.execute(query, queryParams);
 

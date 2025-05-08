@@ -96,9 +96,9 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
         if(retete){
             setOpen((prev) => prev.filter((item) => item !== id));
             const updatedRetete = [...retete];
-            const retetaIndex = updatedRetete.findIndex(item => item.id === id);
+            const retetaIndex = updatedRetete.findIndex(item => item.id === id && (item.whatIs === null || item.whatIs === undefined)); // sa fie diferit de manopere/material etc
             const addButtonIndex = updatedRetete.findIndex(item => item.id === `addButton-${id}`);
-            console.log(retetaIndex, addButtonIndex);
+            // console.log("reteIDX ", retetaIndex, "btnIDX ", addButtonIndex);
             if (addButtonIndex !== -1 && retetaIndex !== -1 && addButtonIndex > retetaIndex) {
                 updatedRetete.splice(retetaIndex + 1, addButtonIndex - retetaIndex);  
                 setRetete([...updatedRetete]);  
@@ -136,6 +136,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
 
 
     const toggleDropdown = (id, index) => {
+        // console.log("id ", id, "index ", index)
         if (open.includes(id)) {
             delPreviewReteta(id);
             return;   
@@ -239,6 +240,18 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
             console.error('Error fetching data:', error);
         }
     }
+
+    //translate all and transalte 1
+
+    const translateAll = () => {
+        // If there are any rows that are selected, iterate through and update the `selectedRetetaIds`
+        setSelectedRetetaIds((prev) => {
+            const updatedSelectedIds = retete.map((reteta) => reteta.id); // All `retete` ids
+            // If a `reteta` is already selected, it will be removed from the list
+            return prev.length === retete.length ? [] : updatedSelectedIds; // Toggle all if all are selected
+        });
+    };
+
     const toggleRetetaSelection = (id) => {
         setSelectedRetetaIds((prev) => {
           return prev.includes(id)
@@ -309,7 +322,10 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
                     <FontAwesomeIcon onClick={() => setAscendentCOD((prev) => prev == false ? true : false)} className="text-xl border border-black p-2  rounded-full  cursor-pointer" icon={!ascendentCOD ? faArrowUpAZ : faArrowDownAZ} /> 
                 </div>
             ),
-            size:155 
+            cell: ({ getValue, row }) => (
+                getValue().replace(/(\d{2})(?=\d)/g, "$1 ")
+            ) , 
+            size:175 
         },
         { accessorKey: "clasa", header: "Clasă", size:300},
         { 
@@ -504,11 +520,19 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
                                             placeholder="Filtru Articol"
                                         />
                                     </th>
-                                    <th className=" bg-white border-b border-r border-black" colSpan={6}>
+                                    <th className=" bg-white border-b border-r border-black" colSpan={5}>
                                        <div className=' flex  justify-center items-center'>
                                             <p className='px-2'>Arată</p>
                                             <input className='border border-black p-1 w-12 text-center rounded-lg' type="text" onChange={(e) => handleLimit(e)} value={limit} name="" id="" />
                                             <p className='px-2'>rânduri</p>
+                                       </div>
+                                    </th>
+                                    <th className='border-b border-r border-black bg-white' colSpan={1}>
+                                        <div className='flex  w-full justify-center  items-center'>
+                                            <div onClick={() => translateAll()} className='bg-blue-500 rounded-xl px-4 hover:bg-blue-600 hover:cursor-pointer flex gap-2 p-2 items-center justify-center'>
+                                                <FontAwesomeIcon className='text-white text-lg' icon={faLanguage}/>
+                                                <span className='font-semibold'>Tot</span>
+                                            </div>
                                        </div>
                                     </th>
                                 </tr>

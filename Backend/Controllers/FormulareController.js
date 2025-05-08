@@ -5,10 +5,10 @@ const generareC5 = async (req,res) =>{
   try {
     // Get all retete for the santier
     const [reteteRows] = await global.db.execute(
-      `SELECT * FROM Santier_retete WHERE santier_id = ? ORDER BY clasa_reteta ASC`,
+      `SELECT * FROM Santier_retete WHERE oferta_parts_id = ? ORDER BY clasa_reteta ASC`,
       [id]
     );
-
+    // console.log(id);
     const results = [];
     const costs = {};
     let totalManoperaOre = 0;
@@ -145,7 +145,7 @@ const generareC5 = async (req,res) =>{
     });
 
   } catch (error) {
-      res.status(400).send("Eroare la generare de PDF" , error);
+    res.status(400).json({ message: "Eroare la generare de PDF", error: error.message });
   }
 }
 
@@ -153,11 +153,11 @@ const generareC5 = async (req,res) =>{
 const generareC6 = async (req,res) =>{
     const { id } = req.params; // santier_id
     const { recapitulatii, TVA } = req.query;
-    console.log(recapitulatii , TVA);
+    // console.log(recapitulatii , TVA);
     try {
       // Get all retete for the santier
       const [reteteRows] = await global.db.execute(
-        `SELECT * FROM Santier_retete WHERE santier_id = ? ORDER BY clasa_reteta ASC`,
+        `SELECT * FROM Santier_retete WHERE oferta_parts_id = ? ORDER BY clasa_reteta ASC`,
         [id]
       );
   
@@ -277,7 +277,7 @@ const generareC6 = async (req,res) =>{
       });
   
     } catch (error) {
-        res.status(400).send("Eroare la generare de PDF" , error);
+      res.status(400).json({ message: "Eroare la generare de PDF", error: error.message });
     }
 }
 
@@ -289,7 +289,7 @@ const generareC8 = async (req, res) => {
   try {
     // Get all retete for the santier
     const [reteteRows] = await global.db.execute(
-      `SELECT * FROM Santier_retete WHERE santier_id = ?`,
+      `SELECT * FROM Santier_retete WHERE oferta_parts_id = ?`,
       [id]
     );
 
@@ -330,7 +330,7 @@ const generareC8 = async (req, res) => {
 
   } catch (error) {
     console.error("Eroare la generare de PDF:", error);
-    res.status(400).send("Eroare la generare de PDF");
+    res.status(400).json({ message: "Eroare la generare de PDF", error: error.message });
   }
 };
 

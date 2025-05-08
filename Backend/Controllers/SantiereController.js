@@ -9,7 +9,7 @@ const addRetetaToInitialOfera = async (req, res) => {
       await connection.beginTransaction();
   
       const {
-        santier_id,
+        oferta_part,
         limba,
         cod_reteta,
         clasa_reteta,
@@ -21,14 +21,14 @@ const addRetetaToInitialOfera = async (req, res) => {
         reteta_id,
         cantitate
       } = req.body;
-  
-      if (!limba || !santier_id || !cod_reteta || !clasa_reteta || !articol || !unitate_masura || !reteta_id || !cantitate) {
+
+      if (!limba || !oferta_part || !cod_reteta || !clasa_reteta || !articol || !unitate_masura || !reteta_id || !cantitate) {
         return res.status(400).json({ message: 'Missing required reteta fields.' });
       }
           // Delete existing reteta if already exists for this santier and cod_reteta
     const [existing] = await connection.execute(
-        `SELECT id FROM Santier_retete WHERE santier_id = ? AND cod_reteta = ?`,
-        [santier_id, cod_reteta]
+        `SELECT id FROM Santier_retete WHERE oferta_parts_id = ? AND cod_reteta = ? AND articol = ?`,
+        [oferta_part, cod_reteta, articol]
       );
   
       if (existing.length > 0) {
@@ -54,10 +54,10 @@ const addRetetaToInitialOfera = async (req, res) => {
       }
   
       const [retetaResult] = await connection.execute(`
-        INSERT INTO Santier_retete (santier_id, limba, cod_reteta, clasa_reteta, articol, articol_fr, descriere_reteta, descriere_reteta_fr, unitate_masura, cantitate)
+        INSERT INTO Santier_retete (oferta_parts_id, limba, cod_reteta, clasa_reteta, articol, articol_fr, descriere_reteta, descriere_reteta_fr, unitate_masura, cantitate)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
-        santier_id, limba, cod_reteta, clasa_reteta, articol, articol_fr, descriere_reteta, descriere_reteta_fr, unitate_masura, cantitate
+        oferta_part, limba, cod_reteta, clasa_reteta, articol, articol_fr, descriere_reteta, descriere_reteta_fr, unitate_masura, cantitate
       ]);
   
       const santier_reteta_id = retetaResult.insertId;
@@ -226,8 +226,10 @@ const addRetetaToInitialOfera = async (req, res) => {
   
     try {
       // Get all retete for the santier
-      const [reteteRows] = await global.db.execute(
-        `SELECT * FROM Santier_retete WHERE santier_id = ?`,
+      const [reteteRows] = await global.db.execute( 
+        `SELECT id,limba,text_aditional, oferta_parts_id, cod_reteta as cod , clasa_reteta as clasa, 
+                articol, articol_fr, descriere_reteta, descriere_reteta_fr, unitate_masura, cantitate     
+                FROM Santier_retete WHERE oferta_parts_id = ?`,
         [id]
       );
   
@@ -397,6 +399,7 @@ const addRetetaToInitialOfera = async (req, res) => {
     
               u.id AS utilaj_id, 
               u.utilaj, 
+              u.cod_utilaj, 
               u.clasa_utilaj, 
               u.descriere_utilaj, 
               u.status_utilaj, 
@@ -492,6 +495,7 @@ const addRetetaToInitialOfera = async (req, res) => {
              utilaje.push({
                whatIs:"Utilaj",
                id: row.utilaj_id,
+               cod: row.cod_utilaj,
                status:row.status_utilaj,
                articol: row.utilaj,
                descriere:row.descriere_utilaj,
@@ -616,6 +620,9 @@ const addRetetaToInitialOfera = async (req, res) => {
         res.status(500).json({ message: "Internal server error" });
       }
     };
+
+
+
     const updateSantierDetails = async (req, res) => {
       try {
         const { id } = req.params;  // Get the santier_id from the route parameter
@@ -685,6 +692,223 @@ const addRetetaToInitialOfera = async (req, res) => {
         res.status(500).json({ message: "Internal server error" });
       }
     };
+
+
+
+
+//OFERTE
+//
+//
+//
+//
+//
+    const getOferteForThisSantier = async (req, res) => {
+      try {
+        const { id } = req.params;  // Get the santier_id from the route parameter
+        
+        // Query to fetch the names and count of offers associated with this santier
+        const query = `
+          SELECT id,name 
+          FROM Oferta
+          WHERE santier_id = ?
+        `;
+        
+        // Execute the query
+        const [offers] = await global.db.execute(query, [id]);
+      
+        // Return the list of offers and the count
+        res.status(200).json({
+          santier_id: id,
+          offers: offers // Extract the name of each offer
+        });
+      } catch (error) {
+        console.error("Error fetching offers:", error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    };
+
+    const changeNameForOferta = async (req, res) => {
+      try {
+        const { id } = req.params; // Get the offer id from the route parameter
+        const { name } = req.body; // Get the new name from the request body
+        
+        // Validate the name (optional but recommended)
+        if (!name || name.trim().length === 0) {
+          return res.status(400).json({ message: "Name is required and cannot be empty" });
+        }
+    
+        // SQL query to update the offer name
+        const query = `
+          UPDATE Oferta
+          SET name = ?
+          WHERE id = ?
+        `;
+    
+        // Execute the query
+        const [result] = await global.db.execute(query, [name, id]);
+    
+        // Check if any rows were affected
+        if (result.affectedRows === 0) {
+          return res.status(404).json({ message: "Offer not found" });
+        }
+    
+        // Return success response
+        res.status(200).json({
+          message: "Offer name updated successfully",
+          updatedOffer: { id, name }
+        });
+      } catch (error) {
+        console.error("Error updating offer name:", error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    };
+
+    const addOfertaToTheSantier = async (req, res) => {
+      try {
+        const { id } = req.params; // Get the santier_id from the route parameter
+        
+        // Query to count the number of offers associated with this santier
+        const countQuery = `
+          SELECT COUNT(*) AS offer_count 
+          FROM Oferta 
+          WHERE santier_id = ?;
+        `;
+        
+        // Execute the count query
+        const [countResult] = await global.db.execute(countQuery, [id]);
+        const offerCount = countResult[0].offer_count;
+        
+        // Generate the new offer name based on the count
+        const newOfferName = `Oferta ${offerCount + 1}`;
+        
+        // Query to insert a new offer
+        const insertQuery = `
+          INSERT INTO Oferta (name, santier_id)
+          VALUES (?, ?);
+        `;
+        
+        // Execute the insert query
+        const [insertResult] = await global.db.execute(insertQuery, [newOfferName, id]);
+        
+        // Return the success response
+        res.status(201).json({
+          message: "New offer created successfully",
+          newOffer: {
+            id: insertResult.insertId,
+            name: newOfferName,
+            santier_id: id
+          }
+        });
+        
+      } catch (error) {
+        console.error("Error adding offer to santier:", error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    };
+    
+    
+    const getOfertePartsForThisSantier = async (req, res) => {
+      try {
+        const { id } = req.params;  // Get the oferta_id from the route parameter
+    
+        // SQL query to fetch Oferta_Parts based on oferta_id
+        const query = `
+          SELECT id, name 
+          FROM Oferta_Parts 
+          WHERE oferta_id = ?;
+        `;
+        
+        // Execute the query
+        const [result] = await global.db.execute(query, [id]);
+        
+        // Return the fetched Oferta_Parts
+        res.status(200).json({
+          id,
+          parts: result  // Return the parts (id and name)
+        });
+      } catch (error) {
+        console.error("Error fetching Oferta parts:", error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    };
+
+    const addOfertaPartToTheSantier = async (req, res) => {
+      try {
+        const { id } = req.params;  // Get the oferta_id from the route parameter
+        const { name } = req.body;
+        // SQL query to fetch Oferta_Parts based on oferta_id
+        const insertQuery = `
+          INSERT INTO Oferta_Parts (name, oferta_id)
+          VALUES (?, ?);
+        `;
+
+        // Execute the query
+        const [result] = await global.db.execute(insertQuery, [name, id]);
+        
+        // Return the fetched Oferta_Parts
+        res.status(200).json({
+          message: "New offer created successfully",
+        });
+      } catch (error) {
+        console.error("Error adding Oferta parts:", error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    };
+
+    const deleteOfertaPart = async (req, res) => {
+      try {
+        const { id } = req.params; // Get the id of the OfertaPart to be deleted from the route parameter
+        console.log(id)
+        // SQL query to delete the OfertaPart based on id
+        const deleteQuery = `
+          DELETE FROM Oferta_Parts
+          WHERE id = ?;
+        `;
+    
+        // Execute the query
+        const [result] = await global.db.execute(deleteQuery, [id]);
+    
+        // Return success response
+        res.status(200).json({
+          message: "Offer part deleted successfully",
+        });
+      } catch (error) {
+        console.error("Error deleting Oferta part:", error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    };
+
+    const editOfertaPart = async (req, res) => {
+      try {
+        const { id } = req.params; // Get the id of the OfertaPart to be edited from the route parameter
+        const { name } = req.body; // Get the new name from the request body
+    
+        if (!name || name.trim() === "") {
+          return res.status(400).json({ message: "Name is required" });
+        }
+    
+        // SQL query to update the OfertaPart based on id
+        const updateQuery = `
+          UPDATE Oferta_Parts
+          SET name = ?
+          WHERE id = ?;
+        `;
+    
+        // Execute the query
+        const [result] = await global.db.execute(updateQuery, [name, id]);
+    
+        // Return success response
+        res.status(200).json({
+          message: "OfertaPart updated successfully",
+          updatedOfertaPart: { id, name },
+        });
+      } catch (error) {
+        console.error("Error updating OfertaPart:", error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    };
+    
+    
     
 
-  module.exports = {addRetetaToInitialOfera, getReteteLightForSantiere, updateSantierDetails, getSantiereDetails, deleteRetetaFromSantier, getSpecificRetetaForOfertaInitiala, getReteteLightForSantiereWithPrices, updateSantierRetetaPrices};
+  module.exports = {editOfertaPart, addRetetaToInitialOfera, deleteOfertaPart, addOfertaPartToTheSantier, getOfertePartsForThisSantier, addOfertaToTheSantier, changeNameForOferta, getReteteLightForSantiere, getOferteForThisSantier, updateSantierDetails, getSantiereDetails, deleteRetetaFromSantier, getSpecificRetetaForOfertaInitiala, getReteteLightForSantiereWithPrices, updateSantierRetetaPrices};

@@ -10,10 +10,11 @@ import { useParams } from 'react-router-dom';
 
 export default function SantiereAddReteteTableAbsolute({
     setIsPopupOpen,
-    fetchParentRetete
+    fetchParentRetete,
+    mainOfertaPartID
   }) {
 
-      const { idUser, idSantier } = useParams();
+      const {idSantier, limbaUser } = useParams();
 
     const [openDropdowns, setOpenDropdowns] = useState(new Set());
     const [cantitate, setCantitate] = useState("");
@@ -24,6 +25,7 @@ export default function SantiereAddReteteTableAbsolute({
     const [retete, setRetete] = useState([]);
     const [ascendent ,setAscendent] = useState(false);
     const [filters, setFilters] = useState({
+        limba: limbaUser,
         cod: '',
         clasa: '',
         articol: '',
@@ -36,6 +38,7 @@ export default function SantiereAddReteteTableAbsolute({
             if(filters.cod.trim().length >= 3 || filters.articol.trim().length >= 3){
                 const response = await api.get('/Retete/getReteteLight', {
                     params: {
+                        limba: filters.limba,
                         cod: filters.cod, // Pass cod as a query parameter
                         clasa: filters.clasa, // Add any other filters here
                         articol: filters.articol, // Add any other filters here
@@ -47,16 +50,8 @@ export default function SantiereAddReteteTableAbsolute({
                     setRetete([]);
                     return;
                 };
-       
-                        const renamedItems = response.data.data.map(item => ({
-                        ...item,
-                        cod: item.cod_reteta,  // Renaming cod to cod_reteta
-                        clasa: item.clasa_reteta,  // Renaming cod to cod_reteta
-                    }));
-                    // Remove the old 'cod' field if needed
-                    renamedItems.forEach(item => delete item.cod_reteta);
-                    renamedItems.forEach(item => delete item.clasa_reteta);
-                    setRetete(renamedItems);
+                console.log(response.data.data)
+                setRetete(response.data.data);
                 
             }
             else setDoesExistsRetete(false);
@@ -83,7 +78,7 @@ export default function SantiereAddReteteTableAbsolute({
             try {
                 await api.post("/Santiere/addRetetaToInitialOferta", 
                 {
-                    santier_id:idSantier,
+                    oferta_part: mainOfertaPartID,
                     limba: selectedRetete.original.limba,
                     cod_reteta:selectedRetete.original.cod,
                     clasa_reteta:selectedRetete.original.clasa,
@@ -203,18 +198,26 @@ const toggleDropdown = async (e,parentId) => {
                 row.original.whatIs == 'Transport' ?
                 <div className='w-full h-full flex justify-center items-center overflow-hidden'><FontAwesomeIcon className='text-pink-500 h-[2rem] w-full  ' icon={faCar}/></div>
                 :
-                <div className='w-full h-full flex justify-center items-center overflow-hidden '><FontAwesomeIcon className='text-blue-500 h-[2rem]   ' icon={faFolder}/></div>
+                <div className='w-full h-full flex justify-center items-center overflow-hidden '><FontAwesomeIcon className={`${row.original?.has_manopera > 0 || row.original?.has_materiale > 0 || row.original?.has_transport > 0 || row.original?.has_utilaje > 0 ? " text-blue-500" : "text-gray-400"} h-[2rem] `} icon={faFolder}/></div>
+
             ),
             
         },
-        { accessorKey: "cod", header: "Cod",size:100 },
+        { 
+            accessorKey: "limba",
+            header: "Limba",
+            cell: ({ getValue, row }) =>
+                <div className='w-full flex justify-center  font-bold'> {getValue()}</div> , // Display default value if the value is empty or undefined
+            size:50 
+        },
+        { accessorKey: "cod", header: "Cod",size:110 },
         { accessorKey: "clasa", header: "Clasă", size:200},
        { 
             accessorKey: "articol", 
             header: (
                 <div className="flex items-center w-[95%] justify-between text-black ">
                     <span>Articol</span>
-                    <FontAwesomeIcon onClick={() => setAscendent((prev) => prev == false ? true : false)} className="text-xl border border-black p-2  rounded-full  cursor-pointer" icon={!ascendent ? faArrowUpAZ : faArrowDownAZ} /> 
+                    {/* <FontAwesomeIcon onClick={() => setAscendent((prev) => prev == false ? true : false)} className="text-xl border border-black p-2  rounded-full  cursor-pointer" icon={!ascendent ? faArrowUpAZ : faArrowDownAZ} />  */}
                 </div>
               ),
             size:500
@@ -222,7 +225,7 @@ const toggleDropdown = async (e,parentId) => {
         {
             accessorKey: 'whatIs', 
             header: 'Tip',
-            size:70,
+            size:80,
             cell: ({ getValue, row }) => getValue() ? <div onClick={() => console.log(row)} className='w-full'>{row.original.whatIs == "Material" ?  getValue() + " " + row.original.tip_material : getValue()}</div> : 'Rețetă', // Display default value if the value is empty or undefined
         },
         { accessorKey: "unitate_masura", header: "Unitate",size:60},
@@ -263,7 +266,18 @@ const toggleDropdown = async (e,parentId) => {
        
         {retete &&
         <div className=' containerZ flex flex-col h-full w-full overflow-hidden'>
-                <div className='grid font-medium grid-cols-[auto_1fr_3fr] gap-4 p-4 pt-2 text-black containerWhiter w-full'>
+                <div className='grid font-medium grid-cols-[auto_auto_1fr_3fr] gap-4 p-4 pt-2 text-black containerWhiter w-full'>
+                <div className="flex flex-col items-center">
+                    <label htmlFor="code" className=" font-medium text-black">
+                        Limbă
+                    </label>
+                    <input
+                        disabled={true}
+                        value={limbaUser}
+                        className={`px-2 w-24 bg-white  text-center py-2 rounded-lg shadow-lg outline-gray-300 `}                  
+                    />
+                </div>
+                {filters.limba == "RO" ?               
                     <div className="flex flex-col items-center">
                       <label htmlFor="unit" className="col-span-1 font-medium text-black">
                         Clasă
@@ -293,6 +307,46 @@ const toggleDropdown = async (e,parentId) => {
                         <option value="Reparații">Reparații</option>
                       </select>
                   </div>
+                  :
+                  <div className="flex flex-col items-center">
+                    <label htmlFor="unit" className="col-span-1 font-medium text-black">
+                        Clasă
+                    </label>
+                    <select
+                        id="clasa"
+                        name="clasa"
+                        value={filters.clasa}
+                        onChange={handleChangeFilters}
+                        className=" px-1 py-2 rounded-lg outline-none shadow-sm "
+                    >
+                        <option value="">Toate</option>
+                        <option value="Gros œuvre - maçonnerie">Gros œuvre - maçonnerie</option>
+                        <option value="Plâtrerie (plaque de plâtre)">Plâtrerie (plaque de plâtre)</option>
+                        <option value="Vrd">Vrd</option>
+                        <option value="Espace vert - aménagement extérieur">Espace vert - aménagement extérieur</option>
+                        <option value="Charpente - bardage et couverture métallique">Charpente - bardage et couverture métallique</option>
+                        <option value="Couverture - zinguerie">Couverture - zinguerie</option>
+                        <option value="Étanchéité">Étanchéité</option>
+                        <option value="Plomberie - sanitaire">Plomberie - sanitaire</option>
+                        <option value="Chauffage">Chauffage</option>
+                        <option value="Ventilation">Ventilation</option>
+                        <option value="Climatisation">Climatisation</option>
+                        <option value="Électricité">Électricité</option>
+                        <option value="Charpente et ossature bois">Charpente et ossature bois</option>
+                        <option value="Menuiserie extérieure">Menuiserie extérieure</option>
+                        <option value="Menuiserie agencement intérieur">Menuiserie agencement intérieur</option>
+                        <option value="Métallerie (acier - aluminium)">Métallerie (acier - aluminium)</option>
+                        <option value="Store et fermeture">Store et fermeture</option>
+                        <option value="Peinture - revêtement intérieur">Peinture - revêtement intérieur</option>
+                        <option value="Ravalement peinture - revêtement extérieur">Ravalement peinture - revêtement extérieur</option>
+                        <option value="Vitrerie - miroiterie">Vitrerie - miroiterie</option>
+                        <option value="Carrelage et revêtement mural">Carrelage et revêtement mural</option>
+                        <option value="Revêtement de sol (sauf carrelage)">Revêtement de sol (sauf carrelage)</option>
+                        <option value="Ouvrages communs TCE">Ouvrages communs TCE</option>
+                        <option value="Rénovation énergétique">Rénovation énergétique</option>
+                    </select>
+                </div>
+                  }
                     <div className="flex w-full flex-col items-center ">
                       <label className=" text-black">
                           Cod  
@@ -303,7 +357,7 @@ const toggleDropdown = async (e,parentId) => {
                           name="cod"
                           value={filters.cod}
                           onChange={handleChangeFilters}
-                          maxLength={6}
+                          maxLength={20}
                           className="px-2 outline-none text-center py-2  w-full rounded-lg shadow-sm "
                           placeholder="Filtru Cod"
                       />

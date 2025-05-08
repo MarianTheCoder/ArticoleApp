@@ -12,7 +12,7 @@ pdfMake.vfs = pdfFonts.vfs;
     return text.replace(/(.{20})/g, '$1\u200B'); // Add zero-width space every 20 characters
   };
 
-export const FormularRasfiratFR = async (id ,recapitulatii, TVA) => {
+export const FormularRasfiratFR = async (idSantier, id ,recapitulatii, TVA) => {
         let res;
         let santierDetails;
         try {
@@ -22,8 +22,7 @@ export const FormularRasfiratFR = async (id ,recapitulatii, TVA) => {
               TVA: TVA
             }
           });
-          santierDetails = await api.get(`/Santiere/getSantiereDetails/${id}`);
-
+          santierDetails = await api.get(`/Santiere/getSantiereDetails/${idSantier}`);
         } catch (error) {
           console.log(error);
           return;

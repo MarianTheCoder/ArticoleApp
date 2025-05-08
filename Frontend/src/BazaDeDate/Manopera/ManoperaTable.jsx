@@ -97,6 +97,15 @@ export default function ManoperaTable({reloadKey, cancelDouble, selectedDouble, 
     }
     //States for dropDown/edit/delete/copy and CHANGED language
 
+    const translateAll = () => {
+        // If there are any rows that are selected, iterate through and update the `selectedRetetaIds`
+        setSelectedManopereIds((prev) => {
+            const updatedSelectedIds = manopere.map((manopera) => manopera.id); // All `retete` ids
+            // If a `reteta` is already selected, it will be removed from the list
+            return prev.length === manopere.length ? [] : updatedSelectedIds; // Toggle all if all are selected
+        });
+    };
+
     const toggleManopereChangeLanguage = (id) => {
         setSelectedManopereIds((prev) => {
           return prev.includes(id)
@@ -355,14 +364,21 @@ export default function ManoperaTable({reloadKey, cancelDouble, selectedDouble, 
                                             placeholder="Filtru Ocupație"
                                         />
                                     </th>
-                                    <th className=" bg-white border-b border-r border-black" colSpan={4}>
+                                    <th className=" bg-white border-b border-r border-black" colSpan={3}>
                                        <div className=' flex  justify-center items-center'>
                                             <p className='px-2'>Arată</p>
                                             <input className='border border-black p-1 w-12 text-center rounded-lg' type="text" onChange={(e) => handleLimit(e)} value={limit} name="" id="" />
                                             <p className='px-2'>rânduri</p>
                                        </div>
                                     </th>
-                                    
+                                    <th className='border-b border-r border-black bg-white' colSpan={1}>
+                                        <div className='flex  w-full justify-center  items-center'>
+                                            <div onClick={() => translateAll()} className='bg-blue-500 rounded-xl px-4 hover:bg-blue-600 hover:cursor-pointer flex gap-2 p-2 items-center justify-center'>
+                                                <FontAwesomeIcon className='text-white text-lg' icon={faLanguage}/>
+                                                <span className='font-semibold'>Tot</span>
+                                            </div>
+                                       </div>
+                                    </th>
                                 </tr>
                 {table.getHeaderGroups().map(headerGroup => (
                   <tr key={headerGroup.id} className="bg-white text-black text-left  font-bold select-none">

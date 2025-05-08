@@ -16,7 +16,7 @@ import { FormularRasfiratFR } from '../Formulare/Franta/FormularRasfiratFR';
 
 
 
-export default function SantiereAdd() {
+export default function SantiereAdd({mainOfertaPartID}) {
 
     const {idSantier, limbaUser} = useParams();
 
@@ -61,7 +61,7 @@ export default function SantiereAdd() {
 
     const fetchManopere = async () => {
         try {
-            const response = await api.get(`/Santiere/getReteteLightForSantiereWithPrices/${idSantier}`, {
+            const response = await api.get(`/Santiere/getReteteLightForSantiereWithPrices/${mainOfertaPartID}`, {
                 params: {
                     asc_articol: ascendent,
                 },
@@ -75,16 +75,8 @@ export default function SantiereAdd() {
                 setDetailedCosts({});
                 return;
             };
-                    const renamedItems = response.data.data.map(item => ({
-                    ...item,
-                    cod: item.cod_reteta,  // Renaming cod to cod_reteta
-                    clasa: item.clasa_reteta,  // Renaming cod to cod_reteta
-                }));
-                // Remove the old 'cod' field if needed
-                renamedItems.forEach(item => delete item.cod_reteta);
-                renamedItems.forEach(item => delete item.clasa_reteta);
                 setDetailedCosts(response.data.detailedCosts);
-                setRetete(renamedItems);
+                setRetete(response.data.data);
                 
         } catch (error) {
             console.error('Error fetching data:', error);
@@ -125,19 +117,19 @@ export default function SantiereAdd() {
 
     //CE FROMULAR SELECTAM?
     const handleFormular = () =>{
-      console.log(selectedFormular);
+      // console.log(mainOfertaPartID);
       switch (selectedFormular) {
         case 'Răsfirat':
-          FormularRasfirat(idSantier, recapitulatii, TVA)
+          FormularRasfirat(mainOfertaPartID, recapitulatii, TVA)
           break;
         case 'Compact':
-          FormularCompact(idSantier, recapitulatii, TVA);
+          FormularCompact(mainOfertaPartID, recapitulatii, TVA);
           break;  
         case "CompactFR":
-          FormularCompactFR(idSantier, recapitulatii, TVA);
+          FormularCompactFR(mainOfertaPartID, recapitulatii, TVA);
           break;
         case "RăsfiratFR":
-          FormularRasfiratFR(idSantier, recapitulatii, TVA);
+          FormularRasfiratFR(idSantier, mainOfertaPartID, recapitulatii, TVA);
           break;
 
         default:
@@ -432,7 +424,8 @@ export default function SantiereAdd() {
         objectsLen,
         lastObjectIndex,
         setLastObjectIndex,
-        fetchParentRetete:fetchManopere
+        fetchParentRetete:fetchManopere,
+        mainOfertaPartID
       };
 
 
@@ -594,7 +587,7 @@ export default function SantiereAdd() {
     <>
        
         {retete &&
-            <div className="p-8 pb-4 text-sm    scrollbar-webkit  w-full text-white h-full flex flex-col justify-between">
+            <div className="p-8 pb-4 pt-5 text-sm    scrollbar-webkit  w-full text-white h-full flex flex-col justify-between">
             <div className="overflow-auto  scrollbar-webkit">
                 <table className="w-full  border-separate border-spacing-0 ">
                     <thead className='top-0 w-full sticky  z-10 '>
