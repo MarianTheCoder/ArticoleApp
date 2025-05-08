@@ -461,7 +461,7 @@ export default function SantiereAdd({mainOfertaPartID}) {
                 row.original.whatIs == 'Transport' ?
                 <div className='w-full h-full flex justify-center items-center overflow-hidden'><FontAwesomeIcon className='text-pink-500 h-[1.5rem] w-full  ' icon={faCar}/></div>
                 :
-                <div className='w-full h-full flex justify-center items-center overflow-hidden '><FontAwesomeIcon className='text-blue-500 h-[1.5rem]   ' icon={faFolder}/></div>
+                <div onClick={() => console.log(retete)} className='w-full h-full flex justify-center items-center overflow-hidden '><FontAwesomeIcon className='text-blue-500 h-[1.5rem]   ' icon={faFolder}/></div>
             ),
             
         },
@@ -472,7 +472,7 @@ export default function SantiereAdd({mainOfertaPartID}) {
             header: (
                 <div className="flex items-center w-[95%] justify-between text-black ">
                     <span>Articol</span>
-                    <FontAwesomeIcon onClick={() => setAscendent((prev) => prev == false ? true : false)} className="text-xl border border-black p-2  rounded-full  cursor-pointer" icon={!ascendent ? faArrowUpAZ : faArrowDownAZ} /> 
+                    {/* <FontAwesomeIcon onClick={() => setAscendent((prev) => prev == false ? true : false)} className="text-xl border border-black p-2  rounded-full  cursor-pointer" icon={!ascendent ? faArrowUpAZ : faArrowDownAZ} />  */}
                 </div>
               ),
             size:400
@@ -696,7 +696,7 @@ export default function SantiereAdd({mainOfertaPartID}) {
                     :
                     <React.Fragment key={row.id}>
                         <tr className={`dropdown-container   text-black 
-                            ${row.original.id == selectedDelete ? "bg-red-300 sticky" : row.original.id == selectedEdit ? "bg-green-300 sticky" :  row.index % 2 === 0 ? 'bg-[rgb(255,255,255,0.75)] ' : 'bg-[rgb(255,255,255,1)] '}`}>
+                            ${row.original.id == selectedDelete ? "bg-red-300 sticky" : row.original.id == selectedEdit ? "bg-green-300 sticky" : 'bg-[rgb(255,255,255,0.75)] ' }`}>
                             {row.getVisibleCells().map((cell) => (  
                                     <td  key={cell.id}   
                                         className={`    border-b border-r break-words max-w-72  relative border-black p-1 px-3`}
