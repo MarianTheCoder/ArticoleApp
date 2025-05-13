@@ -106,7 +106,7 @@ function Navbar() {
           </div>
         </ul>
       </div>}
-      <div className='w-0'></div>
+      <div className={` ${selected == 0 ? "w-0" : "w-[75px] md:w-[80px] bg-transparent"}`}></div>
     </>
   )
 }

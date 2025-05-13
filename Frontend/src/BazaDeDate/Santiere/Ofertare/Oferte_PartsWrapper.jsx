@@ -123,7 +123,7 @@ export default function Oferte_PartsWrapper({ofertaId}) {
 
 
   return (
-    <div className='relative h-full w-full grid p-4 grid-rows-[auto_1fr] '>
+    <div className='relative h-full w-full grid overflow-hidden p-4 grid-rows-[auto_1fr] '>
         <div className=' px-8 p-4 bg-[#26415f] rounded-xl flex w-full justify-between'>
             <div className='flex gap-4  items-center'>
                 <label htmlFor="" className=''>Alege o lucrare:</label>

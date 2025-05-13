@@ -17,6 +17,7 @@ const RetetaRoutes = require("./Routes/RetetaRoutes");
 const TransportRoutes = require("./Routes/TransportRoutes");
 const SantiereRoutes = require("./Routes/SantiereRoutes");
 const FormulareRoutes = require("./Routes/FormulareRoutes");
+const EmailRoutes = require('./Routes/EmailRoutes');
 
 
 const app = express();
@@ -34,7 +35,7 @@ const dbConfig = {
 app.use(bodyParser.json());
 const allowedOrigins = [
   'http://localhost:5173',
-  'http://192.168.1.107:5173',
+  'http://192.168.1.114:5173',
   'https://balyenergies.fr'
 ];
 app.use(cors({
@@ -361,7 +362,8 @@ console.log("Santier_Oferta_Parts table created or already exists.");
   CREATE TABLE IF NOT EXISTS Santier_retete (
     id INT AUTO_INCREMENT PRIMARY KEY,
     limba VARCHAR(20) NOT NULL DEFAULT 'RO',
-    text_aditional VARCHAR(255),
+    reper_plan TEXT NOT NULL DEFAULT '',
+    detalii_aditionale TEXT NOT NULL DEFAULT '',
     oferta_parts_id INT NOT NULL,
     cod_reteta VARCHAR(255) NOT NULL,
     clasa_reteta VARCHAR(255) NOT NULL,
@@ -529,6 +531,7 @@ app.use('/Retete', RetetaRoutes);
 app.use('/Transport', TransportRoutes);
 app.use('/Santiere', SantiereRoutes);
 app.use('/Formulare', FormulareRoutes);
+app.use('./email', EmailRoutes);
 
 
 // Serve static files from the React app

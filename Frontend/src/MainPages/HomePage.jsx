@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./HomePage.css"; // Asigură-te că ai stilurile pentru carousel și elementele sale
 import photoAPI from "../api/photoAPI";
-import img1 from '../assets/Principala/img1.jpg';
-import img2 from '../assets/Principala/img2.jpg';
-import img3 from '../assets/Principala/img3.jpg';
-import img4 from '../assets/Principala/img4.jpg';
+import img1 from '../assets/Principala/img1.png';
+import img2 from '../assets/Principala/img2.png';
+import img3 from '../assets/Principala/img3.png';
+import img4 from '../assets/Principala/img4.png';
 
 const images = [img1, img2, img3, img4];
 
 export default function BalyEnergies() {
+  const navigate = useNavigate();
   const carouselRef = useRef(null);
   const nextRef = useRef(null);
   const prevRef = useRef(null);
@@ -97,7 +99,12 @@ export default function BalyEnergies() {
                 <div className="des">{slide.description}</div>
                 <div className="btn">
                   <button>See More</button>
-                  <button>Subscribe</button>
+                  <button
+  onClick={() => navigate("/contact")}
+  className="bg-blue-600 text-white px-4 py-2 rounded"
+>
+  Contact
+</button>
                 </div>
               </div>
             </div>

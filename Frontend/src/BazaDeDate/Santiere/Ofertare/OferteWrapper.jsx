@@ -111,7 +111,7 @@ export default function SantiereRoutes() {
             <div className="loader"></div>
         </div> 
         :
-    <div className='relative h-screen w-full flex items-end justify-center'>
+    <div className='relative h-screen w-full  overflow-hidden flex items-end justify-center'>
         <div className=" w-[98%] h-[95%] relative flex justify-center rounded-lg ">
             <div className="absolute flex -top-9 left-20 -space-x-2 select-none">
                 {oferte.map((item, index) => (
@@ -153,7 +153,7 @@ export default function SantiereRoutes() {
                     </div>
                 ))}
                 { editText == null && <button onClick={() => addAutomaticOferta()} className={` relative  hover:bg-green-600  z-40 text-white px-4 p-2 rounded-tr-3xl rounded-tl-xl bg-green-500 shadow-[4px_4px_10px_rgba(0,0,0,1)] `}><FontAwesomeIcon icon={faPlus}/></button>}            </div>
-            <div className=" containerNoGlassBlacker relative z-[70]  w-full h-full  flex  flex-col items-center rounded-lg ">
+            <div className=" containerNoGlassBlacker relative z-[70] overflow-hidden  w-full h-full  flex  flex-col items-center rounded-lg ">
                 {
                 selectedButton != -1 ? 
                     <Oferte_PartsWrapper ofertaId = {selectedButton}   key={`${idUser}-${idSantier}-${selectedButton}`} />

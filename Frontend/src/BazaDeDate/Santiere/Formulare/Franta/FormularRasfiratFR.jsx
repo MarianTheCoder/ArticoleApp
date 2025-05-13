@@ -12,7 +12,7 @@ pdfMake.vfs = pdfFonts.vfs;
     return text.replace(/(.{20})/g, '$1\u200B'); // Add zero-width space every 20 characters
   };
 
-export const FormularRasfiratFR = async (idSantier, id ,recapitulatii, TVA) => {
+export const FormularRasfiratFR = async (id ,recapitulatii, TVA) => {
         let res;
         let santierDetails;
         try {
@@ -22,7 +22,8 @@ export const FormularRasfiratFR = async (idSantier, id ,recapitulatii, TVA) => {
               TVA: TVA
             }
           });
-          santierDetails = await api.get(`/Santiere/getSantiereDetails/${idSantier}`);
+          santierDetails = await api.get(`/Santiere/getSantiereDetails/${id}`);
+
         } catch (error) {
           console.log(error);
           return;
@@ -42,21 +43,25 @@ export const FormularRasfiratFR = async (idSantier, id ,recapitulatii, TVA) => {
           [
             { text: 'Non.', style: 'mainHeader' },
             { text: 'Image', style: 'mainHeader' },
+            { text: 'Détails', style: 'mainHeader' },
+            { text: 'Marquez le plane', style: 'mainHeader' },
             { text: 'Code', style: 'mainHeader' },
             { text: 'Classe', style: 'mainHeader' },
             { text: 'Article', style: 'mainHeader' },
             { text: 'Unité', style: 'mainHeader' },
-            { text: 'Montant', style: 'mainHeader' },
-            { text: 'Coût \n (Euros)', style: 'mainHeader' },
-            { text: 'Coût total \n (Euros)', style: 'mainHeader' }
+            { text: 'Quantité', style: 'mainHeader' },
+            { text: 'Prix unitaire \n (EUR)', style: 'mainHeader' },
+            { text: 'Prix total \n (EUR)', style: 'mainHeader' }
           ],
           ...dataTable.flatMap((item, index) => {
             const rowFill = "#ffffff";
-        
+            let finalIndex = 0;
             // Row pentru reteta
             const retetaRow = [
               { text: `${index + 1}`, fillColor: rowFill, alignment: 'center', style: 'mainCell' },
               { image: folderImage, width: 10, height: 10, alignment: 'center' },
+              { text: item.detalii_aditionale || '', fillColor: rowFill, style: 'mainCell' },
+              { text: item.reper_plan || '', fillColor: rowFill, style: 'mainCell' },
               { text: item.cod_reteta || '', fillColor: rowFill, style: 'mainCell' },
               { text: item.clasa_reteta || '', fillColor: rowFill, style: 'mainCell' },
               { text: item.articol_fr || '', fillColor: rowFill, style: 'mainCell' },
@@ -74,9 +79,11 @@ export const FormularRasfiratFR = async (idSantier, id ,recapitulatii, TVA) => {
         
             // Sub-randuri pentru manopera
             const manoperaRows = item.Manopera
-              ? Object.values(item.Manopera).map((mItem) => [
-                  { text: ``, fillColor: rowFill, alignment: 'center', style: 'mainCell', border: [false, false, false, false] },
+              ? Object.values(item.Manopera).map((mItem, mindex) => [
+                  {  text: `${index + 1}.${mindex+1}`, fillColor: rowFill, alignment: 'center', style: 'mainCell' },
                   { image: userImage, width: 10, height: 10, alignment: 'center' },
+              { text: '', fillColor: rowFill, style: 'mainCell' },
+              { text: '', fillColor: rowFill, style: 'mainCell' },                  
                   { text: mItem.cod || '', fillColor: rowFill, style: 'mainCell' },
                   { text: mItem.clasa || '', fillColor: rowFill, style: 'mainCell' },
                   { text: insertWordBreaks(mItem.articol_fr) || '', fillColor: rowFill, style: 'mainCell' },
@@ -92,11 +99,15 @@ export const FormularRasfiratFR = async (idSantier, id ,recapitulatii, TVA) => {
                 }
                 ])
               : [];
-  
+              // add the manopere
+              finalIndex += Object.keys(item.Manopera || {}).length;
+              
               const materialeRows = item.Material
-              ? Object.values(item.Material).map((mItem) => [
-                  { text: ``, fillColor: rowFill, alignment: 'center', style: 'mainCell', border: [false, false, false, false] },
+              ? Object.values(item.Material).map((mItem , mindex) => [
+                  { text: `${index + 1}.${finalIndex + mindex + 1}`, fillColor: rowFill, alignment: 'center', style: 'mainCell' },
                   { image: materialeImage, width: 10, height: 10, alignment: 'center' },
+              { text: '', fillColor: rowFill, style: 'mainCell' },
+              { text: '', fillColor: rowFill, style: 'mainCell' },                  
                   { text: mItem.cod || '', fillColor: rowFill, style: 'mainCell' },
                   { text: mItem.clasa || '', fillColor: rowFill, style: 'mainCell' },
                   { text: insertWordBreaks(mItem.articol_fr) || '', fillColor: rowFill, style: 'mainCell' },
@@ -112,11 +123,15 @@ export const FormularRasfiratFR = async (idSantier, id ,recapitulatii, TVA) => {
                 }
                 ])
               : [];
-  
+              //add materiale length
+              finalIndex += Object.keys(item.Material || {}).length;
+
               const utilajeRows = item.Utilaj
-              ? Object.values(item.Utilaj).map((mItem) => [
-                  { text: ``, fillColor: rowFill, alignment: 'center', style: 'mainCell', border: [false, false, false, false] },
+              ? Object.values(item.Utilaj).map((mItem, mindex) => [
+                  { text: `${index + 1}.${finalIndex + mindex + 1}`, fillColor: rowFill, alignment: 'center', style: 'mainCell' },
                   { image: utilajeImage, width: 10, height: 10, alignment: 'center' },
+              { text: '', fillColor: rowFill, style: 'mainCell' },
+              { text: '', fillColor: rowFill, style: 'mainCell' },                      
                   { text: mItem.cod || '', fillColor: rowFill, style: 'mainCell' },
                   { text: mItem.clasa || '', fillColor: rowFill, style: 'mainCell' },
                   { text: insertWordBreaks(mItem.articol_fr) || '', fillColor: rowFill, style: 'mainCell' },
@@ -132,12 +147,15 @@ export const FormularRasfiratFR = async (idSantier, id ,recapitulatii, TVA) => {
                 }
                 ])
               : [];
-  
+              // add utilaje length
+              finalIndex += Object.keys(item.Utilaj || {}).length;
               
               const transportRows = item.Transport
-              ? Object.values(item.Transport).map((mItem) => [
-                  { text: ``, fillColor: rowFill, alignment: 'center', style: 'mainCell', border: [false, false, false, false] },
+              ? Object.values(item.Transport).map((mItem, mindex) => [
+                  { text: `${index + 1}.${finalIndex + mindex + 1}`, fillColor: rowFill, alignment: 'center', style: 'mainCell' },
                   { image: transportImage, width: 10, height: 10, alignment: 'center' },
+              { text: '', fillColor: rowFill, style: 'mainCell' },
+              { text: '', fillColor: rowFill, style: 'mainCell' },                      
                   { text: mItem.cod || '', fillColor: rowFill, style: 'mainCell' },
                   { text: mItem.clasa || '', fillColor: rowFill, style: 'mainCell' },
                   { text: insertWordBreaks(mItem.articol_fr) || '', fillColor: rowFill, style: 'mainCell' },
@@ -161,11 +179,11 @@ export const FormularRasfiratFR = async (idSantier, id ,recapitulatii, TVA) => {
         
         const extraTableBody = [
             [
-                {text: 'Heures de travail', style: 'extraHeader',fillColor: "#93C5FD"},
-                {text: 'Fabrication', style: 'extraHeader',    fillColor: "#FCD34D"},
-                {text: 'Matériels', style: 'extraHeader',   fillColor: "#6EE7B7"},
-                {text: 'Transport', style: 'extraHeader',   fillColor: "#F9A8D4"},
-                {text: 'Utilisé', style: 'extraHeader',     fillColor: "#D8B4FE"},
+                {text: 'Heures de travail\n(Heure)', style: 'extraHeader',fillColor: "#93C5FD"},
+                {text: 'Fabrication\n(EUR)', style: 'extraHeader',    fillColor: "#FCD34D"},
+                {text: 'Matériels\n(EUR)', style: 'extraHeader',   fillColor: "#6EE7B7"},
+                {text: 'Transport\n(EUR)', style: 'extraHeader',   fillColor: "#F9A8D4"},
+                {text: 'Utilisé\n(EUR)', style: 'extraHeader',     fillColor: "#D8B4FE"},
             ],
             [
                 { text: totalManoperaOre, style: 'extraCell' ,  },
@@ -180,15 +198,15 @@ export const FormularRasfiratFR = async (idSantier, id ,recapitulatii, TVA) => {
         let total = parseFloat(totalManoperaPret) + parseFloat(totalMaterialePret) + parseFloat(totalTransportPret) + parseFloat(totalUtilajePret);
         const extraTableBodySecond = [
           [
-              {text: 'Dépenses directes', style: 'extraHeader',  fillColor: "#93C5FD"},
+              {text: 'Dépenses directes\n(EUR)', style: 'extraHeader',  fillColor: "#93C5FD"},
               {text: '\u002B', style: 'extraHeader', rowSpan: 2 , fillColor: "#ffffff" , border: [false, false, false, false], margin: [0, 8, 0, 0] , fontSize: 20 },
-              {text: `Récapitulatifs ${recapitulatii}% `, style: 'extraHeader',   fillColor: "#93C5FD"},
+              {text: `Récapitulatifs ${recapitulatii}%\n(EUR)`, style: 'extraHeader',   fillColor: "#93C5FD"},
               {text: '\u003D', style: 'extraHeader', rowSpan: 2  , fillColor: "#ffffff", border: [false, false, false, false], margin: [0, 8, 0, 0] , fontSize: 20},
-              {text: 'La valeur', style: 'extraHeader',     fillColor: "#93C5FD"},
+              {text: 'La valeur\n(EUR)', style: 'extraHeader',     fillColor: "#93C5FD"},
               {text: '\u002B', style: 'extraHeader', rowSpan: 2 , fillColor: "#ffffff" , border: [false, false, false, false], margin: [0, 8, 0, 0] , fontSize: 20 },
-              {text: `TVA ${TVA}%`, style: 'extraHeader', fillColor: "#93C5FD"},
+              {text: `TVA ${TVA}%\n(EUR)`, style: 'extraHeader', fillColor: "#93C5FD"},
               {text: '\u003D', style: 'extraHeader', rowSpan: 2  , fillColor: "#ffffff", border: [false, false, false, false], margin: [0, 8, 0, 0] , fontSize: 20},
-              {text: 'Total', style: 'extraHeader',     fillColor: "#93C5FD"},
+              {text: 'Total\n(EUR)', style: 'extraHeader',     fillColor: "#93C5FD"},
           ],
           [
               { text: total, style: 'extraCell' ,  },
@@ -204,6 +222,8 @@ export const FormularRasfiratFR = async (idSantier, id ,recapitulatii, TVA) => {
       ];
     
         const docDefinition = {
+          pageOrientation: 'landscape',
+          pageSize: 'A4',
           content: [
             {
                 table: {
@@ -214,8 +234,8 @@ export const FormularRasfiratFR = async (idSantier, id ,recapitulatii, TVA) => {
                       columns: [
                         {
                           image: logo,
-                          width: 150,
-                          margin: [5, 5, 10, 5]
+                          width: 200,
+                          margin: [5, 10, 10, 5]
                         },
                         {
                           stack: [
@@ -246,7 +266,7 @@ export const FormularRasfiratFR = async (idSantier, id ,recapitulatii, TVA) => {
             {
               table: {
                 headerRows: 1,
-                widths: ['auto','auto', 'auto', 'auto', '*', 'auto', 'auto', 'auto', 'auto'],
+                widths: ['auto','auto', 'auto','auto', 'auto', 'auto', '*', 'auto', 'auto', 'auto', 'auto'],
                 body: tableBody
               },
               layout: {
@@ -329,7 +349,7 @@ export const FormularRasfiratFR = async (idSantier, id ,recapitulatii, TVA) => {
                       color: '#000000'
                     },
                     {
-                      text: `Pagina ${currentPage} sur ${pageCount}`,
+                      text: `Page ${currentPage} sur ${pageCount}`,
                       fontSize: 8,
                       alignment: 'right',
                       margin: [0, 7.5, 10, 5]

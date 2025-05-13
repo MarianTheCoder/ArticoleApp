@@ -102,7 +102,7 @@ a:hover{
 .content .title{
     font-size: 100px;
     text-transform: uppercase;
-    color: rgba(20, 255, 114, 0.796);
+    color: #0044ff;
     font-weight: bold;
     line-height: 1;
     font-size: 3rem; /* Aproximativ 32px (depinde de root font-size) */
@@ -116,7 +116,7 @@ a:hover{
     font-weight: bold;
     line-height: 1;
     color: rgb(243, 255, 241);;
-    text-shadow: 3px 4px 4px rgba(20, 255, 114, 0.8);
+    text-shadow: 3px 4px 4px #0044ff;
 
     opacity: 0;
     animation: animate 1s ease-in-out 0.6s 1 forwards;
@@ -153,15 +153,15 @@ a:hover{
 
 .content .btn button:nth-child(2){
     background: transparent;
-    color: #14ff72cb;
+    color: #0044ff;
     border: 2px solid #fff;
     transition: 0.3s;
 }
 
 .content .btn button:nth-child(2):hover{
-    background-color: #14ff72cb;
+    background-color: #0044ff;
     color: #fff;
-    border-color: #14ff72cb;
+    border-color: #0044ff;
 }
 
 
@@ -205,7 +205,7 @@ a:hover{
     width: 50px;
     height: 50px;
     border-radius: 50%;
-    background-color: #14ff72cb;
+    background-color: #0044ff;
     color: #fff;
     border: none;
     outline: none;
@@ -228,7 +228,7 @@ a:hover{
     z-index: 1000;
     width: 0%;
     height: 4px;
-    background-color: #14ff72cb;
+    background-color: #0044ff;
     left: 0;
     top: 0;
     animation: runningTime 7s linear 1 forwards;

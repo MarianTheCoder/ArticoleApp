@@ -597,7 +597,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
                                      border-b border-r break-words max-w-72  relative border-black px-3 `}
                                 >
                                    <div className="h-full w-full overflow-hidden ">
-                                        <div className="max-h-12 h-12   grid grid-cols-1 items-center  overflow-auto  scrollbar-webkit">
+                                        <div className="max-h-12 h-12   grid grid-cols-1 items-center  break-words whitespace-pre-line   overflow-auto  scrollbar-webkit">
                                                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                         </div>
                                     </div>
@@ -615,7 +615,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
                                         style={cell.column.columnDef.meta?.style} // Apply the custom style
                                     >          
                                     <div className="h-full w-full overflow-hidden ">
-                                        <div className="max-h-12 h-12 w-full   grid grid-cols-1 items-center  overflow-auto  scrollbar-webkit">
+                                        <div className="max-h-12 h-12 w-full   grid grid-cols-1 items-center  break-words whitespace-pre-line  overflow-auto  scrollbar-webkit">
                                                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                         </div>
                                     </div>

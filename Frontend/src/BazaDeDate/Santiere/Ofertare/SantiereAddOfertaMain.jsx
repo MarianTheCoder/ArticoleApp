@@ -12,6 +12,7 @@ import {FormularRasfirat} from '../Formulare/Romania/FormularRasfirat';
 import { FormularCompact } from '../Formulare/Romania/FormularCompact';
 import { FormularCompactFR } from '../Formulare/Franta/FormularCompactFR';
 import { FormularRasfiratFR } from '../Formulare/Franta/FormularRasfiratFR';
+import TextAreaCell from './TextareaCell';
 
 
 
@@ -26,9 +27,16 @@ export default function SantiereAdd({mainOfertaPartID}) {
     const [selectedDelete, setSelectedDelete] = useState(null);
     const [selectedEdit, setSelectedEdit] = useState(null);
     const [editedCosts, setEditedCosts] = useState({});
+
+    //editable 
     const [cantitateReteta, setCantitateReteta] = useState(0);
+    const [reperPlan, setReperPlan] = useState("");
+    const [detaliiAditionale, setDetaliiAditionale] = useState("");
+
     const editedCostsRef = useRef(editedCosts);
     const editedCantitateRef = useRef(cantitateReteta);
+    const reperPlanRef = useRef(reperPlan);
+    const detaliiAditionaleRef = useRef(detaliiAditionale);
 
     const [retete, setRetete] = useState([]);
     const [detailedCosts, setDetailedCosts] = useState({});
@@ -103,6 +111,14 @@ export default function SantiereAdd({mainOfertaPartID}) {
     useEffect(() => {
         editedCantitateRef.current = cantitateReteta;
       }, [cantitateReteta]);
+
+      useEffect(() => {
+        detaliiAditionaleRef.current = detaliiAditionale;
+      }, [detaliiAditionale]);
+
+      useEffect(() => {
+        reperPlanRef.current = reperPlan;
+      }, [reperPlan]);
 
 
     // const handleInputChange = (e) => {
@@ -239,9 +255,11 @@ export default function SantiereAdd({mainOfertaPartID}) {
     const handleAcceptEdit = async () =>{
         const currentEditedCosts = editedCostsRef.current;
         const currentCantitateReteta = editedCantitateRef.current;
+        const currentReperPlan = reperPlanRef.current;
+        const currentDetaliiAditionale = detaliiAditionaleRef.current;
         // console.log('Sending updated costs:', currentEditedCosts , currentCantitateReteta);
         try {
-            const res = await api.put(`/Santiere/updateSantierRetetaPrices`, {santier_reteta_id: selectedEdit ,cantitate_reteta: currentCantitateReteta, updatedCosts: currentEditedCosts});
+            const res = await api.put(`/Santiere/updateSantierRetetaPrices`, {santier_reteta_id: selectedEdit, reper_plan: currentReperPlan, detalii_aditionale: currentDetaliiAditionale ,cantitate_reteta: currentCantitateReteta, updatedCosts: currentEditedCosts});
             let tempCosts = JSON.parse(JSON.stringify(detailedCosts));
             setRetete((prev) =>{
                 const updated = [...prev]; // Clone so you don't mutate state directly
@@ -273,6 +291,8 @@ export default function SantiereAdd({mainOfertaPartID}) {
                     updated[parentIndex] = {
                       ...updated[parentIndex],
                       cantitate: parseFloat(currentCantitateReteta).toFixed(2),
+                      detalii_aditionale: currentDetaliiAditionale,
+                      reper_plan: currentReperPlan,
                       cost: totalCost.toFixed(2),
                     };
                   }
@@ -341,6 +361,16 @@ export default function SantiereAdd({mainOfertaPartID}) {
       const handleCantiatateChange = (id, whatIs, value) => {
         // console.log(value)
         setCantitateReteta(value);
+      };
+
+      const handleReperChange = (id, whatIs, value) => {
+        // console.log(value)
+        setReperPlan(value);
+      };
+
+      const handleDetaliiChange = (id, whatIs, value) => {
+        // console.log(value)
+        setDetaliiAditionale(value);
       };
 
     const toggleDropdown = async (parentId , isEditClicked) => {
@@ -438,11 +468,9 @@ export default function SantiereAdd({mainOfertaPartID}) {
             accessorKey: "Dropdown", 
             header: "",
             cell: ({ row, getValue, cell }) => (
-            <div  onClick={() => row.original.id != selectedEdit && toggleDropdown(cell.row.original.id)}className='flex justify-center select-none w-full dropdown-container cursor-pointer items-center'>
-                <FontAwesomeIcon  className={` ${openDropdowns.has(cell.row.original.id) ? "rotate-90" : ""}  text-center  text-xl`} icon={faChevronRight}/>
-            </div>
-             
-                
+              <div  onClick={() => row.original.id != selectedEdit && toggleDropdown(cell.row.original.id)}className='flex justify-center select-none w-full dropdown-container overflow-hidden cursor-pointer items-center'>
+                  <FontAwesomeIcon  className={` ${openDropdowns.has(cell.row.original.id) ? "rotate-90" : ""}  text-center  text-xl`} icon={faChevronRight}/>
+              </div>   
             ),
         },
         { 
@@ -465,6 +493,42 @@ export default function SantiereAdd({mainOfertaPartID}) {
             ),
             
         },
+        {
+          accessorKey: "detalii_aditionale",
+          header: "Detalii",
+          size: 150,
+          cell: ({ getValue, row }) => {
+            const isEditable = (row.original.id === selectedEdit && !row.original.whatIs);
+            return (
+              <TextAreaCell
+                rowId={row.original.id}
+                whatIs={row.original.whatIs || "Reteta"}
+                initialValue={getValue() || ""}
+                isEditable={isEditable}
+                onEdit={handleDetaliiChange}
+                bold={false}
+              />
+            );
+          },
+        },
+        {
+          accessorKey: "reper_plan",
+          header: "Reper Plan",
+          size: 150,
+          cell: ({ getValue, row }) => {
+            const isEditable = (row.original.id === selectedEdit && !row.original.whatIs);
+            return (
+              <TextAreaCell
+                rowId={row.original.id}
+                whatIs={row.original.whatIs || "Reteta"}
+                initialValue={getValue() || ""}
+                isEditable={isEditable}
+                onEdit={handleReperChange}
+                bold={false}
+              />
+            );
+          },
+        },        
         { accessorKey: "cod", header: "Cod",size:100 },
         { accessorKey: "clasa", header: "Clasă", size:200},
        { 
@@ -538,7 +602,7 @@ export default function SantiereAdd({mainOfertaPartID}) {
               );
             },
             size:80
-          },
+        },
         { 
             accessorKey: "pret_total", 
             header: "Pret Total", 
@@ -585,11 +649,11 @@ export default function SantiereAdd({mainOfertaPartID}) {
 
   return (
     <>
-       
+      <div className=' w-full  flex flex-col h-full justify-between overflow-hidden '>
         {retete &&
-            <div className="p-8 pb-4 pt-5 text-sm    scrollbar-webkit  w-full text-white h-full flex flex-col justify-between">
-            <div className="overflow-auto  scrollbar-webkit">
-                <table className="w-full  border-separate border-spacing-0 ">
+            <div className="p-8 pb-4 pt-5 text-sm scrollbar-webkit w-full overflow-hidden text-white h-full flex flex-col justify-between">
+            <div className="  scrollbar-webkit overflow-auto  ">
+                <table className="w-full border-separate border-spacing-0 ">
                     <thead className='top-0 w-full sticky  z-10 '>
                         {/* <tr className='text-black'>
                                     <th className='border-b border-r border-black bg-white' colSpan={2}></th>
@@ -652,12 +716,12 @@ export default function SantiereAdd({mainOfertaPartID}) {
               {retete.length == 0 ?
                     <tbody className='relative z-0'>
                         <tr>
-                            <td className='bg-[rgb(255,255,255,0.75)] border-black border-r border-b text-black h-10' colSpan={12}>
+                            <td className='bg-[rgb(255,255,255,0.75)] border-black border-r border-b text-black h-10' colSpan={14}>
                                 <div className=' flex justify-center items-center w-full text-lg font-semibold h-full'>Nimic Adaugat</div>
                             </td>
                         </tr>
                         <tr>
-                            <td onClick={() => setIsPopupOpen(true)} className='bg-white p-2 px-3 hover:bg-[rgb(255,255,255,0.9)] cursor-pointer border-b border-r border-black select-none text-black' colSpan={12}>
+                            <td onClick={() => setIsPopupOpen(true)} className='bg-white p-2 px-3 hover:bg-[rgb(255,255,255,0.9)] cursor-pointer border-b border-r border-black select-none text-black' colSpan={14}>
                                 <div className='flex font-bold   text-center justify-center items-center gap-2'>
                                     <p className=' text-center'>Adauga Retete</p>
                                     <FontAwesomeIcon className='text-green-500  text-center text-2xl' icon={faPlus}/>
@@ -685,7 +749,7 @@ export default function SantiereAdd({mainOfertaPartID}) {
                                      border-b border-r break-words max-w-72  relative border-black px-3 `}
                                 >
                                    <div className="h-full w-full overflow-hidden ">
-                                        <div className="max-h-10 h-10   grid grid-cols-1 items-center  overflow-auto  scrollbar-webkit">
+                                        <div className="max-h-10 h-10   grid grid-cols-1 break-words whitespace-pre-line items-center  overflow-auto  scrollbar-webkit">
                                                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                         </div>
                                     </div>
@@ -696,14 +760,14 @@ export default function SantiereAdd({mainOfertaPartID}) {
                     :
                     <React.Fragment key={row.id}>
                         <tr className={`dropdown-container   text-black 
-                            ${row.original.id == selectedDelete ? "bg-red-300 sticky" : row.original.id == selectedEdit ? "bg-green-300 sticky" : 'bg-[rgb(255,255,255,0.75)] ' }`}>
+                            ${row.original.id == selectedDelete ? "bg-red-300 sticky" : row.original.id == selectedEdit ? "bg-green-300 sticky" : 'bg-[rgb(255,255,255,0.80)] hover:bg-[rgb(255,255,255,0.60)] '}`}>
                             {row.getVisibleCells().map((cell) => (  
                                     <td  key={cell.id}   
                                         className={`    border-b border-r break-words max-w-72  relative border-black p-1 px-3`}
                                         style={cell.column.columnDef.meta?.style} // Apply the custom style
                                     >          
                                     <div className="h-full w-full overflow-hidden ">
-                                        <div className="max-h-10 h-10 w-full   grid grid-cols-1 items-center  overflow-auto  scrollbar-webkit">
+                                        <div className="max-h-10 h-10 w-full break-words whitespace-pre-line   grid grid-cols-1 items-center  overflow-auto  scrollbar-webkit">
                                                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                         </div>
                                     </div>
@@ -714,7 +778,7 @@ export default function SantiereAdd({mainOfertaPartID}) {
                     </React.Fragment>
                 ))}
                 <tr>
-                    <td onClick={() => setIsPopupOpen(true)} className='bg-white p-2 px-3 hover:bg-[rgb(255,255,255,0.9)] cursor-pointer border-b border-r border-black select-none text-black' colSpan={12}>
+                    <td onClick={() => setIsPopupOpen(true)} className='bg-white p-2 px-3 hover:bg-[rgb(255,255,255,0.9)] cursor-pointer border-b border-r border-black select-none text-black' colSpan={14}>
                         <div className='flex font-bold   text-center justify-center items-center gap-2'>
                             <p className=' text-center'>Adauga Retete</p>
                             <FontAwesomeIcon className='text-green-500  text-center text-2xl' icon={faPlus}/>
@@ -831,7 +895,7 @@ export default function SantiereAdd({mainOfertaPartID}) {
                     <button onClick={() => handleFormular()} className='bg-green-500 cursor-pointer flex gap-2 justify-center font-medium items-center p-2 mt-6 text-base tracking-wide hover:bg-green-600 text-black rounded-lg flex-grow'><FontAwesomeIcon icon={faFileExport}/>Genereaza</button>
             </div>
           </div>
-          
+
         }
         {/* div that prevents clicks outside */}
         {isPopupOpen && (
@@ -844,6 +908,7 @@ export default function SantiereAdd({mainOfertaPartID}) {
             </div>
         </>
       )}
+                </div>
     </>
   )
 }

@@ -20,6 +20,10 @@ export default function SantiereAddReteteTableAbsolute({
     const [cantitate, setCantitate] = useState("");
     const [doesExistsRetete, setDoesExistsRetete] = useState(false)
     const [selectedRetete, setSelectedRetete] = useState(null);
+
+    //texte aditionale
+    const [detaliiAditionale, setDetaliiAditionale] = useState('');
+    const [reperPlan, setReperPlan] = useState('');
     
 
     const [retete, setRetete] = useState([]);
@@ -79,6 +83,8 @@ export default function SantiereAddReteteTableAbsolute({
                 await api.post("/Santiere/addRetetaToInitialOferta", 
                 {
                     oferta_part: mainOfertaPartID,
+                    reper_plan: reperPlan,
+                    detalii_aditionale: detaliiAditionale,
                     limba: selectedRetete.original.limba,
                     cod_reteta:selectedRetete.original.cod,
                     clasa_reteta:selectedRetete.original.clasa,
@@ -474,24 +480,62 @@ const toggleDropdown = async (e,parentId) => {
             </table>
             </div>
           </div>
-               <div className='flex gap-4 w-full'>
-                     <div className="flex gap-4 items-center ">
-                        <label className=" font-medium">
-                            Cantitate: 
-                        </label>
-                        <input
-                            type="text"
-                            id="cantitate"
-                            name="cantitate"
-                            value={cantitate}
-                            maxLength={8}
-                            onChange={(e) => setCantitateHandler(e)}
-                            className="px-2 outline-none text-center dropdown-container tracking-wide py-2 flex-shrink-0 text-black  max-w-64  rounded-lg shadow-sm "
-                            placeholder="Introdu Cantitatea"
-                        />
+               <div className='flex gap-4 w-full '>
+                     <div className="flex gap-3 items-center ">
+                        <div className='flex flex-col items-center h-full'>
+                            <label className=" font-medium">
+                                Cantitate
+                            </label>
+                            <input
+                                type="text"
+                                id="cantitate"
+                                name="cantitate"
+                                value={cantitate}
+                                maxLength={8}
+                                onChange={(e) => setCantitateHandler(e)}
+                                className="px-2 outline-none text-center dropdown-container tracking-wide py-2 flex-shrink-0 text-black  max-w-32  rounded-lg shadow-sm "
+                            />
                         </div>
-                            <button onClick={() => handleAddItem()} className='bg-green-500 dropdown-container flex  items-center justify-center gap-2 text-black flex-grow hover:bg-green-600  px-6 py-2 rounded-xl'><FontAwesomeIcon className='' icon={faPlus}/><span className="leading-none">Adaugă Rețetă</span></button>
-                            <button onClick={() => setIsPopupOpen(false)} className='bg-red-500 dropdown-container flex  items-center justify-center gap-2 text-black  hover:bg-red-600  px-6 py-2 rounded-xl'><FontAwesomeIcon className='' icon={faX}/><span className="leading-none">Închide</span></button>
+                        <div className='flex flex-col items-center h-full'>
+                            <label
+                                htmlFor="reperPlan"
+                                className="font-medium whitespace-nowrap"
+                                >
+                                Reper Plan
+                            </label>  
+                            <textarea
+                                rows={2}
+                                type="text"
+                                id="reperPlan"
+                                name="reperPlan"
+                                value={reperPlan}
+                                onChange={(e) => setReperPlan(e.target.value)} 
+                                className="px-2 dropdown-container text-black   outline-none resize-none w-96  py-2  rounded-lg shadow-sm "
+                                
+                            />
+                        </div>
+                        <div className='flex flex-col items-center h-full'>
+                            <label
+                                htmlFor="reperPlan"
+                                className="font-medium whitespace-nowrap"
+                                >
+                                Detalii Aditionale
+                            </label> 
+                            <textarea
+                                rows={2}
+                                type="text"
+                                id="detaliiAditionale"
+                                name="detaliiAditionale"
+                                value={detaliiAditionale}
+                                onChange={(e) => setDetaliiAditionale(e.target.value)}
+                                className="px-2 dropdown-container text-black w-96 outline-none resize-none   py-2  rounded-lg shadow-sm "                                
+                            />  
+                        </div>
+                        </div>
+                        <div className='w-full flex gap-3 pt-6 '>
+                            <button onClick={() => handleAddItem()} className='bg-green-500  dropdown-container flex  items-center justify-center gap-2 text-black flex-grow hover:bg-green-600  px-6 py-2 h-12 rounded-xl'><FontAwesomeIcon className='' icon={faPlus}/><span className="leading-none">Adaugă Rețetă</span></button>
+                            <button onClick={() => setIsPopupOpen(false)} className='bg-red-500 dropdown-container flex  items-center justify-center gap-2 text-black  hover:bg-red-600 h-12  px-6 py-2 rounded-xl'><FontAwesomeIcon className='' icon={faX}/><span className="leading-none">Închide</span></button>
+                        </div>
                         </div>
           </div>
           </div>

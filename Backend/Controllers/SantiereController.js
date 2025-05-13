@@ -9,6 +9,8 @@ const addRetetaToInitialOfera = async (req, res) => {
       await connection.beginTransaction();
   
       const {
+        reper_plan,
+        detalii_aditionale,
         oferta_part,
         limba,
         cod_reteta,
@@ -25,39 +27,12 @@ const addRetetaToInitialOfera = async (req, res) => {
       if (!limba || !oferta_part || !cod_reteta || !clasa_reteta || !articol || !unitate_masura || !reteta_id || !cantitate) {
         return res.status(400).json({ message: 'Missing required reteta fields.' });
       }
-          // Delete existing reteta if already exists for this santier and cod_reteta
-    const [existing] = await connection.execute(
-        `SELECT id FROM Santier_retete WHERE oferta_parts_id = ? AND cod_reteta = ? AND articol = ?`,
-        [oferta_part, cod_reteta, articol]
-      );
-  
-      if (existing.length > 0) {
-        const existingId = existing[0].id;
-  
-        const [oldPhotosMat] = await connection.execute(`SELECT photoUrl FROM Santier_retete_materiale WHERE santier_reteta_id = ?`, [existingId]);
-        const [oldPhotosUtil] = await connection.execute(`SELECT photoUrl FROM Santier_retete_utilaje WHERE santier_reteta_id = ?`, [existingId]);
-  
-        const oldPhotos = [...oldPhotosMat, ...oldPhotosUtil];
-  
-        for (const { photoUrl } of oldPhotos) {
-          if (photoUrl) {
-            const fullPath = path.join(__dirname, '..', photoUrl);
-            if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
-          }
-        }
-  
-        await connection.execute(`DELETE FROM Santier_retete_manopera WHERE santier_reteta_id = ?`, [existingId]);
-        await connection.execute(`DELETE FROM Santier_retete_materiale WHERE santier_reteta_id = ?`, [existingId]);
-        await connection.execute(`DELETE FROM Santier_retete_utilaje WHERE santier_reteta_id = ?`, [existingId]);
-        await connection.execute(`DELETE FROM Santier_retete_transport WHERE santier_reteta_id = ?`, [existingId]);
-        await connection.execute(`DELETE FROM Santier_retete WHERE id = ?`, [existingId]);
-      }
   
       const [retetaResult] = await connection.execute(`
-        INSERT INTO Santier_retete (oferta_parts_id, limba, cod_reteta, clasa_reteta, articol, articol_fr, descriere_reteta, descriere_reteta_fr, unitate_masura, cantitate)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO Santier_retete (oferta_parts_id, reper_plan, detalii_aditionale, limba, cod_reteta, clasa_reteta, articol, articol_fr, descriere_reteta, descriere_reteta_fr, unitate_masura, cantitate)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
-        oferta_part, limba, cod_reteta, clasa_reteta, articol, articol_fr, descriere_reteta, descriere_reteta_fr, unitate_masura, cantitate
+        oferta_part, reper_plan, detalii_aditionale, limba, cod_reteta, clasa_reteta, articol, articol_fr, descriere_reteta, descriere_reteta_fr, unitate_masura, cantitate
       ]);
   
       const santier_reteta_id = retetaResult.insertId;
@@ -227,7 +202,7 @@ const addRetetaToInitialOfera = async (req, res) => {
     try {
       // Get all retete for the santier
       const [reteteRows] = await global.db.execute( 
-        `SELECT id,limba,text_aditional, oferta_parts_id, cod_reteta as cod , clasa_reteta as clasa, 
+        `SELECT id,limba, reper_plan, detalii_aditionale, oferta_parts_id, cod_reteta as cod , clasa_reteta as clasa, 
                 articol, articol_fr, descriere_reteta, descriere_reteta_fr, unitate_masura, cantitate     
                 FROM Santier_retete WHERE oferta_parts_id = ?`,
         [id]
@@ -532,16 +507,16 @@ const addRetetaToInitialOfera = async (req, res) => {
      };
   
      const updateSantierRetetaPrices = async (req, res) => {
-      const { santier_reteta_id, cantitate_reteta, updatedCosts } = req.body;
-    
+      const { santier_reteta_id, cantitate_reteta, detalii_aditionale, reper_plan, updatedCosts } = req.body;
+      // console.log(detalii_aditionale, reper_plan);
       const connection = await global.db.getConnection();
       try {
         await connection.beginTransaction();
     
         // Update main reteta quantity
         await connection.execute(
-          `UPDATE Santier_retete SET cantitate = ? WHERE id = ?`,
-          [cantitate_reteta, santier_reteta_id]
+          `UPDATE Santier_retete SET cantitate = ?, detalii_aditionale = ?, reper_plan = ? WHERE id = ?`,
+          [cantitate_reteta, detalii_aditionale, reper_plan, santier_reteta_id]
         );
     
         for (const key in updatedCosts) {
