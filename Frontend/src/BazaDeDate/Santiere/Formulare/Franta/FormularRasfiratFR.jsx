@@ -29,7 +29,8 @@ export const FormularRasfiratFR = async (id ,recapitulatii, TVA) => {
           return;
         }
         let detalii = santierDetails.data.santierDetails[0].detalii_executie;
-        console.log(detalii);
+        // console.log(santierDetails.data.santierDetails[0]);
+        // console.log(detalii);
         let dataTable = res.data.data;
         const {
           totalManoperaOre,
