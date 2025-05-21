@@ -100,7 +100,7 @@ export default function BalyEnergies() {
                 <div className="btn">
                   <button>See More</button>
                   <button
-  onClick={() => navigate("/contact")}
+  onClick={() => navigate("/Contact")}
   className="bg-blue-600 text-white px-4 py-2 rounded"
 >
   Contact

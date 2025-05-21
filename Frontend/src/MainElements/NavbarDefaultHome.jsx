@@ -26,7 +26,7 @@ function Navbar() {
         else if(location.pathname.includes("Contact")) setSelected(3);
         else setSelected(0);
         setLoading(false);
-    }, [])
+    }, [location])
     
 
   return (

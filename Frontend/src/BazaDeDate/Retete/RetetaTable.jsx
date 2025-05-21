@@ -6,6 +6,8 @@ import { faArrowDown, faArrowDownAZ, faArrowUpAZ, faCancel, faCar, faChevronDown
 import { RetetaContext } from '../../context/RetetaContext';
 import photoAPI from '../../api/photoAPI';
 import ReteteAdaugareObiecte from './ReteteAdaugareObiecte';
+import CostInputCell from '../Santiere/Ofertare/CostCell';
+import { useRef } from 'react';
 
 
 export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, setSelectedDelete, selectedDouble, setSelectedDouble, setSelectedEdit, setFormData, selectedEdit, cancelEdit, cancelDelete}) {
@@ -50,6 +52,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
                     asc_cod: ascendentCOD,
                 },
             });
+            // console.log("response ", response.data);
             setOpen([]);
             if(response.data.data.length == 0){
                 setRetete([]);
@@ -63,7 +66,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
             else{
                 setRetete(response.data.data);
                 setTotalItems(response.data.totalItems);
-                setCurrentOffset(response.data.currentOffset);
+                setCurrentOffset(response.data.offset);
             }
         } catch (error) {
             console.error('Eroare la obtinerea de informatii', error);
@@ -261,6 +264,57 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
       };
 
 
+    //edit CANTITATE !
+    //
+
+        //Handle Click Outside!
+        useEffect(() => {
+            document.addEventListener('click', handleClickOutside);
+            return () => {
+                document.removeEventListener('click', handleClickOutside);
+            };
+        }, []);
+
+        //cancel edit if ckicked outside
+        const handleClickOutside = (event) => {
+            if (!event.target.closest('.dropdown-container')) {
+                setSeWlectedEditCantitateInterior(null);
+            }
+        };
+
+    const [cantitateReteta, setCantitateReteta] = useState(0);
+    const [selectedEditCantitateInterior, setSelectedEditCantitateInterior] = useState(null);
+    const editedCantitateRef = useRef(cantitateReteta);
+
+    useEffect(() => {
+        editedCantitateRef.current = cantitateReteta;
+    }, [cantitateReteta]);
+
+    const handleCantiatateChange = (id, whatIs, value) => {
+        // console.log(value)
+        setCantitateReteta(value);
+    };
+
+    const handleEditCantitateInterior = async (passedRow) => {
+        if(selectedEditCantitateInterior == passedRow.id + "-" + passedRow.reteta_id + "-" + passedRow.whatIs){
+            setSelectedEditCantitateInterior(null);
+            try {
+                let res = await api.put(`/Retete/editCantitateInterior/${passedRow.reteta_id}/${passedRow.id}/${passedRow.whatIs}`, {
+                    cantitate: editedCantitateRef.current,
+                });
+                let newRetete = [...retete];
+                newRetete[passedRow.index].cantitate = editedCantitateRef.current;
+                setRetete(newRetete);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+        else{
+            setSelectedEditCantitateInterior(passedRow.id + "-" + passedRow.reteta_id + "-" + passedRow.whatIs);
+        }
+    }
+
+
     const parentProps = {
         setIsPopupOpen,
         isPopupOpen,
@@ -384,7 +438,41 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
                     ),
                     size:70
             },
-            { accessorKey: "cantitate", header: "Cantitate", size:70},
+            { 
+                accessorKey: "cantitate", 
+                header: "Cantitate", 
+                cell: ({ getValue, row }) => {
+                    let create = "";
+                    let isEditable = false;
+                    if(row.original.reteta_id){
+                        create = row.original.id + "-" + row.original.reteta_id + "-" + row.original.whatIs;
+                        isEditable = (create === selectedEditCantitateInterior);
+                    }
+                    
+                        return (
+                        <CostInputCell
+                            rowId={row.original.id}
+                            whatIs={row.original.whatIs || "Reteta"}
+                            initialValue={getValue()}
+                            isEditable={isEditable}
+                            onEdit={handleCantiatateChange} // optional
+                            bold = {false}
+                        />
+                    );
+                },
+                size:70
+            },
+            { 
+                accessorKey: "total_price", 
+                header: "Preț Total", 
+                cell: ({ getValue, row }) => {
+                    let val = getValue();
+                    return(
+                        <div onClick={() => console.log(row.original)} className='w-full flex font-medium'>
+                            {row.original.whatIs ? (row.original.cost * row.original.cantitate).toFixed(3)  : parseFloat(val).toFixed(3)} 
+                        </div>
+                )}, 
+            },
             { 
                 accessorKey: "threeDots", 
                 header: "Opțiuni",
@@ -392,6 +480,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
                     row.original.whatIs == 'Manopera' || row.original.whatIs == 'Material' || row.original.whatIs == 'Utilaj' || row.original.whatIs == 'Transport' ? 
                     <div className=' dropdown-container w-full h-full relative flex '> 
                         <div className='text-xl relative w-full h-full py-2 select-none items-center justify-evenly gap-1 flex'>
+                            <FontAwesomeIcon onClick={(e) => handleEditCantitateInterior(row.original)}  className=' text-green-500 hover:text-green-600 cursor-pointer' icon={faPenToSquare}/>
                             <FontAwesomeIcon onClick={(e) => deleteItem(e, row)} className=' text-red-500 hover:text-red-600 cursor-pointer' icon={faTrashCan}/>
                         </div>
                     </div>    
@@ -412,7 +501,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
                     },
                 },
             },
-    ], [selectedDelete, open, retete, ascendent, selectedRetetaIds, ascendentCOD]);
+    ], [selectedDelete, selectedEditCantitateInterior,  open, retete, ascendent, selectedRetetaIds, ascendentCOD]);
 
     const table = useReactTable({
         data: retete,
@@ -431,7 +520,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
         {retete &&
             <div className="px-6 pb-4 scrollbar-webkit text-white h-full flex flex-col justify-between">
             <div className="overflow-auto  scrollbar-webkit">
-                <table className="w-full  border-separate border-spacing-0 ">
+                <table className="w-full text-[0.91rem]  border-separate border-spacing-0 ">
                     <thead className='top-0 w-full sticky  z-10 '>
                         <tr className='text-black'>
                                     <th className='border-b border-r border-black bg-white' colSpan={2}></th>
@@ -520,7 +609,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
                                             placeholder="Filtru Articol"
                                         />
                                     </th>
-                                    <th className=" bg-white border-b border-r border-black" colSpan={5}>
+                                    <th className=" bg-white border-b border-r border-black" colSpan={6}>
                                        <div className=' flex  justify-center items-center'>
                                             <p className='px-2'>Arată</p>
                                             <input className='border border-black p-1 w-12 text-center rounded-lg' type="text" onChange={(e) => handleLimit(e)} value={limit} name="" id="" />
@@ -561,7 +650,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
               {retete.length == 0 ?
                     <tbody className='relative z-0'>
                         <tr>
-                            <td className='bg-white text-black h-12' colSpan={14}>
+                            <td className='bg-white text-black h-12' colSpan={15}>
                                 <div className=' flex justify-center items-center w-full text-lg font-semibold h-full'>Nici un rezultat</div>
                             </td>
                         </tr>
@@ -572,7 +661,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
                     row.original.whatIs == 'addButton' ?
                     <tr key={row.original.id}>
                         <td></td>
-                        <td onClick={() => setIsPopupOpen(row.original.retetaIdForFetch)} className='bg-blue-300 p-1 px-3 hover:bg-blue-500 cursor-pointer border-b border-r border-black select-none text-black' colSpan={11}>
+                        <td onClick={() => setIsPopupOpen(row.original.retetaIdForFetch)} className='bg-blue-300 p-1 px-3 hover:bg-blue-500 cursor-pointer border-b border-r border-black select-none text-black' colSpan={12}>
                             <div className='flex font-bold text-center justify-center items-center gap-2'>
                                 <p className=' text-center'>Adauga Obiecte</p>
                                 <FontAwesomeIcon className='text-green-500  text-center text-2xl' icon={faPlus}/>

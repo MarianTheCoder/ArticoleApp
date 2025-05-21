@@ -112,7 +112,7 @@ export default function SantiereRoutes() {
         </div> 
         :
     <div className='relative h-screen w-full  overflow-hidden flex items-end justify-center'>
-        <div className=" w-[98%] h-[95%] relative flex justify-center rounded-lg ">
+        <div className=" w-[98%] h-[94%] relative flex justify-center rounded-lg ">
             <div className="absolute flex -top-9 left-20 -space-x-2 select-none">
                 {oferte.map((item, index) => (
                     <div 

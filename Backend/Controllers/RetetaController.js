@@ -258,67 +258,96 @@ const getReteteLight = async (req,res) =>{
 
 const getRetete = async (req, res) => {
   try {
-    const { offset = 0, limit = 10, clasa = '', cod = '', articol = '', limba = '' } = req.query;
+    const {
+      offset = 0,
+      limit = 10,
+      clasa = '',
+      cod = '',
+      articol = '',
+      limba = ''
+    } = req.query;
     const asc_articol = req.query.asc_articol === "true";
     const asc_cod = req.query.asc_cod === "true";
 
-    // Validate limit and offset to be integers
     const parsedOffset = parseInt(offset, 10);
-    const parsedLimit = parseInt(limit, 10);
-
+    const parsedLimit  = parseInt(limit, 10);
     if (isNaN(parsedOffset) || isNaN(parsedLimit) || parsedOffset < 0 || parsedLimit <= 0) {
       return res.status(400).json({ message: "Invalid offset or limit values." });
     }
 
-    // Start constructing the base query
+    // Base SELECT with total_price subqueries
     let query = `
-      SELECT 
-        r.id, 
-        r.limba, 
-        r.cod_reteta AS cod, 
-        r.clasa_reteta AS clasa, 
-        r.articol, 
-        r.articol_fr, 
-        r.descriere_reteta, 
-        r.descriere_reteta_fr, 
-        r.unitate_masura, 
+      SELECT
+        r.id,
+        r.limba,
+        r.cod_reteta     AS cod,
+        r.clasa_reteta   AS clasa,
+        r.articol,
+        r.articol_fr,
+        r.descriere_reteta,
+        r.descriere_reteta_fr,
+        r.unitate_masura,
         r.data,
+
+        -- flags
         (SELECT COUNT(*) FROM Retete_manopera rm WHERE rm.reteta_id = r.id) > 0 AS has_manopera,
         (SELECT COUNT(*) FROM Retete_materiale rmt WHERE rmt.reteta_id = r.id) > 0 AS has_materiale,
         (SELECT COUNT(*) FROM Retete_utilaje ru WHERE ru.reteta_id = r.id) > 0 AS has_utilaje,
-        (SELECT COUNT(*) FROM Retete_transport rt WHERE rt.reteta_id = r.id) > 0 AS has_transport
+        (SELECT COUNT(*) FROM Retete_transport rt WHERE rt.reteta_id = r.id) > 0 AS has_transport,
+
+        -- total_price: sum of all child cost × qty
+        (
+          (SELECT COALESCE(SUM(m.cost_unitar * rm.cantitate), 0)
+             FROM Retete_manopera rm
+             JOIN Manopera m ON m.id = rm.manopera_id
+            WHERE rm.reteta_id = r.id
+          )
+          +
+          (SELECT COALESCE(SUM(mt.pret_vanzare * rmt.cantitate), 0)
+             FROM Retete_materiale rmt
+             JOIN Materiale mt ON mt.id = rmt.materiale_id
+            WHERE rmt.reteta_id = r.id
+          )
+          +
+          (SELECT COALESCE(SUM(t.cost_unitar * rt.cantitate), 0)
+             FROM Retete_transport rt
+             JOIN Transport t ON t.id = rt.transport_id
+            WHERE rt.reteta_id = r.id
+          )
+          +
+          (SELECT COALESCE(SUM(u.pret_utilaj * ru.cantitate), 0)
+             FROM Retete_utilaje ru
+             JOIN Utilaje u ON u.id = ru.utilaje_id
+            WHERE ru.reteta_id = r.id
+          )
+        ) AS total_price
       FROM Retete r
     `;
+    const queryParams = [];
+    const whereClauses = [];
 
-    let queryParams = [];
-    let whereClauses = [];
-
-    // Conditionally add filters to the query
-    if (clasa.trim() !== "") {
+    // same filters as before...
+    if (clasa.trim()) {
       whereClauses.push("r.clasa_reteta LIKE ?");
       queryParams.push(`%${clasa}%`);
     }
-
-    if (cod.trim() !== "") {
+    if (cod.trim()) {
       whereClauses.push("r.cod_reteta LIKE ?");
       queryParams.push(`%${cod}%`);
     }
-
-    if (articol.trim() !== "") {
+    if (articol.trim()) {
       whereClauses.push("(r.articol LIKE ? OR r.articol_fr LIKE ?)");
       queryParams.push(`%${articol}%`, `%${articol}%`);
     }
-
-    if (limba.trim() !== "") {
+    if (limba.trim()) {
       whereClauses.push("r.limba LIKE ?");
       queryParams.push(`%${limba}%`);
     }
-
-    // If there are any filters, add them to the query
-    if (whereClauses.length > 0) {
-      query += ` WHERE ${whereClauses.join(' AND ')}`;
+    if (whereClauses.length) {
+      query += " WHERE " + whereClauses.join(" AND ");
     }
 
+    // ordering
     if (asc_articol && asc_cod) {
       query += ' ORDER BY r.articol ASC, r.cod_reteta ASC';
     } else if (asc_articol) {
@@ -327,36 +356,29 @@ const getRetete = async (req, res) => {
       query += ' ORDER BY r.cod_reteta ASC';
     }
 
+    // pagination
     query += ' LIMIT ? OFFSET ?';
     queryParams.push(parsedLimit, parsedOffset * parsedLimit);
 
-    // Execute the query with filters and pagination
+    // execute main query
     const [rows] = await global.db.execute(query, queryParams);
 
-    // Count query to get total number of records without pagination
-    let countQuery = `SELECT COUNT(*) as total FROM Retete r`;
-    if (whereClauses.length > 0) {
-      countQuery += ` WHERE ${whereClauses.join(' AND ')}`;
+    // count total (unchanged)
+    let countQuery = `SELECT COUNT(*) AS total FROM Retete r`;
+    if (whereClauses.length) {
+      countQuery += " WHERE " + whereClauses.join(" AND ");
     }
-
-    // Create new queryParams for the count query (without LIMIT and OFFSET)
-    const countQueryParams = queryParams.slice(0, queryParams.length - 2); // Remove pagination params
-
-    const [countResult] = await global.db.execute(countQuery, countQueryParams);
+    const countParams = queryParams.slice(0, queryParams.length - 2);
+    const [countResult] = await global.db.execute(countQuery, countParams);
     const totalItems = countResult[0].total;
 
-    // Send paginated data with metadata
-    res.send({
-      data: rows,
-      totalItems,
-      currentOffset: parsedOffset,
-      limit: parsedLimit,
-    });
+    res.json({ data: rows, totalItems, offset: parsedOffset, limit: parsedLimit });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Database error' });
   }
 };
+
 
 
 const getSpecificReteta = async (req, res) => {

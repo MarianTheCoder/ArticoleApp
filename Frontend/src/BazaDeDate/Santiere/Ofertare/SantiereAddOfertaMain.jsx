@@ -583,7 +583,8 @@ export default function SantiereAdd({mainOfertaPartID}) {
                   />
                 );
               },
-            size:70},
+            size:70
+        },
         {
             accessorKey: "cost",
             header: "Preț Unitar",

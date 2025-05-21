@@ -16,14 +16,14 @@
 
 body
 {
-    min-height: 100vh;
+    min-height: 1;
     background-color: var(--clr);
 }
 
 .sidebar
 {
     z-index: 100;
-    position: absolute;
+    position: fixed;
     width: 80px;
     overflow: hidden;
     height: 100vh;
