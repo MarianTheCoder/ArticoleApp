@@ -3,6 +3,48 @@ const generareC5 = async (req,res) =>{
   const { id } = req.params; // santier_id
   const { recapitulatii, TVA } = req.query;
   try {
+    //get name and id_ofert from ofer_part
+    const [partsRows] = await global.db.execute(
+      `SELECT oferta_id, name FROM Oferta_parts WHERE id = ?`,
+      [id]
+    );
+    if (!partsRows.length) {
+      return res.status(404).json({ message: "Oferta part not found" });
+    }
+    const ofertaId = partsRows[0].oferta_id;
+    const ofertaPartName = partsRows[0].name;
+    //get name and id_santier from oferta
+    const [ofertaRows] = await global.db.execute(
+      `SELECT name, santier_id FROM Oferta WHERE id = ?`,
+      [ofertaId]
+    );
+    if (!ofertaRows.length) {
+      return res.status(404).json({ message: "Oferta not found" });
+    }
+    const santierId = ofertaRows[0].santier_id;
+    const ofertaName = ofertaRows[0].name;
+    //get name from santier
+    const [santierRows] = await global.db.execute(
+      `SELECT name FROM Santiere WHERE id = ?`,
+      [santierId]
+    );
+    if (!santierRows.length) {
+      return res.status(404).json({ message: "Santier not found" });
+    }
+    const santierName = santierRows[0].name;
+
+    const [santiereDetaliiRows] = await global.db.execute(
+      `SELECT * FROM Santiere_detalii WHERE id = ?`,
+      [santierId]
+    );
+    if (!santiereDetaliiRows.length) {
+      return res.status(404).json({ message: "Santier not found" });
+    }
+    const santiereDetalii = santiereDetaliiRows[0];
+
+
+
+
     // Get all retete for the santier
     const [reteteRows] = await global.db.execute(
       `SELECT * FROM Santier_retete WHERE oferta_parts_id = ? ORDER BY clasa_reteta ASC`,
@@ -134,8 +176,11 @@ const generareC5 = async (req,res) =>{
         cost: totalCost.toFixed(2), // always 2 decimals
       });
     }
-
     res.status(200).json({
+      ofertaPartName,
+      ofertaName,
+      santierName,
+      santiereDetalii,
       data: results,
       totalManoperaOre: totalManoperaOre.toFixed(2),
       totalManoperaPret: totalManoperaPret.toFixed(2),

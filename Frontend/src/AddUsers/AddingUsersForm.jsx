@@ -176,7 +176,7 @@ export default function AddingUsersForm() {
     <div className='w-full containerWhiter'>
       <div className="flex  justify-center items-center text-black  ">
         <form onSubmit={handleSubmit} className="w-full p-6 px-12 rounded-xl shadow-xl">
-          <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr_auto] xxxl:gap-12 md:gap-6 xl:gap-8 items-center">
+          <div className={`grid ${formData.role == 3 ? "grid-cols-[auto_1fr_1fr_1fr_1fr_1fr_auto]" : "grid-cols-[auto_1fr_1fr_1fr_1fr_auto]" } xxxl:gap-12 md:gap-6 xl:gap-8 items-center`}>
             { formData.role == 3 ?          
               <div className="flex flex-col items-center">
                       <label htmlFor="unit" className="col-span-1 font-medium text-black">

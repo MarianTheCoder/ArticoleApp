@@ -75,25 +75,47 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
 
 
     //ineriorul retetei aici
-    const fetchPreviewReteta = async (id, index , reteteParam) => {
-        try {
-            const response = await api.get(`/Retete/getSpecificReteta/${id}`);
-            const newObjects = [...response.data.manopera, ...response.data.materiale, ...response.data.utilaje, ...response.data.transport];
-            const addButton = {
-                id: `addButton-${id}`, // You can use a unique ID for the add button
-                whatIs: "addButton", // Identifying the type of the item
-                retetaIdForFetch: id, // Store the reteta ID for later use
-            };
-            let updatedRetete = reteteParam ? [...reteteParam] : [...retete];
-            updatedRetete.splice(index + 1, 0, ...newObjects, addButton); // Insert the new objects after the current index
-            setOpen((prev) => {
-                    return [...prev,  id];
-                });
-            setRetete(updatedRetete); // Update the state
-        } catch (error) {
-            console.error('Error fetching data:', error);
-        }
+    const fetchPreviewReteta = async (id, index, reteteParam) => {
+    try {
+        const response = await api.get(`/Retete/getSpecificReteta/${id}`);
+        // flatten all 4 sections into one array
+        const newObjects = [
+        ...response.data.manopera,
+        ...response.data.materiale,
+        ...response.data.utilaje,
+        ...response.data.transport
+        ];
+
+        // compute the sum(cost * cantitate) over all children
+        const totalForThisReteta = newObjects.reduce((sum, obj) => {
+        const cost = parseFloat(obj.cost)      || 0;
+        const qty  = parseFloat(obj.cantitate) || 0;
+        return sum + cost * qty;
+        }, 0);
+
+        const addButton = {
+        id: `addButton-${id}`,
+        whatIs: "addButton",
+        retetaIdForFetch: id,
+        };
+
+        // clone and splice in the new rows
+        let updatedRetete = reteteParam ? [...reteteParam] : [...retete];
+        updatedRetete.splice(index + 1, 0, ...newObjects, addButton);
+
+        // locate the parent recipe (it's still at `index`)
+        updatedRetete[index] = {
+        ...updatedRetete[index],
+        total_price: totalForThisReteta.toFixed(3)
+        };
+
+        setOpen(prev => [...prev, id]);
+        setRetete(updatedRetete);
+
+    } catch (error) {
+        console.error('Error fetching data:', error);
     }
+    };
 
     const delPreviewReteta = (id) => {
         if(retete){
@@ -218,20 +240,24 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
             newRetete.splice(passedRow.index, 1);
             if (passedRow.original.whatIs === 'Manopera' || passedRow.original.whatIs === 'Material' || passedRow.original.whatIs === 'Utilaj' || passedRow.original.whatIs === 'Transport') {
                 const parentId = passedRow.original.reteta_id;
-                const parentIndex = newRetete.findIndex((row) => row.id == parentId);
+                const parentIndex = newRetete.findIndex((row) => row.id == parentId && !row.whatIs);
                 if (parentIndex !== -1) {
                     const parentReteta = newRetete[parentIndex];
                   
                     if (parentReteta.has_manopera > 0 && passedRow.original.whatIs === 'Manopera') {
+                        parentReteta.total_price = (parseFloat(parentReteta.total_price) - parseFloat(passedRow.original.cost * passedRow.original.cantitate)).toFixed(3);
                         parentReteta.has_manopera -= 1; // Decrease it by 1
                     }
                     else if (parentReteta.has_materiale > 0 && passedRow.original.whatIs === 'Material') {
+                        parentReteta.total_price = (parseFloat(parentReteta.total_price) - parseFloat(passedRow.original.cost * passedRow.original.cantitate)).toFixed(3);
                         parentReteta.has_materiale -= 1; // Decrease it by 1
                     }
                     else if (parentReteta.has_utilaje > 0 && passedRow.original.whatIs === 'Utilaj') {
+                        parentReteta.total_price = (parseFloat(parentReteta.total_price) - parseFloat(passedRow.original.cost * passedRow.original.cantitate)).toFixed(3);
                         parentReteta.has_utilaje -= 1; // Decrease it by 1
                     }
                     else if (parentReteta.has_transport > 0 && passedRow.original.whatIs === 'Transport') {
+                        parentReteta.total_price = (parseFloat(parentReteta.total_price) - parseFloat(passedRow.original.cost * passedRow.original.cantitate)).toFixed(3);
                         parentReteta.has_transport -= 1; // Decrease it by 1
                     }
 
@@ -278,10 +304,15 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
         //cancel edit if ckicked outside
         const handleClickOutside = (event) => {
             if (!event.target.closest('.dropdown-container')) {
-                setSeWlectedEditCantitateInterior(null);
+                setSelectedEditCantitateInterior(null);
             }
         };
 
+
+        //handle edit cantitate
+        //
+        //
+        //
     const [cantitateReteta, setCantitateReteta] = useState(0);
     const [selectedEditCantitateInterior, setSelectedEditCantitateInterior] = useState(null);
     const editedCantitateRef = useRef(cantitateReteta);
@@ -291,28 +322,60 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
     }, [cantitateReteta]);
 
     const handleCantiatateChange = (id, whatIs, value) => {
-        // console.log(value)
-        setCantitateReteta(value);
+        if (/^$|^\d*\.?\d{0,3}$/.test(value)) {
+            const num = value === "" ? 0 : parseFloat(value);
+            setCantitateReteta(num);
+        }
     };
 
     const handleEditCantitateInterior = async (passedRow) => {
-        if(selectedEditCantitateInterior == passedRow.id + "-" + passedRow.reteta_id + "-" + passedRow.whatIs){
-            setSelectedEditCantitateInterior(null);
-            try {
-                let res = await api.put(`/Retete/editCantitateInterior/${passedRow.reteta_id}/${passedRow.id}/${passedRow.whatIs}`, {
-                    cantitate: editedCantitateRef.current,
-                });
-                let newRetete = [...retete];
-                newRetete[passedRow.index].cantitate = editedCantitateRef.current;
-                setRetete(newRetete);
-            } catch (error) {
-                console.error('Error fetching data:', error);
-            }
+    const key = `${passedRow.original.id}-${passedRow.original.reteta_id}-${passedRow.original.whatIs}`;
+
+    if (selectedEditCantitateInterior === key) {
+        setSelectedEditCantitateInterior(null);
+
+        // parse numbers
+        const oldQty  = parseFloat(passedRow.original.cantitate) || 0;
+        const unitCost = parseFloat(passedRow.original.cost) || 0;
+        const newQty  = parseFloat(editedCantitateRef.current) || 0;
+
+        try {
+        // send update
+        await api.put(
+            `/Retete/editCantitateInterior/${passedRow.original.reteta_id}/${passedRow.original.id}/${passedRow.original.whatIs}`,
+            { cantitate: newQty }
+        );
+
+        // copy state
+        const newRetete = [...retete];
+
+        // update child quantity
+        newRetete[passedRow.index].cantitate = newQty.toFixed(3);
+
+        // find parent
+        const parentId = passedRow.original.reteta_id;
+        const parentIndex = newRetete.findIndex(r => r.id == parentId && !r.whatIs);
+        if (parentIndex !== -1) {
+            // compute delta = (new - old) * unitCost
+            const delta = (newQty - oldQty) * unitCost;
+
+            // parse existing parent total
+            const oldTotal = parseFloat(newRetete[parentIndex].total_price) || 0;
+
+            // apply adjustment and re-format
+            newRetete[parentIndex].total_price = (oldTotal + delta).toFixed(3);
         }
-        else{
-            setSelectedEditCantitateInterior(passedRow.id + "-" + passedRow.reteta_id + "-" + passedRow.whatIs);
+
+        setRetete(newRetete);
+
+        } catch (error) {
+        console.error('Error updating cantitate:', error);
         }
+
+    } else {
+        setSelectedEditCantitateInterior(key);
     }
+    };
 
 
     const parentProps = {
@@ -447,8 +510,6 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
                     if(row.original.reteta_id){
                         create = row.original.id + "-" + row.original.reteta_id + "-" + row.original.whatIs;
                         isEditable = (create === selectedEditCantitateInterior);
-                    }
-                    
                         return (
                         <CostInputCell
                             rowId={row.original.id}
@@ -459,6 +520,16 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
                             bold = {false}
                         />
                     );
+                    }
+                    else{
+                        return (
+                            <div className='w-full flex font-medium'>
+                                1.000
+                            </div>
+                        )
+                    }
+                    
+        
                 },
                 size:70
             },
@@ -480,7 +551,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
                     row.original.whatIs == 'Manopera' || row.original.whatIs == 'Material' || row.original.whatIs == 'Utilaj' || row.original.whatIs == 'Transport' ? 
                     <div className=' dropdown-container w-full h-full relative flex '> 
                         <div className='text-xl relative w-full h-full py-2 select-none items-center justify-evenly gap-1 flex'>
-                            <FontAwesomeIcon onClick={(e) => handleEditCantitateInterior(row.original)}  className=' text-green-500 hover:text-green-600 cursor-pointer' icon={faPenToSquare}/>
+                            <FontAwesomeIcon onClick={(e) => handleEditCantitateInterior(row)}  className=' text-green-500 hover:text-green-600 cursor-pointer' icon={faPenToSquare}/>
                             <FontAwesomeIcon onClick={(e) => deleteItem(e, row)} className=' text-red-500 hover:text-red-600 cursor-pointer' icon={faTrashCan}/>
                         </div>
                     </div>    
@@ -679,7 +750,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
                                 </td>
                                 :
                                 <td     
-                                onClick={()=>console.log(cell)}
+                                // onClick={()=>console.log(cell)}
                                 key={cell.id}
                                 className={` 
                                      ${cell.column.id == "whatIs" ? row.original.whatIs == 'Manopera' ? "bg-green-300" : row.original.whatIs == 'Material' ? "bg-amber-300" : row.original.whatIs == 'Utilaj' ? "bg-violet-300" : row.original.whatIs == 'Transport' ? "bg-pink-300" : "bg-white" : "bg-white"}
@@ -697,7 +768,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
                     :
                     <React.Fragment key={row.id}>
                         <tr className={`dropdown-container   text-black 
-                            ${row.original.id == selectedDelete ? "bg-red-300 sticky" : row.original.id == selectedEdit ? "bg-green-300 sticky" : row.original.id == selectedDouble ? "bg-amber-300" :  row.index % 2 === 0 ? 'bg-[rgb(255,255,255,0.75)] ' : 'bg-[rgb(255,255,255,1)] '}`}>
+                            ${row.original.id == selectedDelete ? "bg-red-300 sticky" : row.original.id == selectedEdit ? "bg-green-300 sticky" : row.original.id == selectedDouble ? "bg-amber-300" :  'bg-[rgb(255,255,255,0.75)] '}`}>
                             {row.getVisibleCells().map((cell) => (  
                                     <td  key={cell.id}   
                                         className={`    border-b border-r break-words max-w-72  relative border-black p-1 px-3`}

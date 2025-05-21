@@ -25,7 +25,7 @@ export default function RoutesDom() {
   const {user, loading} = useContext(AuthContext);
   
   useEffect(() => {
-    console.log("sda", user);
+    // console.log("sda", user);
   }, [user])
   
   if (loading ) {

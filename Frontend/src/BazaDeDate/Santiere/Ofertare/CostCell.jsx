@@ -6,7 +6,7 @@ export default function CostInputCell({ initialValue, rowId, whatIs, isEditable,
 
   const handleChange = (e) => {
     const newValue = e.target.value;
-    if(/^$|^\d*\.?\d{0,2}$/.test(newValue)) setValue(newValue);
+    if(/^$|^\d*\.?\d{0,3}$/.test(newValue)) setValue(newValue);
     if (onEdit) {
       onEdit(rowId, whatIs, newValue); 
     }

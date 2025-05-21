@@ -33,7 +33,7 @@ export default function Prezentare() {
             const response = await api.get(`/Santiere/getSantiereDetails/${idSantier}`);
             let data = response.data.santierDetails[0];
             let name = response.data.name;
-            console.log(data);
+            // console.log(data);
             setFormData({
                 nume: name,
                 beneficiar: data.beneficiar,

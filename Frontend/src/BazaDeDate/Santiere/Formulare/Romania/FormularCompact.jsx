@@ -116,6 +116,8 @@ export const FormularCompact = async (id ,recapitulatii, TVA) => {
 ];
 
   const docDefinition = {
+     pageOrientation: 'landscape',
+     pageSize: 'A4',
     content: [
       {
           table: {
@@ -126,7 +128,7 @@ export const FormularCompact = async (id ,recapitulatii, TVA) => {
                 columns: [
                   {
                     image: logo,
-                    width: 150,
+                    width: 200,
                     margin: [5, 5, 10, 5]
                   },
                   {
@@ -220,7 +222,7 @@ export const FormularCompact = async (id ,recapitulatii, TVA) => {
                 margin: [10, 10, 0, 5]
               },
               {
-                text: 'Document generat automat - Formular C8 ',
+                text: 'Document generat automat - Formular  ',
                 fontSize: 8,
                 alignment: 'left',
                 margin: [0, 7.5, 0, 5],

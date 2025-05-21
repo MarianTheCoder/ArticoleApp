@@ -35,7 +35,7 @@ const dbConfig = {
 app.use(bodyParser.json());
 const allowedOrigins = [
   'http://localhost:5173',
-  'http://192.168.1.114:5173',
+  'http://192.168.1.111:5173',
   'https://balyenergies.fr'
 ];
 app.use(cors({

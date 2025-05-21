@@ -656,7 +656,82 @@ const deleteFromReteta = async (req, res) => {
   }
 };
 
+const editCantitateInterior = async (req, res) => {
+  const { retetaId, objectId, whatIs } = req.params;
+  const { cantitate } = req.body;
+  // console.log(retetaId, objectId, whatIs, cantitate);
+
+  // Acquire a dedicated connection from the pool
+  const connection = await global.db.getConnection();
+
+  try {
+    // Start transaction
+    await connection.beginTransaction();
+
+    let sql, params;
+    switch (whatIs) {
+      case "Manopera":
+        sql = `
+          UPDATE Retete_manopera
+          SET cantitate = ?
+          WHERE reteta_id = ? AND manopera_id = ?
+        `;
+        params = [cantitate, retetaId, objectId];
+        break;
+
+      case "Material":
+        sql = `
+          UPDATE Retete_materiale
+          SET cantitate = ?
+          WHERE reteta_id = ? AND materiale_id = ?
+        `;
+        params = [cantitate, retetaId, objectId];
+        break;
+
+      case "Transport":
+        sql = `
+          UPDATE Retete_transport
+          SET cantitate = ?
+          WHERE reteta_id = ? AND transport_id = ?
+        `;
+        params = [cantitate, retetaId, objectId];
+        break;
+
+      case "Utilaj":
+        sql = `
+          UPDATE Retete_utilaje
+          SET cantitate = ?
+          WHERE reteta_id = ? AND utilaje_id = ?
+        `;
+        params = [cantitate, retetaId, objectId];
+        break;
+
+      default:
+        // Roll back immediately if unknown type
+        await connection.rollback();
+        return res.status(400).json({ message: `Unknown whatIs type: ${whatIs}` });
+    }
+
+    // Execute the single update statement
+    await connection.execute(sql, params);
+
+    // Commit the transaction
+    await connection.commit();
+    res.status(200).json({ message: "Cantitate updated successfully!" });
+
+  } catch (error) {
+    // Rollback on any error
+    await connection.rollback();
+    console.error("Error editing interior cantitate (transaction):", error);
+    res.status(500).json({ message: "Internal server error" });
+
+  } finally {
+    // Always release the connection back to the pool
+    connection.release();
+  }
+};
 
 
 
-module.exports = {addReteta, doubleReteta,  getRetete, getSpecificReteta, deleteReteta, editReteta, getReteteLight, deleteFromReteta, addRetetaObjects};
+
+module.exports = {addReteta, doubleReteta, editCantitateInterior,  getRetete, getSpecificReteta, deleteReteta, editReteta, getReteteLight, deleteFromReteta, addRetetaObjects};

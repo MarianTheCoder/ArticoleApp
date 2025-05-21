@@ -182,7 +182,7 @@ export default function Oferte_PartsWrapper({ofertaId}) {
                 </div>
         </div>
         {
-                    selectedPartId != "" ? <SantiereAddOfertaMain mainOfertaPartID = {selectedPartId}  key={`${selectedPartId}`}/>
+                    selectedPartId != "" ? <SantiereAddOfertaMain ofertaId = {ofertaId}  mainOfertaPartID = {selectedPartId}  key={`${selectedPartId}`}/>
                     :
                     ""
                 }
