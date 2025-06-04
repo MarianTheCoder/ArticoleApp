@@ -3,7 +3,7 @@ import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCancel, faL, faPenToSquare } from '@fortawesome/free-solid-svg-icons';
 import api from '../../../api/axiosAPI';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
 export default function Prezentare() {
 
@@ -22,6 +22,7 @@ export default function Prezentare() {
 
   const {idSantier , limbaUser} = useParams();
 
+  const navigate = useNavigate();
 
 
   useEffect(() => {
@@ -30,7 +31,7 @@ export default function Prezentare() {
 
     const fetchData = async () => {
         try {
-            const response = await api.get(`/Santiere/getSantiereDetails/${idSantier}`);
+            const response = await api.get(`/Santiere/getSantiereDetailsSantierID/${idSantier}`);
             let data = response.data.santierDetails[0];
             let name = response.data.name;
             // console.log(data);
@@ -52,6 +53,31 @@ export default function Prezentare() {
     }
 
    const [isDisabled, setIsDisabled] = useState(true);
+   const [isDisabledDeleteSantier, setIsDisabledDeleteSantier] = useState(true);
+   const [stergeSantierParola , setstergeSantierParola] = useState("");
+
+    const handleDeleteSantier = async () =>{
+        if(!isDisabled){
+            setIsDisabled(true);
+            fetchData();
+        }
+        if(isDisabledDeleteSantier == true){
+            setIsDisabledDeleteSantier(false);
+        }
+        else if(stergeSantierParola == "53124"){
+            try {
+                const res = await api.delete(`/Santiere/deleteEntireSantier/${idSantier}`);
+                navigate('/logedUser');
+            } catch (error) {
+                console.log(error);
+            }
+        }
+        else{
+            alert("Cod Incorect");
+            return;
+        }
+    }
+
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -80,6 +106,20 @@ export default function Prezentare() {
     const cancelEdit = () => {
         setIsDisabled(true);
         fetchData();
+    };
+
+    useEffect(() => {
+        document.addEventListener('click', handleClickOutside);
+        return () => {
+            document.removeEventListener('click', handleClickOutside);
+        };
+    }, []);
+
+    const handleClickOutside = (event) => {
+        if (!event.target.closest('.dropdown-container')) {
+            setstergeSantierParola("")
+            setIsDisabledDeleteSantier(true);
+        }
     };
 
 
@@ -204,26 +244,42 @@ export default function Prezentare() {
                         />
                     </div>
                 </div>
-                <div className='flex bg-white rounded-xl flex-col  justify-between '>
-                    <div className=' rounded-xl p-4 pb-0 flex  items-center  '>Creat de :&nbsp;&nbsp;
-                    <input
-                        disabled={isDisabled}
-                        type="text"
-                        id="creatDe"
-                        name="creatDe"
-                        value={formData.creatDe}
-                        onChange={handleChange}
-                        className={`px-2 w-96 outline outline-1 text-center py-2 rounded-lg shadow-lg ${isDisabled ? "outline-gray-300" : "outline-green-500"} `}              />
+                <div className='grid  bg-white rounded-xl grid-cols-[1fr_auto] w-full'>
+                    <div className='flex  flex-col  justify-between '>
+                        <div className=' rounded-xl p-4 pb-0 flex  items-center  '>Creat de :&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                        <input
+                            disabled={isDisabled}
+                            type="text"
+                            id="creatDe"
+                            name="creatDe"
+                            value={formData.creatDe}
+                            onChange={handleChange}
+                            className={`px-2 w-96 outline outline-1 text-center py-2 rounded-lg shadow-lg ${isDisabled ? "outline-gray-300" : "outline-green-500"} `}              />
+                        </div>
+                        <div className=' rounded-xl p-4 flex  items-center  '>Aprobat de:&nbsp;&nbsp;
+                        <input
+                            disabled={isDisabled}
+                            type="text"
+                            id="aprobatDe"
+                            name="aprobatDe"
+                            value={formData.aprobatDe}
+                            onChange={handleChange}
+                            className={`px-2 w-96 outline outline-1 text-center py-2 rounded-lg shadow-lg ${isDisabled ? "outline-gray-300" : "outline-green-500"} `}              />
+                        </div>
                     </div>
-                    <div className=' rounded-xl p-4 flex  items-center  '>Aprobat de:&nbsp;&nbsp;
-                    <input
-                        disabled={isDisabled}
-                        type="text"
-                        id="aprobatDe"
-                        name="aprobatDe"
-                        value={formData.aprobatDe}
-                        onChange={handleChange}
-                        className={`px-2 w-96 outline outline-1 text-center py-2 rounded-lg shadow-lg ${isDisabled ? "outline-gray-300" : "outline-green-500"} `}              />
+                    <div className='p-4 flex gap-4 items-center'>
+                        <input
+                            disabled={isDisabledDeleteSantier}
+                            type="text"
+                            id="stergeSantierParola"
+                            name="stergeSantierParola"
+                            value={stergeSantierParola}
+                            onChange={(e) => setstergeSantierParola(e.target.value)}
+                            placeholder='Cod'
+                            maxLength={10}
+                            className={` dropdown-container  text-center transition-all duration-300 outline-red-500 rounded-lg ${isDisabledDeleteSantier ? "w-0" : "p-4 w-32 shadow-lg outline outline-1"} `}              />
+                     
+                        <button onClick={() => handleDeleteSantier()} className='bg-red-500 dropdown-container hover:bg-red-600 rounded-lg p-4'><FontAwesomeIcon className='pr-2' icon={faCancel}/>Șterge Șantier</button>
                     </div>
                 </div>
             </div>

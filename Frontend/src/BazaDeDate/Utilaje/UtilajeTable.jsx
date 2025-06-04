@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import api from '../../api/axiosAPI';
 import { flexRender, getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowDownAZ, faArrowUpAZ, faCancel, faCopy, faEllipsis, faFileCirclePlus, faL, faLanguage, faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons';
+import { faArrowDownAZ, faArrowUpAZ, faCancel, faCopy, faEllipsis, faFileCirclePlus, faL, faLanguage, faPenToSquare, faSort, faSortDown, faSortUp, faTrashCan } from '@fortawesome/free-solid-svg-icons';
 import photoApi from '../../api/photoAPI'
 
 export default function ManoperaTable({reloadKey, selectedDouble, cancelDouble, setSelectedDouble, setSelectedFile, setPreview, selectedDelete, setSelectedDelete, setSelectedEdit, setFormData, selectedEdit, cancelEdit, cancelDelete}) {
@@ -12,6 +12,7 @@ export default function ManoperaTable({reloadKey, selectedDouble, cancelDouble, 
     const [currentOffset, setCurrentOffset] = useState(0);
     const [limit, setLimit] = useState(20);
     const [ascendent ,setAscendent] = useState(false);
+    const [ascendentTime, setAscendentTime] = useState(null);
 
     // sa vedem ce utilaje au limba schimbata
     const [selectedUtilajeIds, setselectedUtilajeIds] = useState([]);
@@ -40,6 +41,7 @@ export default function ManoperaTable({reloadKey, selectedDouble, cancelDouble, 
                     clasa_utilaj: filters.clasa_utilaj, // Add any other filters here
                     status_utilaj: filters.status_utilaj, // Add any other filters here
                     asc_utilaj: ascendent,
+                    dateOrder: ascendentTime
 
                 },
             });
@@ -72,7 +74,7 @@ export default function ManoperaTable({reloadKey, selectedDouble, cancelDouble, 
             else fetchManopere(0, limit);
         }, 500)
         return () => clearTimeout(getData);
-      }, [filters,limit,ascendent]);
+      }, [filters,limit,ascendent,ascendentTime]);
 
 
 
@@ -507,10 +509,18 @@ export default function ManoperaTable({reloadKey, selectedDouble, cancelDouble, 
                                         </select>
                                     </th>
                                     <th className=" bg-white border-b border-r border-black" colSpan={4}>
-                                       <div className=' flex  justify-center items-center'>
-                                            <p className='px-2'>Arată</p>
-                                            <input className='border border-black p-1 w-12 text-center rounded-lg' type="text" onChange={(e) => handleLimit(e)} value={limit} name="" id="" />
-                                            <p className='px-2'>rânduri</p>
+                                        <div className=' flex  justify-evenly items-center'>
+                                            <div className='flex items-center'>
+                                                <p className='px-2'>Arată</p>
+                                                <input className='border border-black p-1 w-12 text-center rounded-lg' type="text" onChange={(e) => handleLimit(e)} value={limit} name="" id="" />
+                                                <p className='px-2'>rânduri</p>
+                                            </div>
+                                            <div className='flex justify-center  items-center'>
+                                                <div onClick={() => setAscendentTime((prev) => prev == null ? true : prev == true ? false : null)} className='bg-blue-500 rounded-xl px-4 hover:bg-blue-600 hover:cursor-pointer flex gap-2 p-2 items-center justify-center'>
+                                                    <span className='font-semibold'>Data</span>
+                                                    <FontAwesomeIcon className='text-white text-lg' icon={ascendentTime == null ? faSort : ascendentTime == true ? faSortDown : faSortUp}/> 
+                                                </div>
+                                        </div>
                                        </div>
                                     </th>
                                     <th className='border-b border-r border-black bg-white' colSpan={1}>

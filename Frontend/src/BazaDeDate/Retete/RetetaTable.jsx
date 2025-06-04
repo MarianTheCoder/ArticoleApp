@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useMemo, useState } from 'react'
 import api from '../../api/axiosAPI';
 import { flexRender, getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowDown, faArrowDownAZ, faArrowUpAZ, faCancel, faCar, faChevronDown, faChevronRight, faCirclePlus, faCopy, faEllipsis, faFileCirclePlus, faFolder, faL, faLanguage, faPenToSquare, faPerson, faPlus, faTrashCan, faTrowelBricks, faTruck, faUser } from '@fortawesome/free-solid-svg-icons';
+import { faArrowDown, faArrowDownAZ, faArrowUpAZ, faCancel, faCar, faChevronDown, faChevronRight, faCirclePlus, faCopy, faEllipsis, faFileCirclePlus, faFolder, faL, faLanguage, faPenToSquare, faPerson, faPlus, faSort, faSortDown, faSortUp, faTrashCan, faTrowelBricks, faTruck, faUser } from '@fortawesome/free-solid-svg-icons';
 import { RetetaContext } from '../../context/RetetaContext';
 import photoAPI from '../../api/photoAPI';
 import ReteteAdaugareObiecte from './ReteteAdaugareObiecte';
@@ -23,6 +23,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
 
     const [ascendent ,setAscendent] = useState(false);
     const [ascendentCOD ,setAscendentCOD] = useState(false);
+    const [ascendentTime ,setAscendentTime] = useState(null);
 
     const [filters, setFilters] = useState({
         limba: '',
@@ -50,6 +51,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
                     articol: filters.articol, // Add any other filters here
                     asc_articol: ascendent,
                     asc_cod: ascendentCOD,
+                    dateOrder: ascendentTime,
                 },
             });
             // console.log("response ", response.data);
@@ -147,7 +149,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
             else fetchManopere(0, limit);
         }, 500)
         return () => clearTimeout(getData);
-      }, [filters,limit,ascendent,ascendentCOD]);
+      }, [filters,limit,ascendent,ascendentCOD,ascendentTime]);
 
 
 
@@ -373,6 +375,9 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
         }
 
     } else {
+        const currentQty = parseFloat(passedRow.original.cantitate) || 0;
+        setCantitateReteta(currentQty);
+        editedCantitateRef.current = currentQty;
         setSelectedEditCantitateInterior(key);
     }
     };
@@ -681,10 +686,22 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
                                         />
                                     </th>
                                     <th className=" bg-white border-b border-r border-black" colSpan={6}>
-                                       <div className=' flex  justify-center items-center'>
-                                            <p className='px-2'>Arată</p>
-                                            <input className='border border-black p-1 w-12 text-center rounded-lg' type="text" onChange={(e) => handleLimit(e)} value={limit} name="" id="" />
-                                            <p className='px-2'>rânduri</p>
+                                        <div className=' flex  justify-evenly items-center'>
+                                            <div className='flex items-center'>
+                                                <p className='px-2'>Arată</p>
+                                                <input className='border border-black p-1 w-12 text-center rounded-lg' type="text" onChange={(e) => handleLimit(e)} value={limit} name="" id="" />
+                                                <p className='px-2'>rânduri</p>
+                                            </div>
+                                            <div className='flex justify-center  items-center'>
+                                                <div onClick={() => setAscendentTime((prev) => prev == null ? true : prev == true ? false : null)} className='bg-blue-500 rounded-xl px-6
+                                                
+                                                
+                                                
+                                                hover:bg-blue-600 hover:cursor-pointer flex gap-2 p-2 items-center justify-center'>
+                                                    <span className='font-semibold'>Data</span>
+                                                    <FontAwesomeIcon className='text-white text-lg' icon={ascendentTime == null ? faSort : ascendentTime == true ? faSortDown : faSortUp}/> 
+                                                </div>
+                                            </div>
                                        </div>
                                     </th>
                                     <th className='border-b border-r border-black bg-white' colSpan={1}>
@@ -750,7 +767,6 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
                                 </td>
                                 :
                                 <td     
-                                // onClick={()=>console.log(cell)}
                                 key={cell.id}
                                 className={` 
                                      ${cell.column.id == "whatIs" ? row.original.whatIs == 'Manopera' ? "bg-green-300" : row.original.whatIs == 'Material' ? "bg-amber-300" : row.original.whatIs == 'Utilaj' ? "bg-violet-300" : row.original.whatIs == 'Transport' ? "bg-pink-300" : "bg-white" : "bg-white"}
@@ -768,7 +784,7 @@ export default function ManoperaTable({reloadKey, selectedDelete, cancelDouble, 
                     :
                     <React.Fragment key={row.id}>
                         <tr className={`dropdown-container   text-black 
-                            ${row.original.id == selectedDelete ? "bg-red-300 sticky" : row.original.id == selectedEdit ? "bg-green-300 sticky" : row.original.id == selectedDouble ? "bg-amber-300" :  'bg-[rgb(255,255,255,0.75)] '}`}>
+                            ${row.original.id == selectedDelete ? "bg-red-300 sticky" : row.original.id == selectedEdit ? "bg-green-300 sticky" : row.original.id == selectedDouble ? "bg-amber-300" :  'bg-[rgb(255,255,255,0.80)] '}`}>
                             {row.getVisibleCells().map((cell) => (  
                                     <td  key={cell.id}   
                                         className={`    border-b border-r break-words max-w-72  relative border-black p-1 px-3`}

@@ -68,6 +68,8 @@ const GetTransport = async (req, res) => {
   try {
       const { offset = 0, limit = 10, cod_transport = '', transport = '', clasa_transport = '', limba = "" } = req.query;
       const asc_transport = req.query.asc_transport === "true";
+      const dateOrder = req.query.dateOrder;
+
 
       // Validate limit and offset to be integers
       const parsedOffset = parseInt(offset, 10);
@@ -105,10 +107,14 @@ const GetTransport = async (req, res) => {
           query += ` WHERE ${whereClauses.join(' AND ')}`;
       }
 
-      if(asc_transport == true){
+      if (dateOrder === "true") {
+        query += " ORDER BY data ASC";
+      } else if (dateOrder === "false") {
+        query += " ORDER BY data DESC";
+      } else if(asc_transport == true){
         query += ` ORDER BY transport ASC LIMIT ? OFFSET ?`;
-      }
-      else query += ` LIMIT ? OFFSET ?`;
+      } else query += ` LIMIT ? OFFSET ?`;
+      
       queryParams.push(parsedLimit, parsedOffset * parsedLimit);
 
       // Execute the query with filters and pagination

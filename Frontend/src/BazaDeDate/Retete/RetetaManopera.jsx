@@ -75,6 +75,16 @@ export default function RetetaManopera({
 
             //States for dropDown/edit/delete/copy and CHANGED language
 
+            const translateAll = () => {
+            if(!manopere || !manopere.length) return;
+                // If there are any rows that are selected, iterate through and update the `selectedRetetaIds`
+                setSelectedManopereIds((prev) => {
+                    const updatedSelectedIds = manopere.map((manopera) => manopera.id); // All `retete` ids
+                    // If a `reteta` is already selected, it will be removed from the list
+                    return prev.length === manopere.length ? [] : updatedSelectedIds; // Toggle all if all are selected
+                });
+            };
+
         const toggleManopereChangeLanguage = (id) => {
             setSelectedManopereIds((prev) => {
             return prev.includes(id)
@@ -135,17 +145,24 @@ export default function RetetaManopera({
                 { accessorKey: "cost_unitar", header: "Cost",size:50},
                 { 
                     accessorKey: "threeDots", 
-                    header: "Opțiuni",
+                    header: (
+                        <div className='flex w-full   justify-center'>
+                            <div onClick={() => translateAll()} className='bg-blue-500 rounded-xl px-4 w-1/2 hover:bg-blue-600 hover:cursor-pointer flex gap-2 p-2 items-center justify-center'>
+                                    <FontAwesomeIcon className='text-white text-lg' icon={faLanguage}/>
+                                    <span className='font-semibold'>Tradu Tot</span>
+                            </div>
+                        </div>
+                    ),
                     cell: ({ row }) => (
                         <div className='w-full relative overflow-hidden flex '> 
-                            <div className='text-xl relative w-full py-2 select-none items-center justify-evenly gap-2 flex'>
+                            <div className='text-3xl relative w-full py-2 select-none items-center justify-evenly gap-2 flex'>
                                 <FontAwesomeIcon onClick={()  =>  toggleManopereChangeLanguage(row.original.id)} className=' text-blue-500 hover:text-blue-600 cursor-pointer' icon={faLanguage }/>
                             </div>
                         </div>
                     ),
                     size:50,
                 },
-            ], [selectedManopereIds]);
+            ], [selectedManopereIds, manopere]);
         
             const table = useReactTable({
                 data: manopere,
@@ -206,7 +223,6 @@ export default function RetetaManopera({
                           onChange={handleChangeFilterManopera}
                           maxLength={6}
                           className="px-2 outline-none text-center py-2  w-full rounded-lg shadow-sm "
-                          placeholder="Enter Cod"
                       />
                   </div>
                   <div className="flex flex-col w-full items-center ">
@@ -220,7 +236,6 @@ export default function RetetaManopera({
                           value={manoperaFilters.ocupatie}
                           onChange={handleChangeFilterManopera}
                           className="px-2 outline-none text-center py-2  w-full  rounded-lg shadow-sm "
-                          placeholder="Enter Ocupatie"
                       />
                   </div>
             </div> 
@@ -269,9 +284,9 @@ export default function RetetaManopera({
                                                             h-[3rem]  whitespace-normal 
                                                             overflow-auto"
                                             >
-                                                <div className="h-full w-full overflow-hidden text-ellipsis">
-                                                    <div className="max-h-[3rem] scrollbar-webkit overflow-y-auto">
-                                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                                <div className="h-full w-full overflow-hidden ">
+                                                    <div className="max-h-12 h-12   grid grid-cols-1 items-center  break-words whitespace-pre-line   overflow-auto  scrollbar-webkit">
+                                                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                                     </div>
                                                 </div>
                                             </td>
@@ -294,7 +309,6 @@ export default function RetetaManopera({
                                                 maxLength={8}
                                                 onChange={(e) => setCantitateHandler(e)}
                                                 className="px-2 outline-none text-center dropdown-container tracking-wide py-2 flex-shrink-0 text-black  max-w-64  rounded-lg shadow-sm "
-                                                placeholder="Enter Cantitate"
                                             />
                                         </div>
                                         <button onClick={() => handleAddItem()} className='bg-green-500 dropdown-container flex  items-center justify-center gap-2 text-black flex-grow hover:bg-green-600  px-6 py-2 rounded-xl'><FontAwesomeIcon className='' icon={faPlus}/>Adauga Manopera</button>

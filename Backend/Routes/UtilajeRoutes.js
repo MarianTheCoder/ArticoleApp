@@ -68,6 +68,8 @@ router.get('/api/utilaje', async (req, res) => {
   try {
       const { offset = 0, limit = 10, clasa_utilaj  = '', utilaj = '', descriere_utilaj  = '', status_utilaj = '', limba = "" , cod_utilaj = "" } = req.query;
       const asc_utilaj = req.query.asc_utilaj === "true";
+      const dateOrder = req.query.dateOrder;
+
 
       // Validate limit and offset to be integers
       const parsedOffset = parseInt(offset, 10);
@@ -117,7 +119,11 @@ router.get('/api/utilaje', async (req, res) => {
           query += ` WHERE ${whereClauses.join(' AND ')}`;
       }
 
-      if(asc_utilaj == true){
+      if (dateOrder === "true") {
+        query += " ORDER BY data ASC";
+      } else if (dateOrder === "false") {
+        query += " ORDER BY data DESC";
+      } else if(asc_utilaj == true){
         query += ` ORDER BY utilaj ASC LIMIT ? OFFSET ?`;
       }
       else query += ` LIMIT ? OFFSET ?`;
@@ -307,7 +313,7 @@ router.put('/api/utilaje/:id', upload.single('poza'), async (req, res) => {
     const updateQuery = `
       UPDATE Utilaje 
       SET limba = ?, cod_utilaj = ?, clasa_utilaj = ?, utilaj = ?, utilaj_fr = ?, descriere_utilaj = ?, descriere_utilaj_fr = ?, photoUrl = ?,
-          status_utilaj = ?, cost_amortizare = ?, pret_utilaj = ?, unitate_masura = ?, cantitate = ?
+          status_utilaj = ?, cost_amortizare = ?, pret_utilaj = ?, unitate_masura = ?, cantitate = ? , data = NOW()
       WHERE id = ?
     `;
 

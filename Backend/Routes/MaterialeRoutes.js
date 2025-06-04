@@ -72,6 +72,8 @@ router.get('/api/materiale', async (req, res) => {
   try {
       const { offset = 0, limit = 10, cod = '', denumire = '', descriere = '' , tip_material = "" , limba = "" , furnizor = "" , clasa_material = ""} = req.query;
       const asc_denumire = req.query.asc_denumire === "true";
+      const dateOrder = req.query.dateOrder;
+
       const parsedOffset = parseInt(offset, 10);
       const parsedLimit = parseInt(limit, 10);
 
@@ -121,7 +123,11 @@ router.get('/api/materiale', async (req, res) => {
       if (whereClauses.length > 0) {
           query += ` WHERE ${whereClauses.join(' AND ')}`;
       }
-      if(asc_denumire == true){
+      if (dateOrder === "true") {
+        query += " ORDER BY data ASC";
+      } else if (dateOrder === "false") {
+        query += " ORDER BY data DESC";
+      } else if(asc_denumire == true){
         query += ` ORDER BY denumire_produs ASC LIMIT ? OFFSET ?`;
       }
       else query += ` LIMIT ? OFFSET ?`;
@@ -314,7 +320,7 @@ router.put('/api/materiale/:id', upload.single('poza'), async (req, res) => {
       UPDATE Materiale SET
         limba = ?, furnizor = ?, clasa_material = ?, cod_produs = ?, denumire_produs = ?, denumire_produs_fr = ?,
         descriere_produs = ?, descriere_produs_fr = ?, photoUrl = ?, unitate_masura = ?, cost_unitar = ?,
-        cost_preferential = ?, pret_vanzare = ?, tip_material = ?
+        cost_preferential = ?, pret_vanzare = ?, tip_material = ?, data = NOW()
       WHERE id = ?
     `;
 

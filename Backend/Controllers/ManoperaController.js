@@ -72,6 +72,7 @@ const GetManopere = async (req, res) => {
       const { offset = 0, limit = 10, cod_COR = '', ocupatie = '', limba = '' } = req.query;
       const asc_ocupatie = req.query.asc_ocupatie === "true";
       const asc_cod_COR = req.query.asc_cod_COR === "true";
+      const dateOrder = req.query.dateOrder;
 
       // Validate limit and offset to be integers
       const parsedOffset = parseInt(offset, 10);
@@ -106,7 +107,11 @@ const GetManopere = async (req, res) => {
       if (whereClauses.length > 0) {
           query += ` WHERE ${whereClauses.join(' AND ')}`;
       }
-      if (asc_ocupatie && asc_cod_COR) {
+      if (dateOrder === "true") {
+        query += " ORDER BY data ASC";
+      } else if (dateOrder === "false") {
+        query += " ORDER BY data DESC";
+      } else if (asc_ocupatie && asc_cod_COR) {
         query += ' ORDER BY ocupatie ASC, cod_COR ASC';
       } else if (asc_ocupatie) {
         query += ' ORDER BY ocupatie ASC';

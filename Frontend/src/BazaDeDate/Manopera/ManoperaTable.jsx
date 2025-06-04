@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import api from '../../api/axiosAPI';
 import { flexRender, getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowDownAZ, faArrowUpAZ, faFileCirclePlus, faLanguage, faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons';
+import { faArrowDownAZ, faArrowUpAZ, faFileCirclePlus, faLanguage, faPenToSquare, faSort, faSortDown, faSortUp, faTrashCan } from '@fortawesome/free-solid-svg-icons';
 
 
 export default function ManoperaTable({reloadKey, cancelDouble, selectedDouble, setSelectedDouble, selectedDelete, setSelectedDelete, setSelectedEdit, setFormData, selectedEdit, cancelEdit, cancelDelete}) {
@@ -13,6 +13,7 @@ export default function ManoperaTable({reloadKey, cancelDouble, selectedDouble, 
     const [limit, setLimit] = useState(20);
     const [ascendent ,setAscendent] = useState(false);
     const [ascendentCOR ,setAscendentCOR] = useState(true);
+    const [ascendentTime, setAscendentTime] = useState(null)
 
     //se salveza cele care si-au schimbat limba catre FR
     const [selectedManopereIds, setSelectedManopereIds] = useState([]);
@@ -36,6 +37,7 @@ export default function ManoperaTable({reloadKey, cancelDouble, selectedDouble, 
                     limba: filters.limba,
                     asc_ocupatie: ascendent,
                     asc_cod_COR: ascendentCOR,  
+                    dateOrder: ascendentTime
                 },
             });
             if(response.data.data.length == 0){
@@ -67,7 +69,7 @@ export default function ManoperaTable({reloadKey, cancelDouble, selectedDouble, 
             else fetchManopere(0, limit);
         }, 500)
         return () => clearTimeout(getData);
-      }, [filters,limit,ascendent, ascendentCOR]);
+      }, [filters,limit,ascendent, ascendentCOR, ascendentTime]);
 
 
 
@@ -365,10 +367,18 @@ export default function ManoperaTable({reloadKey, cancelDouble, selectedDouble, 
                                         />
                                     </th>
                                     <th className=" bg-white border-b border-r border-black" colSpan={3}>
-                                       <div className=' flex  justify-center items-center'>
-                                            <p className='px-2'>Arată</p>
-                                            <input className='border border-black p-1 w-12 text-center rounded-lg' type="text" onChange={(e) => handleLimit(e)} value={limit} name="" id="" />
-                                            <p className='px-2'>rânduri</p>
+                                       <div className=' flex  justify-evenly items-center'>
+                                            <div className='flex items-center'>
+                                                <p className='px-2'>Arată</p>
+                                                <input className='border border-black p-1 w-12 text-center rounded-lg' type="text" onChange={(e) => handleLimit(e)} value={limit} name="" id="" />
+                                                <p className='px-2'>rânduri</p>
+                                            </div>
+                                            <div className='flex justify-center  items-center'>
+                                                <div onClick={() => setAscendentTime((prev) => prev == null ? true : prev == true ? false : null)} className='bg-blue-500 rounded-xl px-4 hover:bg-blue-600 hover:cursor-pointer flex gap-2 p-2 items-center justify-center'>
+                                                    <span className='font-semibold'>Data</span>
+                                                    <FontAwesomeIcon className='text-white text-lg' icon={ascendentTime == null ? faSort : ascendentTime == true ? faSortDown : faSortUp}/> 
+                                                </div>
+                                        </div>
                                        </div>
                                     </th>
                                     <th className='border-b border-r border-black bg-white' colSpan={1}>
@@ -425,7 +435,7 @@ export default function ManoperaTable({reloadKey, cancelDouble, selectedDouble, 
                         {row.getVisibleCells().map((cell) => (
                             <td
                                 key={cell.id}
-                                className={`  border-b border-r break-words max-w-72 whitespace-pre-line  relative border-black p-1 px-3`}
+                                className={`  border-b border-r break-words max-w-72 whitespace-pre-line  relative border-black p-2 px-3`}
                                 style={cell.column.columnDef.meta?.style} // Apply the custom style
                             >
                                 <div className="h-full w-full overflow-hidden ">

@@ -500,7 +500,7 @@ export default function SantiereAdd({mainOfertaPartID, ofertaId}) {
         {
           accessorKey: "detalii_aditionale",
           header: "Detalii",
-          size: 150,
+          size: 80,
           cell: ({ getValue, row }) => {
             const isEditable = (row.original.id === selectedEdit && !row.original.whatIs);
             return (
@@ -518,7 +518,7 @@ export default function SantiereAdd({mainOfertaPartID, ofertaId}) {
         {
           accessorKey: "reper_plan",
           header: "Reper Plan",
-          size: 150,
+          size: 80,
           cell: ({ getValue, row }) => {
             const isEditable = (row.original.id === selectedEdit && !row.original.whatIs);
             return (
@@ -533,8 +533,8 @@ export default function SantiereAdd({mainOfertaPartID, ofertaId}) {
             );
           },
         },        
-        { accessorKey: "cod", header: "Cod",size:100 },
-        { accessorKey: "clasa", header: "Clasă", size:200},
+        { accessorKey: "cod", header: "Cod",size:120 },
+        { accessorKey: "clasa", header: "Clasă", size:150},
        { 
             accessorKey: "articol", 
             header: (
@@ -543,7 +543,7 @@ export default function SantiereAdd({mainOfertaPartID, ofertaId}) {
                     {/* <FontAwesomeIcon onClick={() => setAscendent((prev) => prev == false ? true : false)} className="text-xl border border-black p-2  rounded-full  cursor-pointer" icon={!ascendent ? faArrowUpAZ : faArrowDownAZ} />  */}
                 </div>
               ),
-            size:400
+            size:500
         },
         {
             accessorKey: 'whatIs', 
@@ -656,7 +656,7 @@ export default function SantiereAdd({mainOfertaPartID, ofertaId}) {
     <>
       <div className=' w-full  flex flex-col h-full justify-between overflow-hidden '>
         {retete &&
-            <div className="p-8 pb-4 pt-5 text-sm scrollbar-webkit w-full overflow-hidden text-white h-full flex flex-col justify-between">
+            <div className="p-8 pb-4 pt-5 text-sm scrollbar-webkit w-full overflow-hidden text-white h-full flex flex-col justify-etween">
             <div className="  scrollbar-webkit overflow-auto  ">
                 <table className="w-full border-separate border-spacing-0 ">
                     <thead className='top-0 w-full sticky  z-10 '>
@@ -725,14 +725,6 @@ export default function SantiereAdd({mainOfertaPartID, ofertaId}) {
                                 <div className=' flex justify-center items-center w-full text-lg font-semibold h-full'>Nimic Adaugat</div>
                             </td>
                         </tr>
-                        <tr>
-                            <td onClick={() => setIsPopupOpen(true)} className='bg-white p-2 px-3 hover:bg-[rgb(255,255,255,0.9)] cursor-pointer border-b border-r border-black select-none text-black' colSpan={14}>
-                                <div className='flex font-bold   text-center justify-center items-center gap-2'>
-                                    <p className=' text-center'>Adauga Retete</p>
-                                    <FontAwesomeIcon className='text-green-500  text-center text-2xl' icon={faPlus}/>
-                                </div>
-                            </td>
-                        </tr>
                     </tbody>
                 :
                 <tbody className=' relative z-0'>
@@ -754,7 +746,7 @@ export default function SantiereAdd({mainOfertaPartID, ofertaId}) {
                                      border-b border-r break-words max-w-72  relative border-black px-3 `}
                                 >
                                    <div className="h-full w-full overflow-hidden ">
-                                        <div className="max-h-10 h-10   grid grid-cols-1 break-words whitespace-pre-line items-center  overflow-auto  scrollbar-webkit">
+                                        <div className="max-h-12 h-12 leading-relaxed  grid grid-cols-1 break-words whitespace-pre-line items-center  overflow-auto  scrollbar-webkit">
                                                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                         </div>
                                     </div>
@@ -772,7 +764,7 @@ export default function SantiereAdd({mainOfertaPartID, ofertaId}) {
                                         style={cell.column.columnDef.meta?.style} // Apply the custom style
                                     >          
                                     <div className="h-full w-full overflow-hidden ">
-                                        <div className="max-h-10 h-10 w-full break-words whitespace-pre-line   grid grid-cols-1 items-center  overflow-auto  scrollbar-webkit">
+                                        <div className="max-h-12 h-12 leading-relaxed w-full break-words whitespace-pre-line   grid grid-cols-1 items-center  overflow-auto  scrollbar-webkit">
                                                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                         </div>
                                     </div>
@@ -782,19 +774,17 @@ export default function SantiereAdd({mainOfertaPartID, ofertaId}) {
                         </tr>
                     </React.Fragment>
                 ))}
-                <tr>
-                    <td onClick={() => setIsPopupOpen(true)} className='bg-white p-2 px-3 hover:bg-[rgb(255,255,255,0.9)] cursor-pointer border-b border-r border-black select-none text-black' colSpan={14}>
+                </tbody>}
+            </table>
+            </div>
+                <div onClick={() => setIsPopupOpen(true)} className='bg-white mt-2 mb-3 p-2 px-3 hover:bg-[rgb(255,255,255,0.9)] cursor-pointer border-t border-black select-none text-black' colSpan={14}>
                         <div className='flex font-bold   text-center justify-center items-center gap-2'>
                             <p className=' text-center'>Adauga Retete</p>
                             <FontAwesomeIcon className='text-green-500  text-center text-2xl' icon={faPlus}/>
                         </div>
-                    </td>
-                </tr>
-                </tbody>}
-            </table>
-            </div>
+                    </div>
             {/* Pagination Controls */}
-            <div className="mt-4 text-sm  gap-4 flex containerZ p-4  items-center">
+            <div className="mt-auto text-sm  gap-4 flex containerZ p-4  items-center">
                     <table className=''>
                         <thead>
                             <tr className='select-none'>

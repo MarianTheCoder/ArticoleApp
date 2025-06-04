@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const sharp = require('sharp');
-const {addRetetaToInitialOfera, getReteteLightForSantiere, editOfertaPart, deleteOfertaPart, addOfertaPartToTheSantier, getOfertePartsForThisSantier, updateSantierDetails,addOfertaToTheSantier,changeNameForOferta, getOferteForThisSantier, deleteRetetaFromSantier, getSantiereDetails, getSpecificRetetaForOfertaInitiala, updateSantierRetetaPrices, getReteteLightForSantiereWithPrices} = require("../Controllers/SantiereController")
+const {addRetetaToInitialOfera, getReteteLightForSantiere, editOfertaPart, deleteSantier, getSantiereDetailsSantierID, deleteOfertaPart, addOfertaPartToTheSantier, getOfertePartsForThisSantier, updateSantierDetails,addOfertaToTheSantier,changeNameForOferta, getOferteForThisSantier, deleteRetetaFromSantier, getSantiereDetails, getSpecificRetetaForOfertaInitiala, updateSantierRetetaPrices, getReteteLightForSantiereWithPrices} = require("../Controllers/SantiereController")
 
 const router = express.Router();
 
@@ -17,6 +17,7 @@ router.delete('/deleteRetetaFromSantier/:id', deleteRetetaFromSantier);
 router.get('/getSpecificRetetaForOfertaInitiala/:id', getSpecificRetetaForOfertaInitiala); 
 router.put('/updateSantierRetetaPrices', updateSantierRetetaPrices); 
 router.get('/getSantiereDetails/:id', getSantiereDetails); 
+router.get('/getSantiereDetailsSantierID/:id', getSantiereDetailsSantierID); 
 router.put('/updateSantierDetails/:id', updateSantierDetails);
 
 //oferta
@@ -30,6 +31,6 @@ router.post('/addOfertaPartToTheSantier/:id', addOfertaPartToTheSantier);
 router.delete('/deleteOfertaPart/:id', deleteOfertaPart); 
 router.put('/editOfertaPart/:id', editOfertaPart); 
 
-
+router.delete('/deleteEntireSantier/:id', deleteSantier); 
 
 module.exports = router;

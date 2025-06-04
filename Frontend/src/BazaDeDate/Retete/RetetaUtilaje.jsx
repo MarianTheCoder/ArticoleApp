@@ -54,6 +54,16 @@ export default function RetetaUtilaje({
               }, [utilajeFilters]);
         
 
+            const translateAll = () => {
+                if(!utilaje || !utilaje.length) return;
+                // If there are any rows that are selected, iterate through and update the `selectedRetetaIds`
+                setSelectedUtilajeIds((prev) => {
+                    const updatedSelectedIds = utilaje.map((utilaj) => utilaj.id); // All `retete` ids
+                    // If a `reteta` is already selected, it will be removed from the list
+                    return prev.length === utilaje.length ? [] : updatedSelectedIds; // Toggle all if all are selected
+                });
+            };
+
         const toggleUtilajeChangeLanguage = (id) => {
                 setSelectedUtilajeIds((prev) => {
                 return prev.includes(id)
@@ -128,7 +138,7 @@ export default function RetetaUtilaje({
                             />
                     </div>
                     ),
-                    size:50
+                    size:70
             },
             { accessorKey: "clasa_utilaj", header: "Clasa",size:50},
             { 
@@ -158,7 +168,14 @@ export default function RetetaUtilaje({
             { accessorKey: "pret_utilaj", header: "Pret",size:50},
             { 
                     accessorKey: "threeDots", 
-                    header: "Opțiuni",
+                               header: (
+                <div className='flex w-full justify-center'>
+                    <div onClick={() => translateAll()} className='bg-blue-500 rounded-xl px-4  hover:bg-blue-600 hover:cursor-pointer flex gap-2 p-2 items-center justify-center'>
+                        <FontAwesomeIcon className='text-white text-lg' icon={faLanguage} />
+                        <span className='font-semibold'>Tradu Tot</span>
+                    </div>
+                </div>
+            ),
                     cell: ({ row }) => (
                         <div className='w-full relative overflow-hidden flex '> 
                             <div className='text-xl relative w-full py-2 select-none items-center justify-evenly gap-2 flex'>
@@ -168,7 +185,7 @@ export default function RetetaUtilaje({
                     ),
                     size:50,
                 },
-        ], [selectedUtilajeIds]);
+        ], [selectedUtilajeIds, utilaje]);
         
             const table = useReactTable({
                 data: utilaje,
@@ -228,7 +245,6 @@ export default function RetetaUtilaje({
                           value={utilajeFilters.cod_utilaj}
                           onChange={handleChangeFilterUtilaje}
                           className="px-2 outline-none text-center py-2  w-full rounded-lg shadow-sm "
-                          placeholder="Enter Cod"
                       />
                   </div> 
                   <div className="flex w-full flex-col items-center ">
@@ -295,7 +311,6 @@ export default function RetetaUtilaje({
                           value={utilajeFilters.utilaj}
                           onChange={handleChangeFilterUtilaje}
                           className="px-2 outline-none text-center py-2  w-full rounded-lg shadow-sm "
-                          placeholder="Enter Utilaj"
                       />
                   </div>
                   <div className="flex flex-col w-full items-center ">
@@ -309,7 +324,6 @@ export default function RetetaUtilaje({
                           value={utilajeFilters.descriere_utilaj}
                           onChange={handleChangeFilterUtilaje}
                           className="px-2 outline-none text-center py-2  w-full  rounded-lg shadow-sm "
-                          placeholder="Enter Descriere"
                       />
                   </div>
                   <div className="flex flex-col w-full items-center ">
@@ -384,7 +398,11 @@ export default function RetetaUtilaje({
                                                    className={`  border-b border-r break-words max-w-72 relative border-black p-1 px-3`}
                                                    style={cell.column.columnDef.meta?.style} // Apply the custom style
                                                >
-                                                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                                    <div className="h-full w-full overflow-hidden ">
+                                                            <div className="max-h-[4.5rem] h-[4.5rem]   grid grid-cols-1 items-center  break-words whitespace-pre-line   overflow-auto  scrollbar-webkit">
+                                                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                                            </div>
+                                                        </div>
                                                </td>
                                            ))}
                                        </tr>
@@ -405,7 +423,6 @@ export default function RetetaUtilaje({
                                                 maxLength={8}
                                                 onChange={(e) => setCantitateHandler(e)}
                                                 className="px-2 dropdown-container outline-none text-center tracking-wide py-2 flex-shrink-0 text-black  max-w-64  rounded-lg shadow-sm "
-                                                placeholder="Enter Cantitate"
                                             />
                                         </div>
                                         <button onClick={() => handleAddItem()} className='bg-green-500 flex dropdown-container  items-center justify-center gap-2 text-black flex-grow hover:bg-green-600  px-6 py-2 rounded-xl'><FontAwesomeIcon className='' icon={faPlus}/>Adauga Utilaj</button>

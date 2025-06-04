@@ -36,7 +36,7 @@ export default function TextAreaCell({
         border border-black
         rounded-lg
         px-2 
-        py-[0.01rem]
+        py-[0.2rem]
         scrollbar-webkit        
         leading-[1.35]
         shadow-sm

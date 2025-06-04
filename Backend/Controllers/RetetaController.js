@@ -106,57 +106,79 @@ const doubleReteta = async (req, res) => {
 };
 
 
-const addRetetaObjects = async (req,res) =>{
+
+const addRetetaObjects = async (req, res) => {
+  const { whatIs, retetaId, objectId, cantitate } = req.body;
+  const connection = await global.db.getConnection();
+
   try {
-      const { whatIs, retetaId, objectId, cantitate  } = req.body;
-      console.log(whatIs, retetaId, objectId, cantitate)
+    await connection.beginTransaction();
 
-        // Save the selected manopere with quantity
-      if(whatIs == "Manopera") {
-        const sqlManopera = `
-          INSERT INTO Retete_manopera (reteta_id, manopera_id, cantitate)
-          VALUES (?, ?, ?)
-          ON DUPLICATE KEY UPDATE cantitate = VALUES(cantitate);
-        `;
-        await global.db.execute(sqlManopera, [retetaId, objectId, cantitate]);
-      }
-  
-      // Save the selected materiale with quantity
-      if(whatIs == "Materiale") {        
-        const sqlMateriale = `
-          INSERT INTO Retete_materiale (reteta_id, materiale_id, cantitate)
-          VALUES (?, ?, ?)
-          ON DUPLICATE KEY UPDATE cantitate = VALUES(cantitate);
-        `;
-        await global.db.execute(sqlMateriale, [retetaId, objectId, cantitate]);
+    // 1) Insert or update the appropriate child table
+    let childSql;
+    let params;
 
-      }
-  
-      // Save the selected transport with quantity
-      if(whatIs == "Transport") {
-        const sqlTransport = `
-          INSERT INTO Retete_transport (reteta_id, transport_id, cantitate)
-          VALUES (?, ?, ?)
-          ON DUPLICATE KEY UPDATE cantitate = VALUES(cantitate);
-        `;
-        await global.db.execute(sqlTransport, [retetaId, objectId, cantitate]);
-      }
-  
-      // Save the selected utilaje with quantity
-      if(whatIs == "Utilaje") {
-        const sqlUtilaje = `
-          INSERT INTO Retete_utilaje (reteta_id, utilaje_id, cantitate)
-          VALUES (?, ?, ?)
-          ON DUPLICATE KEY UPDATE cantitate = VALUES(cantitate);
-        `;
-        await global.db.execute(sqlUtilaje, [retetaId, objectId, cantitate]);
-      }
-      res.status(201).json({ message: "Reteta saved successfully!" });
-    } catch (error) {
-      console.error("Error saving retete:", error);
-      res.status(500).json({ message: "Internal server error" });
+    if (whatIs === "Manopera") {
+      childSql = `
+        INSERT INTO Retete_manopera (reteta_id, manopera_id, cantitate)
+        VALUES (?, ?, ?)
+        ON DUPLICATE KEY UPDATE cantitate = VALUES(cantitate);
+      `;
+      params = [retetaId, objectId, cantitate];
+
+    } else if (whatIs === "Materiale") {
+      childSql = `
+        INSERT INTO Retete_materiale (reteta_id, materiale_id, cantitate)
+        VALUES (?, ?, ?)
+        ON DUPLICATE KEY UPDATE cantitate = VALUES(cantitate);
+      `;
+      params = [retetaId, objectId, cantitate];
+
+    } else if (whatIs === "Transport") {
+      childSql = `
+        INSERT INTO Retete_transport (reteta_id, transport_id, cantitate)
+        VALUES (?, ?, ?)
+        ON DUPLICATE KEY UPDATE cantitate = VALUES(cantitate);
+      `;
+      params = [retetaId, objectId, cantitate];
+
+    } else if (whatIs === "Utilaje") {
+      childSql = `
+        INSERT INTO Retete_utilaje (reteta_id, utilaje_id, cantitate)
+        VALUES (?, ?, ?)
+        ON DUPLICATE KEY UPDATE cantitate = VALUES(cantitate);
+      `;
+      params = [retetaId, objectId, cantitate];
+
+    } else {
+      await connection.rollback();
+      return res.status(400).json({ message: `Unknown whatIs type: ${whatIs}` });
     }
-}
+
+    // Execute the child‐table insert/update
+    await connection.execute(childSql, params);
+
+    // 2) Immediately update the parent Retete.data column
+    await connection.execute(
+      `UPDATE Retete
+         SET data = NOW()
+       WHERE id = ?`,
+      [retetaId]
+    );
+
+    // 3) Commit both operations together
+    await connection.commit();
+    res.status(201).json({ message: "Reteta object saved and timestamp updated successfully!" });
+
+  } catch (error) {
+    await connection.rollback();
+    console.error("Error saving reteta object:", error);
+    res.status(500).json({ message: "Internal server error" });
+
+  } finally {
+    connection.release();
+  }
+};
 
 
 
@@ -268,6 +290,7 @@ const getRetete = async (req, res) => {
     } = req.query;
     const asc_articol = req.query.asc_articol === "true";
     const asc_cod = req.query.asc_cod === "true";
+    const dateOrder = req.query.dateOrder;
 
     const parsedOffset = parseInt(offset, 10);
     const parsedLimit  = parseInt(limit, 10);
@@ -347,8 +370,11 @@ const getRetete = async (req, res) => {
       query += " WHERE " + whereClauses.join(" AND ");
     }
 
-    // ordering
-    if (asc_articol && asc_cod) {
+    if (dateOrder === "true") {
+      query += " ORDER BY r.data ASC";
+    } else if (dateOrder === "false") {
+      query += " ORDER BY r.data DESC";
+    } else if (asc_articol && asc_cod) {
       query += ' ORDER BY r.articol ASC, r.cod_reteta ASC';
     } else if (asc_articol) {
       query += ' ORDER BY r.articol ASC';
@@ -714,6 +740,14 @@ const editCantitateInterior = async (req, res) => {
 
     // Execute the single update statement
     await connection.execute(sql, params);
+
+    // 2) Immediately update the parent Retete.data timestamp
+    const updateTimestampSql = `
+      UPDATE Retete
+      SET data = NOW()
+      WHERE id = ?
+    `;
+    await connection.execute(updateTimestampSql, [retetaId]);
 
     // Commit the transaction
     await connection.commit();

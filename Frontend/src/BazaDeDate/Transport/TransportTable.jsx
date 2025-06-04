@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import api from '../../api/axiosAPI';
 import { flexRender, getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowDownAZ, faArrowUpAZ, faFileCirclePlus, faLanguage, faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons';
+import { faArrowDownAZ, faArrowUpAZ, faFileCirclePlus, faLanguage, faPenToSquare, faSort, faSortDown, faSortUp, faTrashCan } from '@fortawesome/free-solid-svg-icons';
 
 
 export default function TransportTable({reloadKey, cancelDouble, selectedDouble, setSelectedDouble, selectedDelete, setSelectedDelete, setSelectedEdit, setFormData, selectedEdit, cancelEdit, cancelDelete}) {
@@ -12,6 +12,7 @@ export default function TransportTable({reloadKey, cancelDouble, selectedDouble,
     const [currentOffset, setCurrentOffset] = useState(0);
     const [limit, setLimit] = useState(20);
     const [ascendent ,setAscendent] = useState(false);
+    const [ascendentTime, setAscendentTime] = useState(null)
     
 
     const [filters, setFilters] = useState({
@@ -36,6 +37,7 @@ export default function TransportTable({reloadKey, cancelDouble, selectedDouble,
                     clasa_transport: filters.clasa_transport,
                     transport: filters.transport,
                     asc_transport: ascendent,
+                    dateOrder: ascendentTime
                 },
             });
             if(response.data.data.length == 0){
@@ -67,7 +69,7 @@ export default function TransportTable({reloadKey, cancelDouble, selectedDouble,
             else fetchTransport(0, limit);
         }, 500)
         return () => clearTimeout(getData);
-      }, [filters,limit,ascendent]);
+      }, [filters,limit,ascendent,ascendentTime]);
 
 
 
@@ -374,11 +376,19 @@ export default function TransportTable({reloadKey, cancelDouble, selectedDouble,
                                         />
                                     </th>
                                     <th className=" bg-white border-b border-r border-black" colSpan={2}>
-                                       <div className=' flex  justify-center items-center'>
-                                            <p className='px-2'>Arată</p>
-                                            <input className='border border-black p-1 w-12 text-center rounded-lg' type="text" onChange={(e) => handleLimit(e)} value={limit} name="" id="" />
-                                            <p className='px-2'>rânduri</p>
-                                       </div>
+                                        <div className=' flex  justify-evenly items-center'>
+                                            <div className='flex items-center'>
+                                                <p className='px-2'>Arată</p>
+                                                <input className='border border-black p-1 w-12 text-center rounded-lg' type="text" onChange={(e) => handleLimit(e)} value={limit} name="" id="" />
+                                                <p className='px-2'>rânduri</p>
+                                            </div>
+                                            <div className='flex justify-center  items-center'>
+                                                <div onClick={() => setAscendentTime((prev) => prev == null ? true : prev == true ? false : null)} className='bg-blue-500 rounded-xl px-4 hover:bg-blue-600 hover:cursor-pointer flex gap-2 p-2 items-center justify-center'>
+                                                    <span className='font-semibold'>Data</span>
+                                                    <FontAwesomeIcon className='text-white text-lg' icon={ascendentTime == null ? faSort : ascendentTime == true ? faSortDown : faSortUp}/> 
+                                                </div>
+                                            </div>
+                                        </div>
                                     </th>
                                     <th className='border-b border-r border-black bg-white' colSpan={1}>
                                         <div className='flex  w-full justify-center  items-center'>
@@ -432,7 +442,7 @@ export default function TransportTable({reloadKey, cancelDouble, selectedDouble,
                             {row.getVisibleCells().map((cell) => (
                                 <td
                                     key={cell.id}
-                                    className={`  border-b border-r break-words max-w-72 whitespace-pre-line  relative border-black p-1 px-3`}
+                                    className={`  border-b border-r break-words max-w-72 whitespace-pre-line  relative border-black p-2 px-3`}
                                     style={cell.column.columnDef.meta?.style} // Apply the custom style
                                 >
                                     <div className="h-full w-full overflow-hidden ">

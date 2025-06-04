@@ -5,7 +5,12 @@ import api from '../../../../api/axiosAPI';
 // margin: [0, 7.5, 10, 5] left top right bottom
 pdfMake.vfs = pdfFonts.vfs;
 
-
+const fmt = num =>
+  Number(num)
+    .toLocaleString('ro-RO', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
 
 
 export const FormularCompact = async (id ,recapitulatii, TVA) => {
@@ -31,6 +36,13 @@ export const FormularCompact = async (id ,recapitulatii, TVA) => {
     totalTransportPret
   } = res.data;
 
+   const {
+      ofertaPartName,
+      ofertaName,
+      santierName,
+      santiereDetalii
+  } = res.data;
+  // console.log(res.data)
   const tableBody = [
     [
       { text: 'Nr.', style: 'mainHeader' },
@@ -73,18 +85,18 @@ export const FormularCompact = async (id ,recapitulatii, TVA) => {
 
   const extraTableBody = [
       [
-          {text: 'Ore Manopera', style: 'extraHeader',fillColor: "#93C5FD"},
-          {text: 'Manopera', style: 'extraHeader',    fillColor: "#FCD34D"},
-          {text: 'Materiale', style: 'extraHeader',   fillColor: "#6EE7B7"},
-          {text: 'Transport', style: 'extraHeader',   fillColor: "#F9A8D4"},
-          {text: 'Utilaje', style: 'extraHeader',     fillColor: "#D8B4FE"},
+              {text: 'Ore manoperă\n(ore)', style: 'extraHeader', fillColor: "#93C5FD"},
+              {text: 'Manoperă\n(RON)', style: 'extraHeader', fillColor: "#FCD34D"},
+              {text: 'Materiale\n(RON)', style: 'extraHeader', fillColor: "#6EE7B7"},
+              {text: 'Transport\n(RON)', style: 'extraHeader', fillColor: "#F9A8D4"},
+              {text: 'Utilaje\n(RON)', style: 'extraHeader', fillColor: "#D8B4FE"},
       ],
       [
-          { text: totalManoperaOre, style: 'extraCell' ,  },
-          { text: totalManoperaPret, style: 'extraCell',   },
-          { text: totalMaterialePret, style: 'extraCell',  },
-          { text: totalTransportPret, style: 'extraCell',  },
-          { text: totalUtilajePret, style: 'extraCell',   },
+          { text: fmt(totalManoperaOre), style: 'extraCell' ,  },
+          { text: fmt(totalManoperaPret), style: 'extraCell',   },
+          { text: fmt(totalMaterialePret), style: 'extraCell',  },
+          { text: fmt(totalTransportPret), style: 'extraCell',  },
+          { text: fmt(totalUtilajePret), style: 'extraCell',   },
       ],
   ];
 
@@ -92,33 +104,34 @@ export const FormularCompact = async (id ,recapitulatii, TVA) => {
   let total = parseFloat(totalManoperaPret) + parseFloat(totalMaterialePret) + parseFloat(totalTransportPret) + parseFloat(totalUtilajePret);
   const extraTableBodySecond = [
     [
-        {text: 'Cheltuieli Directe', style: 'extraHeader',  fillColor: "#93C5FD"},
-        {text: '\u002B', style: 'extraHeader', rowSpan: 2 , fillColor: "#ffffff" , border: [false, false, false, false], margin: [0, 8, 0, 0] , fontSize: 20 },
-        {text: `Recapitulații ${recapitulatii}% `, style: 'extraHeader',   fillColor: "#93C5FD"},
-        {text: '\u003D', style: 'extraHeader', rowSpan: 2  , fillColor: "#ffffff", border: [false, false, false, false], margin: [0, 8, 0, 0] , fontSize: 20},
-        {text: 'Valoarea', style: 'extraHeader',     fillColor: "#93C5FD"},
-        {text: '\u002B', style: 'extraHeader', rowSpan: 2 , fillColor: "#ffffff" , border: [false, false, false, false], margin: [0, 8, 0, 0] , fontSize: 20 },
-        {text: `TVA ${TVA}%`, style: 'extraHeader', fillColor: "#93C5FD"},
-        {text: '\u003D', style: 'extraHeader', rowSpan: 2  , fillColor: "#ffffff", border: [false, false, false, false], margin: [0, 8, 0, 0] , fontSize: 20},
-        {text: 'Total', style: 'extraHeader',     fillColor: "#93C5FD"},
+            {text: 'Cheltuieli directe\n(RON)', style: 'extraHeader', fillColor: "#93C5FD"},
+            {text: '+', style: 'extraHeader', rowSpan: 2, fillColor: "#ffffff", border: [false, false, false, false], margin: [0, 8, 0, 0], fontSize: 20},
+            {text: `Recapitulare ${recapitulatii}%\n(RON)`, style: 'extraHeader', fillColor: "#93C5FD"},
+            {text: '=', style: 'extraHeader', rowSpan: 2, fillColor: "#ffffff", border: [false, false, false, false], margin: [0, 8, 0, 0], fontSize: 20},
+            {text: 'Valoare\n(RON)', style: 'extraHeader', fillColor: "#93C5FD"},
+            {text: '+', style: 'extraHeader', rowSpan: 2, fillColor: "#ffffff", border: [false, false, false, false], margin: [0, 8, 0, 0], fontSize: 20},
+            {text: `TVA ${TVA}%\n(RON)`, style: 'extraHeader', fillColor: "#93C5FD"},
+            {text: '=', style: 'extraHeader', rowSpan: 2, fillColor: "#ffffff", border: [false, false, false, false], margin: [0, 8, 0, 0], fontSize: 20},
+            {text: 'Total\n(RON)', style: 'extraHeader', fillColor: "#93C5FD"},
     ],
     [
-        { text: total, style: 'extraCell' ,  },
+        { text: fmt(total.toFixed(2)), style: 'extraCell' ,  },
         {},
-        { text: (recapitulatii / 100 * total).toFixed(2) , style: 'extraCell' ,  },
+        { text: fmt((recapitulatii / 100 * total).toFixed(2)) , style: 'extraCell' ,  },
         {},
-        { text: (total + recapitulatii / 100 * total).toFixed(2), style: 'extraCell',   },
+        { text: fmt((total + recapitulatii / 100 * total).toFixed(2)), style: 'extraCell',   },
         {},
-        { text: (TVA/100 * (total + recapitulatii / 100 * total)).toFixed(2), style: 'extraCell',  },
+        { text: fmt((TVA/100 * (total + recapitulatii / 100 * total)).toFixed(2)), style: 'extraCell',  },
         {},
-        { text: ((total + recapitulatii / 100 * total) + TVA/100 * (total + recapitulatii / 100 * total)).toFixed(2) , style: 'extraCell',  },
+        { text: fmt(((total + recapitulatii / 100 * total) + TVA/100 * (total + recapitulatii / 100 * total)).toFixed(2)) , style: 'extraCell',  },
     ],
 ];
 
   const docDefinition = {
      pageOrientation: 'landscape',
      pageSize: 'A4',
-    content: [
+      pageMargins: [30, 25, 30, 45],
+      content: [
       {
           table: {
             widths: ['*'],
@@ -128,7 +141,7 @@ export const FormularCompact = async (id ,recapitulatii, TVA) => {
                 columns: [
                   {
                     image: logo,
-                    width: 200,
+                    width: 150,
                     margin: [5, 5, 10, 5]
                   },
                   {
@@ -143,14 +156,14 @@ export const FormularCompact = async (id ,recapitulatii, TVA) => {
               }
             ]]
           },
-          layout: {
-            hLineWidth: (i, node) => (i === 0 || i === node.table.body.length ? 1 : 0),
-            vLineWidth: (i, node) => (i === 0 || i === node.table.widths.length ? 1 : 0),
-            hLineColor: () => '#000000',
-            vLineColor: () => '#000000'
-          },
-          margin: [0, 0, 0, 30]
+          layout: 'noBorders',
+          margin: [0, 0, 0, 10]
         },
+      { text: `Client: ${santiereDetalii.beneficiar}`, style: 'subtitle',alignment: 'left', margin: [0, 0, 0, 5] },
+      { text: `Contact: ${santiereDetalii.email} / ${santiereDetalii.telefon} `, style: 'subtitle',alignment: 'left', margin: [0, 0, 0, 5] },
+      { text: `Santier: ${santierName}`, style: 'subtitle',alignment: 'left', margin: [0, 0, 0, 5] },
+      { text: `Oferta: ${ofertaName} `, style: 'subtitle',alignment: 'left', margin: [0, 0, 0, 5] },
+      { text: `Lucrare: ${ofertaPartName} `, style: 'subtitle',alignment: 'left', margin: [0, 0, 0, 20] },
       { text: 'Rezumatul retetelor din  șantier', style: 'sectionTitle' },
       {
         table: {
@@ -180,6 +193,7 @@ export const FormularCompact = async (id ,recapitulatii, TVA) => {
           widths: Array(5).fill('auto'),
           body: extraTableBody
         },
+        pageBreak: 'avoid',
         layout: {
           hLineWidth: () => 1,
           vLineWidth: () => 1,
@@ -197,6 +211,7 @@ export const FormularCompact = async (id ,recapitulatii, TVA) => {
           widths: Array(9).fill('auto'),
           body: extraTableBodySecond
         },
+        pageBreak: 'avoid',
         layout: {
           hLineWidth: () => 1,
           vLineWidth: () => 1,
@@ -208,6 +223,19 @@ export const FormularCompact = async (id ,recapitulatii, TVA) => {
           paddingBottom: () => 4
         },
         margin: [0, 20, 0, 0]
+      },
+      { text: `Detalii Executie:`, alignment: 'left', margin: [0, 20, 0, 0],},
+      {
+        text: santiereDetalii.detalii_executie,
+        margin: [5, 10, 0, 10],
+        fontSize: 10,
+      },
+      {
+        columns: [
+          { text: `Creat de: \n${santiereDetalii.creatDe}`, alignment: 'left' , margin: [50,0,0,0] },
+          { text: `Aprobat de: \n${santiereDetalii.aprobatDe}`, alignment: 'right' , margin: [0,0,50,0] }
+        ],
+        margin: [0, 10, 0, 0]
       }
     ],
     footer: function (currentPage, pageCount) {
@@ -282,6 +310,11 @@ export const FormularCompact = async (id ,recapitulatii, TVA) => {
         bold: true,
         alignment: 'center',
         margin: [4,1,4,1], 
+      },
+      subtitle: {
+        fontSize: 10,
+        italics: true,
+        alignment: 'center'
       }
     },
     defaultStyle: {
