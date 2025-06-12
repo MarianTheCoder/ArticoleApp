@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const sharp = require('sharp');
-const {addRetetaToInitialOfera, getReteteLightForSantiere, editOfertaPart, deleteSantier, getSantiereDetailsSantierID, deleteOfertaPart, addOfertaPartToTheSantier, getOfertePartsForThisSantier, updateSantierDetails,addOfertaToTheSantier,changeNameForOferta, getOferteForThisSantier, deleteRetetaFromSantier, getSantiereDetails, getSpecificRetetaForOfertaInitiala, updateSantierRetetaPrices, getReteteLightForSantiereWithPrices} = require("../Controllers/SantiereController")
+const {addRetetaToInitialOfera, getReteteLightForSantiere, getReteteByOfertaWithPrices, updateReteteOrder, editOfertaPart, deleteSantier, getSantiereDetailsSantierID, deleteOfertaPart, addOfertaPartToTheSantier, getOfertePartsForThisSantier, updateSantierDetails,addOfertaToTheSantier,changeNameForOferta, getOferteForThisSantier, deleteRetetaFromSantier, getSantiereDetails, getSpecificRetetaForOfertaInitiala, updateSantierRetetaPrices, getReteteLightForSantiereWithPrices} = require("../Controllers/SantiereController")
 
 const router = express.Router();
 
@@ -12,13 +12,17 @@ const upload = multer({ storage });
 
 router.post('/addRetetaToInitialOferta', addRetetaToInitialOfera); 
 router.get('/getReteteLightForSantiere/:id', getReteteLightForSantiere); 
+//lucrare
 router.get('/getReteteLightForSantiereWithPrices/:id', getReteteLightForSantiereWithPrices); 
+//toate lucrarile
+router.get('/getReteteByOfertaWithPrices/:id', getReteteByOfertaWithPrices); 
 router.delete('/deleteRetetaFromSantier/:id', deleteRetetaFromSantier); 
 router.get('/getSpecificRetetaForOfertaInitiala/:id', getSpecificRetetaForOfertaInitiala); 
 router.put('/updateSantierRetetaPrices', updateSantierRetetaPrices); 
 router.get('/getSantiereDetails/:id', getSantiereDetails); 
 router.get('/getSantiereDetailsSantierID/:id', getSantiereDetailsSantierID); 
 router.put('/updateSantierDetails/:id', updateSantierDetails);
+router.put('/updateReteteOrder', updateReteteOrder);
 
 //oferta
 router.get('/getOferteForThisSantier/:id', getOferteForThisSantier); 

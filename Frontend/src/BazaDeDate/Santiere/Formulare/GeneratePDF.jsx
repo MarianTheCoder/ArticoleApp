@@ -13,20 +13,6 @@ pdfMake.vfs = pdfFonts.vfs;
     return text.replace(/(.{20})/g, '$1\u200B'); // Add zero-width space every 20 characters
   };
 
-
-
-  
-
-
-
-
-
-
-
-
-
-
-
   const generateC8pdf = async (id) => {
     let res;
     try {

@@ -1,9 +1,23 @@
-import pdfMake from "pdfmake/build/pdfmake";
-import pdfFonts from "pdfmake/build/vfs_fonts";
+import pdfMake from 'pdfmake/build/pdfmake';
+import pdfFonts from 'pdfmake/build/vfs_fonts'; 
+import * as customVfsModule from '../../../../assets/fonts/vfs_fonts.js';
+
+// 2) If you want to preserve Roboto _and_ add Avenir, merge them:
+pdfMake.vfs = customVfsModule.default
+
+// 3) Now register the Avenir font family:
+pdfMake.fonts = {
+  Avenir: {
+    normal:      'Avenir_Regular.otf',  
+    bold:        'Avenir_Bold.otf',     
+    italics:     'Avenir_Italic.otf',   
+    bolditalics: 'Avenir_Italic.otf'    // reuse Italic for bold+italic
+  }
+};
+
 import { folderImage, logo, userImage, materialeImage, utilajeImage, transportImage, arrowDown  } from '../../base64Items';
 import api from '../../../../api/axiosAPI';
 // margin: [0, 7.5, 10, 5] left top right bottom
-pdfMake.vfs = pdfFonts.vfs;
 
 
 const fmt = num =>
@@ -60,8 +74,8 @@ export const FormularRasfirat = async (id ,recapitulatii, TVA) => {
       { text: 'Articol', style: 'mainHeader' },
       { text: 'Unitate', style: 'mainHeader' },
       { text: 'Cantitate', style: 'mainHeader' },
-      { text: 'Preț unitar \n (RON)', style: 'mainHeader' },
-      { text: 'Preț total \n (RON)', style: 'mainHeader' }
+      { text: 'Preț unitar\n (RON)', style: 'mainHeader' },
+      { text: 'Preț total\n (RON)', style: 'mainHeader' }
           ],
           ...dataTable.flatMap((item, index) => {
             const rowFill = "#ffffff";
@@ -426,7 +440,7 @@ export const FormularRasfirat = async (id ,recapitulatii, TVA) => {
             }
           },
           defaultStyle: {
-    
+            font: 'Avenir'
           }
         };
       

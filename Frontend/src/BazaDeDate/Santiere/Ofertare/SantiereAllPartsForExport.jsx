@@ -1,19 +1,19 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react'
-import api from '../../../api/axiosAPI';
+import api from '../../../api/axiosAPI.jsx';
 import { flexRender, getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowDown, faArrowDownAZ, faArrowRotateRight, faArrowUpAZ, faCancel, faCar, faChevronDown, faChevronRight, faCopy, faEllipsis, faEquals, faFileExport, faFolder, faL, faPenToSquare, faPerson, faPlus, faTrashCan, faTrowelBricks, faTruck, faUser } from '@fortawesome/free-solid-svg-icons';
-import photoAPI from '../../../api/photoAPI';
-import SantiereAddReteteTable from './SantiereAddReteteTableAbsolute';
+import photoAPI from '../../../api/photoAPI.jsx';
+import SantiereAddReteteTable from './SantiereAddReteteTableAbsolute.jsx';
 import { useParams } from 'react-router-dom';
-import CostInputCell from './CostCell';
+import CostInputCell from './CostCell.jsx';
 
-import { FormularRasfirat } from '../Formulare/Romania/FormularRasfirat';
-import { FormularCompact } from '../Formulare/Romania/FormularCompact';
+import { FormularRasfirat } from '../Formulare/Romania/FormularRasfirat.jsx';
+import { FormularCompact } from '../Formulare/Romania/FormularCompact.jsx';
 import { FormularDevizGeneral } from '../Formulare/Romania/FormularDevizGeneral.jsx';
-import { FormularCompactFR } from '../Formulare/Franta/FormularCompactFR';
-import { FormularRasfiratFR } from '../Formulare/Franta/FormularRasfiratFR';
-import TextAreaCell from './TextareaCell';
+import { FormularCompactFR } from '../Formulare/Franta/FormularCompactFR.jsx';
+import { FormularRasfiratFR } from '../Formulare/Franta/FormularRasfiratFR.jsx';
+import TextAreaCell from './TextareaCell.jsx';
 
 import {
   DndContext,
@@ -33,26 +33,12 @@ import { CSS } from "@dnd-kit/utilities";
 
 
 
-export default function SantiereAdd({ mainOfertaPartID, ofertaId }) {
+export default function SantiereAllPartsForExport({ mainOfertaPartID, ofertaId }) {
 
   const { idSantier, limbaUser } = useParams();
 
   const [openDropdowns, setOpenDropdowns] = useState(new Set());
   const [isPopupOpen, setIsPopupOpen] = useState(false);
-
-  const [selectedDelete, setSelectedDelete] = useState(null);
-  const [selectedEdit, setSelectedEdit] = useState(null);
-  const [editedCosts, setEditedCosts] = useState({});
-
-  //editable 
-  const [cantitateReteta, setCantitateReteta] = useState(0);
-  const [reperPlan, setReperPlan] = useState("");
-  const [detaliiAditionale, setDetaliiAditionale] = useState("");
-
-  const editedCostsRef = useRef(editedCosts);
-  const editedCantitateRef = useRef(cantitateReteta);
-  const reperPlanRef = useRef(reperPlan);
-  const detaliiAditionaleRef = useRef(detaliiAditionale);
 
   const [retete, setRetete] = useState([]);
   const [detailedCosts, setDetailedCosts] = useState({});
@@ -76,31 +62,35 @@ export default function SantiereAdd({ mainOfertaPartID, ofertaId }) {
   })
   const [selectedFormular, setSelectedFormular] = useState(limbaUser == 'RO' ? 'Răsfirat' : 'RăsfiratFR');
 
-  const [objectsLen, setObjectsLen] = useState(0);
-  const [objectsID, setObjectsID] = useState(null);
-  const [lastObjectIndex, setLastObjectIndex] = useState(null);
 
 
 
 
   const fetchManopere = async () => {
     try {
-      const response = await api.get(`/Santiere/getReteteLightForSantiereWithPrices/${mainOfertaPartID}`, {
+      const response = await api.get(`/Santiere/getReteteByOfertaWithPrices/${ofertaId}`, {
         params: {
           asc_articol: ascendent,
         },
       });
+      let dum = [];
+      console.log(response.data.parts);
       setOpenDropdowns(new Set());
-      setEditedCosts({});
-      setSelectedEdit(null);
-      setSelectedDelete(null);
-      if (response.data.data.length == 0) {
+      if (response.data.parts.length == 0) {
         setRetete([]);
         setDetailedCosts({});
         return;
       };
-      setDetailedCosts(response.data.detailedCosts);
-      setRetete(response.data.data);
+      for (let i = 0; i < response.data.parts.length; i++) {
+        dum = [...dum, { partId: response.data.parts[i].partId, partName: response.data.parts[i].partName, parentId: response.data.parts[i].partId + 'z' }];
+        dum = [...dum, ...response.data.parts[i].retete];
+      }
+      // console.log("Das", dum)
+      // setDetailedCosts(response.data.detailedCosts);
+      // setRetete(response.data.data);
+      setRetete(dum);
+      setDetailedCosts({});
+      return;
 
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -119,23 +109,6 @@ export default function SantiereAdd({ mainOfertaPartID, ofertaId }) {
     }
   }, [detailedCosts]);
 
-  //to see the updated cantitate and costs in the function
-  useEffect(() => {
-    editedCostsRef.current = editedCosts;
-  }, [editedCosts]);
-
-  useEffect(() => {
-    editedCantitateRef.current = cantitateReteta;
-  }, [cantitateReteta]);
-
-  useEffect(() => {
-    detaliiAditionaleRef.current = detaliiAditionale;
-  }, [detaliiAditionale]);
-
-  useEffect(() => {
-    reperPlanRef.current = reperPlan;
-  }, [reperPlan]);
-
 
   // const handleInputChange = (e) => {
   //     const { name, value } = e.target;
@@ -147,76 +120,31 @@ export default function SantiereAdd({ mainOfertaPartID, ofertaId }) {
 
 
 
-  //CE FROMULAR SELECTAM?
-  const handleFormular = () => {
-    // console.log(mainOfertaPartID);
-    switch (selectedFormular) {
-      case 'Deviz General':
-        FormularDevizGeneral(mainOfertaPartID, recapitulatii, TVA)
-        break;
-      case 'Răsfirat':
-        FormularRasfirat(mainOfertaPartID, recapitulatii, TVA)
-        break;
-      case 'Compact':
-        FormularCompact(mainOfertaPartID, recapitulatii, TVA);
-        break;
-      case "CompactFR":
-        FormularCompactFR(mainOfertaPartID, recapitulatii, TVA);
-        break;
-      case "RăsfiratFR":
-        FormularRasfiratFR(idSantier, mainOfertaPartID, recapitulatii, TVA);
-        break;
+  // //CE FROMULAR SELECTAM?
+  // const handleFormular = () => {
+  //   // console.log(mainOfertaPartID);
+  //   switch (selectedFormular) {
+  //     case 'Deviz General':
+  //       FormularDevizGeneral(mainOfertaPartID, recapitulatii, TVA)
+  //       break;
+  //     case 'Răsfirat':
+  //       FormularRasfirat(mainOfertaPartID, recapitulatii, TVA)
+  //       break;
+  //     case 'Compact':
+  //       FormularCompact(mainOfertaPartID, recapitulatii, TVA);
+  //       break;
+  //     case "CompactFR":
+  //       FormularCompactFR(mainOfertaPartID, recapitulatii, TVA);
+  //       break;
+  //     case "RăsfiratFR":
+  //       FormularRasfiratFR(idSantier, mainOfertaPartID, recapitulatii, TVA);
+  //       break;
 
-      default:
-        break;
-    }
-  }
+  //     default:
+  //       break;
+  //   }
+  // }
 
-
-
-  //handle selected edit/delete
-  const handleSelectedForDelete = (e, id) => {
-    setEditedCosts({});
-    setSelectedEdit(null);
-    setCantitateReteta(0);
-    setSelectedDelete((prev) => {
-      if (prev === id) {
-        deleteItem(id); // your custom logic here
-        return null;
-      }
-      return id;
-    });
-  }
-
-  const deleteItem = async (id) => {
-    // console.log(retete);
-    try {
-      await api.delete(`/Santiere/deleteRetetaFromSantier/${id}`);
-
-      setDetailedCosts(prev => {
-        const newState = { ...prev };
-        delete newState[id];
-        return newState;
-      });
-      setRetete(prev =>
-        prev.filter(item => {
-          const isParentToDelete = item.id === id && item.whatIs === undefined;
-          const isChildOfDeleted = item.parentId === id;
-
-          return !isParentToDelete && !isChildOfDeleted;
-        })
-      );
-      // Remove dropdown open state if it was open
-      setOpenDropdowns((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(id);
-        return newSet;
-      });
-
-    } catch (error) {
-      console.error('Error deleting item:', error);
-    }
-  };
 
   const handleFinalData = () => {
     let totalTime = 0;
@@ -271,141 +199,11 @@ export default function SantiereAdd({ mainOfertaPartID, ofertaId }) {
     })
   }
 
-  const handleAcceptEdit = async () => {
-    const currentEditedCosts = editedCostsRef.current;
-    const currentCantitateReteta = editedCantitateRef.current;
-    const currentReperPlan = reperPlanRef.current;
-    const currentDetaliiAditionale = detaliiAditionaleRef.current;
-    // console.log('Sending updated costs:', currentEditedCosts , currentCantitateReteta);
-    try {
-      const res = await api.put(`/Santiere/updateSantierRetetaPrices`, { santier_reteta_id: selectedEdit, reper_plan: currentReperPlan, detalii_aditionale: currentDetaliiAditionale, cantitate_reteta: currentCantitateReteta, updatedCosts: currentEditedCosts });
-      let tempCosts = JSON.parse(JSON.stringify(detailedCosts));
-      setRetete((prev) => {
-        const updated = [...prev]; // Clone so you don't mutate state directly
-        let totalCost = 0;
-        for (let i = 0; i < updated.length; i++) {
-          const item = updated[i];
-          const key = `${item.id}-${item.whatIs}`;
 
-          if (item.parentId === selectedEdit) {
-            const cost = currentEditedCosts[key] !== undefined
-              ? parseFloat(currentEditedCosts[key])
-              : parseFloat(item.cost);
-
-            totalCost += cost * parseFloat(item.cantitate);
-
-            if (currentEditedCosts.hasOwnProperty(key)) {
-              tempCosts[selectedEdit][item.whatIs][item.id].cost = cost.toFixed(2);
-              updated[i] = { ...item, cost: cost.toFixed(2) };
-            }
-          }
-        }
-        const parentIndex = updated.findIndex(
-          item => !item.whatIs && item.id === selectedEdit
-        );
-
-        if (parentIndex !== -1) {
-          // console.log("gasit" , totalCost);
-          tempCosts[selectedEdit].cantitate_reteta = parseFloat(currentCantitateReteta).toFixed(2);
-          updated[parentIndex] = {
-            ...updated[parentIndex],
-            cantitate: parseFloat(currentCantitateReteta).toFixed(2),
-            detalii_aditionale: currentDetaliiAditionale,
-            reper_plan: currentReperPlan,
-            cost: totalCost.toFixed(2),
-          };
-        }
-
-        return updated;
-      }
-        // prev.map(item => {
-        //   const key = `${item.id}-${item.whatIs}`;
-        //   if(item.parentId === selectedEdit){
-        //     const cost = currentEditedCosts[key] !== undefined
-        //     ? parseFloat(currentEditedCosts[key])
-        //     : parseFloat(item.cost);
-
-        //     console.log(cost , item.cantitate)
-        //     totalCost += cost * parseFloat(item.cantitate);
-        //   }
-        //   if (currentEditedCosts.hasOwnProperty(key)) {
-        //     tempCosts[selectedEdit][item.whatIs][item.id].cost = parseFloat(currentEditedCosts[key]).toFixed(2);
-        //     return {
-        //       ...item,
-        //       cost: parseFloat(currentEditedCosts[key]).toFixed(2)
-        //     };
-        //   }
-
-        //   if (!item.whatIs && item.id == selectedEdit) {
-        //     tempCosts[selectedEdit].cantitate_reteta = parseFloat(currentCantitateReteta).toFixed(2);
-        //     return {
-        //       ...item,
-        //       cantitate: parseFloat(currentCantitateReteta).toFixed(2)
-        //     };
-        //   }
-        //   return item;
-        // })
-      );
-      setDetailedCosts(tempCosts);
-    } catch (error) {
-      console.error("Error at editing the Reteta:", error);
-    }
-    setEditedCosts({});
-    setSelectedEdit(null);
-    setCantitateReteta(0);
-
-  }
-
-  const handleSelectedForEdit = (rowToEdit, theActualRetete) => {
-    setSelectedDelete(null);
-    const newEditedCosts = {};
-    theActualRetete.forEach((item) => {
-      if (item.parentId === rowToEdit) {
-        newEditedCosts[`${item.id}-${item.whatIs}`] = item.cost;
-      }
-      if (item.id == rowToEdit && !item.parentId) setCantitateReteta(item.cantitate);
-    });
-    setEditedCosts(newEditedCosts);
-    setSelectedEdit(rowToEdit);
-  }
-
-  const handleCostChange = (id, whatIs, value) => {
-    // console.log(id, whatIs, value)
-    setEditedCosts((prev) => ({
-      ...prev,
-      [`${id}-${whatIs}`]: value,
-    }));
-  };
-
-  const handleCantiatateChange = (id, whatIs, value) => {
-    // console.log(value)
-    setCantitateReteta(value);
-  };
-
-  const handleReperChange = (id, whatIs, value) => {
-    // console.log(value)
-    setReperPlan(value);
-  };
-
-  const handleDetaliiChange = (id, whatIs, value) => {
-    // console.log(value)
-    setDetaliiAditionale(value);
-  };
-
-  const toggleDropdown = async (parentId, isEditClicked) => {
+  const toggleDropdown = async (parentId) => {
     const isAlreadyOpen = openDropdowns.has(parentId);
-    //daca sunt egale trebuue sa acceotam editul
-    if (isEditClicked == selectedEdit && selectedEdit != null) {
-      handleAcceptEdit();
-      return;
-    }
-    //verificam daca e deja deschis
-    if (isAlreadyOpen && isEditClicked) {
-      handleSelectedForEdit(isEditClicked, retete);
-      return;
-    }
     //aici e inchiderea standard
-    if (isAlreadyOpen && !isEditClicked) {
+    if (isAlreadyOpen) {
       // Remove children from retete and mark dropdown as closed
       setRetete((prev) => prev.filter(item => item.parentId !== parentId));
       setOpenDropdowns((prev) => {
@@ -430,12 +228,8 @@ export default function SantiereAdd({ mainOfertaPartID, ofertaId }) {
         setRetete((prev) => {
           const index = prev.findIndex(item => item.id === parentId && !item.parentId);
           if (index === -1) return prev;
-
           const newList = [...prev];
           newList.splice(index + 1, 0, ...children);
-          if (isEditClicked != null) {
-            handleSelectedForEdit(isEditClicked, newList)
-          }
           return newList;
         });
 
@@ -451,31 +245,6 @@ export default function SantiereAdd({ mainOfertaPartID, ofertaId }) {
   };
 
 
-  //Handle Click Outside!
-  useEffect(() => {
-    document.addEventListener('click', handleClickOutside);
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-    };
-  }, []);
-
-  const handleClickOutside = (event) => {
-    if (!event.target.closest('.dropdown-container')) {
-      setSelectedDelete(false);
-      setEditedCosts({});
-      setSelectedEdit(null);
-    }
-  };
-
-  const parentProps = {
-    setIsPopupOpen,
-    setObjectsLen,
-    objectsLen,
-    lastObjectIndex,
-    setLastObjectIndex,
-    fetchParentRetete: fetchManopere,
-    mainOfertaPartID
-  };
 
 
   const topLevelRows = retete.filter(r => r.parentId == null);
@@ -521,19 +290,19 @@ export default function SantiereAdd({ mainOfertaPartID, ofertaId }) {
       }
     }
 
-    try {
-      // Adjust endpoint URL to whatever you have on the server:
-      await api.put(`/Santiere/updateReteteOrder`, {
-        updatedParents: updatedParents.map(p => ({
-          id: p.id,
-          sort_order: p.sort_order,
-        })),
-      });
-      setRetete(newRetete);
-    } catch (err) {
-      console.error("Failed to persist new order on server:", err);
-      // Optionally roll back state or show an error message
-    }
+    // try {
+    //   // Adjust endpoint URL to whatever you have on the server:
+    //   await api.put(`/Santiere/updateReteteOrder`, {
+    //     updatedParents: updatedParents.map(p => ({
+    //       id: p.id,
+    //       sort_order: p.sort_order,
+    //     })),
+    //   });
+    //   setRetete(newRetete);
+    // } catch (err) {
+    //   console.error("Failed to persist new order on server:", err);
+    //   // Optionally roll back state or show an error message
+    // }
 
 
   }
@@ -546,7 +315,7 @@ export default function SantiereAdd({ mainOfertaPartID, ofertaId }) {
       accessorKey: "Dropdown",
       header: "",
       cell: ({ row, getValue, cell }) => (
-        <div onClick={() => row.original.id != selectedEdit && toggleDropdown(cell.row.original.id)} className='flex justify-center select-none w-full dropdown-container overflow-hidden cursor-pointer items-center'>
+        <div onClick={() => toggleDropdown(cell.row.original.id)} className='flex justify-center select-none w-full dropdown-container overflow-hidden cursor-pointer items-center'>
           <FontAwesomeIcon className={` ${openDropdowns.has(cell.row.original.id) ? "rotate-90" : ""}  text-center  text-xl`} icon={faChevronRight} />
         </div>
       ),
@@ -576,14 +345,13 @@ export default function SantiereAdd({ mainOfertaPartID, ofertaId }) {
       header: "Detalii",
       size: 80,
       cell: ({ getValue, row }) => {
-        const isEditable = (row.original.id === selectedEdit && !row.original.whatIs);
         return (
           <TextAreaCell
             rowId={row.original.id}
             whatIs={row.original.whatIs || "Reteta"}
             initialValue={getValue() || ""}
-            isEditable={isEditable}
-            onEdit={handleDetaliiChange}
+            isEditable={false}
+            // onEdit={handleDetaliiChange}
             bold={false}
           />
         );
@@ -594,14 +362,13 @@ export default function SantiereAdd({ mainOfertaPartID, ofertaId }) {
       header: "Reper Plan",
       size: 80,
       cell: ({ getValue, row }) => {
-        const isEditable = (row.original.id === selectedEdit && !row.original.whatIs);
         return (
           <TextAreaCell
             rowId={row.original.id}
             whatIs={row.original.whatIs || "Reteta"}
             initialValue={getValue() || ""}
-            isEditable={isEditable}
-            onEdit={handleReperChange}
+            isEditable={false}
+            // onEdit={handleReperChange}
             bold={false}
           />
         );
@@ -648,15 +415,13 @@ export default function SantiereAdd({ mainOfertaPartID, ofertaId }) {
       accessorKey: "cantitate",
       header: "Cantitate",
       cell: ({ getValue, row }) => {
-        const isEditable = (row.original.id === selectedEdit && !row.original.whatIs);
-
         return (
           <CostInputCell
             rowId={row.original.id}
             whatIs={row.original.whatIs || "Reteta"}
             initialValue={getValue()}
-            isEditable={isEditable}
-            onEdit={handleCantiatateChange} // optional
+            isEditable={false}
+            // onEdit={handleCantiatateChange} // optional
             bold={false}
           />
         );
@@ -667,15 +432,13 @@ export default function SantiereAdd({ mainOfertaPartID, ofertaId }) {
       accessorKey: "cost",
       header: "Preț Unitar",
       cell: ({ getValue, row }) => {
-        const isEditable = row.original.parentId === selectedEdit;
-
         return (
           <CostInputCell
             rowId={row.original.id}
             whatIs={row.original.whatIs || "Reteta"}
             initialValue={getValue()}
-            isEditable={isEditable}
-            onEdit={handleCostChange} // optional
+            isEditable={false}
+            // onEdit={handleCostChange} // optional
             bold={true}
           />
         );
@@ -693,28 +456,27 @@ export default function SantiereAdd({ mainOfertaPartID, ofertaId }) {
       },
       size: 80
     },
-    {
-      accessorKey: "threeDots",
-      header: "Opțiuni",
-      cell: ({ row }) => (
-        row.original.whatIs == 'Manopera' || row.original.whatIs == 'Material' || row.original.whatIs == 'Utilaj' || row.original.whatIs == 'Transport' ?
-          ""
-          :
-          <div className=' dropdown-container w-full relative flex '>
-            <div className='text-xl relative w-full py-2 select-none items-center justify-evenly gap-1 flex'>
-              <FontAwesomeIcon onClick={(e) => toggleDropdown(row.original.id, row.original.id)} className=' text-green-500 hover:text-green-600 dropw cursor-pointer dropdown-container' icon={faPenToSquare} />
-              <FontAwesomeIcon onClick={(e) => handleSelectedForDelete(e, row.original.id)} className=' text-red-500 hover:text-red-600 cursor-pointer dropdown-container' icon={faTrashCan} />
-            </div>
-          </div>
-      ),
-      meta: {
-        style: {
-          textAlign: 'center',
-          padding: '0',
-        },
-      },
-    },
-  ], [retete, ascendent, selectedEdit, selectedDelete]);
+    // {
+    //   accessorKey: "threeDots",
+    //   header: "Opțiuni",
+    //   cell: ({ row }) => (
+    //     row.original.whatIs == 'Manopera' || row.original.whatIs == 'Material' || row.original.whatIs == 'Utilaj' || row.original.whatIs == 'Transport' ?
+    //       ""
+    //       :
+    //       <div className=' dropdown-container w-full relative flex '>
+    //         <div className='text-xl relative w-full py-2 select-none items-center justify-evenly gap-1 flex'>
+    //           <FontAwesomeIcon className=' text-red-500 hover:text-red-600 cursor-pointer dropdown-container' icon={faTrashCan} />
+    //         </div>
+    //       </div>
+    //   ),
+    //   meta: {
+    //     style: {
+    //       textAlign: 'center',
+    //       padding: '0',
+    //     },
+    //   },
+    // },
+  ], [retete, ascendent]);
 
   const table = useReactTable({
     data: retete,
@@ -731,19 +493,10 @@ export default function SantiereAdd({ mainOfertaPartID, ofertaId }) {
     <>
       <div className=' w-full  flex flex-col h-full justify-between overflow-hidden '>
         {retete &&
-          <div className="p-8 pb-4 pt-5 text-sm scrollbar-webkit w-full overflow-hidden text-white h-full flex flex-col justify-etween">
-            <div className="  scrollbar-webkit overflow-auto  ">
-              <DndContext
-                sensors={useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext
-                  items={topLevelRows.map(r => r.sort_order.toString())}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <table className="w-full border-separate overflow-hidden border-spacing-0 ">
-                    <thead className='top-0 w-full sticky  z-10 '>
+          <div className="p-8 pb-4 pt-5 text-sm scrollbar-webkit w-full overflow-hidden gap-6 text-white h-full flex flex-col justify-between">
+            <div className="  scrollbar-webkit overflow-auto  relative  ">
+                  <table className="w-full border-separate border-spacing-0 ">
+                    <thead className='top-0 w-full sticky    z-10 '>
                       {/* <tr className='text-black'>
                                     <th className='border-b border-r border-black bg-white' colSpan={2}></th>
                                     <th className='border-b border-r bg-white border-black'>
@@ -803,61 +556,75 @@ export default function SantiereAdd({ mainOfertaPartID, ofertaId }) {
                       ))}
                     </thead>
                     {retete.length == 0 ?
-                      <tbody className='relative z-0'>
-                        <tr>
-                          <td className='bg-[rgb(255,255,255,0.75)] border-black border-r border-b text-black h-10' colSpan={14}>
-                            <div className=' flex justify-center items-center w-full text-lg font-semibold h-full'>Nimic Adaugat</div>
-                          </td>
-                        </tr>
-                      </tbody>
+                      (
+                        <tbody className='relative z-0'>
+                          <tr>
+                            <td className='bg-[rgb(255,255,255,0.75)] border-black border-r border-b text-black h-10' colSpan={14}>
+                              <div className=' flex justify-center items-center w-full text-lg font-semibold h-full'>Nimic Adaugat</div>
+                            </td>
+                          </tr>
+                        </tbody>
+                      )
                       :
-                      <tbody className=' relative z-0'>
-                        {table.getRowModel().rows.map((row, index, rows) => (
-                          row.original.whatIs == 'Manopera' || row.original.whatIs == 'Material' || row.original.whatIs == 'Utilaj' || row.original.whatIs == 'Transport' ?
-                            <React.Fragment key={row.id}>
-                              <tr className={` dropdown-container   text-black`}>
-                                {row.getVisibleCells().map((cell) => (
-                                  cell.column.id == "Dropdown" ?
-                                    <td key={cell.id}>
+                      (
+                        <tbody className=' relative z-0'>
+                          {table.getRowModel().rows.map((row, index, rows) => (
+                            row.original.whatIs == 'Manopera' || row.original.whatIs == 'Material' || row.original.whatIs == 'Utilaj' || row.original.whatIs == 'Transport' ?
+                              <React.Fragment key={row.id}>
+                                <tr className={` dropdown-container   text-black`}>
+                                  {row.getVisibleCells().map((cell) => (
+                                    cell.column.id == "Dropdown" ?
+                                      <td key={cell.id}>
 
-                                    </td>
-                                    :
-                                    <td
-                                      onClick={() => console.log(cell)}
-                                      key={cell.id}
-                                      className={` 
+                                      </td>
+                                      :
+                                      <td
+                                        onClick={() => console.log(cell)}
+                                        key={cell.id}
+                                        className={` 
                                      ${cell.column.id == "whatIs" ? row.original.whatIs == 'Manopera' ? "bg-green-300" : row.original.whatIs == 'Material' ? "bg-amber-300" : row.original.whatIs == 'Utilaj' ? "bg-violet-300" : row.original.whatIs == 'Transport' ? "bg-pink-300" : "bg-white" : "bg-white"}
                                      border-b border-r break-words max-w-72  relative border-black px-3 `}
-                                    >
-                                      <div className="h-full w-full overflow-hidden ">
-                                        <div className="max-h-12 h-12 leading-relaxed  grid grid-cols-1 break-words whitespace-pre-line items-center  overflow-auto  scrollbar-webkit">
-                                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                      >
+                                        <div className="h-full w-full overflow-hidden ">
+                                          <div className="max-h-12 h-12 leading-relaxed  grid grid-cols-1 break-words whitespace-pre-line items-center  overflow-auto  scrollbar-webkit">
+                                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                          </div>
                                         </div>
-                                      </div>
-                                    </td>
-                                ))}
-                              </tr>
+                                      </td>
+                                  ))}
+                                </tr>
+                              </React.Fragment>
+                              :
+                              //check daca suntem pe linia cu headeru de lucrare ex: p01
+                              row.original?.partName != null ?
+                                <tr className='sticky top-14 z-10 bg-white'>
+                                  <td className='bg-[rgb(255,255,255,1)] border-black border-r border-b text-black h-12' colSpan={14}>
+                                    <div className=' flex justify-center items-center w-full text-xl font-semibold h-full'>Lucrarea {row.original.partName}</div>
+                                  </td>
+                                </tr>
+                                :
+                                //randul normal cu date
+                                <React.Fragment key={row.id}>
+                                  <tr className='dropdown-container text-black bg-[rgb(255,255,255,0.80)] hover:bg-[rgb(255,255,255,0.60)'>
+                                    {row.getVisibleCells().map(cell => (
+                                      <td
+                                        key={cell.id}
+                                        className="border-b border-r break-words max-w-72 relative border-black p-1 px-3"
+                                        style={cell.column.columnDef.meta?.style}
+                                      >
+                                        <div className="h-full w-full overflow-hidden">
+                                          <div className="max-h-12 h-12 leading-relaxed w-full break-words whitespace-pre-line grid grid-cols-1 items-center overflow-auto scrollbar-webkit">
+                                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                          </div>
+                                        </div>
+                                      </td>
+                                    ))}
+                                  </tr>
                             </React.Fragment>
-                            :
-                            <React.Fragment key={row.id}>
-                              <SortableRow
-                                key={row.original.sort_order}
-                                row={row}
-                                selectedDelete={selectedDelete}
-                                selectedEdit={selectedEdit}
-                              />
-                            </React.Fragment>
-                        ))}
-                      </tbody>}
+                          ))}
+                        </tbody>
+                      )}
                   </table>
-                </SortableContext>
-              </DndContext>
-            </div>
-            <div onClick={() => setIsPopupOpen(true)} className='bg-white mt-2 mb-3 p-2 px-3 hover:bg-[rgb(255,255,255,0.9)] cursor-pointer border-t border-black select-none text-black' colSpan={14}>
-              <div className='flex font-bold   text-center justify-center items-center gap-2'>
-                <p className=' text-center'>Adauga Retete</p>
-                <FontAwesomeIcon className='text-green-500  text-center text-2xl' icon={faPlus} />
-              </div>
             </div>
             {/* Pagination Controls */}
             <div className="mt-auto text-sm  gap-4 flex containerZ p-4  items-center">
@@ -969,65 +736,8 @@ export default function SantiereAdd({ mainOfertaPartID, ofertaId }) {
           </div>
 
         }
-        {/* div that prevents clicks outside */}
-        {isPopupOpen && (
-          <>
-            <div className=" absolute top-0 left-0 right-0 bottom-0 h-full w-full z-[100]"></div>
-            <div className='w-full top-0 left-0 right-0 bottom-0 absolute h-full items-center justify-center flex z-[200]'>
-              <div className=' relative rounded-xl bg-[#002a54] h-[95%] w-90w'>
-                <SantiereAddReteteTable  {...parentProps} />
-              </div>
-            </div>
-          </>
-        )}
       </div>
     </>
   )
 }
 
-
-function SortableRow({ row, selectedDelete, selectedEdit }) {
-  // use sortorder (not id) as the dnd‐kit key:
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: row.original.sort_order.toString() });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition: transition || undefined,
-    background: isDragging ? "rgba(200, 200, 200, 0.4)" : undefined,
-  };
-
-  const rowClass = `
-    dropdown-container text-black
-    ${row.original.id === selectedDelete
-      ? "bg-red-300 sticky"
-      : row.original.id === selectedEdit
-        ? "bg-green-300 sticky"
-        : "bg-[rgb(255,255,255,0.80)] hover:bg-[rgb(255,255,255,0.60)]"
-    }
-  `.trim();
-
-  return (
-    <tr
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      className={rowClass}
-    >
-      {row.getVisibleCells().map(cell => (
-        <td
-          key={cell.id}
-          className="border-b border-r break-words max-w-72 relative border-black p-1 px-3"
-          style={cell.column.columnDef.meta?.style}
-        >
-          <div className="h-full w-full overflow-hidden">
-            <div className="max-h-12 h-12 leading-relaxed w-full break-words whitespace-pre-line grid grid-cols-1 items-center overflow-auto scrollbar-webkit">
-              {flexRender(cell.column.columnDef.cell, cell.getContext())}
-            </div>
-          </div>
-        </td>
-      ))}
-    </tr>
-  );
-}

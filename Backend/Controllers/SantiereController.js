@@ -24,15 +24,23 @@ const addRetetaToInitialOfera = async (req, res) => {
       cantitate
     } = req.body;
 
+    const [[{ maxOrder }]] = await connection.execute(
+      `SELECT COALESCE(MAX(sort_order), 0) AS maxOrder
+         FROM Santier_retete
+        WHERE oferta_parts_id = ?`,
+      [oferta_part]
+    );
+    const newSortOrder = maxOrder + 1;
+
     if (!limba || !oferta_part || !cod_reteta || !clasa_reteta || !articol || !unitate_masura || !reteta_id || !cantitate) {
       return res.status(400).json({ message: 'Missing required reteta fields.' });
     }
 
     const [retetaResult] = await connection.execute(`
-        INSERT INTO Santier_retete (oferta_parts_id, reper_plan, detalii_aditionale, limba, cod_reteta, clasa_reteta, articol, articol_fr, descriere_reteta, descriere_reteta_fr, unitate_masura, cantitate)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO Santier_retete (oferta_parts_id, reper_plan, detalii_aditionale, limba, cod_reteta, clasa_reteta, articol, articol_fr, descriere_reteta, descriere_reteta_fr, unitate_masura, cantitate, sort_order)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
-      oferta_part, reper_plan, detalii_aditionale, limba, cod_reteta, clasa_reteta, articol, articol_fr, descriere_reteta, descriere_reteta_fr, unitate_masura, cantitate
+      oferta_part, reper_plan, detalii_aditionale, limba, cod_reteta, clasa_reteta, articol, articol_fr, descriere_reteta, descriere_reteta_fr, unitate_masura, cantitate, newSortOrder
     ]);
 
     const santier_reteta_id = retetaResult.insertId;
@@ -183,7 +191,7 @@ const getReteteLightForSantiere = async (req, res) => {
 
   try {
     // Start constructing the base query
-    let query = `SELECT * FROM Santier_retete WHERE santier_id = ?`;  // Assuming 'retete' is the name of your table
+    let query = `SELECT * FROM Santier_retete WHERE santier_id = ? ORDER BY sort_order ASC`;  // Assuming 'retete' is the name of your table
 
     const [rows] = await global.db.execute(query, [id]);
     // Send paginated data with metadata
@@ -203,8 +211,8 @@ const getReteteLightForSantiereWithPrices = async (req, res) => {
     // Get all retete for the santier
     const [reteteRows] = await global.db.execute(
       `SELECT id,limba, reper_plan, detalii_aditionale, oferta_parts_id, cod_reteta as cod , clasa_reteta as clasa, 
-                articol, articol_fr, descriere_reteta, descriere_reteta_fr, unitate_masura, cantitate     
-                FROM Santier_retete WHERE oferta_parts_id = ?`,
+                articol, articol_fr, descriere_reteta, descriere_reteta_fr, unitate_masura, cantitate , sort_order   
+                FROM Santier_retete WHERE oferta_parts_id = ?  ORDER BY sort_order ASC `,
       [id]
     );
 
@@ -1171,6 +1179,225 @@ const deleteSantier = async (req, res) => {
 };
 
 
+// (Assume `updatedParents = [{ id: 2, sort_order: 1 }, { id: 5, sort_order: 2 }, …]`)
+
+async function updateReteteOrder(req, res) {
+  const connection = await global.db.getConnection();
+  const { updatedParents } = req.body; // array of { id, sort_order }
+
+  if (!Array.isArray(updatedParents) || updatedParents.length === 0) {
+    await connection.release();
+    return res.status(400).json({
+      message: 'Payload must include a non-empty array `updatedParents`.'
+    });
+  }
+
+  // (1) Validate that id & sort_order are numbers
+  for (const x of updatedParents) {
+    if (typeof x.id !== 'number' || typeof x.sort_order !== 'number') {
+      await connection.release();
+      return res.status(400).json({
+        message: 'Each item must be { id: <number>, sort_order: <number> }.'
+      });
+    }
+  }
+
+  try {
+    await connection.beginTransaction();
+
+    // 2. Create a temporary table in this session:
+    await connection.query(`
+      CREATE TEMPORARY TABLE tmp_reorder (
+        id INT PRIMARY KEY,
+        new_order INT NOT NULL
+      )
+    `);
+
+    // 3. Bulk-insert all pairs into tmp_reorder.
+    //    We can batch them into one `INSERT`:
+    //    INSERT INTO tmp_reorder (id, new_order) VALUES (?, ?), (?, ?), …;
+    const placeholders = updatedParents.map(_ => '(?, ?)').join(', ');
+    const values = [];
+    for (const { id, sort_order } of updatedParents) {
+      values.push(id, sort_order);
+    }
+    await connection.query(
+      `INSERT INTO tmp_reorder (id, new_order) VALUES ${placeholders}`,
+      values
+    );
+
+    // 4. Now do a single UPDATE that joins on tmp_reorder:
+    await connection.query(`
+      UPDATE Santier_retete AS s
+      JOIN tmp_reorder AS t ON s.id = t.id
+      SET s.sort_order = t.new_order
+    `);
+
+    // 5. Drop the temporary table (optional; it will auto‐drop at end of session).
+    await connection.query(`DROP TEMPORARY TABLE IF EXISTS tmp_reorder`);
+
+    await connection.commit();
+    res.status(200).json({ message: 'Order updated successfully.' });
+  } catch (err) {
+    await connection.rollback();
+    console.error('Error updating retete order:', err);
+    res.status(500).json({ message: 'Internal server error.' });
+  } finally {
+    connection.release();
+  }
+}
 
 
-module.exports = { deleteSantier, editOfertaPart, getSantiereDetailsSantierID, addRetetaToInitialOfera, deleteOfertaPart, addOfertaPartToTheSantier, getOfertePartsForThisSantier, addOfertaToTheSantier, changeNameForOferta, getReteteLightForSantiere, getOferteForThisSantier, updateSantierDetails, getSantiereDetails, deleteRetetaFromSantier, getSpecificRetetaForOfertaInitiala, getReteteLightForSantiereWithPrices, updateSantierRetetaPrices };
+const getReteteByOfertaWithPrices = async (req, res) => {
+  const ofertaId = req.params.id;
+  try {
+    // 1) Fetch all parts for this oferta
+    const [partsRows] = await global.db.execute(
+      `SELECT id AS partId, name AS partName
+         FROM Oferta_Parts
+        WHERE oferta_id = ?`,
+      [ofertaId]
+    );
+    if (!partsRows.length) {
+      // If there are no parts at all, return empty array
+      return res.status(200).json({ parts: [] });
+    }
+
+    const partsResult = [];
+
+    // 2) For each part, fetch its retete and compute costs
+    for (const part of partsRows) {
+      const partId = part.partId;
+      const partName = part.partName;
+
+      // 2a) Fetch all retete for this part
+      const [reteteRows] = await global.db.execute(
+        `SELECT 
+           r.id,
+           r.limba,
+           r.reper_plan,
+           r.detalii_aditionale,
+           r.oferta_parts_id,
+           r.cod_reteta AS cod,
+           r.clasa_reteta AS clasa,
+           r.articol,
+           r.articol_fr,
+           r.descriere_reteta,
+           r.descriere_reteta_fr,
+           r.unitate_masura,
+           r.cantitate,
+           r.sort_order
+         FROM Santier_retete AS r
+         WHERE r.oferta_parts_id = ?
+         ORDER BY r.sort_order ASC`,
+        [partId]
+      );
+
+      // Initialize containers for this part
+      const reteteForPart = [];
+      const detailedCostsForPart = {};
+
+      // 2b) For each reteta, compute total cost and collect detailed cost breakdown
+      for (const reteta of reteteRows) {
+        const santierRetetaId = reteta.id;
+        let totalCost = 0;
+
+        // Prepare the nested structure for this recipe
+        detailedCostsForPart[santierRetetaId] = {
+          Manopera: {},
+          Material: {},
+          Transport: {},
+          Utilaj: {},
+          cantitate_reteta: reteta.cantitate
+        };
+
+        // === Manoperă ===
+        const [manoperaRows] = await global.db.execute(
+          `SELECT id, cost_unitar, cantitate
+             FROM Santier_retete_manopera
+            WHERE santier_reteta_id = ?`,
+          [santierRetetaId]
+        );
+        manoperaRows.forEach(item => {
+          totalCost += item.cost_unitar * item.cantitate;
+          detailedCostsForPart[santierRetetaId].Manopera[item.id] = {
+            cost: item.cost_unitar,
+            cantitate: item.cantitate
+          };
+        });
+
+        // === Materiale ===
+        const [materialeRows] = await global.db.execute(
+          `SELECT id, cost_unitar, cantitate
+             FROM Santier_retete_materiale
+            WHERE santier_reteta_id = ?`,
+          [santierRetetaId]
+        );
+        materialeRows.forEach(item => {
+          totalCost += item.cost_unitar * item.cantitate;
+          detailedCostsForPart[santierRetetaId].Material[item.id] = {
+            cost: item.cost_unitar,
+            cantitate: item.cantitate
+          };
+        });
+
+        // === Transport ===
+        const [transportRows] = await global.db.execute(
+          `SELECT id, cost_unitar, cantitate
+             FROM Santier_retete_transport
+            WHERE santier_reteta_id = ?`,
+          [santierRetetaId]
+        );
+        transportRows.forEach(item => {
+          totalCost += item.cost_unitar * item.cantitate;
+          detailedCostsForPart[santierRetetaId].Transport[item.id] = {
+            cost: item.cost_unitar,
+            cantitate: item.cantitate
+          };
+        });
+
+        // === Utilaje ===
+        const [utilajeRows] = await global.db.execute(
+          `SELECT id, cost_unitar, cantitate
+             FROM Santier_retete_utilaje
+            WHERE santier_reteta_id = ?`,
+          [santierRetetaId]
+        );
+        utilajeRows.forEach(item => {
+          totalCost += item.cost_unitar * item.cantitate;
+          detailedCostsForPart[santierRetetaId].Utilaj[item.id] = {
+            cost: item.cost_unitar,
+            cantitate: item.cantitate
+          };
+        });
+
+        // 2c) Push this reteta’s summary (including computed cost) into reteteForPart
+        reteteForPart.push({
+          ...reteta,
+          cost: totalCost.toFixed(2)  // always two decimals
+        });
+      }
+
+      // 3) Add this part’s block into the final array
+      partsResult.push({
+        partId,
+        partName,
+        retete: reteteForPart,
+        detailedCosts: detailedCostsForPart
+      });
+    }
+
+    // 4) Send the response
+    return res.status(200).json({ parts: partsResult });
+
+  } catch (err) {
+    console.error('Error fetching retete by oferta with prices:', err);
+    return res.status(500).json({ error: 'Database error' });
+  }
+};
+
+
+
+
+
+module.exports = {getReteteByOfertaWithPrices, deleteSantier, editOfertaPart, updateReteteOrder, getSantiereDetailsSantierID, addRetetaToInitialOfera, deleteOfertaPart, addOfertaPartToTheSantier, getOfertePartsForThisSantier, addOfertaToTheSantier, changeNameForOferta, getReteteLightForSantiere, getOferteForThisSantier, updateSantierDetails, getSantiereDetails, deleteRetetaFromSantier, getSpecificRetetaForOfertaInitiala, getReteteLightForSantiereWithPrices, updateSantierRetetaPrices };

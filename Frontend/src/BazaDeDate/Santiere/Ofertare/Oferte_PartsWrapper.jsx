@@ -4,6 +4,7 @@ import React, { useContext, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom';
 import api from '../../../api/axiosAPI';
 import SantiereAddOfertaMain from './SantiereAddOfertaMain';
+import SantiereAllPartsForExport from './SantiereAllPartsForExport';
 
 
 
@@ -132,9 +133,9 @@ export default function Oferte_PartsWrapper({ofertaId}) {
                     name="clasa_material"
                     value={selectedPartId}
                     onChange={(e) => handleSelectPartID(e)} // Update the selected value
-                    className="py-2 text-center min-w-32 px-2 text-black rounded-lg outline-none shadow-sm "
+                    className="py-2 text-center min-w-52 px-2 text-black rounded-lg outline-none shadow-sm "
                     >
-                    <option value="">Nimic Selectat</option>
+                    <option value="">Toate Lucrările</option>
                     {oferteParts && oferteParts.map(part => (
                         <option key={part.id} value={part.id}>
                             {part.name}
@@ -184,7 +185,7 @@ export default function Oferte_PartsWrapper({ofertaId}) {
         {
                     selectedPartId != "" ? <SantiereAddOfertaMain ofertaId = {ofertaId}  mainOfertaPartID = {selectedPartId}  key={`${selectedPartId}`}/>
                     :
-                    ""
+                    <SantiereAllPartsForExport ofertaId = {ofertaId}  key={`${ofertaId}`}/>
                 }
     </div>
 
