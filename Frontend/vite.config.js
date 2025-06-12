@@ -8,6 +8,6 @@ export default defineConfig({
     port: 5173,
   },
   plugins: [react()],
-  base: "/",
+  base: "/DataBase",
   assetsInclude: ['**/*.docx', '**/*.docx?arraybuffer'],
 })

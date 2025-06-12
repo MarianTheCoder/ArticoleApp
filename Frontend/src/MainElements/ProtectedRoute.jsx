@@ -14,7 +14,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     // If the user is not logged in, redirect to the login page
     if (!user.role) {
         console.log(user);
-        return <Navigate to="/" />;
+        return <Navigate to="/login" />;
     }
 
     // If the user's role is not allowed, redirect to the home page

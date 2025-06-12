@@ -100,7 +100,7 @@ function Navbar() {
                                 <div className='w-6 text-end'>
                                     <FontAwesomeIcon className='' icon={faServer} />
                                 </div>
-                                <div className="">Baza de date</div>
+                                <div className="">Bază de date</div>
                             </div>
                         </div>
                     </div>
@@ -120,31 +120,31 @@ function Navbar() {
                             </div>
                             {dateOpen &&
                                 <>
-                                  <div onClick={() => navigate("/logedUser/addArticles")} className="text-lg pl-12  hover:bg-gray-200 cursor-pointer py-1">
+                                  <div onClick={() => navigate("/addArticles")} className="text-lg pl-12  hover:bg-gray-200 cursor-pointer py-1">
                                     <div  className="flex items-center gap-2 w-full" >
                                                 <FontAwesomeIcon className='text-lg' icon={faDatabase} />
-                                                Retete
+                                                Rețete
                                     </div>
                                 </div>
-                                <div onClick={() => navigate("/logedUser/addManopere")} className="text-lg pl-12  hover:bg-gray-200 cursor-pointer py-1">
+                                <div onClick={() => navigate("/addManopere")} className="text-lg pl-12  hover:bg-gray-200 cursor-pointer py-1">
                                     <div className="flex items-center gap-2 w-full" >
                                                 <FontAwesomeIcon className='text-lg' icon={faPerson} />
-                                                Manopera
+                                                Manoperă
                                     </div>
                                 </div>
-                                <div onClick={() => navigate("/logedUser/addMateriale")} className="text-lg pl-12  hover:bg-gray-200 cursor-pointer py-1">
+                                <div onClick={() => navigate("/addMateriale")} className="text-lg pl-12  hover:bg-gray-200 cursor-pointer py-1">
                                     <div className="flex items-center gap-2 w-full" >
                                                 <FontAwesomeIcon className='text-lg' icon={faScrewdriverWrench} />
                                                 Materiale
                                     </div>
                                 </div>
-                                <div onClick={() => navigate("/logedUser/addTransport")} className="text-lg pl-12  hover:bg-gray-200 cursor-pointer py-1">
+                                <div onClick={() => navigate("/addTransport")} className="text-lg pl-12  hover:bg-gray-200 cursor-pointer py-1">
                                     <div className="flex items-center gap-2 w-full" >
                                                 <FontAwesomeIcon className='text-lg' icon={faCar} />
                                                 Transport
                                     </div>
                                 </div>
-                                <div onClick={() => navigate("/logedUser/addUtilaje")} className="text-lg pl-12  hover:bg-gray-200 cursor-pointer py-1">
+                                <div onClick={() => navigate("/addUtilaje")} className="text-lg pl-12  hover:bg-gray-200 cursor-pointer py-1">
                                     <div className="flex items-center gap-2 w-full" >
                                                 <FontAwesomeIcon className='text-lg' icon={faTruck} />
                                                 Utilaje
@@ -165,19 +165,19 @@ function Navbar() {
                             </div>
                             {usersOpen &&
                                 <>
-                                <div onClick={() => navigate("/logedUser/ManageOfertanti")} className="text-lg pl-12  hover:bg-gray-200 cursor-pointer py-1">
+                                <div onClick={() => navigate("/ManageOfertanti")} className="text-lg pl-12  hover:bg-gray-200 cursor-pointer py-1">
                                     <div className="flex items-center gap-2 w-full" >
                                                 <FontAwesomeIcon className='text-lg' icon={faUserTie} />
                                                 Ofertant
                                     </div>
                                 </div>
-                                <div onClick={() => navigate("/logedUser/manageBeneficiari")} className="text-lg pl-12  hover:bg-gray-200 cursor-pointer py-1">
+                                <div onClick={() => navigate("/manageBeneficiari")} className="text-lg pl-12  hover:bg-gray-200 cursor-pointer py-1">
                                     <div className="flex items-center gap-2 w-full" >
                                                 <FontAwesomeIcon className='text-lg' icon={faUser} />
                                                 Beneficiar 
                                     </div>
                                 </div>
-                                <div onClick={() => navigate("/logedUser/manageAngajati")} className="text-lg pl-12  hover:bg-gray-200 cursor-pointer py-1">
+                                <div onClick={() => navigate("/manageAngajati")} className="text-lg pl-12  hover:bg-gray-200 cursor-pointer py-1">
                                     <div className="flex items-center gap-2 w-full" >
                                                 <FontAwesomeIcon className='text-lg' icon={faUsersGear} />
                                                 Angajat
@@ -185,7 +185,7 @@ function Navbar() {
                                 </div>
                                 </>
                             }
-                            <div className="text-xl pl-4  hover:bg-gray-200 cursor-pointer py-1" onClick={() => setPrezOpen((prev) => !prev)}>
+                            {/* <div className="text-xl pl-4  hover:bg-gray-200 cursor-pointer py-1" onClick={() => setPrezOpen((prev) => !prev)}>
                                 <div className="flex items-center w-full" >
                                     <FontAwesomeIcon className={`text-base w-7 duration-300 transition-all ${prezOpen ? "rotate-90" : ""}`} icon={faChevronRight} />
                                     <div className="flex items-center gap-2">
@@ -198,20 +198,20 @@ function Navbar() {
                             </div>
                             {prezOpen &&
                                 <>
-                                <div onClick={() => navigate("/logedUser/addNews")} className="text-lg pl-12  hover:bg-gray-200 cursor-pointer py-1">
+                                <div onClick={() => navigate("/addNews")} className="text-lg pl-12  hover:bg-gray-200 cursor-pointer py-1">
                                     <div className="flex items-center gap-2 w-full" >
                                                 <FontAwesomeIcon className='text-lg' icon={faNewspaper} />
                                                 News
                                     </div>
                                 </div>
-                                <div onClick={() => navigate("/logedUser/addEchipa")} className="text-lg pl-12  hover:bg-gray-200 cursor-pointer py-1">
+                                <div onClick={() => navigate("/addEchipa")} className="text-lg pl-12  hover:bg-gray-200 cursor-pointer py-1">
                                     <div className="flex items-center gap-2 w-full" >
                                         <FontAwesomeIcon className='text-lg' icon={faPeopleGroup} />
                                                 Echipa 
                                     </div>
                                 </div>
                                 </>
-                            }
+                            } */}
                     </>}
                     <div className="text-2xl  hover:bg-gray-200 cursor-pointer py-1" onClick={() => setSantiereOpen((prev) => !prev)}>
                         <div className="flex items-center w-full">
@@ -220,7 +220,7 @@ function Navbar() {
                                 <div className='w-6 text-end'>
                                     <FontAwesomeIcon className='' icon={faMapLocationDot} />
                                 </div>
-                                <div className="">Santiere</div>
+                                <div className="">Șantiere</div>
                             </div>
                         </div>
                     </div>
@@ -244,7 +244,7 @@ function Navbar() {
                                 {selectedBeneficiari.includes(beneficiar.id) &&
                                 <>
                                 {connectedSantiereToUser[index].santiere && connectedSantiereToUser[index].santiere.map((santier, idx) => (
-                                    <div key={idx} onClick={() => navigate(`/logedUser/Santiere/${beneficiar.limba}/${beneficiar.id}/${santier.id}`)} className="text-lg pl-12   hover:bg-gray-200 cursor-pointer py-1" >
+                                    <div key={idx} onClick={() => navigate(`/Santiere/${beneficiar.limba}/${beneficiar.id}/${santier.id}`)} className="text-lg pl-12   hover:bg-gray-200 cursor-pointer py-1" >
                                        <div className="flex gap-2 items-center w-full" >
                                            <FontAwesomeIcon className={`text-base duration-300 transition-all`} onClick={() => console.log(connectedSantiereToUser)} icon={faChevronRight} />
                                            <div className="flex text-ellipsis  overflow-hidden items-center gap-2">
@@ -265,7 +265,7 @@ function Navbar() {
                                                 <FontAwesomeIcon className="text-green-500" icon={faPlus} />
                                                 </div>
                                                 <div  className="w-full overflow-hidden whitespace-nowrap text-ellipsis">
-                                                    Adauga Santier
+                                                    Adaugă Șantier
                                                 </div>
                                             </div>
                                         </div>
@@ -293,12 +293,11 @@ function Navbar() {
                                 </div>
                                 <p>{user.name}</p>
                             </div>
-                            <FontAwesomeIcon className='hover:cursor-pointer' onClick={() => navigate("/")} icon={faArrowsSpin}/>
                         </div>
                     </div>
                     <div className='grid grid-cols-2 gap-4'>
                         <button onClick={() => logout()} className='bg-red-500 cursor-pointer hover:bg-red-600 rounded-lg flex gap-2 items-center justify-center p-2'><FontAwesomeIcon icon={faRightToBracket}/>Logout</button>
-                        <button onClick={() => navigate("/logedUser")} className='bg-green-500 cursor-pointer hover:bg-green-600  rounded-lg flex gap-2 items-center justify-center p-2'><FontAwesomeIcon icon={faHouse}/>Home</button>
+                        <button onClick={() => navigate("/")} className='bg-green-500 cursor-pointer hover:bg-green-600  rounded-lg flex gap-2 items-center justify-center p-2'><FontAwesomeIcon icon={faHouse}/>Home</button>
                     </div>
                 </div> 
             :

@@ -36,7 +36,7 @@ export default function login() {
 
   return (
     <div className={`text-xl ${selectedUser == 0 ? "bg-[#16A34A]" : selectedUser == 1 ? "bg-[#F97316]" : "bg-[#2563EB]"} wrapper`}>
-    <div
+    {/* <div
       onClick={() => navigate("/")}
       className="group transition-all duration-500 hover:w-32 absolute cursor-pointer top-4 left-4 w-20 h-12 rounded-full flex justify-center items-center bg-white"
     >
@@ -44,7 +44,7 @@ export default function login() {
       <p className="text-black ml-2 opacity-0  translate-x-[0px] group-hover:opacity-100  group-hover:translate-x-1 transition-all duration-500">
         Back
       </p>
-    </div>
+    </div> */}
 
     <form onSubmit={handleSubmit} className='login'>
         <h2 className={`border-l-[15px] ${selectedUser == 0 ? "border-l-[#16A34A]" : selectedUser == 1 ? "border-l-[#F97316]" : "border-l-[#2563EB]"}`} id='txt'>Login</h2>

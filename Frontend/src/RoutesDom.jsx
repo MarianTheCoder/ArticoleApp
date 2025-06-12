@@ -39,16 +39,17 @@ export default function RoutesDom() {
 
   return (
     <div className=' grid h-screen text-white  w-full relative grid-cols-[auto_1fr]'>
-      {location.pathname.includes("logedUser") && user.role ?  <Navbar/> : <NavbarDefaultHome/>}
+      {/* {location.pathname.includes("logedUser") && user.role ?  <Navbar/> : <NavbarDefaultHome/>} */}
+        <Navbar/> 
         <Routes>
-        <Route path="/logedUser" element={null}>
+          {/* <Route path="/logedUser" element={null}> */}
             <Route path="" element={<ProtectedRoute allowedRoles = {["ofertant","angajat","beneficiar"]}></ProtectedRoute>} />
             <Route path="addArticles" element={<ProtectedRoute allowedRoles = {['ofertant']}><RetetaProvider><RetetaForm/></RetetaProvider></ProtectedRoute>} />
             <Route path="settings" element={<ProtectedRoute allowedRoles = {["ofertant","angajat","beneficiar"]}><Settings/></ProtectedRoute>}/>
             <Route path="Santiere/:limbaUser/:idUser/:idSantier" element={<ProtectedRoute allowedRoles = {["ofertant"]}><SantiereRoutes/></ProtectedRoute>}/>
-            <Route path="Echipa" element={<Echipa/>}/>
+            {/* <Route path="Echipa" element={<Echipa/>}/>
             <Route path="News" element={<News/>}/>
-            <Route path="Contact" element={<Contact/>}/>
+            <Route path="Contact" element={<Contact/>}/> */}
             <Route path="AddEchipa" element={<ProtectedRoute allowedRoles = {["ofertant"]}><AddEchipa/></ProtectedRoute>}/>
             <Route path="AddNews" element={<ProtectedRoute allowedRoles = {["ofertant"]}><AddNews/></ProtectedRoute>}/>
             <Route path="addManopere" element={<ProtectedRoute allowedRoles = {["ofertant"]}><DatabaseMainCategories dateType={1}/></ProtectedRoute>}/>
@@ -59,12 +60,12 @@ export default function RoutesDom() {
             <Route path="manageAngajati" element={<ProtectedRoute allowedRoles = {["ofertant"]}><AddUsers personType = {2} /></ProtectedRoute>}/>
             <Route path="manageBeneficiari" element={<ProtectedRoute allowedRoles = {["ofertant"]}><AddUsers personType = {3} /></ProtectedRoute>}/>
 
-          </Route>
+          {/* </Route> */}
            {/* default home if loged */}
-            <Route path="" element={<Homepage/>}/>
+            {/* <Route path="" element={<Homepage/>}/>
             <Route path="Echipa" element={<Echipa/>}/>
             <Route path="News" element={<News/>}/>
-            <Route path="Contact" element={<Contact/>}/>
+            <Route path="Contact" element={<Contact/>}/> */}
     
         </Routes>
     </div>

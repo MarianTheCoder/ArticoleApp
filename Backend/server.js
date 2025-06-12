@@ -520,18 +520,18 @@ async function insertInitialAdminUser() {
   }
 }
 
-app.use('/auth', loginRoute);
-app.use('/Echipa', EchipaRoutes);
-app.use('/users', UsersRoute);
-app.use('/News', NewsRoutes);
-app.use('/Manopera', ManoperaRoutes);
-app.use('/Materiale', MaterialeRoutes);
-app.use('/Utilaje', UtilajeRoutes);
-app.use('/Retete', RetetaRoutes);
-app.use('/Transport', TransportRoutes);
-app.use('/Santiere', SantiereRoutes);
-app.use('/Formulare', FormulareRoutes);
-app.use('./email', EmailRoutes);
+app.use('/api/auth', loginRoute);
+app.use('/api/Echipa', EchipaRoutes);
+app.use('/api/users', UsersRoute);
+app.use('/api/News', NewsRoutes);
+app.use('/api/Manopera', ManoperaRoutes);
+app.use('/api/Materiale', MaterialeRoutes);
+app.use('/api/Utilaje', UtilajeRoutes);
+app.use('/api/Retete', RetetaRoutes);
+app.use('/api/Transport', TransportRoutes);
+app.use('/api/Santiere', SantiereRoutes);
+app.use('/api/Formulare', FormulareRoutes);
+app.use('/api/email', EmailRoutes);
 
 
 // Serve static files from the React app
