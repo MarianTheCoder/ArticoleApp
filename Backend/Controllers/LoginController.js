@@ -2,9 +2,9 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 
 const login = async (req, res) => {
-    const { email, password, role } = req.body;
-    console.log(email, password ,role)
-    if (!email || !password || !role) {
+    const { email, password } = req.body;
+    console.log(email, password)
+    if (!email || !password) {
         return res.status(400).json({ message: 'All fields are required.' });
     }
 
@@ -16,10 +16,6 @@ const login = async (req, res) => {
             return res.status(400).json({ message: 'Invalid credentials.' });
         }
         const user = rows[0];
-        console.log(role , user.role);
-        if(user.role != role){
-            return res.status(400).json({ message: 'Invalid credentials.' });
-        }
         const isPasswordValid = await bcrypt.compare(password, user.password);
 
         if (!isPasswordValid) {

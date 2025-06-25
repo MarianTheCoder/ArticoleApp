@@ -1,5 +1,5 @@
 import React, { useContext } from 'react'
-import { Routes ,Route, useLocation } from 'react-router-dom'
+import { Routes ,Route, useLocation, Outlet } from 'react-router-dom'
 import Navbar from './MainElements/Navbar'
 import Homepage from './MainPages/HomePage';
 import ProtectedRoute from './MainElements/ProtectedRoute';
@@ -18,6 +18,17 @@ import { RetetaProvider } from './context/RetetaContext';
 import { AuthContext } from './context/TokenContext';
 import SantiereRoutes from './BazaDeDate/Santiere/SantiereRoutes';
 import { useEffect } from 'react';
+import NoPage from './MainElements/NoPage';
+
+function AppLayout() {
+  // This layout only renders when a valid child route matches.
+  return (
+    <>
+      <Navbar />
+      <Outlet />
+    </>
+  );
+}
 
 export default function RoutesDom() {
 
@@ -35,14 +46,15 @@ export default function RoutesDom() {
       </div>
     )      
   }
+
+  
   
 
   return (
     <div className=' grid h-screen text-white  w-full relative grid-cols-[auto_1fr]'>
       {/* {location.pathname.includes("logedUser") && user.role ?  <Navbar/> : <NavbarDefaultHome/>} */}
-        <Navbar/> 
         <Routes>
-          {/* <Route path="/logedUser" element={null}> */}
+          <Route element={<AppLayout/>}>
             <Route path="" element={<ProtectedRoute allowedRoles = {["ofertant","angajat","beneficiar"]}></ProtectedRoute>} />
             <Route path="addArticles" element={<ProtectedRoute allowedRoles = {['ofertant']}><RetetaProvider><RetetaForm/></RetetaProvider></ProtectedRoute>} />
             <Route path="settings" element={<ProtectedRoute allowedRoles = {["ofertant","angajat","beneficiar"]}><Settings/></ProtectedRoute>}/>
@@ -59,14 +71,13 @@ export default function RoutesDom() {
             <Route path="manageOfertanti" element={<ProtectedRoute allowedRoles = {["ofertant"]}><AddUsers personType = {1} /></ProtectedRoute>}/>
             <Route path="manageAngajati" element={<ProtectedRoute allowedRoles = {["ofertant"]}><AddUsers personType = {2} /></ProtectedRoute>}/>
             <Route path="manageBeneficiari" element={<ProtectedRoute allowedRoles = {["ofertant"]}><AddUsers personType = {3} /></ProtectedRoute>}/>
-
-          {/* </Route> */}
+          </Route>
            {/* default home if loged */}
             {/* <Route path="" element={<Homepage/>}/>
             <Route path="Echipa" element={<Echipa/>}/>
             <Route path="News" element={<News/>}/>
             <Route path="Contact" element={<Contact/>}/> */}
-    
+           <Route path="*" element={<NoPage/>} />
         </Routes>
     </div>
   )

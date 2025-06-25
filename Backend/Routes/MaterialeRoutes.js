@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
-const sharp = require('sharp');
+const Jimp = require('jimp');
 
 const router = express.Router();
 
@@ -35,11 +35,11 @@ router.post('/api/Materiale', upload.single('poza'), async (req, res) => {
       const fileName = `${uniqueSuffix}-${req.file.originalname}`;
       const fullPath = path.join(uploadsDir, fileName);
 
-      await sharp(req.file.buffer)
-          .rotate()
-          .resize({ width: 800 })
-          .toFormat(req.file.mimetype === 'image/png' ? 'png' : 'jpeg', { quality: 70 }) // If it's PNG, save as PNG, else save as JPEG
-          .toFile(fullPath);
+      const image = await Jimp.read(req.file.buffer);
+      await image
+        .resize(800, Jimp.AUTO)                       // width = 800px, auto height
+        .quality(req.file.mimetype !== 'image/png' ? 70 : 100)  // JPEG quality; PNG remains lossless
+        .writeAsync(fullPath);   
 
       photoPath = path.relative(path.join(__dirname, '../'), fullPath);
     }
@@ -307,11 +307,11 @@ router.put('/api/materiale/:id', upload.single('poza'), async (req, res) => {
       const fileName = `${uniqueSuffix}-${req.file.originalname}`;
       const fullPath = path.join(uploadsDir, fileName);
 
-      await sharp(req.file.buffer)
-        .rotate()
-        .resize({ width: 800 })
-        .toFormat(req.file.mimetype === 'image/png' ? 'png' : 'jpeg', { quality: 70 }) // If it's PNG, save as PNG, else save as JPEG
-        .toFile(fullPath);
+      const image = await Jimp.read(req.file.buffer);
+      await image
+        .resize(800, Jimp.AUTO)                       // width = 800px, auto height
+        .quality(req.file.mimetype !== 'image/png' ? 70 : 100)  // JPEG quality; PNG remains lossless
+        .writeAsync(fullPath);   
 
       newPhotoPath = path.relative(path.join(__dirname, '../'), fullPath);
     }

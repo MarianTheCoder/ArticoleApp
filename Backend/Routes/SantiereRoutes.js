@@ -1,7 +1,6 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
-const sharp = require('sharp');
 const {addRetetaToInitialOfera, getReteteLightForSantiere, getReteteByOfertaWithPrices, updateReteteOrder, editOfertaPart, deleteSantier, getSantiereDetailsSantierID, deleteOfertaPart, addOfertaPartToTheSantier, getOfertePartsForThisSantier, updateSantierDetails,addOfertaToTheSantier,changeNameForOferta, getOferteForThisSantier, deleteRetetaFromSantier, getSantiereDetails, getSpecificRetetaForOfertaInitiala, updateSantierRetetaPrices, getReteteLightForSantiereWithPrices} = require("../Controllers/SantiereController")
 
 const router = express.Router();

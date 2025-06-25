@@ -57,12 +57,12 @@ app.use(cors());
 const pool = mysql.createPool(dbConfig);
 
 //acces the photos
-app.use('/uploads/Angajati', express.static(path.join(__dirname, 'uploads/Angajati')));
-app.use('/uploads/Echipa', express.static(path.join(__dirname, 'uploads/Echipa')));
-app.use('/uploads/News', express.static(path.join(__dirname, 'uploads/News')));
-app.use('/uploads/Materiale', express.static(path.join(__dirname, 'uploads/Materiale')));
-app.use('/uploads/Utilaje', express.static(path.join(__dirname, 'uploads/Utilaje')));
-app.use('/uploads/Santiere', express.static(path.join(__dirname, 'uploads/Santiere')));
+app.use('/DataBaseApi/uploads/Angajati', express.static(path.join(__dirname, 'uploads/Angajati')));
+app.use('/DataBaseApi/uploads/Echipa', express.static(path.join(__dirname, 'uploads/Echipa')));
+app.use('/DataBaseApi/uploads/News', express.static(path.join(__dirname, 'uploads/News')));
+app.use('/DataBaseApi/uploads/Materiale', express.static(path.join(__dirname, 'uploads/Materiale')));
+app.use('/DataBaseApi/uploads/Utilaje', express.static(path.join(__dirname, 'uploads/Utilaje')));
+app.use('/DataBaseApi/uploads/Santiere', express.static(path.join(__dirname, 'uploads/Santiere')));
 
 // Function to initialize the database
 async function initializeDatabase() {
@@ -520,18 +520,18 @@ async function insertInitialAdminUser() {
   }
 }
 
-app.use('/api/auth', loginRoute);
-app.use('/api/Echipa', EchipaRoutes);
-app.use('/api/users', UsersRoute);
-app.use('/api/News', NewsRoutes);
-app.use('/api/Manopera', ManoperaRoutes);
-app.use('/api/Materiale', MaterialeRoutes);
-app.use('/api/Utilaje', UtilajeRoutes);
-app.use('/api/Retete', RetetaRoutes);
-app.use('/api/Transport', TransportRoutes);
-app.use('/api/Santiere', SantiereRoutes);
-app.use('/api/Formulare', FormulareRoutes);
-app.use('/api/email', EmailRoutes);
+app.use('/DataBaseApi/auth', loginRoute);
+app.use('/DataBaseApi/Echipa', EchipaRoutes);
+app.use('/DataBaseApi/users', UsersRoute);
+app.use('/DataBaseApi/News', NewsRoutes);
+app.use('/DataBaseApi/Manopera', ManoperaRoutes);
+app.use('/DataBaseApi/Materiale', MaterialeRoutes);
+app.use('/DataBaseApi/Utilaje', UtilajeRoutes);
+app.use('/DataBaseApi/Retete', RetetaRoutes);
+app.use('/DataBaseApi/Transport', TransportRoutes);
+app.use('/DataBaseApi/Santiere', SantiereRoutes);
+app.use('/DataBaseApi/Formulare', FormulareRoutes);
+app.use('/DataBaseApi/email', EmailRoutes);
 
 
 // Serve static files from the React app
