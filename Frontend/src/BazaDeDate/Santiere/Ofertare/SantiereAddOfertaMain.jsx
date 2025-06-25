@@ -732,7 +732,7 @@ export default function SantiereAdd({ mainOfertaPartID, ofertaId }) {
       <div className=' w-full  flex flex-col h-full justify-between overflow-hidden '>
         {retete &&
           <div className="p-8 pb-4 pt-5 text-sm scrollbar-webkit w-full overflow-hidden text-white h-full flex flex-col justify-etween">
-            <div className="  scrollbar-webkit overflow-auto  ">
+            <div className="  scrollbar-webkit overflow-auto relative  ">
               <DndContext
                 sensors={useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))}
                 collisionDetection={closestCenter}
@@ -742,7 +742,7 @@ export default function SantiereAdd({ mainOfertaPartID, ofertaId }) {
                   items={topLevelRows.map(r => r.sort_order.toString())}
                   strategy={verticalListSortingStrategy}
                 >
-                  <table className="w-full border-separate overflow-hidden border-spacing-0 ">
+                  <table className="w-full border-separate  border-spacing-0 ">
                     <thead className='top-0 w-full sticky  z-10 '>
                       {/* <tr className='text-black'>
                                     <th className='border-b border-r border-black bg-white' colSpan={2}></th>
