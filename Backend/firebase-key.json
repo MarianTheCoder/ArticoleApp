@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "notifications-baly-energies",
+  "private_key_id": "b46a5b23c52a6c4c900ad1d471851831f55a239c",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCJ8nrZyZjmbcaB\nc9Gfz8HwSH0iNEGF3aU7jp7H1Fe/AlWloSQmS1wWMlp7Ztw3WjalDhr4wEFnT0qz\nrUCjZqe2Es+RzOLn0c07ZfghkhRBQeHn8xAJtzY2eejvOputn8ImV7Nut0evOdp0\nZuj3s8YfUgugG3qvuPuWoHO3scjDYIoAvTbHloRgAoFrcxARgiwEj3OwJ6ggV0/J\njq/9CfyiHCwixIAGu4R/MU09I+pAhfysZWf3SlRhnVSikDvT4P/mtvMuDR7TYpqB\nvS1CnvKrb4rIbrAf576TLlhaKJ4+YeqNMqSgxliUy7f2CKrSYxp+OxXgxyCSCsE2\nipWiPEyPAgMBAAECggEAMvfvMUHd5yHfStxWsxQJxbSa24TwQrxSvS8kdpP7+bys\nlX51A1srwp3HNbobGq6P6ytLhuZOJBQ1dy7H57fZtpm7rNTFb77idBRoekrlhfkI\nNXHm1pglhTpE+QMwGxYgn5ce2oUIjPM0xnZxlHgNd2wSlI0ipwOTnaNaLiCXm6wo\nYucQBT3nyzzc2JhIG4LBNMPlKQLMN7fuwUfkfHZOwNnI2264PbRJ+FZVu+r9iauk\nlEPaDehBuIab7cTu/XzJQhvLWwJsG8vVKI/K5e4Vm+mN9miGrMkn3/+decS1xJoU\nb3sRFh0Vwy+gxvj/kW2WavBX06qj7WjVtKDwIwZi1QKBgQC8d/eJ80rEmaWwrvGn\nSgGMmL5eUGQZ7/By4K6J+E9xI4pXvtZ86idli/hTuAMGJoO7ppreJI4dPc0gfnVx\nh0mChEDDi3kBoUHj/XZiPsARhit3pn+XuCUiqH/Gj1nNx8mPv3zrKwgL2U5N9SUF\nMPf0padrRTOLrPvKpleYOlVZYwKBgQC7YDvTRu5JEErJ9x8g0RJboHnGIZ2kJFvH\nPV9FVbVeFyxgeCta+lGzCIL+urzUw9Pp2yIWpwVxNbrKSy5NwSWoE4C3YkfrSvZj\nQbLiJmTt0ldgJV67OrrTg6E03+RhlDb2oavi5qWpnziW7yVuk6LVR8saqCcGh39H\n3nanfyp95QKBgQCHjITlm6yXr6YCaCB3X/uzQhwQuyLzoKVACiaeJpAEYDpcl22u\nU75YA45rr/nEz6iJKu9Re9sWXt+MUkdnipStIS9vNH2oVXGNZztgt57uO6BBouc7\nmH5k6elURr+hB+MI1wEiJkXYN8dgvEKO9EQxmX7K4O+MsrI5ct+nJbVC3wKBgF1u\nnAY6/UCzfgd9USlE9zl3KKGSS4/4jUcpJCNnnHthZMBpy3yfCzQRz3gDV3tkdnvK\nyBGxkPYli5GpsVoWMJfBudI3kJMUGw3dSbyY1oT7+JO5rqX/n/8uSKkb5z588HdE\noHgQ+JQ/D7G7Z9feiDh/hxgwttz7nY0RserNbzu9AoGAR1u+KLewNdaRqgUsWURk\nCOuoLO+GBx9+KobC+dvSUUU6moro64q84sBsUD00puZUZK/93FwT0doU4nMBmqga\nwv4n8aRqY6P7sn0//Syq3UeoDiWRMc83r8mKjGcP5cjVlDG2JFANjzuCuxOKIZ4Q\nhVLgRe031JIGalOy33Kfnb0=\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-fbsvc@notifications-baly-energies.iam.gserviceaccount.com",
+  "client_id": "116000232843254342233",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40notifications-baly-energies.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

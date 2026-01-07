@@ -1,17 +1,37 @@
-import pdfMake from "pdfmake/build/pdfmake";
-import pdfFonts from "pdfmake/build/vfs_fonts";
+import pdfMake from 'pdfmake/build/pdfmake';
+import pdfFonts from 'pdfmake/build/vfs_fonts';
+import * as customVfsModule from '../../../../assets/fonts/vfs_fonts.js';
 import { folderImage, logo, userImage, materialeImage, utilajeImage, transportImage } from '../../base64Items';
 import api from '../../../../api/axiosAPI';
 // margin: [0, 7.5, 10, 5] left top right bottom
-pdfMake.vfs = pdfFonts.vfs;
+
+pdfMake.vfs = customVfsModule.default
+
+// 3) Now register the Avenir font family:
+pdfMake.fonts = {
+  Avenir: {
+    normal: 'Avenir_Regular.otf',
+    bold: 'Avenir_Bold.otf',
+    italics: 'Avenir_Italic.otf',
+    bolditalics: 'Avenir_Italic.otf'    // reuse Italic for bold+italic
+  }
+};
+
+function formatPrice(num) {
+  if (num == null || isNaN(num)) return "";
+  return Number(num).toLocaleString("ro-RO", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
 
 
-
-
-export const FormularCompactFR = async (id ,recapitulatii, TVA) => {
+export const FormularCompactFR = async (id, recapitulatii, TVA, reper1, reper2) => {
   let res;
+  let santierDetails;
+  // console.log("FormularRasfiratFR called with id:", id, "recapitulatii:", recapitulatii, "TVA:", TVA, "reper1:", reper1, "reper2:", reper2);
   try {
-    res = await api.get(`/Formulare/generareC6/${id}` , {
+    res = await api.get(`/Formulare/generareRasfirat/${id}`, {
       params: {
         recapitulatii: recapitulatii,
         TVA: TVA
@@ -21,8 +41,9 @@ export const FormularCompactFR = async (id ,recapitulatii, TVA) => {
     console.log(error);
     return;
   }
+  // console.log(santierDetails.data.santierDetails[0]);
+  // console.log(detalii);
   let dataTable = res.data.data;
-
   const {
     totalManoperaOre,
     totalManoperaPret,
@@ -31,129 +52,142 @@ export const FormularCompactFR = async (id ,recapitulatii, TVA) => {
     totalTransportPret
   } = res.data;
 
+  const {
+    ofertaPartName,
+    ofertaName,
+    santierName,
+    santiereDetalii
+  } = res.data;
+
+
   const tableBody = [
     [
-      { text: 'Nr.', style: 'mainHeader' },
-      { text: 'Icon', style: 'mainHeader' },
-      { text: 'Cod', style: 'mainHeader' },
-      { text: 'Clasa', style: 'mainHeader' },
-      { text: 'Articol', style: 'mainHeader' },
-      { text: 'Unitate', style: 'mainHeader' },
-      { text: 'Cantitate', style: 'mainHeader' },
-      { text: 'Cost', style: 'mainHeader' },
-      { text: 'Cost Total', style: 'mainHeader' }
+      { text: 'Non.', style: 'mainHeader' },
+      { text: 'Image', style: 'mainHeader' },
+      { text: reper1, style: 'mainHeader' },
+      { text: reper2, style: 'mainHeader' },
+      { text: 'Code', style: 'mainHeader' },
+      { text: 'Classe', style: 'mainHeader' },
+      { text: 'Article', style: 'mainHeader' },
+      { text: 'Description', style: 'mainHeader' },
+      { text: 'Unité', style: 'mainHeader' },
+      { text: 'Quantité', style: 'mainHeader' },
+      { text: 'Prix unitaire \n (EUR)', style: 'mainHeader' },
+      { text: 'Prix total \n (EUR)', style: 'mainHeader' }
     ],
-    ...dataTable.map((item, index) => {
-      const rowFill = "#ffffff";
-
-      return [
-        { text: `${index + 1}`, fillColor: rowFill, alignment: 'center', style: 'mainCell' },
+    ...dataTable.flatMap((item, index) => {
+      const retetaRow = [
+        { text: `${index + 1}`, fillColor: "#ffffff", alignment: 'left', style: 'mainCell' },
+        { image: folderImage, width: 10, height: 10, alignment: 'center', fillColor: "#ffffff" },
+        { text: item.detalii_aditionale || '', fillColor: "#ffffff", style: 'mainCell' },
+        { text: item.reper_plan || '', fillColor: "#ffffff", style: 'mainCell' },
+        { text: item.cod_reteta || '', fillColor: "#ffffff", style: 'mainCell' },
+        { text: item.clasa_reteta || '', fillColor: "#ffffff", style: 'mainCell' },
+        { text: item.articol_fr || '', fillColor: "#ffffff", style: 'mainCell' },
+        { text: item.descriere_fr || item.descriere_reteta_fr || '', fillColor: "#ffffff", style: 'mainCell' },
+        { text: item.unitate_masura || '', fillColor: "#ffffff", alignment: 'center', style: 'mainCell' },
+        { text: formatPrice(item.cantitate) || '', fillColor: "#ffffff", alignment: 'right', style: 'mainCell', bold: true },
+        { text: formatPrice(item.cost) || '', fillColor: "#ffffff", alignment: 'right', style: 'mainCell', bold: true },
         {
-          image: folderImage,
-          width: 10,
-          height: 10,
-          alignment: 'center',
-        },
-        { text: item.cod_reteta || '', fillColor: rowFill, style: 'mainCell' },
-        { text: item.clasa_reteta || '', fillColor: rowFill, style: 'mainCell' },
-        { text: item.articol || '', fillColor: rowFill, style: 'mainCell' },
-        { text: item.unitate_masura || '', fillColor: rowFill, alignment: 'center', style: 'mainCell' },
-        { text: item.cantitate || '', fillColor: rowFill, alignment: 'right', style: 'mainCell' },
-        { text: item.cost || '', fillColor: rowFill, alignment: 'right', style: 'mainCell' },
-        {
-          text: (parseFloat(item.cost) * parseFloat(item.cantitate)).toFixed(2),
-          fillColor: rowFill,
+          text: formatPrice(parseFloat(item.cost) * parseFloat(item.cantitate)),
+          fillColor: "#ffffff",
           alignment: 'right',
           noWrap: true,
+          bold: true,
           style: 'mainCell'
         }
       ];
+      return [retetaRow]
     })
   ];
 
   const extraTableBody = [
-      [
-          {text: 'Ore Manopera', style: 'extraHeader',fillColor: "#93C5FD"},
-          {text: 'Manopera', style: 'extraHeader',    fillColor: "#FCD34D"},
-          {text: 'Materiale', style: 'extraHeader',   fillColor: "#6EE7B7"},
-          {text: 'Transport', style: 'extraHeader',   fillColor: "#F9A8D4"},
-          {text: 'Utilaje', style: 'extraHeader',     fillColor: "#D8B4FE"},
-      ],
-      [
-          { text: totalManoperaOre, style: 'extraCell' ,  },
-          { text: totalManoperaPret, style: 'extraCell',   },
-          { text: totalMaterialePret, style: 'extraCell',  },
-          { text: totalTransportPret, style: 'extraCell',  },
-          { text: totalUtilajePret, style: 'extraCell',   },
-      ],
+    [
+      { text: 'Heures de travail\n(Heure)', style: 'extraHeader', fillColor: "#93C5FD" },
+      { text: 'Fabrication\n(EUR)', style: 'extraHeader', fillColor: "#FCD34D" },
+      { text: 'Matériels\n(EUR)', style: 'extraHeader', fillColor: "#6EE7B7" },
+      { text: 'Transport\n(EUR)', style: 'extraHeader', fillColor: "#F9A8D4" },
+      { text: 'Utilisé\n(EUR)', style: 'extraHeader', fillColor: "#D8B4FE" },
+    ],
+    [
+      { text: formatPrice(totalManoperaOre), style: 'extraCell', },
+      { text: formatPrice(totalManoperaPret), style: 'extraCell', },
+      { text: formatPrice(totalMaterialePret), style: 'extraCell', },
+      { text: formatPrice(totalTransportPret), style: 'extraCell', },
+      { text: formatPrice(totalUtilajePret), style: 'extraCell', },
+    ],
   ];
 
 
   let total = parseFloat(totalManoperaPret) + parseFloat(totalMaterialePret) + parseFloat(totalTransportPret) + parseFloat(totalUtilajePret);
   const extraTableBodySecond = [
     [
-        {text: 'Cheltuieli Directe', style: 'extraHeader',  fillColor: "#93C5FD"},
-        {text: '\u002B', style: 'extraHeader', rowSpan: 2 , fillColor: "#ffffff" , border: [false, false, false, false], margin: [0, 8, 0, 0] , fontSize: 20 },
-        {text: `Recapitulații ${recapitulatii}% `, style: 'extraHeader',   fillColor: "#93C5FD"},
-        {text: '\u003D', style: 'extraHeader', rowSpan: 2  , fillColor: "#ffffff", border: [false, false, false, false], margin: [0, 8, 0, 0] , fontSize: 20},
-        {text: 'Valoarea', style: 'extraHeader',     fillColor: "#93C5FD"},
-        {text: '\u002B', style: 'extraHeader', rowSpan: 2 , fillColor: "#ffffff" , border: [false, false, false, false], margin: [0, 8, 0, 0] , fontSize: 20 },
-        {text: `TVA ${TVA}%`, style: 'extraHeader', fillColor: "#93C5FD"},
-        {text: '\u003D', style: 'extraHeader', rowSpan: 2  , fillColor: "#ffffff", border: [false, false, false, false], margin: [0, 8, 0, 0] , fontSize: 20},
-        {text: 'Total', style: 'extraHeader',     fillColor: "#93C5FD"},
+      { text: 'Dépenses directes\n(EUR)', style: 'extraHeader', fillColor: "#93C5FD" },
+      { text: '\u002B', style: 'extraHeader', rowSpan: 2, fillColor: "#ffffff", border: [false, false, false, false], margin: [0, 8, 0, 0], fontSize: 20 },
+      { text: `Récapitulatifs ${recapitulatii}%\n(EUR)`, style: 'extraHeader', fillColor: "#93C5FD" },
+      { text: '\u003D', style: 'extraHeader', rowSpan: 2, fillColor: "#ffffff", border: [false, false, false, false], margin: [0, 8, 0, 0], fontSize: 20 },
+      { text: 'La valeur\n(EUR)', style: 'extraHeader', fillColor: "#93C5FD" },
+      { text: '\u002B', style: 'extraHeader', rowSpan: 2, fillColor: "#ffffff", border: [false, false, false, false], margin: [0, 8, 0, 0], fontSize: 20 },
+      { text: `TVA ${TVA}%\n(EUR)`, style: 'extraHeader', fillColor: "#93C5FD" },
+      { text: '\u003D', style: 'extraHeader', rowSpan: 2, fillColor: "#ffffff", border: [false, false, false, false], margin: [0, 8, 0, 0], fontSize: 20 },
+      { text: 'Total\n(EUR)', style: 'extraHeader', fillColor: "#93C5FD" },
     ],
     [
-        { text: total, style: 'extraCell' ,  },
-        {},
-        { text: (recapitulatii / 100 * total).toFixed(2) , style: 'extraCell' ,  },
-        {},
-        { text: (total + recapitulatii / 100 * total).toFixed(2), style: 'extraCell',   },
-        {},
-        { text: (TVA/100 * (total + recapitulatii / 100 * total)).toFixed(2), style: 'extraCell',  },
-        {},
-        { text: ((total + recapitulatii / 100 * total) + TVA/100 * (total + recapitulatii / 100 * total)).toFixed(2) , style: 'extraCell',  },
+      { text: formatPrice(total), style: 'extraCell', },
+      {},
+      { text: formatPrice((recapitulatii / 100 * total)), style: 'extraCell', },
+      {},
+      { text: formatPrice((total + recapitulatii / 100 * total)), style: 'extraCell', },
+      {},
+      { text: formatPrice((TVA / 100 * (total + recapitulatii / 100 * total))), style: 'extraCell', },
+      {},
+      { text: formatPrice(((total + recapitulatii / 100 * total) + TVA / 100 * (total + recapitulatii / 100 * total))), style: 'extraCell', },
     ],
-];
+  ];
 
   const docDefinition = {
+    pageOrientation: 'landscape',
+    pageSize: 'A4',
     content: [
       {
-          table: {
-            widths: ['*'],
-            heights: [40],
-            body: [[
-              {
-                columns: [
-                  {
-                    image: logo,
-                    width: 150,
-                    margin: [5, 5, 10, 5]
-                  },
-                  {
-                    stack: [
-                      { text: '15 Rue de Boulins, 77700 Bailly-Romainvilliers, France', alignment: 'right', fontSize: 9 },
-                      { text: 'Siret: 841 626 526 00021   |   N° TVA: FR77982227001', alignment: 'right', fontSize: 9 },
-                      { text: 'e-mail: office@btbtrust.fr', alignment: 'right', fontSize: 9 }
-                    ],
-                    margin: [0, 5, 5, 5]
-                  }
-                ]
-              }
-            ]]
-          },
-          layout: {
-            hLineWidth: (i, node) => (i === 0 || i === node.table.body.length ? 1 : 0),
-            vLineWidth: (i, node) => (i === 0 || i === node.table.widths.length ? 1 : 0),
-            hLineColor: () => '#000000',
-            vLineColor: () => '#000000'
-          },
-          margin: [0, 0, 0, 30]
+        table: {
+          widths: ['*'],
+          heights: [40],
+          body: [[
+            {
+              columns: [
+                {
+                  image: logo,
+                  width: 200,
+                  margin: [5, 10, 10, 5]
+                },
+                {
+                  stack: [
+                    { text: '15 Rue de Boulins, 77700 Bailly-Romainvilliers, France', alignment: 'right', fontSize: 9 },
+                    { text: 'Siret: 841 626 526 00021   |   N° TVA: FR77982227001', alignment: 'right', fontSize: 9 },
+                    { text: 'e-mail: office@btbtrust.fr', alignment: 'right', fontSize: 9 }
+                  ],
+                  margin: [0, 5, 5, 5]
+                }
+              ]
+            }
+          ]]
         },
-      { text: 'Rezumatul retetelor din  șantier', style: 'sectionTitle' },
+        layout: 'noBorders',
+        margin: [0, 0, 0, 5]
+      },
+
+      { text: `Client: ${santiereDetalii.beneficiar}`, style: 'subtitle', alignment: 'left', margin: [0, 0, 0, 5] },
+      { text: `Contact: ${santiereDetalii.email} / ${santiereDetalii.telefon} `, style: 'subtitle', alignment: 'left', margin: [0, 0, 0, 5] },
+      { text: `Chantier: ${santierName}`, style: 'subtitle', alignment: 'left', margin: [0, 0, 0, 5] },
+      { text: `Offre: ${ofertaName} `, style: 'subtitle', alignment: 'left', margin: [0, 0, 0, 5] },
+      { text: `Travail: ${ofertaPartName} `, style: 'subtitle', alignment: 'left', margin: [0, 0, 0, 20] },
+      { text: 'Résumé des recettes du chantier :', style: 'sectionTitle' },
       {
         table: {
+          dontBreakRows: true,
           headerRows: 1,
-          widths: ['auto','auto', 'auto', 'auto', '*', 'auto', 'auto', 'auto', 'auto'],
+          widths: ['auto', 'auto', 'auto', 'auto', 75, 'auto', { minWidth: 120, width: '*' }, { minWidth: 120, width: '*' }, 'auto', 'auto', 'auto', 'auto'],
           body: tableBody
         },
         layout: {
@@ -168,13 +202,16 @@ export const FormularCompactFR = async (id ,recapitulatii, TVA) => {
         }
       },
       {
-        text: '\nRezumat General',
+        text: '\nRésumé général',
         style: 'sectionTitle',
-        margin: [0, 20, 0, 10]
+        margin: [0, 20, 0, 10],
+        pageBreak: 'before'
       },
       {
         table: {
           headerRows: 1,
+          // dontBreakRows: true,
+          keepWithHeaderRows: 1,
           widths: Array(5).fill('auto'),
           body: extraTableBody
         },
@@ -192,6 +229,8 @@ export const FormularCompactFR = async (id ,recapitulatii, TVA) => {
       {
         table: {
           headerRows: 1,
+          // dontBreakRows: true,
+          keepWithHeaderRows: 1,
           widths: Array(9).fill('auto'),
           body: extraTableBodySecond
         },
@@ -206,28 +245,45 @@ export const FormularCompactFR = async (id ,recapitulatii, TVA) => {
           paddingBottom: () => 4
         },
         margin: [0, 20, 0, 0]
+      },
+      {
+        text: "Details d'exécution:",
+        style: 'sectionTitle',
+        margin: [0, 20, 0, 10]
+      },
+      {
+        text: santiereDetalii.detalii_executie,
+        margin: [5, 10, 0, 10],
+        fontSize: 10,
+      },
+      {
+        columns: [
+          { text: `Créé par: \n${santiereDetalii.creatDe}`, alignment: 'left', margin: [50, 0, 0, 0] },
+          { text: `Approuvé par: \n${santiereDetalii.aprobatDe}`, alignment: 'right', margin: [0, 0, 50, 0] }
+        ],
+        margin: [0, 10, 0, 0]
       }
     ],
     footer: function (currentPage, pageCount) {
       return {
         table: {
-          widths: ['auto', '*', 'auto'],
+          widths: ['auto', '*', 150],
           body: [
             [
               {
-                image: logo, 
+                image: logo,
                 width: 60,
                 margin: [10, 10, 0, 5]
               },
               {
-                text: 'Document generat automat - Formular C8 ',
+                text: 'Document généré automatiquement - Formulaire de feuille de calcul',
                 fontSize: 8,
                 alignment: 'left',
                 margin: [0, 7.5, 0, 5],
                 color: '#000000'
               },
               {
-                text: `Pagina ${currentPage} din ${pageCount}`,
+                text: `Page ${currentPage} sur ${pageCount}`,
                 fontSize: 8,
                 alignment: 'right',
                 margin: [0, 7.5, 10, 5]
@@ -258,7 +314,7 @@ export const FormularCompactFR = async (id ,recapitulatii, TVA) => {
       },
       mainHeader: {
         bold: true,
-        fillColor: '#d9edf7',
+        fillColor: '#c9c9c9',  // Gri deschis, ca în screenshot
         fontSize: 9,
         color: '#000',
         alignment: 'center'
@@ -279,13 +335,14 @@ export const FormularCompactFR = async (id ,recapitulatii, TVA) => {
         color: '#333',
         bold: true,
         alignment: 'center',
-        margin: [4,1,4,1], 
+        margin: [4, 1, 4, 1],
       }
     },
     defaultStyle: {
-
+      font: 'Avenir'
     }
   };
 
-  pdfMake.createPdf(docDefinition).download('Retete_Santier.pdf');
-};
+  pdfMake.createPdf(docDefinition).download(`${santierName}_${ofertaName}_${ofertaPartName}_Rasfirat.pdf`);
+
+}

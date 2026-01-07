@@ -9,28 +9,28 @@ const AngajatiContext = createContext();
 const UsersProvider = ({ children }) => {
 
     const [editAngajat, setEditAngajat] = useState(null);
-    const {getUsersForSantiere} = useContext(AuthContext);
+    const { getUsersForSantiere } = useContext(AuthContext);
 
     const [confirmDel, setConfirmDel] = useState(null);
     const [clicked, setClicked] = useState(null);
     const [angajati, setAngajati] = useState(null);
 
-    
+
     const [selectedFile, setSelectedFile] = useState(null);
     const [preview, setPreview] = useState(defaultPhoto);
 
     useEffect(() => {
-        if(clicked != null){
+        if (clicked != null) {
             setAngajati(null);
             getAngajati();
         }
     }, [clicked]);
-    
 
-    const getAngajati = async () =>{
+
+    const getAngajati = async () => {
         const role = ["ofertant", "angajat", "beneficiar"];
         try {
-            const response = await api.post("/users/GetUsers", {role:role[clicked-1]});
+            const response = await api.post("/users/GetUsers", { role: role[clicked - 1] });
             console.log(response.data);
             setAngajati(response.data);
         } catch (error) {
@@ -38,7 +38,7 @@ const UsersProvider = ({ children }) => {
         }
     }
 
-    const deleteAngajat = async (id,e) =>{
+    const deleteAngajat = async (id, e) => {
         e.preventDefault();
         try {
             const response = await api.post(`/users/DeleteUser/${id}`);
@@ -52,10 +52,10 @@ const UsersProvider = ({ children }) => {
     }
 
     return (
-        <AngajatiContext.Provider value={{ clicked, setClicked, angajati, setAngajati , getAngajati, deleteAngajat, confirmDel, selectedFile, setSelectedFile, setPreview, preview, setConfirmDel, editAngajat, setEditAngajat }}>
+        <AngajatiContext.Provider value={{ clicked, setClicked, angajati, setAngajati, getAngajati, deleteAngajat, confirmDel, selectedFile, setSelectedFile, setPreview, preview, setConfirmDel, editAngajat, setEditAngajat }}>
             {children}
         </AngajatiContext.Provider>
     );
 }
 
-export {AngajatiContext, UsersProvider};
+export { AngajatiContext, UsersProvider };

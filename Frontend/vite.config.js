@@ -3,11 +3,11 @@ import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
 export default defineConfig({
-  server:{
-    host: true, 
+  server: {
+    host: true,
     port: 5173,
   },
+
   plugins: [react()],
-  base: "/DataBase",
-  assetsInclude: ['**/*.docx', '**/*.docx?arraybuffer'],
+  assetsInclude: ['**/*.docx', '**/*.docx?arraybuffer', "**/*.gltf", "**/*.glb", "**/*.bin"],
 })

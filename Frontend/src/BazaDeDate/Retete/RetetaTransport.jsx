@@ -21,7 +21,7 @@ export default function RetetaTransport({
     const [transport, setTransport] = useState(null);
     const [transportFilters, setTransportFilters] = useState({
         limba: "",
-        cod_transport: "",
+        cod_definitie: "",
         transport: '',
         clasa_transport: "",
     });
@@ -54,11 +54,11 @@ export default function RetetaTransport({
 
     const fetchManopere = async () => {
         try {
-            if (transportFilters.cod_transport.trim().length >= 3 || transportFilters.transport.trim().length >= 3 || transportFilters.clasa_transport.trim().length >= 3) {
+            if (transportFilters.cod_definitie.trim().length >= 3 || transportFilters.transport.trim().length >= 3 || transportFilters.clasa_transport.trim().length >= 3) {
                 const response = await api.get('/Transport/FetchTransportLight', {
                     params: {
                         limba: transportFilters.limba, // Pass cod_COR as a query parameter
-                        cod_transport: transportFilters.cod_transport, // Pass cod_COR as a query parameter
+                        cod_definitie: transportFilters.cod_definitie, // Pass cod_COR as a query parameter
                         transport: transportFilters.transport, // Add any other filters here
                         clasa_transport: transportFilters.clasa_transport, // Add any other filters here
                     },
@@ -71,7 +71,7 @@ export default function RetetaTransport({
     }
 
     const translateAll = () => {
-        if(!transport || !transport.length) return;
+        if (!transport || !transport.length) return;
         // If there are any rows that are selected, iterate through and update the `selectedRetetaIds`
         setSelectedTransportIds((prev) => {
             const updatedSelectedIds = transport.map((transportD) => transportD.id); // All `retete` ids
@@ -120,9 +120,17 @@ export default function RetetaTransport({
     //
     //
     const columns = useMemo(() => [
-        { accessorKey: "limba", header: "Limba", size: 30 },
-        { accessorKey: "cod_transport", header: "Cod" },
-        { accessorKey: "clasa_transport", header: "Clasa" },
+        {
+            accessorKey: "limba",
+            header: "Limba",
+            cell: ({ getValue, row }) => (
+                <div className='flex font-semibold items-center justify-center'>
+                    {getValue() || "RO&FR"}
+                </div>
+            ),
+            size: 20
+        }, { accessorKey: "cod_definitie", header: "Cod", size: 100 },
+        { accessorKey: "clasa_transport", header: "Clasa", size: 100 },
         {
             accessorKey: "transport",
             header: "Transport",
@@ -134,10 +142,23 @@ export default function RetetaTransport({
                     :
                     getValue()
             ),
-            size: 230
+            size: 200
         },
-        { accessorKey: "cost_unitar", header: "Cost" },
-        { accessorKey: "unitate_masura", header: "Unitate", size: 80 },
+        {
+            accessorKey: "descriere",
+            header: "Descriere",
+            cell: ({ getValue, row }) => (
+                selectedTransportIds.includes(row.original.id) ?
+                    <div className=''>
+                        {row.original.descriere_fr || "..."}
+                    </div>
+                    :
+                    getValue()
+            ),
+            size: 200
+        },
+        { accessorKey: "cost_unitar", header: "Cost", size: 80 },
+        { accessorKey: "unitate_masura", header: "Unitate", size: 40 },
         {
             accessorKey: "threeDots",
             header: (
@@ -212,9 +233,9 @@ export default function RetetaTransport({
                         </label>
                         <input
                             type="text"
-                            id="cod_transport"
-                            name="cod_transport"
-                            value={transportFilters.cod_transport}
+                            id="cod_definitie"
+                            name="cod_definitie"
+                            value={transportFilters.cod_definitie}
                             onChange={handleChangeFilterManopera}
                             maxLength={12}
                             className="px-2 outline-none text-center py-2  w-full rounded-lg shadow-sm "
@@ -279,7 +300,7 @@ export default function RetetaTransport({
                                 transport == null || transport.length == 0 ?
                                     <tbody>
                                         <tr>
-                                            <th className=' text-black border-b border-r  border-black  p-2 bg-white' colSpan={7}>Nici un Rezultat / Introdu minim 3 Caractere</th>
+                                            <th className=' text-black border-b border-r  border-black  p-2 bg-white' colSpan={8}>Nici un Rezultat / Introdu minim 3 Caractere</th>
                                         </tr>
                                     </tbody>
                                     :

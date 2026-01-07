@@ -1,0 +1,5 @@
+.rdp-root {
+  --rdp-accent-color: #3b82f6; /* Sky-500 */
+  --rdp-day-height: 3.5rem; /* The height of the day cells. */
+  --rdp-day-width: 4.5rem; /* The width of the day cells. */
+}

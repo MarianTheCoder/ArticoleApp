@@ -1,34 +1,19 @@
-import React, { useContext, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import api from '../../../api/axiosAPI.jsx';
 import { flexRender, getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowDown, faArrowDownAZ, faArrowRotateRight, faArrowUpAZ, faCancel, faCar, faChevronDown, faChevronRight, faCopy, faEllipsis, faEquals, faFileExport, faFolder, faL, faPenToSquare, faPerson, faPlus, faTrashCan, faTrowelBricks, faTruck, faUser } from '@fortawesome/free-solid-svg-icons';
+import { faArrowDown, faArrowDownAZ, faArrowDownShortWide, faArrowRotateRight, faArrowUpAZ, faCancel, faCar, faChevronDown, faChevronRight, faCopy, faEllipsis, faEquals, faFileExport, faFolder, faL, faPenToSquare, faPerson, faPlus, faTrashCan, faTrowelBricks, faTruck, faUser } from '@fortawesome/free-solid-svg-icons';
 import photoAPI from '../../../api/photoAPI.jsx';
 import SantiereAddReteteTable from './SantiereAddReteteTableAbsolute.jsx';
 import { useParams } from 'react-router-dom';
 import CostInputCell from './CostCell.jsx';
 
-import { FormularRasfirat } from '../Formulare/Romania/FormularRasfirat.jsx';
-import { FormularCompact } from '../Formulare/Romania/FormularCompact.jsx';
-import { FormularDevizGeneral } from '../Formulare/Romania/FormularDevizGeneral.jsx';
-import { FormularCompactFR } from '../Formulare/Franta/FormularCompactFR.jsx';
-import { FormularRasfiratFR } from '../Formulare/Franta/FormularRasfiratFR.jsx';
 import TextAreaCell from './TextareaCell.jsx';
+import PDF_Popup from './PDF_Popup.jsx';
+import { useCallback } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { OverflowPopover } from '../OverflowPopover.jsx';
 
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  arrayMove,
-  useSortable,
-  verticalListSortingStrategy
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 
 
 
@@ -39,6 +24,8 @@ export default function SantiereAllPartsForExport({ mainOfertaPartID, ofertaId }
 
   const [openDropdowns, setOpenDropdowns] = useState(new Set());
   const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const [isGenerareOpen, setIsGenerareOpen] = useState(false);
+
 
   const [retete, setRetete] = useState([]);
   const [detailedCosts, setDetailedCosts] = useState({});
@@ -63,39 +50,54 @@ export default function SantiereAllPartsForExport({ mainOfertaPartID, ofertaId }
   const [selectedFormular, setSelectedFormular] = useState(limbaUser == 'RO' ? 'Răsfirat' : 'RăsfiratFR');
 
 
+  const [localReper1, setLocalReper1] = useState("");
+  const [localReper2, setLocalReper2] = useState("");
+
+  const [localLimba, setLocalLimba] = useState("RO");
+
+  useEffect(() => {
+    setLocalLimba(limbaUser);
+  }, [limbaUser]);
 
 
 
+  // useEffect(() => {
+  //   if (oferteParts) {
+  //     const currentPart = oferteParts.find(part => part.id === parseInt(mainOfertaPartID));
+  //     setLocalReper1(currentPart.reper1 || "");
+  //     setLocalReper2(currentPart.reper2 || "");
+  //   }
+  // }, [oferteParts]);
   const fetchManopere = async () => {
     try {
-      const response = await api.get(`/Santiere/getReteteByOfertaWithPrices/${ofertaId}`, {
-        params: {
-          asc_articol: ascendent,
-        },
+      const { data } = await api.get(`/Santiere/getReteteByOfertaWithPrices/${ofertaId}`, {
+        params: { asc_articol: ascendent },
       });
-      let dum = [];
-      console.log(response.data.parts);
-      setOpenDropdowns(new Set());
-      if (response.data.parts.length == 0) {
-        setRetete([]);
-        setDetailedCosts({});
-        return;
-      };
-      for (let i = 0; i < response.data.parts.length; i++) {
-        dum = [...dum, { partId: response.data.parts[i].partId, partName: response.data.parts[i].partName, parentId: response.data.parts[i].partId + 'z' }];
-        dum = [...dum, ...response.data.parts[i].retete];
-      }
-      // console.log("Das", dum)
-      // setDetailedCosts(response.data.detailedCosts);
-      // setRetete(response.data.data);
-      setRetete(dum);
-      setDetailedCosts({});
-      return;
 
-    } catch (error) {
-      console.error('Error fetching data:', error);
+      // construiești lista de rânduri (cum aveai)
+      let dum = [];
+      for (const part of data.parts) {
+        dum.push({
+          partId: part.partId,
+          partName: part.partName,
+          parentId: part.partId + 'z',
+          reper1: part.reper.reper1,
+          reper2: part.reper.reper2,
+        });
+        dum = dum.concat(part.retete);
+      }
+      setRetete(dum);
+      console.log("Fetched retete:", data.parts);
+      // ⭐ merge toate detailedCosts din fiecare part într-un singur obiect
+      const merged = Object.assign({}, ...data.parts.map(p => p.detailedCosts || {}));
+      setDetailedCosts(merged);   // ← acum handleFinalData va avea TOATE rețetele
+      setOpenDropdowns(new Set());
+    } catch (e) {
+      console.error('Error fetching data:', e);
+      setRetete([]);
+      setDetailedCosts({});
     }
-  }
+  };
 
 
   useEffect(() => {
@@ -109,41 +111,6 @@ export default function SantiereAllPartsForExport({ mainOfertaPartID, ofertaId }
     }
   }, [detailedCosts]);
 
-
-  // const handleInputChange = (e) => {
-  //     const { name, value } = e.target;
-  //     setFilters((prev) => ({
-  //         ...prev,
-  //         [name]: value,
-  //     }));
-  // };
-
-
-
-  // //CE FROMULAR SELECTAM?
-  // const handleFormular = () => {
-  //   // console.log(mainOfertaPartID);
-  //   switch (selectedFormular) {
-  //     case 'Deviz General':
-  //       FormularDevizGeneral(mainOfertaPartID, recapitulatii, TVA)
-  //       break;
-  //     case 'Răsfirat':
-  //       FormularRasfirat(mainOfertaPartID, recapitulatii, TVA)
-  //       break;
-  //     case 'Compact':
-  //       FormularCompact(mainOfertaPartID, recapitulatii, TVA);
-  //       break;
-  //     case "CompactFR":
-  //       FormularCompactFR(mainOfertaPartID, recapitulatii, TVA);
-  //       break;
-  //     case "RăsfiratFR":
-  //       FormularRasfiratFR(idSantier, mainOfertaPartID, recapitulatii, TVA);
-  //       break;
-
-  //     default:
-  //       break;
-  //   }
-  // }
 
 
   const handleFinalData = () => {
@@ -200,6 +167,36 @@ export default function SantiereAllPartsForExport({ mainOfertaPartID, ofertaId }
   }
 
 
+  const parentIds = useMemo(
+    () => (retete || []).filter(r => !r.parentId).map(r => r.id),
+    [retete]
+  );
+  const allOpen = useMemo(
+    () => parentIds.length > 0 && parentIds.every(id => openDropdowns.has(id)),
+    [parentIds, openDropdowns]
+  );
+
+  const toggleAllDropdowns = async () => {
+    try {
+      if (allOpen) {
+        // CLOSE ALL currently open parents
+        const toClose = Array.from(openDropdowns); // snapshot
+        for (const id of toClose) {
+          await toggleDropdown(id, false); // falsy second arg = close branch in your logic
+        }
+      } else {
+        // OPEN all parents that are not open
+        const toOpen = parentIds.filter(id => !openDropdowns.has(id));
+        for (const id of toOpen) {
+          await toggleDropdown(id); // same logic you already use
+        }
+      }
+    } catch (error) {
+      console.error("Error toggling all dropdowns:", error);
+    }
+  };
+
+
   const toggleDropdown = async (parentId) => {
     const isAlreadyOpen = openDropdowns.has(parentId);
     //aici e inchiderea standard
@@ -245,77 +242,18 @@ export default function SantiereAllPartsForExport({ mainOfertaPartID, ofertaId }
   };
 
 
-
-
-  const topLevelRows = retete.filter(r => r.parentId == null);
-
-  const handleDragEnd = async event => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-
-    // get only the parent rows:
-    const topLevel = retete.filter(r => r.parentId == null);
-
-    const oldIndex = topLevel.findIndex(r => r.sort_order.toString() === active.id);
-    const newIndex = topLevel.findIndex(r => r.sort_order.toString() === over.id);
-    if (oldIndex < 0 || newIndex < 0) return;
-
-    // reorder just those parent rows
-    const reorderedTop = arrayMove(topLevel, oldIndex, newIndex);
-
-
-    // give each of those a new sort_order (1, 2, 3, …)
-    const updatedParents = reorderedTop.map((r, idx) => ({
-      ...r,
-      sort_order: idx + 1,
-    }));
-
-    // Build a quick lookup of children by parentId
-    const childrenByParent = retete
-      .filter(r => r.parentId != null)
-      .reduce((acc, child) => {
-        if (!acc[child.parentId]) acc[child.parentId] = [];
-        acc[child.parentId].push(child);
-        return acc;
-      }, {});
-
-    // Now rebuild `retete` by inserting each parent and then its children immediately after
-    const newRetete = [];
-    for (const parent of updatedParents) {
-      newRetete.push(parent);
-      if (childrenByParent[parent.id]) {
-        // push all of this parent’s children (in whatever original order they were in)
-        newRetete.push(...childrenByParent[parent.id]);
-      }
-    }
-
-    // try {
-    //   // Adjust endpoint URL to whatever you have on the server:
-    //   await api.put(`/Santiere/updateReteteOrder`, {
-    //     updatedParents: updatedParents.map(p => ({
-    //       id: p.id,
-    //       sort_order: p.sort_order,
-    //     })),
-    //   });
-    //   setRetete(newRetete);
-    // } catch (err) {
-    //   console.error("Failed to persist new order on server:", err);
-    //   // Optionally roll back state or show an error message
-    // }
-
-
-  }
-
-
-
-
   const columns = useMemo(() => [
     {
       accessorKey: "Dropdown",
-      header: "",
+      header: (
+        <div className='flex justify-center items-center h-full w-full'>
+          <FontAwesomeIcon
+            onClick={toggleAllDropdowns}
+            className='text-blue-500 hover:text-blue-600 cursor-pointer text-xl' icon={faArrowDownShortWide} />
+        </div>
+      ),
       cell: ({ row, getValue, cell }) => (
-        <div onClick={() => toggleDropdown(cell.row.original.id)} className='flex justify-center select-none w-full dropdown-container overflow-hidden cursor-pointer items-center'>
+        <div onClick={() => toggleDropdown(cell.row.original.id)} className='flex justify-center h-full  select-none w-full dropdown-container overflow-hidden cursor-pointer items-center'>
           <FontAwesomeIcon className={` ${openDropdowns.has(cell.row.original.id) ? "rotate-90" : ""}  text-center  text-xl`} icon={faChevronRight} />
         </div>
       ),
@@ -342,8 +280,12 @@ export default function SantiereAllPartsForExport({ mainOfertaPartID, ofertaId }
     },
     {
       accessorKey: "detalii_aditionale",
-      header: "Detalii",
-      size: 80,
+      header: (
+        <div className="">
+          {localReper1 || "Eroare"}
+        </div>
+      ),
+      size: 100,
       cell: ({ getValue, row }) => {
         return (
           <TextAreaCell
@@ -351,40 +293,110 @@ export default function SantiereAllPartsForExport({ mainOfertaPartID, ofertaId }
             whatIs={row.original.whatIs || "Reteta"}
             initialValue={getValue() || ""}
             isEditable={false}
+            maxLines={2}
             // onEdit={handleDetaliiChange}
             bold={false}
+          // fromTop={15}
+          // absoluteInput={true}
+          // translateXNegative={90}
+          // arrowPos={110}
           />
         );
       },
     },
     {
       accessorKey: "reper_plan",
-      header: "Reper Plan",
-      size: 80,
+      header:
+        <div className="">
+          {localReper2 || "Eroare"}
+        </div>
+      ,
+      size: 100,
       cell: ({ getValue, row }) => {
         return (
           <TextAreaCell
             rowId={row.original.id}
             whatIs={row.original.whatIs || "Reteta"}
             initialValue={getValue() || ""}
+            maxLines={2}
             isEditable={false}
             // onEdit={handleReperChange}
             bold={false}
+          // fromTop={15}
+          // absoluteInput={true}
+          // translateX={60}
+          // arrowPos={50}
           />
         );
       },
     },
-    { accessorKey: "cod", header: "Cod", size: 120 },
-    { accessorKey: "clasa", header: "Clasă", size: 150 },
+    { accessorKey: "furnizor", header: "Furnizor", size: 80 },
+    {
+      accessorKey: "cod",
+      header: "Cod",
+      cell: ({ getValue }) => (
+        <div className=' font-semibold'>{getValue() ? getValue() : ""}</div>
+      ),
+      size: 120
+    },
+    {
+      accessorKey: "clasa",
+      header: "Clasă",
+      cell: ({ getValue }) => (
+        <div className=''>{getValue() ? getValue() : ""}</div>
+      ),
+      size: 150
+    },
+    {
+      accessorKey: "articol_client",
+      header: "Articol Client",
+      size: 150,
+      cell: ({ getValue, row }) => {
+        return (
+          <TextAreaCell
+            rowId={row.original.id}
+            whatIs={row.original.whatIs || "Reteta"}
+            initialValue={getValue() || ""}
+            maxLines={2}
+            isEditable={false}
+            // onEdit={handleArticolClientChange}
+            bold={false}
+          // absoluteWidth={"32rem"}
+          // absoluteInput={true}
+          // arrowPos={50}
+          // fromTop={15}
+          />
+        );
+      },
+    },
     {
       accessorKey: "articol",
       header: (
-        <div className="flex items-center w-[95%] justify-between text-black ">
+        <div className="flex items-center w-[95%]  justify-between text-black ">
           <span>Articol</span>
-          {/* <FontAwesomeIcon onClick={() => setAscendent((prev) => prev == false ? true : false)} className="text-xl border border-black p-2  rounded-full  cursor-pointer" icon={!ascendent ? faArrowUpAZ : faArrowDownAZ} />  */}
+          <span className='flex items-center'>Limba:
+            <span onClick={() => setLocalLimba(prev => prev == 'RO' ? 'FR' : 'RO')} className='ml-2 text-green-600 border-2 hover:text-green-500 hover:border-green-500 cursor-pointer border-green-600 rounded-full aspect-square min-w-[2rem] flex items-center justify-center'>
+              {localLimba}
+            </span>
+          </span>
         </div>
       ),
-      size: 500
+      cell: ({ getValue, row }) => {
+        return <OverflowPopover text={localLimba === 'RO' ? getValue() || "..." : row.original.articol_fr || "..."} maxLines={2} />;
+      },
+      size: 300
+    },
+    {
+      accessorKey: "descriere",
+      header: (
+        <div className="flex items-center w-[95%] justify-between text-black ">
+          <span>Descriere</span>
+        </div>
+      ),
+      cell: ({ getValue, row }) => {
+        return <OverflowPopover text={localLimba === 'RO' ? getValue() || "" : row.original.descriere_fr || ""} maxLines={2} />;
+      },
+      size: 200
     },
     {
       accessorKey: 'whatIs',
@@ -456,27 +468,7 @@ export default function SantiereAllPartsForExport({ mainOfertaPartID, ofertaId }
       },
       size: 80
     },
-    // {
-    //   accessorKey: "threeDots",
-    //   header: "Opțiuni",
-    //   cell: ({ row }) => (
-    //     row.original.whatIs == 'Manopera' || row.original.whatIs == 'Material' || row.original.whatIs == 'Utilaj' || row.original.whatIs == 'Transport' ?
-    //       ""
-    //       :
-    //       <div className=' dropdown-container w-full relative flex '>
-    //         <div className='text-xl relative w-full py-2 select-none items-center justify-evenly gap-1 flex'>
-    //           <FontAwesomeIcon className=' text-red-500 hover:text-red-600 cursor-pointer dropdown-container' icon={faTrashCan} />
-    //         </div>
-    //       </div>
-    //   ),
-    //   meta: {
-    //     style: {
-    //       textAlign: 'center',
-    //       padding: '0',
-    //     },
-    //   },
-    // },
-  ], [retete, ascendent]);
+  ], [retete, ascendent, limbaUser, localReper1, localReper2]);
 
   const table = useReactTable({
     data: retete,
@@ -489,15 +481,116 @@ export default function SantiereAllPartsForExport({ mainOfertaPartID, ofertaId }
   });
 
 
+  const scrollParentRef = useRef(null);
+
+  // All flat rows from TanStack (what you currently map)
+  const allRows = table.getRowModel().rows;
+
+  // Virtualizer: only render the visible slice
+  const rowVirtualizer = useVirtualizer({
+    count: allRows.length,
+    getScrollElement: () => scrollParentRef.current,
+    estimateSize: () => 40,   // ≈ row height in px; tweak to your actual row height (36–44)
+    getItemKey: (index) => allRows[index]?.id ?? index,
+    overscan: 10,             // render a few extra rows above/below viewport
+  });
+
+  // Spacers
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  const paddingTop =
+    virtualItems.length > 0 ? virtualItems[0].start : 0;
+  const paddingBottom =
+    virtualItems.length > 0
+      ? rowVirtualizer.getTotalSize() - virtualItems[virtualItems.length - 1].end
+      : 0;
+
+  // Number of visible columns (for spacer cells to span across the whole table)
+  const visibleColCount = table.getVisibleLeafColumns().length;
+
+  // e header de lucrare dacă are partName
+  const isPartHeader = (row) => !!row?.original?.partName;
+
+  // primul index vizibil
+  const firstVI = virtualItems[0];
+  const firstIndex = firstVI ? firstVI.index : 0;
+
+  // găsește ultimul header de lucrare deasupra primului rând vizibil
+  let currentHeaderIndex = null;
+  for (let i = firstIndex; i >= 0; i--) {
+    if (isPartHeader(allRows[i])) {
+      currentHeaderIndex = i;
+      break;
+    }
+  }
+
+  const currentPartName =
+    currentHeaderIndex != null ? allRows[currentHeaderIndex].original.partName : null;
+
+
+  const theadRef = useRef(null);
+  const [stickyTop, setStickyTop] = useState(0);
+
+  useLayoutEffect(() => {
+    let raf1, raf2;
+
+    const update = () => {
+      const h = theadRef.current?.offsetHeight ?? 0;
+      setStickyTop(h);
+    };
+
+    // măsoară după layout + încă o dată în următorul frame
+    raf1 = requestAnimationFrame(() => {
+      update();
+      raf2 = requestAnimationFrame(update);
+    });
+
+    // re-măsoară când headerul își schimbă înălțimea
+    const ro = new ResizeObserver(update);
+    if (theadRef.current) ro.observe(theadRef.current);
+
+    // când fonturile au încărcat, înălțimea se poate schimba
+    if (document.fonts?.ready) {
+      document.fonts.ready.then(update).catch(() => { });
+    }
+
+    window.addEventListener('resize', update);
+
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+      ro.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  }, []);
+
+
+  // extrage reper1/reper2 din acel header
+  const currentHeaderRow = currentHeaderIndex != null ? allRows[currentHeaderIndex] : null;
+  const curRep1 = currentHeaderRow?.original?.reper1 ?? 'Reper 1';
+  const curRep2 = currentHeaderRow?.original?.reper2 ?? 'Reper 2';
+  // actualizează state doar când se schimbă
+  useEffect(() => {
+    setLocalReper1((p) => (p !== curRep1 ? curRep1 : p));
+    setLocalReper2((p) => (p !== curRep2 ? curRep2 : p));
+  }, [curRep1, curRep2]);
+
+
   return (
     <>
       <div className=' w-full  flex flex-col h-full justify-between overflow-hidden '>
         {retete &&
           <div className="p-8 pb-4 pt-5 text-sm scrollbar-webkit w-full overflow-hidden gap-6 text-white h-full flex flex-col justify-between">
-            <div className="  scrollbar-webkit overflow-auto  relative  ">
-                  <table className="w-full border-separate border-spacing-0 ">
-                    <thead className='top-0 w-full sticky    z-10 '>
-                      {/* <tr className='text-black'>
+            <div ref={scrollParentRef} className="  scrollbar-webkit overflow-auto  relative  ">
+              {currentPartName && stickyTop > 0 && (
+                <div className="sticky z-20" style={{ top: stickyTop }}>
+                  <div className="bg-white border-b border-black h-12 flex items-center justify-center text-black text-lg font-semibold pointer-events-none">
+                    Lucrarea {currentPartName}
+                  </div>
+                </div>
+              )}
+              <table className="w-full  border-separate border-spacing-0 ">
+                <thead ref={theadRef} className='top-0 w-full sticky    z-30 '>
+                  {/* <tr className='text-black'>
                                     <th className='border-b border-r border-black bg-white' colSpan={2}></th>
                                     <th className='border-b border-r bg-white border-black'>
                                         <input
@@ -533,98 +626,113 @@ export default function SantiereAllPartsForExport({ mainOfertaPartID, ofertaId }
                                 
                                     </th>
                                 </tr> */}
-                      {table.getHeaderGroups().map(headerGroup => (
-                        <tr key={headerGroup.id} className="bg-white text-black text-left  font-bold select-none">
-                          {headerGroup.headers.map(header => (
+                  {table.getHeaderGroups().map(headerGroup => (
+                    <tr key={headerGroup.id} className="bg-white text-black text-left  font-bold select-none">
+                      {headerGroup.headers.map(header => (
 
-                            <th key={header.id} className={`relative border-b-2 border-r border-black text-base   bg-white p-2 py-4 ${header.column.id === "threeDots" ? "text-center" : ""} `}
-                              style={{
-                                width: header.column.id === "threeDots" ? '55px' : header.column.id === "Dropdown" ? "35px" : header.column.id === "logo" ? "35px" : `${header.getSize()}px`, // Enforce width for "Options"
-                                minWidth: header.column.id === "threeDots" ? '55px' : header.column.id === "Dropdown" ? header.column.id === "logo" ? "35px" : "35px" : '', // Ensure no shrinkage
-                                maxWidth: header.column.id === "threeDots" ? '55px' : header.column.id === "Dropdown" ? header.column.id === "logo" ? "35px" : "35px" : '', // Ensure no expansion
-                              }}>
-                              <div
-                                onMouseDown={header.getResizeHandler()}
-                                className={`absolute top-0 right-0 h-full w-2 bg-blue-300 cursor-pointer opacity-0 active:opacity-100 hover:opacity-100 transition-opacity duration-200 ${header.column.id === "threeDots" ? "hidden" : ""}`}
+                        <th key={header.id} className={`relative border-b-2 border-r border-black text-base   bg-white p-2 py-4 ${header.column.id === "threeDots" ? "text-center" : ""} `}
+                          style={{
+                            width: header.column.id === "threeDots" ? '55px' : header.column.id === "Dropdown" ? "35px" : header.column.id === "logo" ? "35px" : `${header.getSize()}px`, // Enforce width for "Options"
+                            minWidth: header.column.id === "threeDots" ? '55px' : header.column.id === "Dropdown" ? header.column.id === "logo" ? "35px" : "35px" : '', // Ensure no shrinkage
+                            maxWidth: header.column.id === "threeDots" ? '55px' : header.column.id === "Dropdown" ? header.column.id === "logo" ? "35px" : "35px" : '', // Ensure no expansion
+                          }}>
+                          <div
+                            onMouseDown={header.getResizeHandler()}
+                            className={`absolute top-0 right-0 h-full w-2 bg-blue-300 cursor-pointer opacity-0 active:opacity-100 hover:opacity-100 transition-opacity duration-200 ${header.column.id === "threeDots" ? "hidden" : ""}`}
 
-                              ></div>
-                              {header.column.columnDef.header}
+                          ></div>
+                          {header.column.columnDef.header}
 
-                            </th>
-                          ))}
-                        </tr>
+                        </th>
                       ))}
-                    </thead>
-                    {retete.length == 0 ?
-                      (
-                        <tbody className='relative z-0'>
-                          <tr>
-                            <td className='bg-[rgb(255,255,255,0.75)] border-black border-r border-b text-black h-10' colSpan={14}>
-                              <div className=' flex justify-center items-center w-full text-lg font-semibold h-full'>Nimic Adaugat</div>
-                            </td>
-                          </tr>
-                        </tbody>
-                      )
-                      :
-                      (
-                        <tbody className=' relative z-0'>
-                          {table.getRowModel().rows.map((row, index, rows) => (
-                            row.original.whatIs == 'Manopera' || row.original.whatIs == 'Material' || row.original.whatIs == 'Utilaj' || row.original.whatIs == 'Transport' ?
-                              <React.Fragment key={row.id}>
-                                <tr className={` dropdown-container   text-black`}>
-                                  {row.getVisibleCells().map((cell) => (
-                                    cell.column.id == "Dropdown" ?
-                                      <td key={cell.id}>
-
-                                      </td>
-                                      :
-                                      <td
-                                        onClick={() => console.log(cell)}
-                                        key={cell.id}
-                                        className={` 
-                                     ${cell.column.id == "whatIs" ? row.original.whatIs == 'Manopera' ? "bg-green-300" : row.original.whatIs == 'Material' ? "bg-amber-300" : row.original.whatIs == 'Utilaj' ? "bg-violet-300" : row.original.whatIs == 'Transport' ? "bg-pink-300" : "bg-white" : "bg-white"}
-                                     border-b border-r break-words max-w-72  relative border-black px-3 `}
-                                      >
-                                        <div className="h-full w-full overflow-hidden ">
-                                          <div className="max-h-12 h-12 leading-relaxed  grid grid-cols-1 break-words whitespace-pre-line items-center  overflow-auto  scrollbar-webkit">
-                                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                          </div>
-                                        </div>
-                                      </td>
-                                  ))}
-                                </tr>
-                              </React.Fragment>
-                              :
-                              //check daca suntem pe linia cu headeru de lucrare ex: p01
-                              row.original?.partName != null ?
-                                <tr className='sticky top-14 z-10 bg-white'>
-                                  <td className='bg-[rgb(255,255,255,1)] border-black border-r border-b text-black h-12' colSpan={14}>
-                                    <div className=' flex justify-center items-center w-full text-xl font-semibold h-full'>Lucrarea {row.original.partName}</div>
-                                  </td>
-                                </tr>
-                                :
-                                //randul normal cu date
-                                <React.Fragment key={row.id}>
-                                  <tr className='dropdown-container text-black bg-[rgb(255,255,255,0.80)] hover:bg-[rgb(255,255,255,0.60)'>
-                                    {row.getVisibleCells().map(cell => (
-                                      <td
-                                        key={cell.id}
-                                        className="border-b border-r break-words max-w-72 relative border-black p-1 px-3"
-                                        style={cell.column.columnDef.meta?.style}
-                                      >
-                                        <div className="h-full w-full overflow-hidden">
-                                          <div className="max-h-12 h-12 leading-relaxed w-full break-words whitespace-pre-line grid grid-cols-1 items-center overflow-auto scrollbar-webkit">
-                                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                          </div>
-                                        </div>
-                                      </td>
-                                    ))}
-                                  </tr>
-                            </React.Fragment>
-                          ))}
-                        </tbody>
+                    </tr>
+                  ))}
+                </thead>
+                {retete.length == 0 ?
+                  (
+                    <tbody className='relative z-0'>
+                      <tr>
+                        <td className='bg-[rgb(255,255,255,0.75)] border-black border-r border-b text-black h-10' colSpan={16}>
+                          <div className=' flex justify-center items-center w-full text-lg font-semibold h-full'>Nimic Adaugat</div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  )
+                  :
+                  (
+                    <tbody className=' relative z-0'>
+                      {paddingTop > 0 && (
+                        <tr>
+                          <td colSpan={visibleColCount} style={{ height: `${paddingTop}px` }} />
+                        </tr>
                       )}
-                  </table>
+                      {virtualItems.map((vi) => {
+                        const row = allRows[vi.index];
+                        const index = vi.index; // in case you need it
+
+                        return (row.original.whatIs == 'Manopera' ||
+                          row.original.whatIs == 'Material' ||
+                          row.original.whatIs == 'Utilaj' ||
+                          row.original.whatIs == 'Transport') ? (
+                          <React.Fragment key={row.id}>
+                            <tr className={` dropdown-container   text-black`}>
+                              {row.getVisibleCells().map((cell) => (
+                                cell.column.id == "Dropdown" ?
+                                  <td key={cell.id}>
+
+                                  </td>
+                                  :
+                                  <td
+                                    onClick={() => console.log(cell)}
+                                    key={cell.id}
+                                    className={` 
+                                     ${cell.column.id == "whatIs" ?
+                                        row.original.whatIs == 'Manopera' ? "bg-green-300" :
+                                          row.original.whatIs == 'Material' ? "bg-amber-300" :
+                                            row.original.whatIs == 'Utilaj' ? "bg-violet-300" :
+                                              row.original.whatIs == 'Transport' ? "bg-pink-300" : "" : row.original.definitie_id ? "bg-blue-100" : "bg-white"}
+                                     border-b border-r break-words max-w-72  relative border-black px-3 `}
+                                  >
+                                    <div className="h-full w-full overflow-hidden ">
+                                      <div className="max-h-12 h-12 leading-relaxed  grid grid-cols-1 break-words whitespace-pre-line items-center  overflow-auto  scrollbar-webkit">
+                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                      </div>
+                                    </div>
+                                  </td>
+                              ))}
+                            </tr>
+                          </React.Fragment>
+                        )
+                          : (
+                            //randul normal cu date
+                            <React.Fragment key={row.id}>
+                              <tr className='dropdown-container text-black bg-[rgb(255,255,255,0.80)] hover:bg-[rgb(255,255,255,0.60)'>
+                                {row.getVisibleCells().map(cell => (
+                                  <td
+                                    key={cell.id}
+                                    className="border-b border-r break-words max-w-72 relative border-black p-1 px-3"
+                                    style={cell.column.columnDef.meta?.style}
+                                  >
+                                    <div className="h-full w-full overflow-hidden">
+                                      <div className="max-h-12 h-12 leading-relaxed w-full break-words whitespace-pre-line grid grid-cols-1 items-center overflow-auto scrollbar-webkit">
+                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                      </div>
+                                    </div>
+                                  </td>
+                                ))}
+                              </tr>
+                            </React.Fragment>
+                          )
+                      })}
+                      {/* BOTTOM spacer */}
+                      {paddingBottom > 0 && (
+                        <tr>
+                          <td colSpan={visibleColCount} style={{ height: `${paddingBottom}px` }} />
+                        </tr>
+                      )}
+                    </tbody>
+                  )}
+              </table>
             </div>
             {/* Pagination Controls */}
             <div className="mt-auto text-sm  gap-4 flex containerZ p-4  items-center">
@@ -706,36 +814,21 @@ export default function SantiereAllPartsForExport({ mainOfertaPartID, ofertaId }
                   </tr>
                 </tbody>
               </table>
-              <div className="flex flex-col h-full text-base items-center justify-center">
-                <label htmlFor="unit" className=" font-medium text-black">
-                  Selecteaza un formular
-                </label>
-                {limbaUser == "RO" ?
-                  <select
-                    value={selectedFormular}
-                    onChange={(e) => setSelectedFormular(e.target.value)}
-                    className=" px-2 py-2 w-56 text-black  rounded-lg outline-none shadow-sm "
-                  >
-                    <option value="Deviz General">Formular Deviz General</option>
-                    <option value="Răsfirat">Formular Răsfirat</option>
-                    <option value="Compact">Formular Compact</option>
-                  </select>
-                  :
-                  <select
-                    value={selectedFormular}
-                    onChange={(e) => setSelectedFormular(e.target.value)}
-                    className=" px-2 py-2 w-56 text-black  rounded-lg outline-none shadow-sm "
-                  >
-                    <option value="RăsfiratFR">Formular Răsfirat FR</option>
-                    <option value="CompactFR">Formular Compact FR</option>
-                  </select>
-                }
-              </div>
-              <button onClick={() => handleFormular()} className='bg-green-500 cursor-pointer flex gap-2 justify-center font-medium items-center p-2 mt-6 text-base tracking-wide hover:bg-green-600 text-black rounded-lg flex-grow'><FontAwesomeIcon icon={faFileExport} />Genereaza</button>
+
+              <button onClick={() => setIsGenerareOpen(true)} className='bg-green-500 cursor-pointer flex gap-2 justify-center font-medium items-center p-2 mt-6 text-sm tracking-wide hover:bg-green-600 h-10 text-black rounded-lg flex-grow'><FontAwesomeIcon icon={faFileExport} />Genereaza</button>
             </div>
           </div>
-
         }
+        {isGenerareOpen && (
+          <>
+            <div className=" absolute top-0 left-0 right-0 bottom-0 h-full w-full z-[100]"></div>
+            <div className='w-full top-0 left-0 right-0 bottom-0 absolute h-full items-center justify-center flex z-[200]'>
+              <div className=' relative rounded-xl border-2 shadow-md shadow-gray-400 bg-[#002a54] h-1/2 w-1/2'>
+                <PDF_Popup allLucrari={true} oferta_part_id={ofertaId} setIsGenerareOpen={setIsGenerareOpen} TVA={TVA} recapitulatii={recapitulatii} />
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </>
   )

@@ -45,7 +45,7 @@ export default function login() {
     </div> */}
 
     <form onSubmit={handleSubmit} className='login'>
-        <h2 className={`border-l-[15px] border-[#ED2939]`} id='txt'>Login</h2>
+        {/* <h2 className={`border-l-[15px] border-[#ED2939]`} id='txt'>Login</h2> */}
         <div className='inputBox'>
             <input value={email} onChange={(e) => setEmail(e.target.value)}  type="text" placeholder='Email' />
         </div>

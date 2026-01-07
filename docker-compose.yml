@@ -1,0 +1,61 @@
+version: "3.8"
+
+services:
+  frontend:
+    build: ./Frontend
+    ports:
+      - "3001:80"
+    volumes:
+      - ./Frontend:/app # 🔥 aici montăm codul local
+      - ./Frontend/nginx.conf:/etc/nginx/conf.d/default.conf
+    restart: always
+
+  backend:
+    build: ./Backend
+    ports:
+      - "3000:3000"
+    volumes:
+      # - ./Backend:/app # 🔥 cod backend direct din folder
+      # - /app/node_modules   # 👈 păstrează node_modules din container (nu-l mai calcă bind mount-ul)
+      - ./Backend/uploads:/app/uploads # 🖼️ ca să persiste imaginile
+    restart: always
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_HOST: mysql
+      DB_USER: root
+      DB_PASSWORD: saps2002
+      DB_NAME: baly_baza_de_date
+      NODE_ENV: production
+      SMTP_HOST: mail.btbtrust.ro
+      SMTP_PORT: 465
+      SMTP_USER: marian.ciobanu@btbtrust.ro
+      SMTP_PASS: Ciobanu33A
+      REPORT_TO: world.eilix22@yahoo.com,cristian@balyenergies.fr
+      TZ: Europe/Bucharest
+
+  mysql:
+    image: mariadb:10.11
+    ports:
+      - "127.0.0.1:3306:3306"
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: saps2002
+      MYSQL_DATABASE: baly_baza_de_date
+    volumes: 
+      - ./mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-psaps2002"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: mysql
+      MYSQL_ROOT_PASSWORD: saps2002
+      UPLOAD_LIMIT: 64M

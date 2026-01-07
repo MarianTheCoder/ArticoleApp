@@ -1,17 +1,15 @@
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 const login = async (req, res) => {
     const { email, password } = req.body;
-    console.log(email, password)
+    // console.log(email, password)
     if (!email || !password) {
         return res.status(400).json({ message: 'All fields are required.' });
     }
-
     try {
         const selectQuery = `SELECT * FROM users WHERE email = ?`;
-        const [rows] = await global.db.execute(selectQuery, [email]);
-
+        const [rows] = await global.db.execute(selectQuery, [email.trim()]);
         if (rows.length === 0) {
             return res.status(400).json({ message: 'Invalid credentials.' });
         }
@@ -35,7 +33,7 @@ const login = async (req, res) => {
 
         res.status(200).json({ message: 'Login successful.', token });
     } catch (err) {
-        console.error('Error logging in user:', err);
+        console.log('Error logging in user:', err);
         res.status(500).json({ message: 'Database error.' });
     }
 };

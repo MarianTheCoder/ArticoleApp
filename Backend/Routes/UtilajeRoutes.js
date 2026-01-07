@@ -1,282 +1,733 @@
-const express = require('express');
-const multer = require('multer');
-const path = require('path');
-const Jimp = require('jimp');
+const express = require("express");
+const multer = require("multer");
+const path = require("path");
+const { Jimp } = require("jimp");
+const fs = require("fs/promises");
 
 const router = express.Router();
 
-// Configurare multer pentru salvarea fișierelor în 'uploads/'
-const storage = multer.memoryStorage(); // Store file in memory
+const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-
-
-router.post('/api/utilaje', upload.single('poza'), async (req, res) => {
+router.post("/api/setUtilajDef", upload.single("poza"), async (req, res) => {
+  const conn = await global.db.getConnection();
   try {
     const {
-      limba, cod_utilaj, clasa_utilaj, utilaj, utilaj_fr, descriere_utilaj, descriere_utilaj_fr, status_utilaj,
-      cost_amortizare, pret_utilaj, unitate_masura, cantitate
+      limba,
+      clasa_utilaj,
+      cod_definitie,
+      utilaj,
+      utilaj_fr,
+      descriere,
+      descriere_fr,
+      unitate_masura,
+      cost_amortizare,
+      pret_utilaj,
+      childs = null,
     } = req.body;
 
-    if (!limba || !clasa_utilaj || !utilaj || !descriere_utilaj || !status_utilaj || !cost_amortizare || !pret_utilaj || !cantitate || !unitate_masura) {
-      return res.status(400).json({ message: 'Toate câmpurile sunt necesare!' });
+    if (!clasa_utilaj || !utilaj || !unitate_masura) {
+      return res
+        .status(400)
+        .json({ message: "Toate câmpurile obligatorii trebuie completate!" });
     }
 
-    const uploadsDir = path.join(__dirname, '../uploads/Utilaje');
+    const uploadsDir = path.join(__dirname, "../uploads/Utilaje");
+    await fs.mkdir(uploadsDir, { recursive: true });
+
     let photoPath = "uploads/Utilaje/no-image-icon.png";
 
     if (req.file) {
-      const allowedMimeTypes = ['image/jpeg', 'image/png'];
+      const allowedMimeTypes = ["image/jpeg", "image/png"];
       if (!allowedMimeTypes.includes(req.file.mimetype)) {
-        return res.status(400).json({ message: 'Fișierul trebuie să fie imagine (JPG sau PNG).' });
+        return res
+          .status(400)
+          .json({ message: "Fișierul trebuie să fie imagine (JPG sau PNG)." });
       }
 
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
       const fileName = `${uniqueSuffix}-${req.file.originalname}`;
       const finalPath = path.join(uploadsDir, fileName);
 
-      const image = await Jimp.read(req.file.buffer);
-      await image
-        .resize(800, Jimp.AUTO)                       // width = 800px, auto height
-        .quality(req.file.mimetype !== 'image/png' ? 70 : 100)  // JPEG quality; PNG remains lossless
-        .writeAsync(fullPath);   
+      const image = await Jimp.fromBuffer(req.file.buffer);
+      const resizedBuffer = await image
+        .resize({ w: 800 })
+        .getBuffer(req.file.mimetype, {
+          quality: req.file.mimetype === "image/jpeg" ? 70 : undefined,
+        });
 
-      photoPath = path.relative(path.join(__dirname, '../'), finalPath);
+      await fs.writeFile(finalPath, resizedBuffer);
+
+      photoPath = path.relative(path.join(__dirname, "../"), finalPath).replace(/\\/g, "/");
     }
 
+    await conn.beginTransaction();
+
     const sql = `
-      INSERT INTO Utilaje (
-        limba, cod_utilaj, clasa_utilaj, utilaj, utilaj_fr, descriere_utilaj, descriere_utilaj_fr, photoUrl, status_utilaj,
-        cost_amortizare, pret_utilaj, cantitate, unitate_masura, data
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+      INSERT INTO Utilaje_Definition (
+        limba, clasa_utilaj, cod_definitie, utilaj, utilaj_fr,
+        descriere, descriere_fr, photoUrl, unitate_masura,
+        cost_amortizare, pret_utilaj
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
-    const [result] = await global.db.execute(sql, [
-      limba, cod_utilaj, clasa_utilaj, utilaj, utilaj_fr, descriere_utilaj, descriere_utilaj_fr, photoPath,
-      status_utilaj, cost_amortizare, pret_utilaj, cantitate, unitate_masura
+    const [result] = await conn.execute(sql, [
+      limba,
+      clasa_utilaj,
+      cod_definitie,
+      utilaj,
+      utilaj_fr,
+      descriere,
+      descriere_fr,
+      photoPath,
+      unitate_masura,
+      cost_amortizare,
+      pret_utilaj,
     ]);
 
-    res.status(201).json({ message: 'Utilaj adăugat cu succes!', id: result.insertId });
+    const newDefinitionId = result.insertId;
 
+    // 🧬 Dacă ai trimis childs, clonează și `Utilaje` copil
+    if (childs) {
+      const [rows] = await conn.query(
+        `SELECT * FROM Utilaje WHERE definitie_id = ?`,
+        [childs]
+      );
+
+      const oldUploadsPath = path.join(__dirname, "../"); // baza
+
+      for (const row of rows) {
+        let newPhotoPath = row.photoUrl.replace(/\\/g, "/");
+
+        if (newPhotoPath && !newPhotoPath.includes("no-image-icon.png")) {
+          const oldFullPath = path.join(oldUploadsPath, newPhotoPath);
+          const ext = path.extname(oldFullPath);
+          const newFileName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+          const newFullPath = path.join(uploadsDir, newFileName);
+
+          try {
+            await fs.copyFile(oldFullPath, newFullPath);
+            newPhotoPath = path.relative(path.join(__dirname, "../"), newFullPath).replace(/\\/g, "/");
+          } catch (err) {
+            console.warn("❌ Nu am putut clona imaginea utilajului, încerc fallback:", oldFullPath, err.code);
+
+            try {
+              const buffer = await fs.readFile(oldFullPath);
+              await fs.writeFile(newFullPath, buffer);
+              newPhotoPath = path.relative(path.join(__dirname, "../"), newFullPath).replace(/\\/g, "/");
+              console.log(`✅ Imagine copiată cu fallback: ${newPhotoPath}`);
+            } catch (fallbackErr) {
+              console.error("❌ Fallback eșuat la clonarea imaginii:", fallbackErr);
+              newPhotoPath = "uploads/Utilaje/no-image-icon.png";
+            }
+          }
+        }
+
+        await conn.query(
+          `INSERT INTO Utilaje (
+      definitie_id, cod_utilaj, furnizor, descriere, descriere_fr,
+      photoUrl, status_utilaj, cantitate, cost_amortizare, pret_utilaj
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            newDefinitionId,
+            row.cod_utilaj,
+            row.furnizor,
+            row.descriere,
+            row.descriere_fr,
+            newPhotoPath,
+            row.status_utilaj,
+            row.cantitate,
+            row.cost_amortizare,
+            row.pret_utilaj,
+          ]
+        );
+      }
+    }
+
+    await conn.commit();
+    res.status(201).json({
+      message: "Definiție utilaj adăugată cu succes!",
+      id: newDefinitionId,
+    });
   } catch (error) {
-    console.error('Eroare server:', error);
-    res.status(500).json({ message: 'A apărut o eroare internă.' });
+    await conn.rollback();
+    console.error("Eroare server:", error);
+    res.status(500).json({ message: "A apărut o eroare internă." });
+  } finally {
+    conn.release();
   }
 });
 
-router.get('/api/utilaje', async (req, res) => {
+router.post("/api/setUtilaj", upload.single("poza"), async (req, res) => {
+  const conn = await global.db.getConnection();
   try {
-      const { offset = 0, limit = 10, clasa_utilaj  = '', utilaj = '', descriere_utilaj  = '', status_utilaj = '', limba = "" , cod_utilaj = "" } = req.query;
-      const asc_utilaj = req.query.asc_utilaj === "true";
-      const dateOrder = req.query.dateOrder;
+    const {
+      id, // definitie_id
+      cod_utilaj,
+      furnizor,
+      descriere,
+      descriere_fr,
+      cantitate,
+      cost_amortizare,
+      pret_utilaj,
+      status_utilaj,
+    } = req.body;
+    // console.log("Received data:", req.body);
+    // console.log("Received data:", req.body);
 
-
-      // Validate limit and offset to be integers
-      const parsedOffset = parseInt(offset, 10);
-      const parsedLimit = parseInt(limit, 10);
-
-      if (isNaN(parsedOffset) || isNaN(parsedLimit) || parsedOffset < 0 || parsedLimit <= 0) {
-          return res.status(400).json({ message: "Invalid offset or limit values." });
-      }
-
-      // Base query
-      let query = `SELECT * FROM Utilaje`;
-      let queryParams = [];
-      let whereClauses = [];
-
-      // Apply filters dynamically
-      if (clasa_utilaj.trim() !== "") {
-          whereClauses.push(`clasa_utilaj LIKE ?`);
-          queryParams.push(`%${clasa_utilaj}%`);
-      }
-      if (cod_utilaj.trim() !== "") {
-        whereClauses.push(`cod_utilaj LIKE ?`);
-        queryParams.push(`%${cod_utilaj}%`);
+    if (!id || isNaN(id)) {
+      return res.status(400).json({ message: "ID lipsă sau invalid." });
     }
 
-      if (limba.trim() !== "") {
-        whereClauses.push("limba LIKE ?");
-        queryParams.push(`%${limba}%`);
-      }
-
-      if (utilaj.trim() !== "") {
-        whereClauses.push("(utilaj LIKE ? OR utilaj_fr LIKE ?)");
-        queryParams.push(`%${utilaj}%`, `%${utilaj}%`);
-      }
-
-      if (descriere_utilaj.trim() !== "") {
-        whereClauses.push("(descriere_utilaj LIKE ? OR descriere_utilaj_fr LIKE ?)");
-        queryParams.push(`%${descriere_utilaj}%`, `%${descriere_utilaj}%`);
-      }
-
-      if (status_utilaj.trim() !== "") {
-        whereClauses.push(`status_utilaj LIKE ?`);
-        queryParams.push(`%${status_utilaj}%`);
-    }
-
-      // If filters exist, add them to the query
-      if (whereClauses.length > 0) {
-          query += ` WHERE ${whereClauses.join(' AND ')}`;
-      }
-
-      if (dateOrder === "true") {
-        query += " ORDER BY data ASC";
-      } else if (dateOrder === "false") {
-        query += " ORDER BY data DESC";
-      } else if(asc_utilaj == true){
-        query += ` ORDER BY utilaj ASC LIMIT ? OFFSET ?`;
-      }
-      else query += ` LIMIT ? OFFSET ?`;
-      queryParams.push(parsedLimit, parsedOffset * parsedLimit);
-
-      // Execute the query with filters and pagination
-      const [rows] = await global.db.execute(query, queryParams);
-
-      // Query to count total items without pagination
-      let countQuery = `SELECT COUNT(*) as total FROM Utilaje`;
-      if (whereClauses.length > 0) {
-          countQuery += ` WHERE ${whereClauses.join(' AND ')}`;
-      }
-
-      // Remove pagination params for count query
-      const countQueryParams = queryParams.slice(0, queryParams.length - 2);
-
-      const [countResult] = await global.db.execute(countQuery, countQueryParams);
-      const totalItems = countResult[0].total;
-
-      // Return paginated data with metadata
-      res.send({
-          data: rows,
-          totalItems,
-          currentOffset: parsedOffset,
-          limit: parsedLimit,
+    if (!cod_utilaj || !furnizor || !status_utilaj) {
+      return res.status(400).json({
+        message: "cod_utilaj, furnizor și status_utilaj sunt obligatorii.",
       });
+    }
+
+    const uploadsDir = path.join(__dirname, "../uploads/Utilaje");
+    await fs.mkdir(uploadsDir, { recursive: true });
+
+    let photoPath = "uploads/Utilaje/no-image-icon.png";
+
+    if (req.file) {
+      const allowedMimeTypes = ["image/jpeg", "image/png"];
+      if (!allowedMimeTypes.includes(req.file.mimetype)) {
+        return res
+          .status(400)
+          .json({ message: "Imaginea trebuie să fie JPG sau PNG." });
+      }
+
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      const fileName = `${uniqueSuffix}-${req.file.originalname}`;
+      const finalPath = path.join(uploadsDir, fileName);
+
+      const image = await Jimp.fromBuffer(req.file.buffer);
+      const resizedBuffer = await image
+        .resize({ w: 800 })
+        .getBuffer(req.file.mimetype, {
+          quality: req.file.mimetype === "image/jpeg" ? 70 : undefined,
+        });
+
+      await fs.writeFile(finalPath, resizedBuffer);
+      photoPath = path.relative(path.join(__dirname, "../"), finalPath).replace(/\\/g, "/");
+    } else {
+      // 🧠 Nu s-a trimis imagine → o luăm de la definiția părinte
+      const [parentRows] = await conn.execute(
+        `SELECT photoUrl FROM Utilaje_Definition WHERE id = ? LIMIT 1`,
+        [id]
+      );
+
+      const parentPhoto = parentRows[0]?.photoUrl;
+      if (parentPhoto && !parentPhoto.includes("no-image-icon.png")) {
+        const normalizedPhoto = parentPhoto.replace(/\\/g, "/");
+        const oldPath = path.join(__dirname, "../", normalizedPhoto);
+        const ext = path.extname(normalizedPhoto);
+        const newFileName = `${Date.now()}-${Math.floor(Math.random() * 1e6)}${ext}`;
+        const newRelPath = path.join("uploads", "Utilaje", newFileName);
+        const newFullPath = path.join(__dirname, "../", newRelPath);
+
+        try {
+          await fs.copyFile(oldPath, newFullPath);
+          photoPath = newRelPath.replace(/\\/g, "/");
+        } catch (err) {
+          console.warn("❌ copyFile failed, fallback la readFile+writeFile:", err.code);
+          try {
+            const buffer = await fs.readFile(oldPath);
+            await fs.writeFile(newFullPath, buffer);
+            photoPath = newRelPath.replace(/\\/g, "/");
+            console.log("✅ Fallback copy success!");
+          } catch (fallbackErr) {
+            console.error("❌ Fallback failed:", fallbackErr);
+            photoPath = "uploads/Utilaje/no-image-icon.png";
+          }
+        }
+      }
+    }
+
+    await conn.beginTransaction();
+
+    const insertQuery = `
+      INSERT INTO Utilaje (
+        definitie_id, cod_utilaj, furnizor,
+        descriere, descriere_fr, photoUrl,
+        status_utilaj, cantitate,
+        cost_amortizare, pret_utilaj
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    const [result] = await conn.execute(insertQuery, [
+      id,
+      cod_utilaj,
+      furnizor,
+      descriere || null,
+      descriere_fr || null,
+      photoPath,
+      status_utilaj,
+      cantitate || 0,
+      cost_amortizare || 0,
+      pret_utilaj || 0,
+    ]);
+
+    await conn.commit();
+    res.status(201).json({
+      message: "Utilaj instanță adăugat cu succes!",
+      id: result.insertId,
+      photoUrl: photoPath,
+    });
+  } catch (error) {
+    await conn.rollback();
+    console.error("Eroare server:", error);
+    res.status(500).json({ message: "Eroare internă la adăugare utilaj." });
+  } finally {
+    conn.release();
+  }
+});
+
+router.get("/api/utilajeDef", async (req, res) => {
+  try {
+    const {
+      offset = 0,
+      limit = 10,
+      cod = "",
+      utilaj = "",
+      descriere = "",
+      limba = "",
+      clasa_utilaj = "",
+    } = req.query;
+
+    const asc_utilaj = req.query.asc_utilaj === "true";
+    const dateOrder = req.query.dateOrder;
+
+    const parsedOffset = parseInt(offset, 10);
+    const parsedLimit = parseInt(limit, 10);
+
+    if (
+      isNaN(parsedOffset) ||
+      isNaN(parsedLimit) ||
+      parsedOffset < 0 ||
+      parsedLimit <= 0
+    ) {
+      return res
+        .status(400)
+        .json({ message: "Invalid offset or limit values." });
+    }
+
+    // Base query
+    let query = `SELECT * FROM Utilaje_Definition`;
+    let queryParams = [];
+    let whereClauses = [];
+
+    // Dynamic filters
+    if (limba.trim() !== "") {
+      whereClauses.push("limba LIKE ?");
+      queryParams.push(`%${limba}%`);
+    }
+
+    if (cod.trim() !== "") {
+      whereClauses.push(`cod_definitie LIKE ?`);
+      queryParams.push(`%${cod}%`);
+    }
+
+    if (clasa_utilaj.trim() !== "") {
+      whereClauses.push(`clasa_utilaj LIKE ?`);
+      queryParams.push(`%${clasa_utilaj}%`);
+    }
+
+    if (utilaj.trim() !== "") {
+      whereClauses.push("(utilaj LIKE ? OR utilaj_fr LIKE ?)");
+      queryParams.push(`%${utilaj}%`, `%${utilaj}%`);
+    }
+
+    if (descriere.trim() !== "") {
+      whereClauses.push("(descriere LIKE ? OR descriere_fr LIKE ?)");
+      queryParams.push(`%${descriere}%`, `%${descriere}%`);
+    }
+
+    if (whereClauses.length > 0) {
+      query += ` WHERE ${whereClauses.join(" AND ")}`;
+    }
+
+    if (dateOrder === "true") {
+      query += " ORDER BY data ASC";
+    } else if (dateOrder === "false") {
+      query += " ORDER BY data DESC";
+    } else if (asc_utilaj === true) {
+      query += " ORDER BY utilaj ASC LIMIT ? OFFSET ?";
+    } else {
+      query += " LIMIT ? OFFSET ?";
+    }
+
+    queryParams.push(parsedLimit, parsedOffset * parsedLimit);
+
+    const [rows] = await global.db.query(query, queryParams);
+
+    // Count total
+    let countQuery = `SELECT COUNT(*) as total FROM Utilaje_Definition`;
+    if (whereClauses.length > 0) {
+      countQuery += ` WHERE ${whereClauses.join(" AND ")}`;
+    }
+
+    const countQueryParams = queryParams.slice(0, -2);
+    const [countResult] = await global.db.query(countQuery, countQueryParams);
+    const totalItems = countResult[0].total;
+
+    res.send({
+      data: rows,
+      totalItems,
+      currentOffset: parsedOffset,
+      limit: parsedLimit,
+    });
   } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Database error' });
+    console.error(err);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+router.get("/api/getSpecificUtilaj/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const query = `
+      SELECT * FROM Utilaje
+      WHERE definitie_id = ?
+    `;
+
+    const [rows] = await global.db.query(query, [id]);
+
+    res.json(rows);
+  } catch (err) {
+    console.error("Error fetching materiale children:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 
 router.get('/api/utilajeLight', async (req, res) => {
   try {
-      const {clasa_utilaj  = '', utilaj = '', descriere_utilaj  = '', status_utilaj = '', limba = "" , cod_utilaj = "" } = req.query;
+    const { clasa_utilaj = '', utilaj = '', descriere = '', limba = "", cod_definitie = "" } = req.query;
 
-      // Base query
-      let query = `SELECT * FROM Utilaje`;
-      let queryParams = [];
-      let whereClauses = [];
+    // Base query
+    let query = `SELECT * FROM Utilaje_Definition`;
+    let queryParams = [];
+    let whereClauses = [];
 
-      // Apply filters dynamically
-      if (clasa_utilaj.trim() !== "") {
-          whereClauses.push(`clasa_utilaj LIKE ?`);
-          queryParams.push(`%${clasa_utilaj}%`);
-      }
-
-      if (limba.trim() !== "") {
-        whereClauses.push(`limba LIKE ?`);
-        queryParams.push(`%${limba}%`);
-      }
-
-      if (utilaj.trim() !== "") {
-        whereClauses.push("(utilaj LIKE ? OR utilaj_fr LIKE ?)");
-        queryParams.push(`%${utilaj}%`, `%${utilaj}%`);
-      }
-
-      if (descriere_utilaj.trim() !== "") {
-        whereClauses.push("(descriere_utilaj LIKE ? OR descriere_utilaj_fr LIKE ?)");
-        queryParams.push(`%${descriere_utilaj}%`, `%${descriere_utilaj}%`);
-      }
-
-      if (status_utilaj.trim() !== "") {
-        whereClauses.push(`status_utilaj LIKE ?`);
-        queryParams.push(`%${status_utilaj}%`);
+    // Apply filters dynamically
+    if (cod_definitie.trim() !== "") {
+      whereClauses.push(`cod_definitie LIKE ?`);
+      queryParams.push(`%${cod_definitie}%`);
     }
 
-      // If filters exist, add them to the query
-      if (whereClauses.length > 0) {
-          query += ` WHERE ${whereClauses.join(' AND ')}`;
-      }
+    if (clasa_utilaj.trim() !== "") {
+      whereClauses.push(`clasa_utilaj LIKE ?`);
+      queryParams.push(`%${clasa_utilaj}%`);
+    }
 
-      query += ` ORDER BY utilaj ASC`;
+    if (limba.trim() !== "") {
+      whereClauses.push(`limba LIKE ?`);
+      queryParams.push(`%${limba}%`);
+    }
 
-      // Execute the query with filters and pagination
-      const [rows] = await global.db.execute(query, queryParams);
+    if (utilaj.trim() !== "") {
+      whereClauses.push("(utilaj LIKE ? OR utilaj_fr LIKE ?)");
+      queryParams.push(`%${utilaj}%`, `%${utilaj}%`);
+    }
 
-      res.send({
-          data: rows,
-      });
+    if (descriere.trim() !== "") {
+      whereClauses.push("(descriere LIKE ? OR descriere_fr LIKE ?)");
+      queryParams.push(`%${descriere}%`, `%${descriere}%`);
+    }
+
+
+    // If filters exist, add them to the query
+    if (whereClauses.length > 0) {
+      query += ` WHERE ${whereClauses.join(' AND ')}`;
+    }
+
+    query += ` ORDER BY utilaj ASC`;
+
+    // Execute the query with filters and pagination
+    const [rows] = await global.db.query(query, queryParams);
+
+    res.send({
+      data: rows,
+    });
   } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Database error' });
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+router.delete("/api/deleteUtilajDef/:id", async (req, res) => {
+  const { id } = req.params;
+
+  const conn = await global.db.getConnection();
+
+  try {
+    if (!id || isNaN(id)) {
+      return res.status(400).json({ message: "ID invalid sau lipsă." });
+    }
+
+    await conn.beginTransaction(); // 🔐 START
+
+    // 🧽 1. Pozele din copii
+    const [copiiRows] = await conn.execute(
+      `SELECT photoUrl FROM Utilaje WHERE definitie_id = ?`,
+      [id]
+    );
+
+    // 🧽 2. Poza din definiție
+    const [defRows] = await conn.execute(
+      `SELECT photoUrl FROM Utilaje_Definition WHERE id = ?`,
+      [id]
+    );
+
+    const toatePozele = [
+      ...copiiRows.map((r) => r.photoUrl),
+      ...(defRows[0] ? [defRows[0].photoUrl] : []),
+    ];
+
+    // 🧨 3. Șterge instanțele
+    await conn.execute(`DELETE FROM Utilaje WHERE definitie_id = ?`, [id]);
+
+    // 🧨 4. Șterge definiția
+    const [deleteDef] = await conn.execute(
+      `DELETE FROM Utilaje_Definition WHERE id = ?`,
+      [id]
+    );
+
+    if (deleteDef.affectedRows === 0) {
+      await conn.rollback();
+      return res
+        .status(404)
+        .json({ message: "Definiția nu a fost găsită sau deja ștearsă." });
+    }
+
+    await conn.commit(); // ✅ finalizează DB
+
+    // 🧹 5. Șterge pozele doar după commit
+    for (const imgPath of toatePozele) {
+      if (imgPath && !imgPath.includes("no-image-icon")) {
+        const absolutePath = path.join(__dirname, "..", imgPath);
+        try {
+          await fs.unlink(absolutePath);
+          console.log("Șters:", imgPath);
+        } catch (err) {
+          if (err.code !== "ENOENT") {
+            console.error("Eroare la ștergere poză:", err);
+          }
+        }
+      }
+    }
+
+    res.status(200).json({
+      message:
+        "Definiția și toate instanțele de utilaje au fost șterse cu succes!",
+    });
+  } catch (err) {
+    console.error("❌ Eroare la ștergere completă:", err);
+    await conn.rollback(); // ⛔ dacă ceva crapă
+    res.status(500).json({ message: "Eroare internă la ștergere." });
+  } finally {
+    conn.release(); // 🧯 închide conexiunea
   }
 });
 
 
-
-const fs = require("fs");
-
-router.delete('/api/utilaje/:id', async (req, res) => {
-    const { id } = req.params; // Get the ID from the URL parameters
-
-    try {
-        if (!id || isNaN(id)) {
-            return res.status(400).json({ message: "Invalid or missing ID." });
-        }
-
-        // Step 1: Retrieve the photo filename from the database
-        const getFileQuery = `SELECT photoUrl FROM Utilaje WHERE id = ?`;
-        const [rows] = await global.db.execute(getFileQuery, [id]);
-
-        if (rows.length === 0) {
-            return res.status(404).json({ message: "Record not found." });
-        }
-
-        const imagePath = rows[0].photoUrl; // Assuming your column name is `image_path`
-
-        // Step 2: Delete the file from the server
-        if (imagePath) {
-            const filePath = path.join(__dirname, "..", "", imagePath); // Adjust the path if necessary
-            if(filePath.indexOf("no-image-icon") == -1){
-              fs.unlink(filePath, (err) => {
-                  if (err) {
-                      console.error("Error deleting image:", err);
-                  } else {
-                      console.log("Image deleted successfully:", imagePath);
-                  }
-              });
-            }
-        }
-
-        // Step 3: Delete the record from the database
-        const deleteQuery = `DELETE FROM Utilaje WHERE id = ?`;
-        const [result] = await global.db.execute(deleteQuery, [id]);
-
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ message: "Record not found." });
-        }
-
-        res.status(200).json({ message: "Data and associated image deleted successfully!" });
-    } catch (err) {
-        console.error("Failed to delete data:", err);
-        res.status(500).json({ message: "Database error." });
-    }
-});
-
-
-router.put('/api/utilaje/:id', upload.single('poza'), async (req, res) => {
+router.delete("/api/utilaj/:id", async (req, res) => {
   const { id } = req.params;
-  const {
-    limba, cod_utilaj, clasa_utilaj, utilaj, utilaj_fr, descriere_utilaj, descriere_utilaj_fr, status_utilaj,
-    cost_amortizare, pret_utilaj, unitate_masura, cantitate
-  } = req.body;
-  console.log(   limba, cod_utilaj, clasa_utilaj, utilaj, utilaj_fr, descriere_utilaj, descriere_utilaj_fr, status_utilaj,
-    cost_amortizare, pret_utilaj, unitate_masura, cantitate)
+
   try {
     if (!id || isNaN(id)) {
       return res.status(400).json({ message: "Invalid or missing ID." });
     }
 
-    const [rows] = await global.db.execute(`SELECT photoUrl FROM Utilaje WHERE id = ?`, [id]);
+    // 1. Găsim imaginea asociată
+    const [rows] = await global.db.execute(
+      `SELECT photoUrl FROM Utilaje WHERE id = ?`,
+      [id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Utilajul nu a fost găsit." });
+    }
+
+    const imagePath = rows[0].photoUrl;
+
+    // 2. Ștergem imaginea dacă nu e cea implicită
+    if (imagePath && !imagePath.includes("no-image-icon")) {
+      const absolutePath = path.join(__dirname, "..", imagePath);
+
+      try {
+        await fs.unlink(absolutePath);
+        console.log("Imagine ștearsă:", imagePath);
+      } catch (err) {
+        if (err.code !== "ENOENT") {
+          console.error("Eroare la ștergerea imaginii:", err);
+        } else {
+          console.warn("Imagine deja inexistentă:", absolutePath);
+        }
+      }
+    }
+
+    // 3. Ștergem utilajul din DB
+    const [result] = await global.db.execute(
+      `DELETE FROM Utilaje WHERE id = ?`,
+      [id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res
+        .status(404)
+        .json({ message: "Utilaj inexistent sau deja șters." });
+    }
+
+    res.status(200).json({
+      message: "Utilajul și imaginea au fost șterse cu succes!",
+    });
+  } catch (err) {
+    console.error("Eroare la ștergere:", err);
+    res.status(500).json({ message: "Eroare internă de server." });
+  }
+});
+
+router.put(
+  "/api/editUtilajDef/:id",
+  upload.single("poza"),
+  async (req, res) => {
+    const { id } = req.params;
+    const {
+      limba,
+      clasa_utilaj,
+      cod_definitie,
+      utilaj,
+      utilaj_fr,
+      descriere,
+      descriere_fr,
+      unitate_masura,
+      cost_amortizare,
+      pret_utilaj,
+    } = req.body;
+
+    try {
+      if (!id || isNaN(id)) {
+        return res.status(400).json({ message: "ID invalid sau lipsă." });
+      }
+
+      const [rows] = await global.db.execute(
+        `SELECT photoUrl FROM Utilaje_Definition WHERE id = ?`,
+        [id]
+      );
+
+      if (rows.length === 0) {
+        return res
+          .status(404)
+          .json({ message: "Definiția utilajului nu a fost găsită." });
+      }
+
+      let oldPhotoPath = rows[0].photoUrl;
+      let newPhotoPath = oldPhotoPath;
+
+      // Dacă avem imagine nouă
+      if (req.file) {
+        const allowedMimeTypes = ["image/jpeg", "image/png"];
+        if (!allowedMimeTypes.includes(req.file.mimetype)) {
+          return res
+            .status(400)
+            .json({ message: "Imaginea trebuie să fie JPG sau PNG." });
+        }
+
+        if (oldPhotoPath && !oldPhotoPath.includes("no-image-icon")) {
+          const oldFilePath = path.join(__dirname, "..", oldPhotoPath);
+          try {
+            await fs.unlink(oldFilePath);
+          } catch (err) {
+            if (err.code !== "ENOENT")
+              console.error("Eroare la ștergerea imaginii vechi:", err);
+          }
+        }
+
+        const uploadsDir = path.join(__dirname, "../uploads/Utilaje");
+        await fs.mkdir(uploadsDir, { recursive: true });
+
+        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+        const fileName = `${uniqueSuffix}-${req.file.originalname}`;
+        const finalPath = path.join(uploadsDir, fileName);
+
+        const image = await Jimp.fromBuffer(req.file.buffer);
+        const resizedBuffer = await image
+          .resize({ w: 800 })
+          .getBuffer(req.file.mimetype, {
+            quality: req.file.mimetype === "image/jpeg" ? 70 : undefined,
+          });
+
+        await fs.writeFile(finalPath, resizedBuffer);
+
+        newPhotoPath = path.relative(path.join(__dirname, "../"), finalPath).replace(/\\/g, "/");
+      }
+
+      const updateQuery = `
+        UPDATE Utilaje_Definition SET
+          limba = ?, clasa_utilaj = ?, cod_definitie = ?, utilaj = ?, utilaj_fr = ?,
+          descriere = ?, descriere_fr = ?, photoUrl = ?, unitate_masura = ?,
+          cost_amortizare = ?, pret_utilaj = ?, data = NOW()
+        WHERE id = ?
+      `;
+
+      const [result] = await global.db.execute(updateQuery, [
+        limba,
+        clasa_utilaj,
+        cod_definitie,
+        utilaj,
+        utilaj_fr,
+        descriere,
+        descriere_fr,
+        newPhotoPath,
+        unitate_masura,
+        cost_amortizare,
+        pret_utilaj,
+        id,
+      ]);
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({
+          message: "Fără modificări sau utilaj inexistent.",
+        });
+      }
+
+      res
+        .status(200)
+        .json({ message: "Definiție utilaj actualizată cu succes!" });
+    } catch (error) {
+      console.error("Eroare server:", error);
+      res.status(500).json({ message: "Eroare internă la actualizare." });
+    }
+  }
+);
+
+router.put("/api/editUtilaj", upload.single("poza"), async (req, res) => {
+  const {
+    id,
+    definitie_id,
+    cod_utilaj,
+    furnizor,
+    descriere,
+    descriere_fr,
+    cantitate,
+    cost_amortizare,
+    pret_utilaj,
+    status_utilaj,
+  } = req.body;
+  console.log("Received data:", req.body);
+  try {
+    if (!id || isNaN(id)) {
+      return res.status(400).json({ message: "ID invalid sau lipsă." });
+    }
+
+    const [rows] = await global.db.execute(
+      `SELECT photoUrl FROM Utilaje WHERE id = ?`,
+      [id]
+    );
+
     if (rows.length === 0) {
       return res.status(404).json({ message: "Utilajul nu a fost găsit." });
     }
@@ -285,57 +736,77 @@ router.put('/api/utilaje/:id', upload.single('poza'), async (req, res) => {
     let newPhotoPath = oldPhotoPath;
 
     if (req.file) {
-      const allowedMimeTypes = ['image/jpeg', 'image/png'];
+      const allowedMimeTypes = ["image/jpeg", "image/png"];
       if (!allowedMimeTypes.includes(req.file.mimetype)) {
-        return res.status(400).json({ message: 'Fișierul trebuie să fie imagine (JPG sau PNG).' });
-      }
-      if (oldPhotoPath && !oldPhotoPath.includes("no-image-icon")) {
-        const oldFilePath = path.join(__dirname, "..", oldPhotoPath);
-        fs.unlink(oldFilePath, (err) => {
-          if (err) console.error("Eroare la ștergerea imaginii vechi:", err);
-        });
+        return res
+          .status(400)
+          .json({ message: "Imaginea trebuie să fie JPG sau PNG." });
       }
 
-      const uploadsDir = path.join(__dirname, '../uploads/Utilaje');
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+      if (oldPhotoPath && !oldPhotoPath.includes("no-image-icon")) {
+        const oldFilePath = path.join(__dirname, "..", oldPhotoPath);
+        try {
+          await fs.unlink(oldFilePath);
+        } catch (err) {
+          if (err.code !== "ENOENT")
+            console.error("Eroare la ștergerea imaginii vechi:", err);
+        }
+      }
+
+      const uploadsDir = path.join(__dirname, "../uploads/Utilaje");
+      await fs.mkdir(uploadsDir, { recursive: true });
+
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
       const fileName = `${uniqueSuffix}-${req.file.originalname}`;
       const finalPath = path.join(uploadsDir, fileName);
 
-       const image = await Jimp.read(req.file.buffer);
-       await image
-         .resize(800, Jimp.AUTO)                       // width = 800px, auto height
-         .quality(req.file.mimetype !== 'image/png' ? 70 : 100)  // JPEG quality; PNG remains lossless
-         .writeAsync(fullPath);   
+      const image = await Jimp.fromBuffer(req.file.buffer);
+      const resizedBuffer = await image
+        .resize({ w: 800 })
+        .getBuffer(req.file.mimetype, {
+          quality: req.file.mimetype === "image/jpeg" ? 70 : undefined,
+        });
 
-      newPhotoPath = path.relative(path.join(__dirname, '../'), finalPath);
+      await fs.writeFile(finalPath, resizedBuffer);
+      newPhotoPath = path.relative(path.join(__dirname, "../"), finalPath).replace(/\\/g, "/");
     }
 
     const updateQuery = `
-      UPDATE Utilaje 
-      SET limba = ?, cod_utilaj = ?, clasa_utilaj = ?, utilaj = ?, utilaj_fr = ?, descriere_utilaj = ?, descriere_utilaj_fr = ?, photoUrl = ?,
-          status_utilaj = ?, cost_amortizare = ?, pret_utilaj = ?, unitate_masura = ?, cantitate = ? , data = NOW()
-      WHERE id = ?
-    `;
+        UPDATE Utilaje SET
+          definitie_id = ?, cod_utilaj = ?, furnizor = ?, descriere = ?, descriere_fr = ?,
+          cantitate = ?, cost_amortizare = ?, pret_utilaj = ?, status_utilaj = ?,
+          photoUrl = ?, data = NOW()
+        WHERE id = ?
+      `;
 
     const [result] = await global.db.execute(updateQuery, [
-      limba, cod_utilaj, clasa_utilaj, utilaj, utilaj_fr, descriere_utilaj, descriere_utilaj_fr, newPhotoPath,
-      status_utilaj, cost_amortizare, pret_utilaj, unitate_masura, cantitate, id
+      definitie_id,
+      cod_utilaj,
+      furnizor,
+      descriere,
+      descriere_fr,
+      cantitate,
+      cost_amortizare,
+      pret_utilaj,
+      status_utilaj,
+      newPhotoPath,
+      id,
     ]);
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Fără modificări sau utilaj inexistent." });
+      return res
+        .status(404)
+        .json({ message: "Utilajul nu a fost actualizat." });
     }
 
-    res.status(200).json({ message: "Utilaj actualizat cu succes!" });
-
+    res.status(200).json({
+      message: "Utilaj actualizat cu succes!",
+      photoUrl: newPhotoPath,
+    });
   } catch (error) {
-    console.error("Eroare server:", error);
-    res.status(500).json({ message: "A apărut o eroare internă." });
+    console.error("Eroare la update Utilaj:", error);
+    res.status(500).json({ message: "Eroare internă la actualizare." });
   }
 });
-
-
-
-
 
 module.exports = router;

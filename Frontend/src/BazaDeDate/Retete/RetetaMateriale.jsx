@@ -22,7 +22,7 @@ export default function RetetaMateriale({
     const [materialeFilters, setMaterialeFilters] = useState({
         limba: "",
         clasa: "",
-        cod: '',
+        cod_definitie: '',
         denumire: '',
         tip_material: "",
     });
@@ -55,11 +55,11 @@ export default function RetetaMateriale({
 
     const fetchManopere = async () => {
         try {
-            if (materialeFilters.cod.trim().length >= 3 || materialeFilters.denumire.trim().length >= 3 || materialeFilters.clasa.trim().length >= 3) {
+            if (materialeFilters.cod_definitie.trim().length >= 3 || materialeFilters.denumire.trim().length >= 3 || materialeFilters.clasa.trim().length >= 3) {
                 const response = await api.get('/Materiale/api/materialeLight', {
                     params: {
                         limba: materialeFilters.limba,
-                        cod: materialeFilters.cod, // Pass cod as a query parameter
+                        cod_definitie: materialeFilters.cod_definitie, // Pass cod_definitie as a query parameter
                         clasa: materialeFilters.clasa,
                         denumire: materialeFilters.denumire,
                         tip_material: materialeFilters.tip_material
@@ -74,7 +74,7 @@ export default function RetetaMateriale({
 
 
     const translateAll = () => {
-        if(!materiale || !materiale.length) return;
+        if (!materiale || !materiale.length) return;
         // If there are any rows that are selected, iterate through and update the `selectedRetetaIds`
         setSelectedMaterialeIds((prev) => {
             const updatedSelectedIds = materiale.map((material) => material.id); // All `retete` ids
@@ -123,8 +123,16 @@ export default function RetetaMateriale({
     //
     //
     const columns = useMemo(() => [
-        { accessorKey: "limba", header: "Limba", size: 20 },
-        { accessorKey: "tip_material", header: "Tip", size: 40 },
+        {
+            accessorKey: "limba",
+            header: "Limba",
+            cell: ({ getValue, row }) => (
+                <div className='flex font-semibold items-center justify-center'>
+                    {getValue() || "RO&FR"}
+                </div>
+            ),
+            size: 20
+        }, { accessorKey: "tip_material", header: "Tip", size: 40 },
         {
             accessorKey: "photoUrl",
             header: "Poza",
@@ -141,26 +149,26 @@ export default function RetetaMateriale({
             size: 70
         },
         { accessorKey: "clasa_material", header: "Clasa", size: 50 },
-        { accessorKey: "cod_produs", header: "Cod", size: 50 },
+        { accessorKey: "cod_definitie", header: "Cod", size: 50 },
         {
-            accessorKey: "denumire_produs",
+            accessorKey: "denumire",
             header: "Denumire",
             cell: ({ getValue, row }) => (
                 selectedMaterialeIds.includes(row.original.id) ?
                     <div className=''>
-                        {row.original.denumire_produs_fr || "..."}
+                        {row.original.denumire_fr || "..."}
                     </div>
                     :
                     getValue()
             ),
         },
         {
-            accessorKey: "descriere_produs",
+            accessorKey: "descriere",
             header: "Descriere",
             cell: ({ getValue, row }) => (
                 selectedMaterialeIds.includes(row.original.id) ?
                     <div className=''>
-                        {row.original.descriere_produs_fr || "..."}
+                        {row.original.descriere_fr || "..."}
                     </div>
                     :
                     getValue()
@@ -247,11 +255,9 @@ export default function RetetaMateriale({
                         >
                             <option value="">Toate</option>
                             <option value="De Bază">De Bază</option>
-                            <option value="De Finisaj">De Finisaj</option>
                             <option value="Auxiliar">Auxiliare</option>
                             <option value="Consumabil">Consumabile</option>
                             <option value="Basique">Basique</option>
-                            <option value="Finition">Finition</option>
                             <option value="Soutien">Soutien</option>
                             <option value="Fournitures">Fournitures</option>
                         </select>
@@ -268,46 +274,101 @@ export default function RetetaMateriale({
                             onChange={handleChangeFilterMateriale}
                             className=" px-2 outline-none text-center py-2  w-full  rounded-lg shadow-sm"
                         >
-                            <option value="">Toate</option>
+                            <option value="">Toate clasele</option>
+                            <option value="Organizare de șantier">Organizare de șantier</option>
                             <option value="Regie">Regie</option>
                             <option value="Dezafectare">Dezafectare</option>
-                            <option value="Amenajări interioare">Amenajări interioare</option>
-                            <option value="Electrice">Electrice</option>
-                            <option value="Sanitare">Sanitare</option>
-                            <option value="Termice">Termice</option>
-                            <option value="Climatizare Ventilație">Climatizare Ventilație</option>
-                            <option value="Amenajări exterioare">Amenajări exterioare</option>
-                            <option value="Tâmplărie">Tâmplărie</option>
-                            <option value="Mobilă">Mobilă</option>
-                            <option value="Confecții Metalice">Confecții Metalice</option>
-                            <option value="Prelucrări Ceramice/Piatră Naturală">Prelucrări Ceramice/Piatră Naturală</option>
-                            <option value="Ofertare/Devizare">Ofertare/Devizare</option>
-                            <option value="Management de proiect">Management de proiect</option>
-                            <option value="Reparații">Reparații</option>
-                            <option value="Gros œuvre - maçonnerie">Gros œuvre - maçonnerie</option>
-                            <option value="Plâtrerie (plaque de plâtre)">Plâtrerie (plaque de plâtre)</option>
-                            <option value="Vrd">Vrd</option>
-                            <option value="Espace vert - aménagement extérieur">Espace vert - aménagement extérieur</option>
-                            <option value="Charpente - bardage et couverture métallique">Charpente - bardage et couverture métallique</option>
-                            <option value="Couverture - zinguerie">Couverture - zinguerie</option>
-                            <option value="Étanchéité">Étanchéité</option>
-                            <option value="Plomberie - sanitaire">Plomberie - sanitaire</option>
+                            <option value="Pregătirea terenului prin terasamente (săpături, nivelări, umpluturi)">
+                                Pregătirea terenului prin terasamente (săpături, nivelări, umpluturi)
+                            </option>
+                            <option value="Fundații">Fundații</option>
+                            <option value="Subsol (Soubassement)">Subsol (Soubassement)</option>
+                            <option value="Pereți portanți">Pereți portanți</option>
+                            <option value="Planșee">Planșee</option>
+                            <option value="Șarpantă">Șarpantă</option>
+                            <option value="Acoperiș">Acoperiș</option>
+                            <option value="Tâmplărie exterioară">Tâmplărie exterioară</option>
+                            <option value="Racordarea clădirilor la rețelele de alimentare cu apă, electricitate, gaz, telefonie, internet">
+                                Racordarea clădirilor la rețelele de alimentare cu apă, electricitate, gaz, telefonie, internet
+                            </option>
+                            <option value="Realizarea rețelelor de canalizare și evacuare a apelor uzate și pluviale">
+                                Realizarea rețelelor de canalizare și evacuare a apelor uzate și pluviale
+                            </option>
+                            <option value="Amenajare spații verzi - peisagistică">Amenajare spații verzi - peisagistică</option>
+                            <option value="Lucrări de șarpantă - bardaj și acoperiș">Lucrări de șarpantă - bardaj și acoperiș</option>
+                            <option value="Lucrări de zincărie - Acoperiș">Lucrări de zincărie - Acoperiș</option>
+                            <option value="Lucrări de etanșietate - izolații: hidro">Lucrări de etanșietate - izolații: hidro</option>
+                            <option value="Finisaje interioare - Lucrări de gips carton">Finisaje interioare - Lucrări de gips carton</option>
+                            <option value="Instalații sanitare">Instalații sanitare</option>
+                            <option value="Instalații termice">Instalații termice</option>
+                            <option value="Instalații de ventilație">Instalații de ventilație</option>
+                            <option value="Lucrări de climatizare">Lucrări de climatizare</option>
+                            <option value="Instalații electrice">Instalații electrice</option>
+                            <option value="Lucrări de șarpantă și structuri verticale de lemn">
+                                Lucrări de șarpantă și structuri verticale de lemn
+                            </option>
+                            <option value="Lucrări de tâmplărie exterioară">Lucrări de tâmplărie exterioară</option>
+                            <option value="Lucrări de tâmplărie interioară">Lucrări de tâmplărie interioară</option>
+                            <option value="Confecții metalice">Confecții metalice</option>
+                            <option value="Lucrări de tâmplărie: Storuri, obloane, placări exterioare">
+                                Lucrări de tâmplărie: Storuri, obloane, placări exterioare
+                            </option>
+                            <option value="Finisaje interioare - lucrări de ipsoserie și zugrăveli">
+                                Finisaje interioare - lucrări de ipsoserie și zugrăveli
+                            </option>
+                            <option value="Finisaje exterioare - fațade">Finisaje exterioare - fațade</option>
+                            <option value="Confecționarea și montajul elementelor de sticlă/oglinzi">
+                                Confecționarea și montajul elementelor de sticlă/oglinzi
+                            </option>
+                            <option value="Lucrări de placări ceramice/piatră naturală">
+                                Lucrări de placări ceramice/piatră naturală
+                            </option>
+                            <option value="Lucrări de finisare a pardoselilor">Lucrări de finisare a pardoselilor</option>
+                            <option value="Dezafectarea azbestului">Dezafectarea azbestului</option>
+                            <option value="Lucrări de renovare și reabilitări energetice">
+                                Lucrări de renovare și reabilitări energetice
+                            </option>
+                            <option value="Conservare">Conservare</option>
+                            <option value="Reparații capitale">Reparații capitale</option>
+                            <option value="Consolidări">Consolidări</option>
+                            <option value="-">-----------------------------------------------------------------</option>
+                            <option value="Ouvrages communs TCE">Ouvrages communs TCE</option>
+                            <option value="Terrassement">Terrassement</option>
+                            <option value="Fondations">Fondations</option>
+                            <option value="Soubassement">Soubassement</option>
+                            <option value="Murs porteurs">Murs porteurs</option>
+                            <option value="Planchers">Planchers</option>
+                            <option value="Charpente">Charpente</option>
+                            <option value="Couverture">Couverture</option>
+                            <option value="Menuiseries extérieures">Menuiseries extérieures</option>
+                            <option value="Voies d’accès pour voitures ou piétonnes">Voies d’accès pour voitures ou piétonnes</option>
+                            <option value="Raccordements aux réseaux/utilités">Raccordements aux réseaux/utilités</option>
+                            <option value="Raccordements au réseau d’assainissement et aux eaux pluviales">Raccordements au réseau d’assainissement et aux eaux pluviales</option>
+                            <option value="Espace Vert">Espace Vert</option>
+                            <option value="Charpante - Bardage et Couve">Charpante - Bardage et Couve</option>
+                            <option value="Couverture - Zinguerie">Couverture - Zinguerie</option>
+                            <option value="Etancheite">Etancheite</option>
+                            <option value="Plâtrerie - Plaque de Platre">Plâtrerie - Plaque de Platre</option>
+                            <option value="Plomberie - Sanitare">Plomberie - Sanitare</option>
                             <option value="Chauffage">Chauffage</option>
                             <option value="Ventilation">Ventilation</option>
                             <option value="Climatisation">Climatisation</option>
-                            <option value="Électricité">Électricité</option>
-                            <option value="Charpente et ossature bois">Charpente et ossature bois</option>
-                            <option value="Menuiserie extérieure">Menuiserie extérieure</option>
-                            <option value="Menuiserie agencement intérieur">Menuiserie agencement intérieur</option>
-                            <option value="Métallerie (acier - aluminium)">Métallerie (acier - aluminium)</option>
-                            <option value="Store et fermeture">Store et fermeture</option>
-                            <option value="Peinture - revêtement intérieur">Peinture - revêtement intérieur</option>
-                            <option value="Ravalement peinture - revêtement extérieur">Ravalement peinture - revêtement extérieur</option>
-                            <option value="Vitrerie - miroiterie">Vitrerie - miroiterie</option>
-                            <option value="Carrelage et revêtement mural">Carrelage et revêtement mural</option>
-                            <option value="Revêtement de sol (sauf carrelage)">Revêtement de sol (sauf carrelage)</option>
-                            <option value="Ouvrages communs TCE">Ouvrages communs TCE</option>
-                            <option value="Rénovation énergétique">Rénovation énergétique</option>
+                            <option value="Electricite">Electricite</option>
+                            <option value="Charpente et ossature boi">Charpente et ossature boi</option>
+                            <option value="Menuiserie exterieure">Menuiserie exterieure</option>
+                            <option value="Menuiserie agnecement interieure">Menuiserie agnecement interieure</option>
+                            <option value="Metallerie (Acier - Aluminiu)">Metallerie (Acier - Aluminiu)</option>
+                            <option value="Store et Fermeture">Store et Fermeture</option>
+                            <option value="Peinture - Revetement interieure">Peinture - Revetement interieure</option>
+                            <option value="Ravelement Peinture - Revetement">Ravelement Peinture - Revetement</option>
+                            <option value="Vitrerie - Miroiterie">Vitrerie - Miroiterie</option>
+                            <option value="Carrelage et Revetement">Carrelage et Revetement</option>
+                            <option value="Revetement de sol">Revetement de sol</option>
+                            <option value="Désamiantage">Désamiantage</option>
+                            <option value="Renovation energetique">Renovation energetique</option>
+                            <option value="Conservation">Conservation</option>
+                            <option value="Réparations majeures">Réparations majeures</option>
+                            <option value="Consolidation">Consolidation</option>
                         </select>
                     </div>
                     <div className="flex w-full flex-col items-center ">
@@ -316,11 +377,11 @@ export default function RetetaMateriale({
                         </label>
                         <input
                             type="text"
-                            id="cod"
-                            name="cod"
-                            value={materialeFilters.cod}
+                            id="cod_definitie"
+                            name="cod_definitie"
+                            value={materialeFilters.cod_definitie}
                             onChange={handleChangeFilterMateriale}
-                            maxLength={6}
+                            maxLength={18}
                             className="px-2 outline-none text-center py-2  w-full rounded-lg shadow-sm "
                         />
                     </div>
