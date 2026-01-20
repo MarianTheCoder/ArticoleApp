@@ -15,7 +15,6 @@ const { verifyMailer } = require('./utils/mailer');
 
 const loginRoute = require('./Routes/LoginRoutes');
 const UsersRoute = require("./Routes/UsersRoutes");
-const EchipaRoutes = require("./Routes/EchipaRoutes");
 const ManoperaRoutes = require("./Routes/ManoperaRoutes");
 const MaterialeRoutes = require("./Routes/MaterialeRoutes");
 const UtilajeRoutes = require("./Routes/UtilajeRoutes");
@@ -26,7 +25,9 @@ const RezerveRoutes = require("./Routes/RezerveRoutes");
 const FormulareRoutes = require("./Routes/FormulareRoutes");
 const SarciniRoutes = require("./Routes/SarciniRoutes");
 const EmailRoutes = require('./Routes/EmailRoutes');
+const CRMRoutes = require('./Routes/CRM/CRMRoutes');
 const initializeDB = require('./utils/InitializeDB');
+const initializeDBforCRM = require('./utils/InitializeDBforCRM');
 
 
 
@@ -88,6 +89,7 @@ app.use('/uploads/Utilaje', tilesCors, headerShim, express.static(path.join(__di
 app.use('/uploads/Santiere', tilesCors, headerShim, express.static(path.join(__dirname, 'uploads/Santiere')));
 app.use('/uploads/Rezerve', tilesCors, headerShim, express.static(path.join(__dirname, 'uploads/Rezerve')));
 app.use('/uploads/Sarcini', tilesCors, headerShim, express.static(path.join(__dirname, 'uploads/Sarcini')));
+app.use('/uploads/CRM', tilesCors, headerShim, express.static(path.join(__dirname, 'uploads/CRM')));
 
 
 
@@ -110,6 +112,10 @@ async function initializeDatabase() {
       conn.query("SET time_zone = '+00:00'");
     });
     await initializeDB(global.db);
+    console.log("\n////");
+    console.log("////");
+    console.log("Initializing CRM database...");
+    await initializeDBforCRM(global.db);
   } catch (error) {
     console.error("Error initializing database:", error);
     throw error;
@@ -122,7 +128,6 @@ app.get("/ping", (req, res) => {
 
 // Routes
 app.use('/auth', loginRoute);
-app.use('/Echipa', EchipaRoutes);
 app.use('/users', UsersRoute);
 app.use('/Manopera', ManoperaRoutes);
 app.use('/Materiale', MaterialeRoutes);
@@ -134,6 +139,7 @@ app.use('/Rezerve', RezerveRoutes);
 app.use('/Formulare', FormulareRoutes);
 app.use('/Sarcini', SarciniRoutes);
 app.use('/email', EmailRoutes);
+app.use('/CRM', CRMRoutes);
 
 
 // Serve static files from the React app

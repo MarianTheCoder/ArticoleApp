@@ -17,3 +17,161 @@ body
     background-color: var(--clr);
 }
 
+
+
+
+:root {
+  --mainBG: 0 0% 100% / 10%;
+  --radius: 0.65rem;
+
+  /* neutrals (darker / more distinction) */
+  --background: 240 6% 90%;
+  --foreground: 240.1 11.2% 4%;
+
+  --card: 240 6% 96%;
+  --card-foreground: 240.1 11.2% 4%;
+
+  --popover: 240 6% 96%;
+  --popover-foreground: 240.1 11.2% 4%;
+
+  /* keep your colors (unchanged) */
+  --primary: 225.3 84.1% 49%;
+  --primary-foreground: 222.2 84% 95.8%;
+
+  /* neutrals (shifted darker) */
+  --secondary: 240 6% 82%;
+  --secondary-foreground: 240 10.3% 13.3%;
+
+  --muted: 240 6% 86%;
+  --muted-foreground: 240.1 4.4% 46.3%;
+
+  --accent: 240 6% 86%;
+  --accent-foreground: 240 10.3% 13.3%;
+
+  /* keep your colors (unchanged) */
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+
+  /* borders/inputs darker to match darker background */
+  --border: 240 6% 76%;
+  --input: 240 6% 76%;
+
+  /* keep ring (unchanged) */
+  --ring: 225.3 84.1% 49%;
+
+  /* keep charts (unchanged) */
+  --chart-1: 222.1 89.9% 73%;
+  --chart-2: 223.2 97.9% 58.7%;
+  --chart-3: 225 97% 53.5%;
+  --chart-4: 225.3 84.1% 49%;
+  --chart-5: 226.1 67.5% 43.9%;
+
+  /* sidebar neutrals (darker for distinction too) */
+  --sidebar: 240 6% 92%;
+  --sidebar-foreground: 240.1 11.2% 4%;
+
+  --sidebar-primary: 225 97% 53.5%;
+  --sidebar-primary-foreground: 222.2 84% 95.8%;
+
+  --sidebar-accent: 240 6% 86%;
+  --sidebar-accent-foreground: 240 10.3% 13.3%;
+
+  --sidebar-border: 240 6% 76%;
+  --sidebar-ring: 0 0% 63%;
+  --medium: 38, 92%, 50%;
+  --low: 142, 71%, 45%;
+  --high: 347, 77%, 50%;
+}
+
+.dark {
+  --background: 197, 6%, 23%;
+  --foreground: 180 0% 98%;
+  --card: 200, 6%, 10%;
+  --card-foreground: 180 0% 98%;
+  --popover: 240 10.3% 13.3%;
+  --popover-foreground: 180 0% 98%;
+  --primary: 225.3 84.1% 49%;
+  --primary-foreground: 222.2 84% 95.8%;
+  --secondary: 240 4% 15.9%;
+  --secondary-foreground: 180 0% 98%;
+  --muted: 240 4% 15.9%;
+  --muted-foreground: 240 4.9% 64.1%;
+  --accent: 240 4% 15.9%;
+  --accent-foreground: 180 0% 98%;
+  --destructive: 358.7 100% 69.6%;
+  --destructive-foreground:  210 40% 98%;
+  --border: 0 0% 100% / 15%;
+  --input: 0 0% 100% / 20%;
+  --ring: 225.3 84% 36%;
+  --chart-1: 222.1 89.9% 73%;
+  --chart-2: 223.2 97.9% 58.7%;
+  --chart-3: 225 97% 53.5%;
+  --chart-4: 225.3 84.1% 49%;
+  --chart-5: 226.1 67.5% 43.9%;
+  --sidebar: 240 10.3% 13.3%;
+  --sidebar-foreground: 180 0% 98%;
+  --sidebar-primary: 223.2 97.9% 58.7%;
+  --sidebar-primary-foreground: 222.2 84% 95.8%;
+  --sidebar-accent: 240 4% 15.9%;
+  --sidebar-accent-foreground: 180 0% 98%;
+  --sidebar-border: 0 0% 100% / 10%;
+  --sidebar-ring: 0 0% 39%;
+  --medium: 38, 92%, 50%;
+  --low: 142, 71%, 45%;
+  --high: 347, 77%, 50%;
+}
+
+
+
+
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Scrollbar (track transparent, thumb changes by theme) */
+
+/* Firefox */
+html, body {
+  scrollbar-width: thin;
+  scrollbar-color: #6c6c6c transparent; /* light: black thumb */
+}
+
+/* Dark mode: white thumb */
+.dark html, .dark body {
+  scrollbar-color: #6c6c6c transparent;
+}
+
+/* WebKit (Chrome/Edge/Safari) */
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track,
+html::-webkit-scrollbar-track-piece,
+body::-webkit-scrollbar-track-piece,
+html::-webkit-scrollbar-corner,
+body::-webkit-scrollbar-corner {
+  background: transparent !important;
+}
+
+/* Light thumb */
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb {
+  background-color: #000;
+  border-radius: 9999px;
+}
+
+/* Dark thumb */
+.dark html::-webkit-scrollbar-thumb,
+.dark body::-webkit-scrollbar-thumb {
+  background-color: #fff;
+}

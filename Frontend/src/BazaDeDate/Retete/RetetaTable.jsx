@@ -3,7 +3,6 @@ import api from '../../api/axiosAPI';
 import { flexRender, getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowDown, faArrowDownAZ, faArrowUpAZ, faCancel, faCar, faChevronDown, faChevronRight, faCirclePlus, faCopy, faEllipsis, faFileCirclePlus, faFolder, faL, faLanguage, faPenToSquare, faPerson, faPlus, faSort, faSortDown, faSortUp, faTrashCan, faTrowelBricks, faTruck, faUser } from '@fortawesome/free-solid-svg-icons';
-import { RetetaContext } from '../../context/RetetaContext';
 import photoAPI from '../../api/photoAPI';
 import ReteteAdaugareObiecte from './ReteteAdaugareObiecte';
 import CostInputCell from '../Santiere/Ofertare/CostCell';

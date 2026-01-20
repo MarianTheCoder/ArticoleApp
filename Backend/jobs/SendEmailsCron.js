@@ -92,11 +92,11 @@ function weekRangeRO(usePrevious = false) {
 
 /* -------------------- senders -------------------- */
 
-async function sendReport(to = process.env.REPORT_TO) {
+async function sendReport(firma = null, to = process.env.REPORT_TO) {
     try {
         // daily: send for the last FULL day
         const dateISO = isoDateInRO(-1);
-        const pdfBuf = await buildDailyPdfBuffer(dateISO);
+        const pdfBuf = await buildDailyPdfBuffer(dateISO, null, firma);
         await sendMail({
             to,
             type: 'daily',
@@ -136,6 +136,7 @@ async function sendWeeklyReport(to = process.env.REPORT_TO, { usePrevious = fals
 function startReportCrons() {
     // Daily at 04:00 Bucharest (yesterday)
     cron.schedule('0 4 * * *', () => sendReport(), { timezone: 'Europe/Bucharest' });
+    // cron.schedule('0 4 * * *', () => sendReport(3, "bogdan@btutrust.fr"), { timezone: 'Europe/Bucharest' });
     cron.schedule('0 20 * * 0', () => sendWeeklyReport(), { timezone: 'Europe/Bucharest' });
     console.log('🕒 CRONs scheduled: daily 04:00 + weekly (Sun 20:00).');
 }

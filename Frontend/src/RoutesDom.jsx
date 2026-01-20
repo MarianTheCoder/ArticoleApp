@@ -4,18 +4,18 @@ import Navbar from './MainElements/Navbar'
 import ProtectedRoute from './MainElements/ProtectedRoute';
 import Settings from './UserSettings/SettingsPage';
 import AddUsers from './AddUsers/AddUsersRoute';
-import AddEchipa from './Home/AddEchipa';
-import AddNews from './Home/AddNews';
 // import NavbarDefaultHome from './MainElements/NavbarDefaultHome';
 import DatabaseMainCategories from './BazaDeDate/DatabaseMainCategories';
 import RetetaForm from './BazaDeDate/Retete/RetetaForm'
-import { RetetaProvider } from './context/RetetaContext';
 import { AuthContext } from './context/TokenContext';
 import SantiereRoutes from './BazaDeDate/Santiere/SantiereRoutes';
 import { useEffect } from 'react';
 import NoPage from './MainElements/NoPage';
 import Pontaje from './BazaDeDate/Pontaje/Pontaje';
 import AtribuiriActivitate from './BazaDeDate/Pontaje/AtribuiriActivitate';
+import Dashboard from './CRM/Dashboard';
+import CompaniesAddPage from './CRM/Companies/CompaniesMainPage';
+import CompanyView from './CRM/Companies/CompanyView';
 
 function AppLayout() {
   // This layout only renders when a valid child route matches.
@@ -44,38 +44,33 @@ export default function RoutesDom() {
     )
   }
 
-
-
-
   return (
     <div className=' grid h-screen text-white  w-full relative grid-cols-1'>
       {/* {location.pathname.includes("logedUser") && user.role ?  <Navbar/> : <NavbarDefaultHome/>} */}
       <Routes>
         <Route element={<AppLayout />}>
           <Route path="" element={<ProtectedRoute allowedRoles={["ofertant", "angajat", "beneficiar"]}></ProtectedRoute>} />
-          <Route path="addArticles" element={<ProtectedRoute allowedRoles={['ofertant']}><RetetaProvider><RetetaForm /></RetetaProvider></ProtectedRoute>} />
+          <Route path="addArticles" element={<ProtectedRoute allowedRoles={['ofertant']}><RetetaForm /></ProtectedRoute>} />
           <Route path="settings" element={<ProtectedRoute allowedRoles={["ofertant", "angajat", "beneficiar"]}><Settings /></ProtectedRoute>} />
           <Route path="Santiere/:limbaUser/:idUser/:idSantier" element={<ProtectedRoute allowedRoles={["ofertant"]}><SantiereRoutes /></ProtectedRoute>} />
           <Route path="Pontaje" element={<ProtectedRoute allowedRoles={["ofertant"]}><Pontaje /></ProtectedRoute>} />
           <Route path="AtribuiriActivitate" element={<ProtectedRoute allowedRoles={["ofertant"]}><AtribuiriActivitate /></ProtectedRoute>} />
 
-          {/* <Route path="Echipa" element={<Echipa/>}/>
+          <Route path='CRM' element={<ProtectedRoute allowedRoles={["ofertant"]}><Dashboard /></ProtectedRoute>} />
+          <Route path='CRM/Companii' element={<ProtectedRoute allowedRoles={["ofertant"]}><CompaniesAddPage /></ProtectedRoute>} />
+          <Route path='CRM/Companii/View/:companyId' element={<ProtectedRoute allowedRoles={["ofertant"]}><CompanyView /></ProtectedRoute>} />
+          {/* 
+            <Route path="Echipa" element={<Echipa/>}/>
             <Route path="News" element={<News/>}/>
-            <Route path="Contact" element={<Contact/>}/> */}
-          <Route path="AddEchipa" element={<ProtectedRoute allowedRoles={["ofertant"]}><AddEchipa /></ProtectedRoute>} />
-          <Route path="AddNews" element={<ProtectedRoute allowedRoles={["ofertant"]}><AddNews /></ProtectedRoute>} />
+            <Route path="Contact" element={<Contact/>}/> 
+          */}
           <Route path="addManopere" element={<ProtectedRoute allowedRoles={["ofertant"]}><DatabaseMainCategories dateType={1} /></ProtectedRoute>} />
           <Route path="addMateriale" element={<ProtectedRoute allowedRoles={["ofertant"]}><DatabaseMainCategories dateType={2} /></ProtectedRoute>} />
           <Route path="addTransport" element={<ProtectedRoute allowedRoles={["ofertant"]}><DatabaseMainCategories dateType={3} /></ProtectedRoute>} />
           <Route path="addUtilaje" element={<ProtectedRoute allowedRoles={["ofertant"]}><DatabaseMainCategories dateType={4} /></ProtectedRoute>} />
           <Route path="ManageConturi" element={<ProtectedRoute allowedRoles={["ofertant"]}><AddUsers /></ProtectedRoute>} />
+          <Route path="*" element={<NoPage />} />
         </Route>
-        {/* default home if loged */}
-        {/* <Route path="" element={<Homepage/>}/>
-            <Route path="Echipa" element={<Echipa/>}/>
-            <Route path="News" element={<News/>}/>
-            <Route path="Contact" element={<Contact/>}/> */}
-        <Route path="*" element={<NoPage />} />
       </Routes>
     </div>
   )

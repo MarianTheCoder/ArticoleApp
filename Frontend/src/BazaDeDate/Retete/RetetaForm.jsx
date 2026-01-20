@@ -2,7 +2,6 @@ import { faArrowDown, faCancel, faL, faPlus } from '@fortawesome/free-solid-svg-
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useContext, useRef, useState } from 'react'
 import api from '../../api/axiosAPI';
-import { RetetaContext, RetetaProvider } from '../../context/RetetaContext';
 import RetetaTable from './RetetaTable.jsx';
 
 

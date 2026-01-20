@@ -55,6 +55,10 @@ function dummyDoc(period = 'daily') {
 
 /* ============================= DAILY REPORT ============================= */
 
+/* ... imports and setup remain the same ... */
+
+/* ============================= DAILY REPORT ============================= */
+
 /** Format minutes → "H:MM" */
 function fmtHours(mins) {
     const m = Math.max(0, Number(mins || 0));
@@ -76,10 +80,10 @@ function siteCode(name = '') {
 }
 
 /**
- * Fetch ALL users (even those with 0 pontaj), optionally filtered by userIds.
- * You can tweak the WHERE (e.g., exclude 'beneficiar').
+ * Fetch ALL users (even those with 0 pontaj), optionally filtered by userIds OR firmaId.
+ * Added: firmaId parameter
  */
-async function getAllUsers(userIds = null) {
+async function getAllUsers(userIds = null, firmaId = null) {
     if (!global.db) throw new Error('global.db is not initialized');
 
     let sql = `
@@ -87,15 +91,27 @@ async function getAllUsers(userIds = null) {
       FROM users
      WHERE role != 'beneficiar'
      /*USER_FILTER*/
+     /*FIRMA_FILTER*/
      ORDER BY name ASC
   `;
     const params = [];
+
+    // Filter by specific IDs
     if (Array.isArray(userIds) && userIds.length) {
         sql = sql.replace('/*USER_FILTER*/', 'AND id IN (?)');
         params.push(userIds);
     } else {
         sql = sql.replace('/*USER_FILTER*/', '');
     }
+
+    // NEW: Filter by Company ID
+    if (firmaId !== null && firmaId !== undefined) {
+        sql = sql.replace('/*FIRMA_FILTER*/', 'AND firma_id = ?');
+        params.push(firmaId);
+    } else {
+        sql = sql.replace('/*FIRMA_FILTER*/', '');
+    }
+
     const [rows] = await global.db.query(sql, params);
     return rows.map(r => ({ id: r.id, name: r.name }));
 }
@@ -156,7 +172,7 @@ async function getDailyAggByUser(dateISO, userIds = null) {
     return byUser;
 }
 
-/* ---------- group helper: build one table per dominant santier, WITHOUT rowSpan ---------- */
+/* ... buildGroupTable_NoRowSpan and buildDailyDocGrouped_NoRowSpan remain exactly the same ... */
 function buildGroupTable_NoRowSpan(groupName, usersInGroup, { pageBreakAfter = false } = {}) {
     // Build per-user blocks + compute max site columns
     const blocks = usersInGroup.map((u, idx) => {
@@ -185,7 +201,7 @@ function buildGroupTable_NoRowSpan(groupName, usersInGroup, { pageBreakAfter = f
         return {
             idx,
             user_name: u.user_name,
-            total_str: u.total_hours_str || '0:00',   // 👈 will render in the new Total column
+            total_str: u.total_hours_str || '0:00',
             report_text: u.report_text || '—',
             siteCols: topCells.length,
             topCells,
@@ -195,9 +211,6 @@ function buildGroupTable_NoRowSpan(groupName, usersInGroup, { pageBreakAfter = f
 
     const maxCols = Math.max(1, ...blocks.map(b => b.siteCols));
 
-    // ---------- Header (no rowspans) ----------
-    // One row header where “Șantiere” spans the site columns via colSpan.
-    // We add {} placeholders to fill the span.
     const headerRow = [
         { text: '#', alignment: 'center', bold: true, fillColor: '#DDD' },
         { text: 'Utilizator', bold: true, fillColor: '#DDD' },
@@ -209,46 +222,41 @@ function buildGroupTable_NoRowSpan(groupName, usersInGroup, { pageBreakAfter = f
 
     const body = [headerRow];
 
-    // ---------- Data rows (two rows per user, no rowSpan) ----------
     blocks.forEach((b, i) => {
         const isLastPair = i === blocks.length - 1;
-
         const pad = maxCols - b.siteCols;
         const padTop = Array(pad).fill({ text: '', border: [true, true, true, false] });
         const padBot = Array(pad).fill({ text: '', border: [true, false, true, true] });
 
-        // Row 1: real cells
         const row1 = [
-            { text: String(i + 1), alignment: 'center', border: [true, true, true, false] }, // #
-            { text: b.user_name, bold: true, border: [true, true, true, false] },             // user
-            { text: b.total_str, alignment: 'center', border: [true, true, true, false], bold: true },    // 👈 Total
+            { text: String(i + 1), alignment: 'center', border: [true, true, true, false] },
+            { text: b.user_name, bold: true, border: [true, true, true, false] },
+            { text: b.total_str, alignment: 'center', border: [true, true, true, false], bold: true },
             ...b.topCells,
             ...padTop,
-            { text: b.report_text, border: [true, true, true, false] },                       // raport
+            { text: b.report_text, border: [true, true, true, false] },
         ];
 
-        // Row 2: dummy under #, user, total, raport (borderless except bottom on last pair)
         const dummyBottom = isLastPair ? true : false;
         const row2 = [
-            { text: '', border: [true, false, true, dummyBottom] }, // under #
-            { text: '', border: [true, false, true, dummyBottom] }, // under user
-            { text: '', border: [true, false, true, dummyBottom] }, // 👈 under Total
+            { text: '', border: [true, false, true, dummyBottom] },
+            { text: '', border: [true, false, true, dummyBottom] },
+            { text: '', border: [true, false, true, dummyBottom] },
             ...b.bottomCells,
             ...padBot,
-            { text: '', border: [true, false, true, dummyBottom] }, // under raport
+            { text: '', border: [true, false, true, dummyBottom] },
         ];
 
         body.push(row1, row2);
     });
 
-    // widths: [#, User, Total, ...site..., Raport]
     const widths = [18, 140, 34, ...Array(maxCols).fill(38), '*'];
 
     const tableNode = {
         table: {
             widths,
             body,
-            headerRows: 1,           // 👈 we now have a header row
+            headerRows: 1,
             dontBreakRows: true,
             keepWithHeaderRows: 1,
         },
@@ -263,17 +271,12 @@ function buildGroupTable_NoRowSpan(groupName, usersInGroup, { pageBreakAfter = f
         margin: [0, 0, 0, 6],
     };
 
-
     return [
         { text: groupName, style: 'groupTitle', margin: [0, 10, 0, 4] },
         tableNode,
     ];
 }
 
-/**
- * Build the full docDefinition: one table per dominant site group (NO rowSpan),
- * add page break **after each table except the last group**.
- */
 function buildDailyDocGrouped_NoRowSpan({ dateISO, grouped }) {
     const content = [
         {
@@ -320,7 +323,6 @@ function buildDailyDocGrouped_NoRowSpan({ dateISO, grouped }) {
     }
 
     return {
-
         content,
         footer: function (currentPage, pageCount) {
             return {
@@ -350,15 +352,9 @@ function buildDailyDocGrouped_NoRowSpan({ dateISO, grouped }) {
                     ]
                 },
                 layout: {
-                    hLineWidth: function (i) {
-                        return i === 0 ? 1 : 0; // Top border only
-                    },
-                    vLineWidth: function () {
-                        return 0; // No vertical lines
-                    },
-                    hLineColor: function () {
-                        return '#000000';
-                    }
+                    hLineWidth: function (i) { return i === 0 ? 1 : 0; },
+                    vLineWidth: function () { return 0; },
+                    hLineColor: function () { return '#000000'; }
                 },
                 margin: [30, 10, 30, 0]
             };
@@ -374,14 +370,21 @@ function buildDailyDocGrouped_NoRowSpan({ dateISO, grouped }) {
 
 /**
  * Build the daily PDF buffer for a specific date (YYYY-MM-DD).
- * Ensures ALL users are present (even with no sessions).
- * Groups users by their **dominant șantier**; each group is its own table.
- * Renders each user as TWO rows with dummy cells (no borders; bottom border on last row only).
- * Page breaks **after each group**.
+ * NEW: accepts 'firmaId' to filter users.
  */
-async function buildDailyPdfBuffer(dateISO, userIds = null) {
-    const allUsers = await getAllUsers(userIds);
-    const aggMap = await getDailyAggByUser(dateISO, userIds);
+async function buildDailyPdfBuffer(dateISO, userIds = null, firmaId = null) {
+    // 1. Get users filtered by ID and/or FIRMA
+    const allUsers = await getAllUsers(userIds, firmaId);
+
+    // 2. Optimization: Filter sessions query by the users we actually found
+    // If no filters were provided, fetch everything. If we filtered users, only fetch sessions for them.
+    let filterIds = null;
+    if ((userIds && userIds.length) || (firmaId !== null)) {
+        filterIds = allUsers.map(u => u.id);
+        if (filterIds.length === 0) filterIds = [-1]; // Prevent fetching all if result is empty
+    }
+
+    const aggMap = await getDailyAggByUser(dateISO, filterIds);
 
     // Build usersData, compute dominant site per user
     const usersData = allUsers.map(u => {
@@ -452,7 +455,6 @@ module.exports = {
     buildPdfBuffer,
     dummyDoc,
     buildDailyPdfBuffer,
-    // internals if you need them later:
     getAllUsers,
     getDailyAggByUser,
     buildGroupTable_NoRowSpan,
