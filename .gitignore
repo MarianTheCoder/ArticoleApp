@@ -24,3 +24,9 @@ Thumbs.db
 
 # Logs
 *.log
+firebase-key.json
+# User Uploads
+uploads/
+public/uploads/
+# If you want to keep the empty folder structure in git:
+!public/uploads/.gitkeep
