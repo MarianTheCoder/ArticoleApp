@@ -1,173 +1,127 @@
-import React, { createContext, useState, useEffect } from 'react';
-import api from '../api/axiosAPI'
+import React, { createContext, useState, useEffect, useCallback } from 'react';
+import api from '../api/axiosAPI';
 import { jwtDecode } from "jwt-decode";
 import { useNavigate } from 'react-router-dom';
 
-// Create AuthContext
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-
     const navigate = useNavigate();
 
-    const [connectedSantiereToUser, setConnectedSantiereToUser] = useState([]);
-
-    const [token, setToken] = useState(null);
+    // 1. Minimal State
+    const [token, setToken] = useState(localStorage.getItem('token') || null);
     const [user, setUser] = useState({ id: null, role: null, name: null });
-    const [loading, setLoading] = useState(true); // New loading state
     const [color, setColor] = useState("");
-    
+    const [loading, setLoading] = useState(true);
 
-    const [beneficiari, setBeneficiari] = useState([]);
-    const [santiere, setSantiere] = useState([]);
-
-    
-    const getDecodedToken = (token) => {
-        if (token) {
-            try {
-                return jwtDecode(token); // Decode the token
-            } catch (err) {
-                console.error('Error decoding token:', err);
-                return null; // Return null if the token is invalid
-            }
-        }
-        return null; // Return null if no token exists
-    };
-    
-    useEffect(() => {
-        checkTokenValidity();
-    }, []);
-    
-    const checkTokenValidity = async () => {
-        const storedToken = localStorage.getItem('token');
-        console.log("check token");
-        if (!storedToken) {
-            setLoading(false);
+    // 2. Centralized Helper: Handles Decoding & Setting State
+    // This removes duplicate code from login/checkToken
+    const handleUserSession = useCallback((rawToken) => {
+        if (!rawToken) {
+            clearSession();
             return;
         }
-    
+
         try {
-            const res = await api.get('/auth/checkToken', {
-                headers: {
-                    Authorization: `Bearer ${storedToken}`,
-                },
+            const decoded = jwtDecode(rawToken);
+
+            // Set User
+            setUser({
+                id: decoded.id,
+                role: decoded.role,
+                name: decoded.user || decoded.sub, // Fallback if 'user' key varies
             });
-    
-            const decoded = getDecodedToken(storedToken);
-            if (decoded) {
-                setToken(storedToken);
-                setUser({
-                    id: decoded.id,
-                    role: decoded.role,
-                    name: decoded.user,
-                });
-    
-                if (decoded.role === 'angajat') setColor('text-emerald-500');
-                else if (decoded.role === 'ofertant') setColor('text-blue-600');
-                else setColor('text-amber-500');
-            }
+
+            // Set Color
+            const roleColors = {
+                'angajat': 'text-emerald-500',
+                'ofertant': 'text-blue-600',
+                'beneficiar': 'text-amber-500' // Default fallback
+            };
+            setColor(roleColors[decoded.role] || 'text-amber-500');
+
+            // Set Token
+            setToken(rawToken);
+            localStorage.setItem('token', rawToken);
+            if (decoded.photo) localStorage.setItem('photoUser', decoded.photo);
+
         } catch (err) {
-            console.error('Token invalid or expired:', err);
-            localStorage.removeItem('token');
-            localStorage.removeItem('photoUser');
-            setToken(null);
-            setUser({ id: null, role: null, name: null });
-        } finally {
-            setLoading(false);
+            console.error("Token decode failed", err);
+            clearSession();
         }
-    };
+    }, []);
 
-    const getUsersForSantiere = async () => {
-        try {
-            const response = await api.get(`/users/GetUsersName`);
-            console.log(response.data);
-            const responseSantiere = await api.get(`/users/getSantiere`);
-            setBeneficiari(response.data);
-            setSantiere(responseSantiere.data);
-        } catch (err) {
-            console.error('Login failed:', err.response?.data?.message || err.message);
-            return err; // Re-throw error for frontend handling
-        }
-    }
-    
+    // 3. Helper: Clear Session
+    const clearSession = useCallback(() => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('photoUser');
+        setToken(null);
+        setUser({ id: null, role: null, name: null });
+        setColor("");
+    }, []);
 
-    const decodeToken = () =>{
-        const storedToken = localStorage.getItem('token');
-        if (storedToken) {
-            const decoded = getDecodedToken(storedToken);
-            if (decoded) {
-                if (decoded.role === 'angajat') {
-                    setColor('text-emerald-500');
-                } else if (decoded.role === 'ofertant') {
-                    setColor('text-blue-600');
-                } else {
-                    setColor('text-amber-500');
-                }
-                setToken(storedToken);
-                setUser({
-                    id: decoded.id,
-                    role: decoded.role,
-                    name: decoded.user,
-                });
-            } else {
-                localStorage.removeItem('token'); // Remove invalid token
-                localStorage.removeItem('photoUser');
+    // 4. On Mount: Check Validity
+    useEffect(() => {
+        const initAuth = async () => {
+            const storedToken = localStorage.getItem('token');
+            if (!storedToken) {
+                setLoading(false);
+                return;
             }
-        }
-        else{
-            setToken(null);
-            setUser({ id: null, role: null, user: null });
-        }
-        setLoading(false);
-    }
 
-    // Login function
-    const login = async (email, password, role) => {
-        const users = ["angajat", "beneficiar", "ofertant"];
+            try {
+                // Verify with backend that token is still valid (not banned/expired)
+                await api.get('/auth/checkToken');
+                // If success, load data into state
+                console.log("Token valid");
+                handleUserSession(storedToken);
+            } catch (err) {
+                console.log('Token check failed:', err);
+                clearSession();
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        initAuth();
+    }, [handleUserSession, clearSession]);
+
+    // 5. Login Action
+    const login = async (email, password, roleIndex) => {
+        const roles = ["angajat", "beneficiar", "ofertant"]; // Map index to string
         try {
             const response = await api.post(`/auth/login`, {
                 email,
                 password,
-                role:users[role],
+                role: roles[roleIndex],
             });
 
             const newToken = response.data.token;
-
-            // Store the token and decode user info
-            localStorage.setItem('token', newToken);
-            const decoded = getDecodedToken(newToken);
-            if (decoded.role === 'angajat') {
-                setColor('text-emerald-500');
-            } else if (decoded.role === 'ofertant') {
-                setColor('text-blue-600');
-            } else {
-                setColor('text-amber-500');
-            }
-            setToken(newToken);
-            localStorage.setItem('photoUser', decoded.photo);
-            console.log(decoded);
-            setUser({
-                id: decoded.id,
-                role: decoded.role,
-                name: decoded.user,
-            });
+            handleUserSession(newToken); // Re-use our centralized helper
+            return { success: true };
         } catch (err) {
-            console.error('Login failed:', err.response?.data?.message || err.message);
-            return err; // Re-throw error for frontend handling
+            console.error('Login failed:', err);
+            return { success: false, error: err.response?.data?.message || err.message };
         }
     };
 
-    // Logout function
+    // 6. Logout Action
     const logout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('photoUser');
-        setToken(null);
-        setUser({ id: null, role: null, user: null });
-        window.location.reload();
+        clearSession();
+        navigate('/login'); // Soft navigation instead of window.reload()
     };
 
     return (
-        <AuthContext.Provider value={{connectedSantiereToUser, setConnectedSantiereToUser, token, user, login, logout, getDecodedToken, decodeToken, santiere, setSantiere, loading , color, setUser, getUsersForSantiere, beneficiari, setBeneficiari }}>
+        <AuthContext.Provider value={{
+            token,
+            user,
+            loading,
+            color,
+            login,
+            logout,
+            // Removed getters/setters that shouldn't be exposed
+            // Removed santiere/beneficiari (Move these to a DataContext or specialized hook)
+        }}>
             {children}
         </AuthContext.Provider>
     );

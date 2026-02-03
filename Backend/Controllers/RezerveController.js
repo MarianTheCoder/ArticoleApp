@@ -515,13 +515,14 @@ const pinsPOST = async (req, res) => {
                 tokens
             };
 
-            try {
-                const resp = await admin.messaging().sendEachForMulticast(message);
+            admin.messaging().sendEachForMulticast(message).then((resp) => {
                 console.log("Push sent:", resp.successCount, "success,", resp.failureCount, "failed");
-            } catch (pushErr) {
-                console.log("Push error:", pushErr);
-            }
+            }).catch((error) => {
+                console.log("Error sending push:", error);
+            });
+
         }
+        // await new Promise(resolve => setTimeout(resolve, 10000)); // slight delay to ensure push is sent
         console.log("Returning new pin:", pin.title);
         res.status(201).json({ pin });
     } catch (err) {
@@ -696,12 +697,11 @@ const comentariiPOST = async (req, res) => {
                         tokens
                     };
 
-                    try {
-                        const resp = await admin.messaging().sendEachForMulticast(message);
+                    admin.messaging().sendEachForMulticast(message).then((resp) => {
                         console.log("Push(comment) sent:", resp.successCount, "success,", resp.failureCount, "failed");
-                    } catch (pushErr) {
+                    }).catch((pushErr) => {
                         console.log("Push(comment) error:", pushErr);
-                    }
+                    });
                 }
             }
         } catch (e) {

@@ -20,10 +20,8 @@ const queryClient = new QueryClient({
       // Datele sunt considerate "proaspete" timp de 1 minut. 
       // Daca userul schimba tab-ul si revine in < 1 min, nu face request la server (ia din cache).
       staleTime: 1000 * 60 * 1,
-
       // Daca vrei sa nu faca refetch cand dai click inapoi pe fereastra (optional, bun in dev)
       refetchOnWindowFocus: true,
-
       // Reincearca de 1 data daca pica netul, nu de 3 ori (default)
       retry: 1,
     },
@@ -59,7 +57,7 @@ function App() {
         position="bottom-right"
         richColors={true}
         toastOptions={{
-          style: { fontSize: '0.9rem' },
+          style: { fontSize: '1.2rem', minWidth: '36rem' },
         }}
       />
     </div>

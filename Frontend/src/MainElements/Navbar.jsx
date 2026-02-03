@@ -16,18 +16,28 @@ import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/TokenContext';
 import Logo from '../assets/logo.svg';
 import photoAPI from '../api/photoAPI';
-import api from '../api/axiosAPI';
+import api from '../api/axiosAPI'; // Ensure this exists
 import "../assets/navbar.css";
 import GradientFA from './GradientFA';
 import { useTheme } from '@/context/ThemeContext';
 import { Button } from '@/components/ui/button';
 import { faMoon, faSun } from '@fortawesome/free-regular-svg-icons';
 import { Switch } from '@/components/ui/switch';
+import NotificationBell from './NotificationsBell';
 
 function Navbar() {
 
     const { theme, setTheme } = useTheme();
     const isDark = theme === "dark";
+
+    // Auth Context - Only gets User info now
+    const { user, logout } = useContext(AuthContext);
+
+    // --- LOCAL STATE FOR BUSINESS DATA ---
+    const [beneficiari, setBeneficiari] = useState([]);
+    const [santiere, setSantiere] = useState([]);
+    const [connectedSantiereToUser, setConnectedSantiereToUser] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     const [navbarVisible, setNavbarVisible] = useState(false);
     const navbarRef = useRef(null);
@@ -36,23 +46,93 @@ function Navbar() {
     const [addSantier, setAddSantier] = useState(false);
     const [santierName, setSantierName] = useState("");
 
-    // submenu companii
+    // Submenus
     const [companiiOpen, setCompaniiOpen] = useState(false);
-    // submenu crm
     const [crmOpen, setCrmOpen] = useState(false);
-    // submenu baza de date
     const [bazaDeDateOpen, setBazaDeDateOpen] = useState(false);
-    // sumbemnu la date din baza de date => manopera matieriale etc.
     const [dateOpen, setDateOpen] = useState(false);
-    const [prezOpen, setPrezOpen] = useState(false);
-    const [usersOpen, setUsersOpen] = useState(false);
     const [santiereOpen, setSantiereOpen] = useState(false);
 
     let navigate = useNavigate();
-    const { user, logout, getUsersForSantiere, beneficiari, santiere, connectedSantiereToUser, setConnectedSantiereToUser } = useContext(AuthContext);
-    const [loading, setLoading] = useState(true);
     const photoStorage = localStorage.getItem("photoUser");
 
+    // --- 1. FETCH DATA LOCALLY ---
+    const fetchData = async () => {
+        try {
+            // Fetch users (companies) and sites in parallel
+            const [usersRes, santiereRes] = await Promise.all([
+                api.get('/users/GetUsersName'),
+                api.get('/users/getSantiere')
+            ]);
+            setBeneficiari(usersRes.data);
+            setSantiere(santiereRes.data);
+        } catch (err) {
+            console.error('Navbar Fetch Error:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    // --- 2. LOGIC TO ADD SANTIER ---
+    const addSantierToUser = async () => {
+        if (santierName.trim() === "") {
+            alert("Numele santierului nu poate fi gol");
+            return;
+        }
+        try {
+            await api.post(`/users/addSantier`, { userId: addSantier, name: santierName });
+            setAddSantier(false);
+            setSantierName(""); // Reset input
+            fetchData(); // Refresh list immediately
+        } catch (err) {
+            console.error('Add Santier failed:', err.response?.data?.message || err.message);
+        }
+    };
+
+    // --- 3. SORTING & GROUPING LOGIC (Restored) ---
+    useEffect(() => {
+        if (!Array.isArray(beneficiari) || beneficiari.length === 0) return;
+        if (!Array.isArray(santiere)) return;
+
+        // Group sites by user_id
+        const byUser = santiere.reduce((acc, s) => {
+            (acc[s.user_id] ||= []).push(s);
+            return acc;
+        }, {});
+
+        // Attach sites to beneficiaries
+        const usersWithSantiere = beneficiari.map(u => ({
+            ...u,
+            santiere: byUser[u.id] || [],
+        }));
+
+        // Sort logic
+        const langRank = (l) => (l === 'RO' ? 0 : l === 'FR' ? 1 : 2);
+
+        const sorted = [...usersWithSantiere].sort((a, b) => {
+            const la = langRank(a.limba);
+            const lb = langRank(b.limba);
+            if (la !== lb) return la - lb;
+            return (a.name || '').localeCompare(b.name || '');
+        });
+
+        // Pin 'Baly Energies SAS' to top
+        const pin = 'Baly Energies SAS'.toLowerCase();
+        const idx = sorted.findIndex(x => (x.name || '').toLowerCase().includes(pin));
+        if (idx >= 0) {
+            const [first] = sorted.splice(idx, 1);
+            sorted.unshift(first);
+        }
+
+        setConnectedSantiereToUser(sorted);
+    }, [beneficiari, santiere]);
+
+
+    // Click Outside logic
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (navbarRef.current && !navbarRef.current.contains(event.target)) {
@@ -67,10 +147,6 @@ function Navbar() {
         };
     }, [navbarVisible]);
 
-    useEffect(() => {
-        getUsersForSantiere();
-        setLoading(false);
-    }, []);
 
     const handleBeneficiarClick = (beneficiarId) => {
         setSelectedBeneficiari((prevSelected) => {
@@ -82,78 +158,31 @@ function Navbar() {
         });
     };
 
-    const addSantierToUser = async () => {
-        if (santierName.trim() === "") {
-            alert("Numele santierului nu poate fi gol");
-        }
-        try {
-            const response = await api.post(`/users/addSantier`, { userId: addSantier, name: santierName });
-            setAddSantier(false);
-            getUsersForSantiere();
-        } catch (err) {
-            console.error('Login failed:', err.response?.data?.message || err.message);
-            return err;
-        }
-    };
-
-    useEffect(() => {
-        if (!Array.isArray(beneficiari) || beneficiari.length === 0) return;
-        if (!Array.isArray(santiere)) return;
-
-        const byUser = santiere.reduce((acc, s) => {
-            (acc[s.user_id] ||= []).push(s);
-            return acc;
-        }, {});
-
-        const usersWithSantiere = beneficiari.map(u => ({
-            ...u,
-            santiere: byUser[u.id] || [],
-        }));
-
-        const langRank = (l) => (l === 'RO' ? 0 : l === 'FR' ? 1 : 2);
-
-        const sorted = [...usersWithSantiere].sort((a, b) => {
-            const la = langRank(a.limba);
-            const lb = langRank(b.limba);
-            if (la !== lb) return la - lb;
-            return (a.name || '').localeCompare(b.name || '');
-        });
-
-        const pin = 'Baly Energies SAS'.toLowerCase();
-        const idx = sorted.findIndex(x => (x.name || '').toLowerCase().includes(pin));
-        if (idx >= 0) {
-            const [first] = sorted.splice(idx, 1);
-            sorted.unshift(first);
-        }
-
-        setConnectedSantiereToUser(sorted);
-    }, [beneficiari, santiere]);
-
     return (
         <>
-            {/* Toggle button (kept as-is; you can token-ize later) */}
             <button
                 onClick={() => setNavbarVisible((prev) => !prev)}
-                className={`fixed top-4 left-4 z-[150] bg-gradient-to-r from-emerald-500 to-green-500
-        ${navbarVisible ? "-translate-x-24" : "translate-x-0"} text-white px-3 py-2 rounded-xl shadow
-        hover:shadow-emerald-200/50 transition-all duration-300`}
+                className={`fixed top-4 left-4 z-[150]  bg-emerald-500 
+                ${navbarVisible ? "-translate-x-24" : "translate-x-0"} text-white px-3 py-2 rounded-xl shadow
+                hover:shadow-emerald-200/50 transition-all duration-300`}
                 aria-label="Toggle navigation"
             >
                 <FontAwesomeIcon icon={faBars} />
             </button>
+            <NotificationBell />
 
             {!loading && (
                 <div
                     ref={navbarRef}
                     className={`
-            h-full fixed top-0 left-0 z-[200] max-w-[22rem] w-full
-            transform transition-transform duration-300 ease-in-out
-            ${navbarVisible ? "translate-x-0" : "-translate-x-full"}
-            bg-card backdrop-blur-xl
-            text-foreground
-            border-r border-border shadow-2xl
-            flex flex-col
-          `}
+                    h-full fixed top-0 left-0 z-[200] max-w-[22rem] w-full
+                    transform transition-transform duration-300 ease-in-out
+                    ${navbarVisible ? "translate-x-0" : "-translate-x-full"}
+                    bg-card backdrop-blur-xl
+                    text-foreground
+                    border-r border-border shadow-2xl
+                    flex flex-col
+                  `}
                     style={{ willChange: "transform" }}
                 >
                     {/* Header sticky */}
@@ -172,8 +201,6 @@ function Navbar() {
                             {user.role == "ofertant" ? (
                                 <>
                                     {/* CRM */}
-                                    {/*  */}
-                                    {/*  */}
                                     <div
                                         className="text-[1.25rem] cursor-pointer rounded-lg px-3 py-2 hover:bg-accent transition border border-transparent hover:border-border"
                                         onClick={() => setCrmOpen((prev) => !prev)}
@@ -227,8 +254,6 @@ function Navbar() {
                                     )}
 
                                     {/* Bază de date */}
-                                    {/*  */}
-                                    {/*  */}
                                     <div
                                         className="text-[1.25rem] cursor-pointer rounded-lg px-3 py-2 hover:bg-accent transition border border-transparent hover:border-border"
                                         onClick={() => setBazaDeDateOpen((prev) => !prev)}
@@ -504,7 +529,7 @@ function Navbar() {
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3">
-                                    <Button variant="destructive" className="gap-2">
+                                    <Button onClick={logout} variant="destructive" className="gap-2">
                                         <FontAwesomeIcon icon={faRightToBracket} /> Logout
                                     </Button>
 

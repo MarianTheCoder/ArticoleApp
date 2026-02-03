@@ -15,7 +15,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTriangleExclamation, faTrashCan } from "@fortawesome/free-solid-svg-icons";
 import { toast } from "sonner";
 
-export default function DeleteConfirmationDialog({
+export default function DeleteDialog({
     open,
     setOpen,
     title,
@@ -46,35 +46,35 @@ export default function DeleteConfirmationDialog({
     };
 
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogContent className="sm:max-w-lg p-8 gap-6 text-lg border-destructive/50 shadow-2xl">
+        <Dialog open={!!open} onOpenChange={setOpen}>
+            <DialogContent className="sm:max-w-xl p-8 gap-8 border-destructive/20 shadow-2xl">
 
-                <DialogHeader className="gap-2 sm:gap-4">
-                    <div className="flex items-start gap-5">
-                        {/* Increased gap-5 for icon separation */}
-
-                        {/* Icon Wrapper */}
-                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0">
-                            {/* Increased icon container to h-14 w-14 */}
-                            <FontAwesomeIcon icon={faTriangleExclamation} className="text-red-600 text-2xl" />
+                <DialogHeader className="flex flex-col items-center text-center gap-2">
+                    {/* Icon Wrapper - Uses semantic 'destructive' colors */}
+                    <div className="mb-4">
+                        <div className="bg-destructive/10 p-5 rounded-2xl flex items-center justify-center ring-1 ring-destructive/20 shadow-sm">
+                            <FontAwesomeIcon
+                                icon={faTrashCan}
+                                className="text-destructive text-5xl"
+                            />
                         </div>
+                    </div>
 
-                        <div className="grid gap-2 pt-1">
-                            <DialogTitle className="text-2xl font-bold text-foreground">
-                                {title || "Ești sigur?"}
-                            </DialogTitle>
+                    <div className="grid gap-2 w-full">
+                        <DialogTitle className="text-2xl font-bold text-center text-foreground">
+                            {title || "Ești sigur?"}
+                        </DialogTitle>
 
-                            <DialogDescription className="text-base text-muted-foreground leading-relaxed">
-                                {description || "Această acțiune este ireversibilă. Datele vor fi șterse definitiv."}
-                            </DialogDescription>
-                        </div>
+                        <DialogDescription className="text-base  text-center text-muted-foreground leading-relaxed">
+                            {description || "Această acțiune este ireversibilă. Datele vor fi șterse definitiv."}
+                        </DialogDescription>
                     </div>
                 </DialogHeader>
 
                 {/* Zona de Input Code */}
                 {useCode && (
-                    <div className="grid gap-3 py-2 "> {/* Increased padding-left to align with text */}
-                        <Label htmlFor="confirm-code" className="text-base font-semibold text-destructive">
+                    <div className="grid gap-3 w-full max-w-sm mx-auto">
+                        <Label htmlFor="confirm-code" className="text-center font-semibold text-destructive">
                             Cod de Confirmare
                         </Label>
                         <Input
@@ -82,20 +82,21 @@ export default function DeleteConfirmationDialog({
                             value={inputValue}
                             onChange={(e) => setInputValue(e.target.value)}
                             placeholder="Introdu codul aici..."
-                            className="h-11 border-destructive/30 focus-visible:ring-destructive/30 text-base"
+                            className="h-11 text-center border-destructive/30 focus-visible:ring-destructive text-lg placeholder:text-muted-foreground/50"
                             autoComplete="off"
                         />
                     </div>
                 )}
 
-                <DialogFooter className="gap-3 sm:justify-end mt-2">
+                {/* Footer - Centered Buttons */}
+                <DialogFooter className="flex flex-col sm:flex-row gap-3 sm:justify-center w-full">
                     <DialogClose asChild>
                         <Button
                             type="button"
                             variant="outline"
-                            size="lg" // Bigger button
+                            size="lg"
                             onClick={handleCancel}
-                            className="text-base"
+                            className="text-base min-w-[120px]"
                         >
                             Anulează
                         </Button>
@@ -103,12 +104,14 @@ export default function DeleteConfirmationDialog({
                     <Button
                         type="button"
                         variant="destructive"
-                        size="lg" // Bigger button
+                        size="lg"
                         onClick={handleConfirm}
-                        className="gap-2 bg-red-600 hover:bg-red-700 text-white shadow-md hover:shadow-lg transition-all text-base"
+                        // variant="destructive" handles the red bg/text automatically. 
+                        // Kept shadow and transition for effect.
+                        className="gap-2 shadow-md hover:shadow-lg transition-all text-base min-w-40"
                     >
                         <FontAwesomeIcon icon={faTrashCan} />
-                        Șterge definitiv
+                        Șterge
                     </Button>
                 </DialogFooter>
             </DialogContent>

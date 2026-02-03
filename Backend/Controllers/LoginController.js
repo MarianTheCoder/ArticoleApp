@@ -20,6 +20,10 @@ const login = async (req, res) => {
             return res.status(400).json({ message: 'Invalid credentials.' });
         }
 
+        if (user.activ === 0) {
+            return res.status(403).json({ message: 'Account is deactivated.' });
+        }
+
         // Create JWT with role and name/id in the payload
         const token = jwt.sign(
             {

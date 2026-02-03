@@ -1,5 +1,6 @@
-import React, { useContext, useEffect, useState } from 'react';
-import { useAddContact, useContactsByCompany } from "@/CRM/hooks/useContacts";
+import React, { act, useContext, useEffect, useState } from 'react';
+// 1. Asigură-te că imporți și hook-ul de Update
+import { useAddContact, useContactsByCompany, useEditContact, useChangeOwner, useRemoveOwner, useDeleteContact } from "@/hooks/useContacts";
 import { Button } from "@/components/ui/button";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -24,15 +25,23 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import AskDialog from '@/components/ui/ask-dialog';
+import DeleteConfirmationDialog from '@/components/ui/delete-dialog';
+import WarningDialog from '@/components/ui/warning-dialog';
+import DeleteDialog from '@/components/ui/delete-dialog';
 
 export default function ContactsMainCompany({ companyLimba, companyId }) {
     const { user } = useContext(AuthContext);
     const { hide, show, loading } = useLoading();
     const [open, setOpen] = useState(false);
+    const [openAsk, setOpenAsk] = useState(false);
+    const [openAskRemove, setOpenAskRemove] = useState(false);
 
-    // --- 1. STATE PENTRU VIZIBILITATE COLOANE (ALL FIELDS) ---
+    const [deleteOpen, setDeleteOpen] = useState(false);
+    const [selectedContact, setSelectedContact] = useState(null);
+
+    // --- 1. STATE VIZIBILITATE ---
     const [visibleColumns, setVisibleColumns] = useState({
-        // DEFAULT VISIBLE
         nume: true,
         functie: true,
         email: true,
@@ -40,20 +49,20 @@ export default function ContactsMainCompany({ companyLimba, companyId }) {
         santier: true,
         filiala: true,
         limba: true,
-        activ: true, // Usually good to see status
-
-        // DEFAULT HIDDEN
+        activ: true,
         categorie_rol: false,
         linkedin: false,
-        decizie: false, // Putere decizie
-        influenta: false, // Nivel influenta
-        canal: false, // Canal preferat
+        decizie: false,
+        influenta: false,
+        canal: false,
         note: false,
-        created: false,
-        updated: false
+        creat: false,
+        actualizat: false
     });
 
+    // --- 2. DRAFT STATE (Include id și delete_logo) ---
     const [draft, setDraft] = useState({
+        id: null, // Null = Add, ID = Edit
         prenume: "",
         nume: "",
         functie: "",
@@ -67,13 +76,21 @@ export default function ContactsMainCompany({ companyLimba, companyId }) {
         note: "",
         logoFile: null,
         logoPreview: "",
+        delete_logo: false // Flag pentru ștergere poză
     });
 
     const [searchName, setSearchName] = useState("");
     const [searchNameDebounced, setSearchNameDebounced] = useState("");
 
+    // Hooks
     const { data, isFetching } = useContactsByCompany(companyId, searchNameDebounced);
     const { mutateAsync: addContact } = useAddContact();
+    const { mutateAsync: updateContact } = useEditContact(); // Hook-ul de editare
+    const { mutateAsync: changeOwner } = useChangeOwner();
+    const { mutateAsync: removeOwner } = useRemoveOwner(); /// de facut functia
+    const { mutateAsync: deleteContact } = useDeleteContact();
+
+
     const contacts = data?.contacts || [];
 
     useEffect(() => {
@@ -81,17 +98,21 @@ export default function ContactsMainCompany({ companyLimba, companyId }) {
         return () => clearTimeout(handler);
     }, [searchName]);
 
+    // Cleanup pentru URL-uri blob
     useEffect(() => {
         return () => {
-            if (draft.logoPreview) {
+            if (draft.logoPreview && draft.logoPreview.startsWith('blob:')) {
                 URL.revokeObjectURL(draft.logoPreview);
             }
         };
     }, []);
 
     const resetDraft = () => {
-        if (draft.logoPreview) URL.revokeObjectURL(draft.logoPreview);
+        if (draft.logoPreview && draft.logoPreview.startsWith('blob:')) {
+            URL.revokeObjectURL(draft.logoPreview);
+        }
         setDraft({
+            id: null,
             prenume: "",
             nume: "",
             functie: "",
@@ -105,39 +126,64 @@ export default function ContactsMainCompany({ companyLimba, companyId }) {
             note: "",
             logoFile: null,
             logoPreview: "",
+            delete_logo: false
         });
     }
 
+    // --- 3. SUBMIT LOGIC (ADD vs EDIT) ---
     const submitContact = async () => {
-        const fd = new FormData();
         if (!companyId) {
-            toast.error("ID-ul companiei este necesar pentru a adăuga un contact.");
+            toast.error("Eroare: ID Companie lipsă.");
             return;
         }
-        if (draft.logoFile) fd.append("logo", draft.logoFile);
-        fd.append("prenume", draft.prenume.trim());
-        fd.append("nume", draft.nume.trim());
-        fd.append("functie", draft.functie.trim());
-        fd.append("categorie_rol", draft.categorie_rol.trim());
-        fd.append("email", draft.email.trim());
-        fd.append("telefon", draft.telefon.trim());
-        fd.append("linkedin_url", draft.linkedin_url.trim());
+
+        const fd = new FormData();
+
+        // Logica Foto:
+        if (draft.logoFile) {
+            fd.append("logo", draft.logoFile); // Upload poză nouă
+        } else if (draft.delete_logo) {
+            fd.append("delete_logo", "true"); // Șterge poză veche
+        }
+
+        // Câmpuri text
+        fd.append("prenume", draft.prenume?.trim() || "");
+        fd.append("nume", draft.nume?.trim() || "");
+        fd.append("functie", draft.functie?.trim() || "");
+        fd.append("categorie_rol", draft.categorie_rol?.trim() || "");
+        fd.append("email", draft.email?.trim() || "");
+        fd.append("telefon", draft.telefon?.trim() || "");
+        fd.append("linkedin_url", draft.linkedin_url?.trim() || "");
         fd.append("putere_decizie", draft.putere_decizie);
         fd.append("nivel_influenta", draft.nivel_influenta);
         fd.append("canal_preferat", draft.canal_preferat);
-        fd.append("note", draft.note.trim());
+        fd.append("note", draft.note?.trim() || "");
         fd.append("limba", companyLimba);
         fd.append("companie_id", companyId);
-        fd.append("created_by_user_id", user.id);
         fd.append("updated_by_user_id", user.id);
+
+        // Doar la creare avem nevoie de created_by, dar la update e ignorat de obicei
+        if (!draft.id) {
+            fd.append("created_by_user_id", user.id);
+        }
 
         show();
         try {
-            await addContact({ companyId, formData: fd });
-            toast.success("Contactul a fost adăugat cu succes!");
+            if (draft.id) {
+                // --- UPDATE ---
+                // Presupunem că updateContact primește { id, companyId, formData }
+                await updateContact({ contactId: draft.id, companyId, formData: fd });
+                toast.success("Contact actualizat cu succes!");
+            } else {
+                // --- ADD ---
+                await addContact({ companyId, formData: fd });
+                toast.success("Contact adăugat cu succes!");
+            }
+
             setOpen(false);
             resetDraft();
         } catch (error) {
+            console.error(error);
             const msg = error?.response?.data?.message || "A apărut o eroare la salvare.";
             toast.error(msg);
         } finally {
@@ -145,20 +191,82 @@ export default function ContactsMainCompany({ companyLimba, companyId }) {
         }
     };
 
-    // Helper to toggle state
     const toggleCol = (key, val) => {
         setVisibleColumns(prev => ({ ...prev, [key]: val }));
     };
 
+    const handleSetOwner = async () => {
+        if (!openAsk) return;
+        const id = openAsk;
+        setOpenAsk(false);
+        show();
+        try {
+            await changeOwner({ contactId: id, companyId, user_id: user.id });
+            toast.success("Contactul a fost setat ca responsabil extern.");
+        } catch (error) {
+            console.error(error);
+            const msg = error?.response?.data?.message || "A apărut o eroare la setarea responsabilului.";
+            toast.error(msg);
+        } finally {
+            hide();
+        }
+    }
+
+    const handleRemoveOwner = async () => {
+        if (!openAskRemove) return;
+        const id = openAskRemove;
+        setOpenAskRemove(false);
+        show();
+        try {
+            await removeOwner({ contactId: id, companyId, user_id: user.id });
+            toast.success("Contactul a fost setat ca responsabil extern.");
+        } catch (error) {
+            console.error(error);
+            const msg = error?.response?.data?.message || "A apărut o eroare la setarea responsabilului.";
+            toast.error(msg);
+        } finally {
+            hide();
+        }
+    }
+
+    const handleDeleteClick = ({ id, nume }) => {
+        setSelectedContact({ id, nume });
+        setDeleteOpen(true);
+    }
+
+    const handleConfirmDelete = async () => {
+        if (!selectedContact) {
+            toast.error("ID-ul Contactului nu este valid.");
+            return;
+        }
+        try {
+            show();
+            await deleteContact({ contactId: selectedContact.id, companyId });
+            toast.success(`Contactul "${selectedContact?.nume}" a fost șters cu succes!`);
+            setDeleteOpen(false);
+        } catch (error) {
+            const msg = error?.response?.data?.message || "A apărut o eroare la ștergere.";
+            toast.error(msg);
+            return;
+        } finally {
+            hide();
+        }
+    }
+
+
     return (
-        <div className="h-full w-full relative flex flex-col items-center overflow-hidden">
+        <div className="h-full w-full relative  flex flex-col items-center overflow-hidden">
             <div className="w-full bg-card grid grid-cols-[auto_1fr] rounded-lg px-8 p-6 shrink-0 z-10">
                 <ContactsAddDialog
                     companyId={companyId}
                     open={open}
                     setOpen={setOpen}
                     buttonStyle={
-                        <Button variant="default" size="lg" className="gap-2">
+                        <Button
+                            variant="default"
+                            size="lg"
+                            className="gap-2"
+                        >
                             <FontAwesomeIcon icon={faPlus} className="text-base" />
                             <p>Adaugă un contact</p>
                         </Button>
@@ -167,11 +275,33 @@ export default function ContactsMainCompany({ companyLimba, companyId }) {
                     draft={draft}
                     setDraft={setDraft}
                     resetDraft={resetDraft}
-                    reset={true}
+                    reset={!draft.id} // Arată butonul de reset doar dacă NU edităm
+                    title={draft.id ? "Editează contact" : "Adaugă un contact"}
                 />
-
+                <AskDialog
+                    open={openAsk}
+                    setOpen={setOpenAsk}
+                    title="Setezi contactul ca responsabil extern?"
+                    description="Acest contact va fi marcat ca responsabil pentru această companie."
+                    onSubmit={() => handleSetOwner()}
+                />
+                <WarningDialog
+                    open={openAskRemove}
+                    setOpen={setOpenAskRemove}
+                    title="Elimini responsabilul extern?"
+                    description="Acest contact nu va mai fi responsabil pentru această companie."
+                    onSubmit={() => handleRemoveOwner()}
+                />
+                <DeleteDialog
+                    open={deleteOpen}
+                    setOpen={setDeleteOpen}
+                    title="Ștergere contact"
+                    description={`Ești sigur că vrei să ștergi contactul "${selectedContact?.nume}"? Această acțiune este ireversibilă.`}
+                    onSubmit={handleConfirmDelete}
+                    useCode={false}
+                />
+                {/* ... RESTUL JSX-ULUI (DROPDOWN COLOANE, SEARCH, ETC) ... */}
                 <div className="relative justify-end w-full gap-2 xxl:gap-4 flex items-center">
-                    {/* --- TOGGLE COLOANE --- */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" className="gap-2">
@@ -182,135 +312,20 @@ export default function ContactsMainCompany({ companyLimba, companyId }) {
                         <DropdownMenuContent align="end" className="w-56 max-h-[80vh] overflow-y-auto">
                             <DropdownMenuLabel>Vizibilitate coloane</DropdownMenuLabel>
                             <DropdownMenuSeparator />
-
-                            {/* CORE */}
-                            <DropdownMenuCheckboxItem
-                                checked={visibleColumns.nume}
-                                onCheckedChange={(c) => toggleCol('nume', c)}
-                                onSelect={(e) => e.preventDefault()}
-                            >
-                                Nume & Foto
-                            </DropdownMenuCheckboxItem>
-                            <DropdownMenuCheckboxItem
-                                checked={visibleColumns.functie}
-                                onCheckedChange={(c) => toggleCol('functie', c)}
-                                onSelect={(e) => e.preventDefault()}
-                            >
-                                Funcție
-                            </DropdownMenuCheckboxItem>
-                            <DropdownMenuCheckboxItem
-                                checked={visibleColumns.email}
-                                onCheckedChange={(c) => toggleCol('email', c)}
-                                onSelect={(e) => e.preventDefault()}
-                            >
-                                Email
-                            </DropdownMenuCheckboxItem>
-                            <DropdownMenuCheckboxItem
-                                checked={visibleColumns.telefon}
-                                onCheckedChange={(c) => toggleCol('telefon', c)}
-                                onSelect={(e) => e.preventDefault()}
-                            >
-                                Telefon
-                            </DropdownMenuCheckboxItem>
-
-                            {/* LOCATIONS */}
-                            <DropdownMenuCheckboxItem
-                                checked={visibleColumns.santier}
-                                onCheckedChange={(c) => toggleCol('santier', c)}
-                                onSelect={(e) => e.preventDefault()}
-                            >
-                                Șantier
-                            </DropdownMenuCheckboxItem>
-                            <DropdownMenuCheckboxItem
-                                checked={visibleColumns.filiala}
-                                onCheckedChange={(c) => toggleCol('filiala', c)}
-                                onSelect={(e) => e.preventDefault()}
-                            >
-                                Filială
-                            </DropdownMenuCheckboxItem>
-
-                            <DropdownMenuSeparator />
-
-                            {/* DETAILS */}
-                            <DropdownMenuCheckboxItem
-                                checked={visibleColumns.activ}
-                                onCheckedChange={(c) => toggleCol('activ', c)}
-                                onSelect={(e) => e.preventDefault()}
-                            >
-                                Status (Activ)
-                            </DropdownMenuCheckboxItem>
-                            <DropdownMenuCheckboxItem
-                                checked={visibleColumns.categorie_rol}
-                                onCheckedChange={(c) => toggleCol('categorie_rol', c)}
-                                onSelect={(e) => e.preventDefault()}
-                            >
-                                Categorie Rol
-                            </DropdownMenuCheckboxItem>
-                            <DropdownMenuCheckboxItem
-                                checked={visibleColumns.linkedin}
-                                onCheckedChange={(c) => toggleCol('linkedin', c)}
-                                onSelect={(e) => e.preventDefault()}
-                            >
-                                LinkedIn
-                            </DropdownMenuCheckboxItem>
-                            <DropdownMenuCheckboxItem
-                                checked={visibleColumns.canal}
-                                onCheckedChange={(c) => toggleCol('canal', c)}
-                                onSelect={(e) => e.preventDefault()}
-                            >
-                                Canal Preferat
-                            </DropdownMenuCheckboxItem>
-                            <DropdownMenuCheckboxItem
-                                checked={visibleColumns.limba}
-                                onCheckedChange={(c) => toggleCol('limba', c)}
-                                onSelect={(e) => e.preventDefault()}
-                            >
-                                Limbă
-                            </DropdownMenuCheckboxItem>
-
-                            {/* SCORES */}
-                            <DropdownMenuCheckboxItem
-                                checked={visibleColumns.decizie}
-                                onCheckedChange={(c) => toggleCol('decizie', c)}
-                                onSelect={(e) => e.preventDefault()}
-                            >
-                                Putere Decizie
-                            </DropdownMenuCheckboxItem>
-                            <DropdownMenuCheckboxItem
-                                checked={visibleColumns.influenta}
-                                onCheckedChange={(c) => toggleCol('influenta', c)}
-                                onSelect={(e) => e.preventDefault()}
-                            >
-                                Nivel Influență
-                            </DropdownMenuCheckboxItem>
-
-                            <DropdownMenuSeparator />
-
-                            {/* META */}
-                            <DropdownMenuCheckboxItem
-                                checked={visibleColumns.note}
-                                onCheckedChange={(c) => toggleCol('note', c)}
-                                onSelect={(e) => e.preventDefault()}
-                            >
-                                Notițe
-                            </DropdownMenuCheckboxItem>
-                            <DropdownMenuCheckboxItem
-                                checked={visibleColumns.created}
-                                onCheckedChange={(c) => toggleCol('created', c)}
-                                onSelect={(e) => e.preventDefault()}
-                            >
-                                Creat la
-                            </DropdownMenuCheckboxItem>
-                            <DropdownMenuCheckboxItem
-                                checked={visibleColumns.updated}
-                                onCheckedChange={(c) => toggleCol('updated', c)}
-                                onSelect={(e) => e.preventDefault()}
-                            >
-                                Actualizat la
-                            </DropdownMenuCheckboxItem>
-
+                            {Object.keys(visibleColumns).map((colKey) => (
+                                <DropdownMenuCheckboxItem
+                                    key={colKey}
+                                    checked={visibleColumns[colKey]}
+                                    onCheckedChange={(c) => toggleCol(colKey, c)}
+                                    onSelect={(e) => e.preventDefault()}
+                                    className="capitalize"
+                                >
+                                    {colKey.replace('_', ' ')}
+                                </DropdownMenuCheckboxItem>
+                            ))}
                         </DropdownMenuContent>
                     </DropdownMenu>
+
                     <div className="max-w-md relative w-full">
                         <FontAwesomeIcon
                             icon={faMagnifyingGlass}
@@ -331,34 +346,39 @@ export default function ContactsMainCompany({ companyLimba, companyId }) {
                 </div>
             </div>
 
-            <div className="flex-1 w-full relative overflow-hidden mt-4">
-                {isFetching && !loading && (
-                    <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/50 backdrop-blur-[1px] transition-all duration-300">
-                        <SpinnerElement text={2} />
-                    </div>
-                )}
+            {isFetching && !loading && (
+                <SpinnerElement text={2} />
+            )}
+            {contacts.length > 0 ? (
+                <div className='p-5 pt-0 h-full w-full overflow-hidden relative'>
+                    <ContactsListByCompany
+                        draft={draft}
+                        setDraft={setDraft}
 
-                <div className="w-full h-full overflow-auto px-1">
-                    {contacts.length > 0 ? (
-                        <div className='p-5'>
-                            <ContactsListByCompany
-                                contacts={contacts}
-                                visibleColumns={visibleColumns}
-                            />
-                        </div>
-                    ) : (
-                        !isFetching && (
-                            <div className="flex w-full h-full justify-center items-center">
-                                <span className="text-2xl text-muted-foreground italic">
-                                    {searchNameDebounced.trim() === ""
-                                        ? "Nu există nici un contact adăugat."
-                                        : `Niciun contact găsit pentru: "${searchNameDebounced.trim()}"`}
-                                </span>
-                            </div>
-                        )
-                    )}
+                        setOpen={setOpen}
+                        openAsk={openAsk}
+                        setOpenAsk={setOpenAsk}
+
+                        openAskRemove={openAskRemove}
+                        setOpenAskRemove={setOpenAskRemove}
+
+                        handleDeleteClick={handleDeleteClick}
+
+                        contacts={contacts}
+                        visibleColumns={visibleColumns}
+                    />
                 </div>
-            </div>
+            ) : (
+                !isFetching && (
+                    <div className="flex w-full h-full justify-center items-center">
+                        <span className="text-2xl text-muted-foreground italic">
+                            {searchNameDebounced.trim() === ""
+                                ? "Nu există nici un contact adăugat."
+                                : `Niciun contact găsit pentru: "${searchNameDebounced.trim()}"`}
+                        </span>
+                    </div>
+                )
+            )}
         </div>
     );
 }

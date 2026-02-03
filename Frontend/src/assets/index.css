@@ -5,8 +5,51 @@
 
 
 
+/* 1. Light (Weight 300) */
+@font-face {
+  font-family: 'MyCustomFont';
+  src: url('./fonts/Avenir-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+}
+
+/* 2. Regular (Weight 400) */
+@font-face {
+  font-family: 'MyCustomFont';
+  src: url('./fonts/Avenir-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+/* 3. Heavy (Weight 900) */
+@font-face {
+  font-family: 'MyCustomFont';
+  src: url('./fonts/Avenir-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+/* 3. Heavy (Weight 900) */
+@font-face {
+  font-family: 'MyCustomFont';
+  src: url('./fonts/Avenir-Bold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+}
+
+/* 3. Heavy (Weight 900) */
+@font-face {
+  font-family: 'MyCustomFont';
+  src: url('./fonts/Avenir-ExtraBold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+
+
 :root
 {
+  font-family: 'MyCustomFont', sans-serif;
   font-size: clamp(12px, 0.6vw, 15px);
     --clr: #000043;
 }
@@ -16,7 +59,6 @@ body
     min-height: 100vh;
     background-color: var(--clr);
 }
-
 
 
 
@@ -98,7 +140,7 @@ body
   --muted-foreground: 240 4.9% 64.1%;
   --accent: 240 4% 15.9%;
   --accent-foreground: 180 0% 98%;
-  --destructive: 358.7 100% 69.6%;
+  --destructive: 10 90% 63%;
   --destructive-foreground:  210 40% 98%;
   --border: 0 0% 100% / 15%;
   --input: 0 0% 100% / 20%;

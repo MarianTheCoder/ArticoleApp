@@ -33,6 +33,7 @@ export default function PlanViewKonva({ plan, onPlanReplaced, onSelectManagement
 
     //DZI FILES
     const osdRef = useRef(null);
+    const rafRef = useRef(null);
     const viewerRef = useRef(null);
     //hud for measure
     const hudRef = useRef(null);
@@ -698,9 +699,8 @@ export default function PlanViewKonva({ plan, onPlanReplaced, onSelectManagement
         const imgW = Number(plan.width_px);
         const imgH = Number(plan.height_px);
         const tileSize = Number(plan.tile_size || 256);
-        const maxLevel = Number.isFinite(Number(plan?.tiles_max_level))
-            ? Number(plan.tiles_max_level)
-            : Math.ceil(Math.log2(Math.max(imgW || 1, imgH || 1)));
+        const maxLevel = Number(plan.tiles_max_zoom) || Math.ceil(Math.log2(Math.max(imgW || 1, imgH || 1)));
+
 
         const tileSource = plan.dzi_url
             ? plan.dzi_url
@@ -747,13 +747,17 @@ export default function PlanViewKonva({ plan, onPlanReplaced, onSelectManagement
             posRef.current = { x: p00_px.x, y: p00_px.y };
 
             // 🔔 trigger a re-render so <Pin invScale={...}/> picks up the new scale
-            setViewSyncTick(t => t + 1);
+            if (!rafRef.current) {
+                rafRef.current = requestAnimationFrame(() => {
+                    rafRef.current = null;
+                    setViewSyncTick(t => t + 1);
+                });
+            }
         };
 
         viewer.addHandler('open', () => { viewer.viewport.goHome(true); syncKonva(); });
-        viewer.addHandler("viewport-change", () => {
-            syncKonva();           // immediate update
-        });
+        viewer.addHandler('animation', syncKonva);
+
         // ✅ Fire at least one sync even if 'open' is delayed or not emitted
         requestAnimationFrame(() => syncKonva());
         viewer.addOnceHandler('tile-loaded', () => syncKonva());

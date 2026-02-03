@@ -2,7 +2,6 @@ import React, { useContext } from 'react'
 import { Routes, Route, useLocation, Outlet } from 'react-router-dom'
 import Navbar from './MainElements/Navbar'
 import ProtectedRoute from './MainElements/ProtectedRoute';
-import Settings from './UserSettings/SettingsPage';
 import AddUsers from './AddUsers/AddUsersRoute';
 // import NavbarDefaultHome from './MainElements/NavbarDefaultHome';
 import DatabaseMainCategories from './BazaDeDate/DatabaseMainCategories';
@@ -51,7 +50,6 @@ export default function RoutesDom() {
         <Route element={<AppLayout />}>
           <Route path="" element={<ProtectedRoute allowedRoles={["ofertant", "angajat", "beneficiar"]}></ProtectedRoute>} />
           <Route path="addArticles" element={<ProtectedRoute allowedRoles={['ofertant']}><RetetaForm /></ProtectedRoute>} />
-          <Route path="settings" element={<ProtectedRoute allowedRoles={["ofertant", "angajat", "beneficiar"]}><Settings /></ProtectedRoute>} />
           <Route path="Santiere/:limbaUser/:idUser/:idSantier" element={<ProtectedRoute allowedRoles={["ofertant"]}><SantiereRoutes /></ProtectedRoute>} />
           <Route path="Pontaje" element={<ProtectedRoute allowedRoles={["ofertant"]}><Pontaje /></ProtectedRoute>} />
           <Route path="AtribuiriActivitate" element={<ProtectedRoute allowedRoles={["ofertant"]}><AtribuiriActivitate /></ProtectedRoute>} />

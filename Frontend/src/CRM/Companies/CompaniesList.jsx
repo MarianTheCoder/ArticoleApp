@@ -27,11 +27,11 @@ import {
 
 // --- IMPORTURI NOI NECESARE ---
 import CompaniesAddDialog from "./CompaniesAddDialog";
-import { useDeleteCompany, useEditCompany } from "@/CRM/hooks/useCompanies";
+import { useDeleteCompany, useEditCompany } from "@/hooks/useCompanies";
 import { useLoading } from "@/context/LoadingContext";
 import { AuthContext } from "@/context/TokenContext";
-import DeleteConfirmationDialog from "@/components/ui/delete-dialog";
 import { useNavigate } from "react-router-dom";
+import DeleteDialog from "@/components/ui/delete-dialog";
 
 export default function CompaniesList({
     companies = [],
@@ -183,8 +183,8 @@ export default function CompaniesList({
     };
 
     return (
-        <div className="w-full h-full mt-4 overflow-y-auto px-2 pb-10 scrollbar-hide">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 min-[1800px]:grid-cols-6 gap-4">
+        <div className="w-full overflow-y-auto h-full relative">
+            <div className="grid grid-cols-1  w-full h-full  sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 min-[1800px]:grid-cols-6 gap-4">
                 {companies.map((raw) => {
                     const c = raw?.company ?? raw;
                     const key = c?.id ?? Math.random();
@@ -194,8 +194,10 @@ export default function CompaniesList({
                     const grup = safeText(c?.grup_companie);
                     const locatie = `${c?.oras ? safeText(c.oras) + ", " : ""}${c?.regiune ? safeText(c.regiune) + ", " : ""}${c?.tara || ""}`;
                     const updatedAt = formatDate(c?.updated_at);
-                    const ownerName = safeText(c?.owner_name || c?.utilizator_responsabil_name);
-                    const ownerPhoto = c?.owner_photo_url || c?.utilizator_responsabil_photo_url;
+                    const ownerName = safeText(c?.responsabil_name && c?.responsabil_prenume
+                        ? `${c.responsabil_prenume} ${c.responsabil_name}`
+                        : "");
+                    const ownerPhoto = c?.responsabil_logo_url;
                     const ownerPhotoUrl = ownerPhoto ? photoApi + ownerPhoto : null;
 
                     return (
@@ -255,7 +257,7 @@ export default function CompaniesList({
                                             <FontAwesomeIcon icon={faLayerGroup} className="w-3.5 text-sm opacity-70" />
                                             <span>Grup</span>
                                         </div>
-                                        <span className="font-medium text-foreground truncate max-w-[140px]" title={grup}>{grup || "—"}</span>
+                                        <span className="font-medium  text-foreground truncate max-w-[140px]" title={grup}>{grup || "—"}</span>
                                     </div>
 
                                     <div className="flex items-center justify-between text-base">
@@ -273,7 +275,7 @@ export default function CompaniesList({
                                             <FontAwesomeIcon icon={faClock} className="w-3.5 text-sm opacity-70" />
                                             <span>Actualizat</span>
                                         </div>
-                                        <span className="font-mono text-sm text-muted-foreground truncate">{updatedAt}</span>
+                                        <span className=" text-sm text-muted-foreground truncate">{updatedAt}</span>
                                     </div>
                                 </div>
                                 <div className="mt-4 flex items-center border-t gap-3 pt-3">
@@ -294,7 +296,7 @@ export default function CompaniesList({
                                 <Button size="sm" variant="ghost" className="h-10 w-10 px-0 text-muted-foreground hover:text-foreground" onClick={() => { }} title="Contacte">
                                     <FontAwesomeIcon icon={faUsers} className="text-base" />
                                 </Button>
-                                <Button size="sm" variant="ghost" className="h-10 w-10 px-0 text-muted-foreground hover:text-foreground" onClick={() => { }} title="Șantiere">
+                                <Button size="sm" variant="ghost" className="h-10  w-10 px-0 text-muted-foreground hover:text-foreground" onClick={() => { }} title="Șantiere">
                                     <FontAwesomeIcon icon={faHardHat} className="text-base" />
                                 </Button>
                             </CardFooter>
@@ -316,16 +318,16 @@ export default function CompaniesList({
                 reset={false}
                 title="Editează Companie"
             />
-            <DeleteConfirmationDialog
+            <DeleteDialog
                 open={deleteOpen}
                 setOpen={setDeleteOpen}
-                title="Șterge Companie"
+                title="Șterge Compania"
                 description={`Ești sigur că vrei să ștergi compania "${selectedCompany?.nume_companie}"? Această acțiune nu poate fi anulată.`}
 
                 // Activezi codul
                 useCode={true}
                 onSubmit={handleConfirmDelete}
-                onCancel={() => console.log("Userul a anulat")}
+            // onCancel={() => console.log("Userul a anulat")}
             />
 
             {companies.length === 0 && (

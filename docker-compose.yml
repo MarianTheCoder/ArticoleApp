@@ -32,6 +32,7 @@ services:
       SMTP_PORT: 465
       SMTP_USER: marian.ciobanu@btbtrust.ro
       SMTP_PASS: Ciobanu33A
+      JWT_SECRET: mamaligaCuBranza
       REPORT_TO: world.eilix22@yahoo.com,cristian@balyenergies.fr
       TZ: Europe/Bucharest
 

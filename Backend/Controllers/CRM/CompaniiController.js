@@ -1,5 +1,6 @@
 const path = require("path");
 const fs = require("fs/promises");
+const { logHistoryAndNotify } = require("../../utils/HistoryService");
 
 function slugify(str = "") {
     return String(str)
@@ -127,27 +128,25 @@ const postCompany = async (req, res) => {
                 [logo_url, companyId]
             );
         }
-
-        // 3) SELECT FINAL - AICI ESTE CHEIA PENTRU TIMEZONE
-        // Suprascriem created_at si updated_at cu formatul ISO + Z
-        const [rows] = await conn.execute(
-            `SELECT 
-                c.*,
-                DATE_FORMAT(c.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at,
-                DATE_FORMAT(c.updated_at, '%Y-%m-%dT%H:%i:%sZ') AS updated_at,
-                u1.name AS created_by_name,
-                u1.photo_url AS created_by_photo_url,
-                u2.name AS updated_by_name,
-                u2.photo_url AS updated_by_photo_url
-            FROM S10_Companii c
-            LEFT JOIN users u1 ON u1.id = c.created_by_user_id
-            LEFT JOIN users u2 ON u2.id = c.updated_by_user_id
-            WHERE c.id = ?`,
-            [companyId]
-        );
+        logHistoryAndNotify(global.db, {
+            userId: req.body.created_by_user_id,
+            action: 'a adăugat',
+            entityType: 'companie',
+            entityId: companyId,
+            rootType: 'companie',
+            rootId: companyId,
+            newData: { ...payload },
+            notifyUsers: payload.created_by_user_id ? [payload.created_by_user_id] : []
+        }).catch(e => console.error("History Log Failed", e));
 
         await conn.commit();
-        return res.status(201).json({ company: rows[0] });
+        // Răspuns simplu și rapid
+        return res.status(201).json({
+            ok: true,
+            id: companyId, // Trimitem ID-ul doar în caz că vrei să faci navigate(`/company/${id}`)
+            message: "Compania a fost creată."
+        });
+
     } catch (err) {
         try { if (conn) await conn.rollback(); } catch (_) { }
         try { if (savedAbsPath) await fs.unlink(savedAbsPath); } catch (_) { }
@@ -201,10 +200,14 @@ const getCompanies = async (req, res) => {
                 u1.name AS created_by_name,
                 u1.photo_url AS created_by_photo_url,
                 u2.name AS updated_by_name,
-                u2.photo_url AS updated_by_photo_url
+                u2.photo_url AS updated_by_photo_url,
+                r.nume AS responsabil_name,
+                r.prenume AS responsabil_prenume,
+                r.logo_url AS responsabil_logo_url
             FROM S10_Companii c
             LEFT JOIN users u1 ON u1.id = c.created_by_user_id
             LEFT JOIN users u2 ON u2.id = c.updated_by_user_id
+            LEFT JOIN S10_Contacte r ON r.id = c.utilizator_responsabil_id
             ${whereSql}
             ORDER BY c.created_at DESC, c.id DESC`,
             params
@@ -263,6 +266,14 @@ const editCompany = async (req, res) => {
         conn = await global.db.getConnection();
         await conn.beginTransaction();
 
+        // 👇 1) GET OLD DATA (For History)
+        const [existingRows] = await conn.execute("SELECT * FROM S10_Companii WHERE id = ? FOR UPDATE", [id]);
+        if (existingRows.length === 0) {
+            await conn.rollback();
+            return res.status(404).json({ message: "Compania nu a fost găsită." });
+        }
+        const oldData = existingRows[0];
+
         // 1) UPDATE date generale (fără logo încă)
         const [upd] = await conn.execute(
             `UPDATE S10_Companii SET
@@ -315,7 +326,6 @@ const editCompany = async (req, res) => {
         }
 
         // 2) UPDATE LOGO (Dacă s-a trimis un fișier nou)
-        console
         if (req.file) {
             // Generăm folder și nume
             const folderName = slugify(payload.nume_companie) || `companie-${id}`;
@@ -339,26 +349,24 @@ const editCompany = async (req, res) => {
                 [logo_url, id]
             );
         }
-
-        // 3) SELECT FINAL (pentru a returna obiectul actualizat cu formatele corecte de dată)
-        const [rows] = await conn.execute(
-            `SELECT 
-                c.*,
-                DATE_FORMAT(c.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at,
-                DATE_FORMAT(c.updated_at, '%Y-%m-%dT%H:%i:%sZ') AS updated_at,
-                u1.name AS created_by_name,
-                u1.photo_url AS created_by_photo_url,
-                u2.name AS updated_by_name,
-                u2.photo_url AS updated_by_photo_url
-            FROM S10_Companii c
-            LEFT JOIN users u1 ON u1.id = c.created_by_user_id
-            LEFT JOIN users u2 ON u2.id = c.updated_by_user_id
-            WHERE c.id = ?`,
-            [id]
-        );
+        logHistoryAndNotify(global.db, {
+            userId: req.body.updated_by_user_id,
+            action: 'a editat',
+            entityType: 'companie',
+            entityId: id,
+            rootType: 'companie',
+            rootId: id,
+            oldData: oldData,
+            newData: { ...oldData, ...payload },
+            notifyUsers: payload.updated_by_user_id ? [payload.updated_by_user_id] : []
+        }).catch(e => console.error("History Log Failed", e));
 
         await conn.commit();
-        return res.status(200).json({ company: rows[0] });
+        return res.status(200).json({
+            ok: true,
+            companyId: id,
+            message: "Compania a fost actualizată."
+        });
 
     } catch (err) {
         try { if (conn) await conn.rollback(); } catch (_) { }
@@ -467,10 +475,14 @@ const getCompany = async (req, res) => {
                 u1.name AS created_by_name,
                 u1.photo_url AS created_by_photo_url,
                 u2.name AS updated_by_name,
-                u2.photo_url AS updated_by_photo_url
+                u2.photo_url AS updated_by_photo_url,
+                r.nume AS responsabil_name,
+                r.prenume AS responsabil_prenume,
+                r.logo_url AS responsabil_logo_url
             FROM S10_Companii c
             LEFT JOIN users u1 ON u1.id = c.created_by_user_id
             LEFT JOIN users u2 ON u2.id = c.updated_by_user_id
+            LEFT JOIN S10_Contacte r ON r.id = c.utilizator_responsabil_id   
             WHERE c.id = ?`,
             [id]
         );

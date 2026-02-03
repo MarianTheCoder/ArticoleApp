@@ -32,6 +32,7 @@ async function initializeDB(pool) {
     data_nastere DATE,
     role ENUM('ofertant', 'angajat', 'beneficiar') NOT NULL DEFAULT 'angajat',
     photo_url VARCHAR(255) NOT NULL,
+    activ TINYINT NOT NULL DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     INDEX idx_users_firma_id (firma_id),

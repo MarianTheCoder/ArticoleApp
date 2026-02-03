@@ -1,22 +1,22 @@
-import React, { useContext, useEffect } from 'react';
+import React, { useContext } from 'react';
 import { Navigate } from 'react-router-dom';
 import { AuthContext } from '../context/TokenContext';
 
-const ProtectedRoute = ({ children, allowedRoles }) => {
-    const { user , decodeToken } = useContext(AuthContext);
+const GuestRoute = ({ children }) => {
+    const { user, loading } = useContext(AuthContext);
 
-    useEffect(() => {
-        decodeToken();
-    }, [])
-    
-    
-    // If the user is not logged in, redirect to the login page
-    if (user.role) {
-        return <Navigate to="/" />;
+    // 1. Wait for Auth Check to finish
+    if (loading) {
+        return null; // or <Spinner />
     }
 
-    // If the user is authenticated and authorized, render the children
+    // 2. If User IS Logged In -> Kick them to Dashboard
+    if (user && user.id) {
+        return <Navigate to="/" replace />;
+    }
+
+    // 3. If User IS NOT Logged In -> Allow access to Login Page
     return children;
 };
 
-export default ProtectedRoute;
+export default GuestRoute;

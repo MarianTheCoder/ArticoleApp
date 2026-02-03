@@ -1,28 +1,27 @@
-import React, { useContext, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
+import React, { useContext } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/TokenContext';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
-    const { user , loading , decodeToken } = useContext(AuthContext);
+    // 1. Remove decodeToken. The Provider does this automatically on mount.
+    const { user, loading } = useContext(AuthContext);
+    const location = useLocation();
 
-    useEffect(() => {
-        decodeToken();
-    }, [])
-
-    if(loading) 
-        return <div></div>
-    // If the user is not logged in, redirect to the login page
-    if (!user.role) {
-        console.log(user);
-        return <Navigate to="/login" />;
+    if (loading) {
+        return <div className="p-4">Loading...</div>; // Or your Spinner component
     }
 
-    // If the user's role is not allowed, redirect to the home page
-    if (!allowedRoles.includes(user.role)) {
-        return <Navigate to="/" />;
+    // 2. Not Logged In? -> Kick to Login
+    if (!user || !user.role) {
+        // 'state={{ from: location }}' allows you to redirect them back after login
+        return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
-    // If the user is authenticated and authorized, render the children
+    // 3. Wrong Role? -> Kick to Home
+    if (allowedRoles && !allowedRoles.includes(user.role)) {
+        return <Navigate to="/" replace />;
+    }
+
     return children;
 };
 

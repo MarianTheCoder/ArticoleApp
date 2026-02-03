@@ -12,7 +12,7 @@ import { useLoading } from "@/context/LoadingContext";
 import { AuthContext } from "@/context/TokenContext";
 
 // Importăm hook-urile simple
-import { useCompanies, useAddCompany } from "@/CRM/hooks/useCompanies";
+import { useCompanies, useAddCompany } from "@/hooks/useCompanies";
 import { Button } from "@/components/ui/button";
 
 export default function CompaniesAddPage() {
@@ -114,8 +114,8 @@ export default function CompaniesAddPage() {
     };
 
     return (
-        <div className="h-full w-full flex justify-center items-center">
-            <div className="w-[95%] h-[95%] p-4 overflow-hidden bg-background relative rounded-lg">
+        <div className="h-full w-full flex  justify-center overflow-hidden items-center">
+            <div className="w-[95%] h-[95%] flex flex-col p-4  gap-4 overflow-hidden  bg-background relative rounded-lg">
                 <div className="w-full bg-card grid grid-cols-[auto_1fr] rounded-lg px-8 p-4">
                     <CompaniesAddDialog
                         open={open}

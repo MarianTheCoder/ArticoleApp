@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { useCompany, useEditCompany } from "@/CRM/hooks/useCompanies";
+import { useCompany, useEditCompany } from "@/hooks/useCompanies";
 import { useLoading } from "@/context/LoadingContext";
 import { AuthContext } from "@/context/TokenContext";
 import photoApi from "@/api/photoAPI";
@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import ContactsMainCompany from "../Contacts/ContactsMainCompany";
 
 export default function CompanyView() {
+
     const { companyId } = useParams();
     const { show, hide } = useLoading();
     // eslint-disable-next-line no-unused-vars
@@ -34,6 +35,8 @@ export default function CompanyView() {
     // --- DATA FETCHING ---
     const { mutateAsync: editCompany } = useEditCompany();
     const { data, isFetching } = useCompany(companyId);
+    console.log("Company data:", isFetching, companyId);
+
     const c = data?.company || null;
 
     const [open, setOpen] = useState(false);
@@ -156,9 +159,11 @@ export default function CompanyView() {
     const addressParts = [c?.adresa, c?.cod_postal, c?.oras, c?.regiune].filter(Boolean);
     const fullAddress = addressParts.length > 0 ? addressParts.join(", ") : "—";
 
+    const fullResponsabilName = c?.responsabil_prenume && c?.responsabil_name ? `${c.responsabil_prenume} ${c.responsabil_name}` : null;
+
     return (
-        <div className="h-full w-full flex justify-center items-center">
-            <div className="w-[95%] h-[95%] bg-background p-4 rounded-lg overflow-hidden grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <div className="h-full w-full flex overflow-hidden justify-center items-center">
+            <div className="w-[95%] h-[95%] bg-background p-4  rounded-lg grid grid-cols-1 lg:grid-cols-5 gap-4">
 
                 {/* --- LEFT SIDEBAR (1/5) --- */}
                 <aside className="w-full lg:col-span-1 flex flex-col gap-4 overflow-y-auto">
@@ -186,7 +191,7 @@ export default function CompanyView() {
                             {/* --- OWNER SECTION (NOU) --- */}
                             <div className="w-full rounded-lg p-3  border border-border flex items-center gap-3 text-left">
                                 <Avatar className="h-10 w-10 border border-background shadow-sm">
-                                    {/* Adaugă photo_url dacă există în DB pentru owner */}
+                                    <AvatarImage src={c?.responsabil_logo_url ? photoApi + c.responsabil_logo_url : null} />
                                     <AvatarFallback className="bg-muted font-bold">
                                         <FontAwesomeIcon icon={faUserTie} />
                                     </AvatarFallback>
@@ -194,7 +199,7 @@ export default function CompanyView() {
                                 <div className="flex flex-col overflow-hidden">
                                     <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Responsabil Extern</span>
                                     <span className="text-sm font-semibold text-foreground truncate">
-                                        {c?.owner_name || "Nealocat"}
+                                        {fullResponsabilName || "Nealocat"}
                                     </span>
                                 </div>
                             </div>
@@ -262,10 +267,10 @@ export default function CompanyView() {
 
                             {/* -- BADGES -- */}
                             <div className="flex flex-wrap gap-2">
-                                <Badge variant="outline" className="text-sm font-medium px-2 py-0.5 text-muted-foreground border-border">
+                                <Badge variant="outline" className="text-sm font-medium px-2 py-0.5 text-foreground border-border">
                                     {safeText(c?.nivel_strategic)}
                                 </Badge>
-                                <Badge variant="outline" className="text-sm font-medium px-2 py-0.5 text-muted-foreground border-border">
+                                <Badge variant="outline" className="text-sm font-medium px-2 py-0.5 text-foreground border-border">
                                     {safeText(c?.status_relatie)}
                                 </Badge>
                             </div>
@@ -273,7 +278,7 @@ export default function CompanyView() {
                             {/* -- RISK & COMPLIANCE -- */}
                             <div className="space-y-3 pt-1">
                                 <div className="flex items-center justify-between p-2 rounded bg-muted/40 border">
-                                    <span className="text-sm font-medium text-muted-foreground">Nivel Risc</span>
+                                    <span className="text-sm font-medium text-foreground">Nivel Risc</span>
                                     <span className={`text-sm px-2 py-0.5 rounded border ${getRiskColor(c?.nivel_risc)} font-bold`}>
                                         {c?.nivel_risc}
                                     </span>
@@ -281,7 +286,7 @@ export default function CompanyView() {
 
                                 <div className="space-y-1">
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-muted-foreground">Scor Conformitate</span>
+                                        <span className="text-foreground">Scor Conformitate</span>
                                         <span className="font-bold">{c?.scor_conformitate}/100</span>
                                     </div>
                                     <Progress value={c?.scor_conformitate} className="h-1.5" />
@@ -334,7 +339,7 @@ export default function CompanyView() {
                             <Separator className="opacity-40" />
 
                             {/* CREATED BY */}
-                            <div className="flex gap-3 items-center opacity-70">
+                            <div className="flex gap-3 items-center opacity-80">
                                 <Avatar className="h-7 w-7 border">
                                     <AvatarImage src={c?.created_by_photo_url ? photoApi + "/" + c.created_by_photo_url : null} />
                                     <AvatarFallback className="bg-muted text-base font-medium"><FontAwesomeIcon icon={faUser} /></AvatarFallback>
@@ -377,7 +382,7 @@ export default function CompanyView() {
 
                             </TabsContent>
 
-                            <TabsContent value="contacte" className="h-full m-0  w-full">
+                            <TabsContent value="contacte" className="h-full m-0 relative  w-full">
                                 <ContactsMainCompany companyId={c?.id || null} companyLimba={c?.tara || null} />
                             </TabsContent>
 

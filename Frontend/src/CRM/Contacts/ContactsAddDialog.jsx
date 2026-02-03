@@ -1,4 +1,4 @@
-import React, { useContext, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import {
     Dialog,
     DialogClose,
@@ -22,30 +22,22 @@ import {
 
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUndo } from "@fortawesome/free-solid-svg-icons";
 
 import { Button } from "@/components/ui/button";
-import { useLoading } from "@/context/LoadingContext";
 import { toast } from "sonner";
 
-
 export default function ContactsAddDialog({
-    // deschide (opțional – dacă nu e dat, componenta se controlează intern)
     open,
     setOpen,
-    // funcție custom la submit (opțional)
     onSubmitContact,
-    // draft extern (opțional)
     draft,
     resetDraft,
     setDraft,
-    // buton complet ca și props
     buttonStyle = (<div className="hidden" />),
-    //
     reset = false,
     title = "Adaugă un contact",
 }) {
@@ -57,15 +49,28 @@ export default function ContactsAddDialog({
         setDraft((prev) => ({ ...prev, [key]: value }));
     };
 
+    // --- LOGICA FOTO ACTUALIZATĂ ---
+
     const acceptLogo = (file) => {
         if (!file) return;
-        if (!file.type?.startsWith("image/")) return;
+        if (!file.type?.startsWith("image/")) {
+            toast.error("Te rog încarcă doar fișiere de tip imagine (JPG, PNG).");
+            return;
+        }
 
         setDraft((prev) => {
-            if (prev.logoPreview) URL.revokeObjectURL(prev.logoPreview);
+            // Dacă exista un preview anterior creat local (Blob), îl ștergem din memorie
+            if (prev.logoPreview && prev.logoPreview.startsWith('blob:')) {
+                URL.revokeObjectURL(prev.logoPreview);
+            }
 
             const url = URL.createObjectURL(file);
-            return { ...prev, logoFile: file, logoPreview: url };
+            return {
+                ...prev,
+                logoFile: file,
+                logoPreview: url,
+                delete_logo: false // Dacă punem o poză nouă, anulăm ștergerea
+            };
         });
     };
 
@@ -84,24 +89,40 @@ export default function ContactsAddDialog({
 
     const clearLogo = () => {
         setDraft((prev) => {
-            if (prev.logoPreview) URL.revokeObjectURL(prev.logoPreview);
-            return { ...prev, logoFile: null, logoPreview: "" };
+            if (prev.logoPreview && prev.logoPreview.startsWith('blob:')) {
+                URL.revokeObjectURL(prev.logoPreview);
+            }
+            return {
+                ...prev,
+                logoFile: null,
+                logoPreview: null, // Ascundem poza
+                delete_logo: true  // <--- SETĂM FLAGUL PENTRU SERVER
+            };
         });
         if (inputRef.current) inputRef.current.value = "";
     };
 
+    // -------------------------------
+
     return (
         <Dialog open={open} onOpenChange={setOpen}>
 
-            <DialogTrigger asChild>
+            <DialogTrigger onClick={() => {
+
+                // Resetează draft-ul dacă e un contact existent
+                // daca nu e pe baza de user id, lasam salvat.
+                if (draft.id) {
+                    resetDraft();
+                }
+            }} asChild>
                 {buttonStyle}
             </DialogTrigger>
 
             <DialogContent className="sm:max-w-[56rem] max-h-[85vh] overflow-y-scroll">
                 <form onSubmit={async (e) => {
                     e.preventDefault();
-                    if (draft.prenume.trim() === "" || draft.nume.trim() === "") {
-                        toast.warning("Te rog completează toate câmpurile obligatorii marcate cu *.");
+                    if (!draft.prenume?.trim() || !draft.nume?.trim()) {
+                        toast.warning("Te rog completează Prenumele și Numele.");
                         return;
                     }
                     await onSubmitContact();
@@ -111,16 +132,17 @@ export default function ContactsAddDialog({
                             <div className="flex gap-1 flex-col">
                                 <DialogTitle>{title}</DialogTitle>
                                 <DialogDescription>
-                                    Completează datele de contact pentru companie.
+                                    Completează sau modifică datele de contact.
                                 </DialogDescription>
                             </div>
 
+                            {/* Preview Avatar Header */}
                             <div className="flex justify-center">
-                                <div className="h-20 w-20 rounded-md overflow-hidden border bg-background flex items-center justify-center">
+                                <div className="h-20 w-20 rounded-md overflow-hidden border bg-background flex items-center justify-center relative">
                                     {draft?.logoPreview ? (
                                         <img
                                             src={draft.logoPreview}
-                                            alt="Previzualizare contact"
+                                            alt="Previzualizare"
                                             className="h-full w-full object-cover"
                                         />
                                     ) : (
@@ -133,10 +155,10 @@ export default function ContactsAddDialog({
                         </div>
                     </DialogHeader>
 
-                    {/* BODY scrollabil */}
+                    {/* BODY */}
                     <div className="overflow-y-auto">
                         <div className="grid gap-8 px-2 py-2">
-                            {/* Informații de bază */}
+                            {/* 1. Informații de bază */}
                             <div className="grid gap-4">
                                 <div className="text-lg font-semibold text-foreground">
                                     Informații de bază
@@ -144,54 +166,42 @@ export default function ContactsAddDialog({
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="grid gap-2">
-                                        <Label htmlFor="prenume">
-                                            Prenume <span className="text-destructive">*</span>
-                                        </Label>
+                                        <Label htmlFor="prenume">Prenume <span className="text-destructive">*</span></Label>
                                         <Input
                                             id="prenume"
-                                            name="prenume"
                                             value={draft.prenume}
                                             onChange={(e) => setField("prenume", e.target.value)}
-                                            placeholder="Andrei"
+                                            placeholder="Ex: Andrei"
                                         />
                                     </div>
 
                                     <div className="grid gap-2">
-                                        <Label htmlFor="nume">
-                                            Nume <span className="text-destructive">*</span>
-                                        </Label>
+                                        <Label htmlFor="nume">Nume <span className="text-destructive">*</span></Label>
                                         <Input
                                             id="nume"
-                                            name="nume"
                                             value={draft.nume}
                                             onChange={(e) => setField("nume", e.target.value)}
-                                            placeholder="Popescu"
+                                            placeholder="Ex: Popescu"
                                         />
                                     </div>
 
                                     <div className="grid gap-2">
-                                        <Label htmlFor="functie">
-                                            Funcție
-                                        </Label>
+                                        <Label htmlFor="functie">Funcție</Label>
                                         <Input
                                             id="functie"
-                                            name="functie"
                                             value={draft.functie}
                                             onChange={(e) => setField("functie", e.target.value)}
-                                            placeholder="Manager Proiect"
+                                            placeholder="Ex: Manager Proiect"
                                         />
                                     </div>
 
                                     <div className="grid gap-2">
-                                        <Label htmlFor="categorie_rol">
-                                            Categorie rol
-                                        </Label>
+                                        <Label htmlFor="categorie_rol">Categorie rol</Label>
                                         <Input
                                             id="categorie_rol"
-                                            name="categorie_rol"
                                             value={draft.categorie_rol}
                                             onChange={(e) => setField("categorie_rol", e.target.value)}
-                                            placeholder="Achiziții / Execuție / Direcțiune / QHSE"
+                                            placeholder="Ex: Achiziții"
                                         />
                                     </div>
                                 </div>
@@ -199,7 +209,7 @@ export default function ContactsAddDialog({
 
                             <Separator />
 
-                            {/* Detalii contact */}
+                            {/* 2. Detalii contact */}
                             <div className="grid gap-4">
                                 <div className="text-lg font-semibold text-foreground">
                                     Detalii contact
@@ -210,11 +220,10 @@ export default function ContactsAddDialog({
                                         <Label htmlFor="email">Email</Label>
                                         <Input
                                             id="email"
-                                            name="email"
                                             type="email"
                                             value={draft.email}
                                             onChange={(e) => setField("email", e.target.value)}
-                                            placeholder="andrei.popescu@companie.ro"
+                                            placeholder="email@companie.ro"
                                         />
                                     </div>
 
@@ -222,10 +231,9 @@ export default function ContactsAddDialog({
                                         <Label htmlFor="telefon">Telefon</Label>
                                         <Input
                                             id="telefon"
-                                            name="telefon"
                                             value={draft.telefon}
                                             onChange={(e) => setField("telefon", e.target.value)}
-                                            placeholder="+40 712 345 678"
+                                            placeholder="+40..."
                                         />
                                     </div>
 
@@ -233,10 +241,9 @@ export default function ContactsAddDialog({
                                         <Label htmlFor="linkedin_url">LinkedIn</Label>
                                         <Input
                                             id="linkedin_url"
-                                            name="linkedin_url"
                                             value={draft.linkedin_url}
                                             onChange={(e) => setField("linkedin_url", e.target.value)}
-                                            placeholder="https://www.linkedin.com/in/andrei"
+                                            placeholder="https://linkedin.com/in/..."
                                         />
                                     </div>
                                 </div>
@@ -244,7 +251,7 @@ export default function ContactsAddDialog({
 
                             <Separator />
 
-                            {/* CRM & preferințe */}
+                            {/* 3. CRM & Preferințe */}
                             <div className="grid gap-4">
                                 <div className="text-lg font-semibold text-foreground">
                                     CRM & preferințe
@@ -252,42 +259,28 @@ export default function ContactsAddDialog({
 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 gap-y-6">
                                     <div className="grid gap-2">
-                                        <Label htmlFor="putere_decizie">Putere decizie (1–5)</Label>
+                                        <Label>Putere decizie (1–5)</Label>
                                         <Input
-                                            id="putere_decizie"
-                                            name="putere_decizie"
                                             type="number"
                                             min={1}
                                             max={5}
                                             value={draft.putere_decizie}
-                                            onChange={(e) => {
-                                                let v = Number(e.target.value || 1);
-                                                if (v < 1) v = 1;
-                                                if (v > 5) v = 5;
-                                                setField("putere_decizie", v);
-                                            }}
+                                            onChange={(e) => setField("putere_decizie", e.target.value)}
                                         />
                                     </div>
 
                                     <div className="grid gap-2">
-                                        <Label htmlFor="nivel_influenta">Nivel influență (1–5)</Label>
+                                        <Label>Nivel influență (1–5)</Label>
                                         <Input
-                                            id="nivel_influenta"
-                                            name="nivel_influenta"
                                             type="number"
                                             min={1}
                                             max={5}
                                             value={draft.nivel_influenta}
-                                            onChange={(e) => {
-                                                let v = Number(e.target.value || 1);
-                                                if (v < 1) v = 1;
-                                                if (v > 5) v = 5;
-                                                setField("nivel_influenta", v);
-                                            }}
+                                            onChange={(e) => setField("nivel_influenta", e.target.value)}
                                         />
                                     </div>
                                     <div className="grid gap-2">
-                                        <Label htmlFor="canal_preferat">Canal preferat</Label>
+                                        <Label>Canal preferat</Label>
                                         <Select
                                             value={draft.canal_preferat}
                                             onValueChange={(v) => setField("canal_preferat", v)}
@@ -307,52 +300,28 @@ export default function ContactsAddDialog({
 
                             <Separator />
 
-                            {/* --- COMBINED ROW: Photo & Notes --- */}
+                            {/* 4. Foto & Note */}
                             <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-6">
 
-                                {/* 1. Foto / avatar */}
+                                {/* Upload Foto */}
                                 <div className="grid gap-4">
-
                                     <div className="grid gap-2">
                                         <Label>Foto (PNG/JPG)</Label>
                                         <div
-                                            onDragEnter={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                setIsDragOver(true);
-                                            }}
-                                            onDragOver={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                setIsDragOver(true);
-                                            }}
-                                            onDragLeave={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                setIsDragOver(false);
-                                            }}
+                                            onDragEnter={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                                            onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                                            onDragLeave={(e) => { e.preventDefault(); setIsDragOver(false); }}
                                             onDrop={onDropLogo}
+                                            onClick={() => inputRef.current?.click()}
                                             className={[
                                                 "h-24 rounded-lg border p-1 px-4 transition",
                                                 "bg-transparent hover:bg-muted/40",
                                                 "cursor-pointer select-none overflow-hidden flex items-center justify-center",
-                                                isDragOver
-                                                    ? "border-primary border-dashed ring-2 ring-primary/30"
-                                                    : "border-input",
+                                                isDragOver ? "border-primary border-dashed ring-2 ring-primary/30" : "border-input",
                                             ].join(" ")}
-                                            onClick={() => inputRef.current?.click()}
-                                            role="button"
-                                            tabIndex={0}
-                                            onKeyDown={(e) => {
-                                                if (e.key === "Enter" || e.key === " ") {
-                                                    e.preventDefault();
-                                                    inputRef.current?.click();
-                                                }
-                                            }}
                                         >
                                             <input
                                                 ref={inputRef}
-                                                name="logo_url"
                                                 type="file"
                                                 accept="image/*"
                                                 className="hidden"
@@ -365,12 +334,12 @@ export default function ContactsAddDialog({
                                                     <div className="text-sm text-muted-foreground font-medium truncate">
                                                         {draft.logoFile
                                                             ? draft.logoFile.name
-                                                            : "Trage poza aici sau apasă..."}
+                                                            : (draft.logoPreview ? "Modifică poza..." : "Trage poza aici...")}
                                                     </div>
                                                 </div>
 
                                                 <div className="flex items-center gap-2 shrink-0">
-                                                    {draft.logoFile && (
+                                                    {(draft.logoFile || draft.logoPreview) && (
                                                         <Button
                                                             type="button"
                                                             variant="destructive"
@@ -389,23 +358,20 @@ export default function ContactsAddDialog({
                                     </div>
                                 </div>
 
-                                {/* 2. Note interne */}
+                                {/* Note */}
                                 <div className="grid gap-4">
                                     <div className="grid gap-2">
                                         <Label htmlFor="note">Notițe</Label>
                                         <Textarea
                                             id="note"
-                                            name="note"
                                             value={draft.note}
                                             onChange={(e) => setField("note", e.target.value)}
-                                            placeholder="Observații, istoricul relației..."
+                                            placeholder="Observații..."
                                             className="resize-none h-24"
                                         />
                                     </div>
                                 </div>
-
                             </div>
-
                         </div>
                     </div>
 
@@ -420,11 +386,10 @@ export default function ContactsAddDialog({
                                     }}
                                 >
                                     <FontAwesomeIcon icon={faUndo} className="mr-2" />
-                                    <span>Resetează formular</span>
+                                    <span>Resetează</span>
                                 </Button>
-                            ) : (
-                                <div />
-                            )}
+                            ) : <div />}
+
                             <div className="flex gap-2">
                                 <DialogClose asChild>
                                     <Button variant="outline">Anulează</Button>
@@ -434,7 +399,6 @@ export default function ContactsAddDialog({
                         </div>
                     </DialogFooter>
                 </form>
-
             </DialogContent>
         </Dialog>
     );
