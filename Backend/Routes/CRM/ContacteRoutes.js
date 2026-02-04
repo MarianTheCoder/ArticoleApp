@@ -1,6 +1,7 @@
 const express = require('express');
 const { postContact, getContactsByCompany, editContact, changeOwner, removeOwner, deleteContact } = require("../../Controllers/CRM/ContacteController")
 const multer = require('multer');
+const { authenticateToken } = require('../../Middleware/authMiddleware');
 
 const router = express.Router();
 const uploadMem = multer({ storage: multer.memoryStorage() });
@@ -8,7 +9,7 @@ const uploadMem = multer({ storage: multer.memoryStorage() });
 
 router.post('/postContact', uploadMem.single('logo'), postContact);
 router.post('/editContact/:id', uploadMem.single('logo'), editContact);
-router.delete('/deleteContact/:id', deleteContact); // Placeholder for delete route
+router.delete('/deleteContact/:id', authenticateToken, deleteContact); // Placeholder for delete route
 
 router.post('/changeOwner', changeOwner);
 router.post("/removeOwner", removeOwner); // Reusing the same controller for removing owner as well

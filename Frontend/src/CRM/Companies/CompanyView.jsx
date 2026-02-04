@@ -365,7 +365,7 @@ export default function CompanyView() {
                     <Tabs defaultValue="activitati" className="h-full w-full flex flex-col gap-4">
                         <TabsList className="bg-card px-6 py-4 rounded-lg justify-start h-auto  w-full">
                             <div className="border-b  w-full flex gap-6">
-                                {["activitati", "contacte", "santiere", "filiale", "fișiere"].map((tab) => (
+                                {["istoric", "activitati", "contacte", "santiere", "filiale", "fișiere"].map((tab) => (
                                     <TabsTrigger
                                         key={tab}
                                         value={tab}
@@ -378,6 +378,9 @@ export default function CompanyView() {
                         </TabsList>
 
                         <div className="flex-1 bg-card overflow-y-auto  h-full  rounded-lg">
+                            <TabsContent value="istoric" className="h-full m-0 w-full">
+
+                            </TabsContent>
                             <TabsContent value="activitati" className="h-full m-0 w-full">
 
                             </TabsContent>

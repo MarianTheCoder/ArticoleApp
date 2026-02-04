@@ -1,6 +1,5 @@
 // services/HistoryService.js
 
-// 1. Helper to calculate diff (same as before)
 const getChanges = (oldObj, newObj) => {
     let diff = {};
     if (!oldObj) return newObj;
@@ -14,11 +13,8 @@ const getChanges = (oldObj, newObj) => {
     return diff;
 };
 
-// 2. Smart Name Extractor
-// Tries to find a readable name from the data object automatically
 const extractEntityName = (data) => {
     if (!data) return "Necunoscut";
-    // Check for specific Contact fields first (CRM specific)
     if (data.nume && data.prenume) return `${data.nume} ${data.prenume}`;
     if (data.nume) return data.nume;
     if (data.name) return data.name;
@@ -31,15 +27,16 @@ const extractEntityName = (data) => {
 const logHistoryAndNotify = async (pool, params) => {
     const {
         userId,
-        action,             // ' a adăugat ', ' a editat ', ' a şters '
-        entityType,         // 'contact', 'companie'
+        action,             // NOW PASS FULL VERB: ' a adăugat compania ', ' a şters contactul '
+        entityType,         // Still needed for DB filtering ('contact', 'companie')
         entityId,
         rootType = null,
         rootId = null,
         oldData = null,
         newData = null,
         notifyUsers = [],
-        tableName = null    // Optional: If you really want to query DB (Not recommended for deletes)
+        tableName = null,
+        severity = 'normal',
     } = params;
 
     const connection = await pool.getConnection();
@@ -47,69 +44,56 @@ const logHistoryAndNotify = async (pool, params) => {
     try {
         await connection.beginTransaction();
 
-        // --- STEP 1: GET REAL USER NAME ---
-        // We query the DB to turn "5" into "John Doe"
-        const [userRows] = await connection.execute(
-            "SELECT name FROM users WHERE id = ?",
-            [userId]
-        );
+        // 1. Get User Name
+        const [userRows] = await connection.execute("SELECT name FROM users WHERE id = ?", [userId]);
         const userName = userRows.length > 0 ? userRows[0].name : `Utilizator ${userId}`;
 
-        // --- STEP 2: GET ENTITY NAME ---
-        // We prefer extracting from data in memory (fast & works for deletes)
+        // 2. Get Entity Name
         let entityName = null;
-
-        if (action.includes('şters')) {
+        if (action.includes('şters') || action.includes('deleted')) {
             entityName = extractEntityName(oldData);
         } else {
             entityName = extractEntityName(newData) || extractEntityName(oldData);
         }
 
-        // Fallback: If data objects were empty, but we have a table name and it's NOT a delete
         if ((!entityName || entityName === "Element") && tableName && !action.includes('şters')) {
             try {
-                // WARN: This is vulnerable to SQL injection if tableName comes from user input. 
-                // Ensure tableName is hardcoded in your controller.
                 const [rows] = await connection.query(`SELECT * FROM ?? WHERE id = ?`, [tableName, entityId]);
-                if (rows.length > 0) {
-                    entityName = extractEntityName(rows[0]);
-                }
-            } catch (e) {
-                console.log("Could not fetch entity name from table:", e.message);
-            }
+                if (rows.length > 0) entityName = extractEntityName(rows[0]);
+            } catch (e) { console.log("Name fetch error:", e.message); }
         }
 
-        // --- STEP 3: PREPARE DETAILS JSON ---
+        // 3. Prepare Details
         let details = null;
-        if (action.includes('adăugat')) details = newData;
-        if (action.includes('şters')) details = oldData;
-        if (action.includes('editat')) details = getChanges(oldData, newData);
+        // Loose check for keywords since action is now custom
+        if (action.includes('adăugat') || action.includes('add')) details = newData;
+        if (action.includes('şters') || action.includes('delete')) details = oldData;
+        if (action.includes('editat') || action.includes('edit')) details = getChanges(oldData, newData);
 
-        // --- STEP 4: INSERT HISTORY ---
+        // 4. Insert History
         const [res] = await connection.execute(
             `INSERT INTO S11_History 
             (entity_type, entity_id, root_entity_type, root_entity_id, action, user_id, details) 
             VALUES (?, ?, ?, ?, ?, ?, ?)`,
             [entityType, entityId, rootType, rootId, action, userId, JSON.stringify(details)]
         );
-
         const historyId = res.insertId;
 
-        // --- STEP 5: NOTIFICATIONS ---
-        // Filter out the actor so they don't get notified about their own action
-        // Convert IDs to numbers to be safe
-        // const recipients = notifyUsers.filter(id => Number(id) !== Number(userId));
-        const recipients = notifyUsers
+        // 5. NOTIFICATIONS (UPDATED)
+        const recipients = notifyUsers;
 
         if (recipients.length > 0) {
-            // "John Doe a editat contact: Popescu Ion"
-            const message = `${userName} ${action} ${entityType}: ${entityName}`;
+            // --- CHANGE IS HERE ---
+            // OLD: `${userName} ${action} ${entityType}: ${entityName}`
+            // NEW: `${userName} ${action} ${entityName}`
+            // We removed ${entityType} and the colon so the 'action' string controls the flow.
+            const message = `${userName} ${action} ${entityName}`;
 
             const values = recipients.map(rId => [
                 rId,
                 historyId,
                 message,
-                'normal',
+                severity,
                 entityType,
                 entityId
             ]);

@@ -1,4 +1,5 @@
 const path = require("path");
+const { logHistoryAndNotify } = require("../../utils/HistoryService");
 const fs = require("fs").promises; // Folosim fs.promises pentru async/await
 
 // Helper simplu pentru extensie (dacă nu îl ai deja importat)
@@ -144,7 +145,6 @@ const postContact = async (req, res) => {
                 [logo_url, contactId]
             );
         }
-
         // 3. UPDATE COMPANY (Set last updated by)
         await conn.execute(
             `UPDATE S10_Companii 
@@ -152,6 +152,20 @@ const postContact = async (req, res) => {
              WHERE id = ?`,
             [req.body.created_by_user_id, payload.companie_id]
         );
+
+        logHistoryAndNotify(global.db, {
+            userId: payload.created_by_user_id,
+            action: ' a adăugat contactul ',
+            entityType: 'contact',
+            entityId: contactId,
+            rootType: 'companie',
+            rootId: payload.companie_id,
+            newData: { ...payload },
+            notifyUsers: payload.created_by_user_id ? [payload.created_by_user_id] : [],
+            severity: 'normal'
+        }).catch(e => console.log("History Log Failed", e));
+
+
 
         await conn.commit();
         return res.status(201).json({ ok: true });
@@ -231,11 +245,9 @@ const getContactsByCompany = async (req, res) => {
 
 const editContact = async (req, res) => {
     let conn;
-    let savedAbsPath = null; // For rollback cleanup
+    let savedAbsPath = null;
     try {
         const { id } = req.params;
-
-        // 1. Validare date obligatorii (similar cu postContact)
         const companie_id = Number(req.body.companie_id);
         const nume = (req.body.nume || "").trim();
         const prenume = (req.body.prenume || "").trim();
@@ -247,9 +259,9 @@ const editContact = async (req, res) => {
         conn = await global.db.getConnection();
         await conn.beginTransaction();
 
-        // 2. Obținem datele vechi (avem nevoie de logo_url vechi și numele companiei pentru paths)
+        // 1. GET OLD DATA (FULL) for History Diff
         const [existingRows] = await conn.execute(
-            `SELECT c.logo_url, c.companie_id, comp.nume_companie
+            `SELECT c.*, comp.nume_companie
              FROM S10_Contacte c
              JOIN S10_Companii comp ON c.companie_id = comp.id
              WHERE c.id = ?`,
@@ -261,69 +273,55 @@ const editContact = async (req, res) => {
             return res.status(404).json({ message: "Contactul nu a fost găsit." });
         }
 
-        const oldContact = existingRows[0];
+        const oldContact = existingRows[0]; // This is 'oldData'
 
-        // Verificăm consistența (să nu mutăm contactul la o companie inexistentă accidental)
-        if (oldContact.companie_id !== companie_id) {
-            // Dacă se permite mutarea între companii, logica de folder ar fi mult mai complexă.
-            // Aici presupunem că rămâne în aceeași companie sau verificăm compania nouă.
-            const [checkComp] = await conn.execute("SELECT nume_companie FROM S10_Companii WHERE id = ?", [companie_id]);
-            if (checkComp.length > 0) oldContact.nume_companie = checkComp[0].nume_companie;
-        }
-
-        // 3. Gestionare Foto
+        // 2. Handle Photo logic
         let newLogoUrl = oldContact.logo_url;
         const shouldDelete = req.body.delete_logo === "true" || req.body.delete_logo === true;
 
-        // Scenariul A: Upload fisier nou (suprascrie orice există)
         if (req.file) {
-            // a) Ștergem fișierul vechi dacă există
             if (oldContact.logo_url) {
                 const oldPath = path.join(__dirname, "..", "..", oldContact.logo_url);
                 try { await fs.unlink(oldPath); } catch (e) { console.log("Warn: Could not delete old photo", e.message); }
             }
-
-            // b) Salvăm fișierul nou
-            // Calculăm path-ul (folosim noul nume/prenume în caz că s-au schimbat)
             const companieNume = slugify(oldContact.nume_companie);
             const folderName = slugify(`${nume}-${prenume}-${id}`);
             const baseDir = path.join(__dirname, "..", "..", "uploads", "CRM", "Companii", companieNume, "Contacte", folderName);
-
             await fs.mkdir(baseDir, { recursive: true });
-
             const ext = guessExt(req.file.mimetype);
-            const ts = Date.now();
-            const fileName = `foto_${ts}.${ext}`;
-
+            const fileName = `foto_${Date.now()}.${ext}`;
             savedAbsPath = path.join(baseDir, fileName);
             await fs.writeFile(savedAbsPath, req.file.buffer);
-
             newLogoUrl = `/uploads/CRM/Companii/${companieNume}/Contacte/${folderName}/${fileName}`;
-        }
-        // Scenariul B: Ștergere explicită (fără upload nou)
-        else if (shouldDelete && oldContact.logo_url) {
+        } else if (shouldDelete && oldContact.logo_url) {
             const oldPath = path.join(__dirname, "..", "..", oldContact.logo_url);
             try { await fs.unlink(oldPath); } catch (e) { console.log("Warn: Could not delete old photo", e.message); }
             newLogoUrl = null;
         }
 
-        // 4. Pregătire date Update
-        const filiala_id = req.body.filiala_id ? Number(req.body.filiala_id) : null;
-        const santier_id = req.body.santier_id ? Number(req.body.santier_id) : null;
-        const functie = (req.body.functie || "").trim();
-        const categorie_rol = (req.body.categorie_rol || "").trim();
-        const email = (req.body.email || "").trim() || null;
-        const telefon = (req.body.telefon || "").trim() || null;
-        const linkedin_url = (req.body.linkedin_url || "").trim() || null;
-        const putere_decizie = Number(req.body.putere_decizie || 1);
-        const nivel_influenta = Number(req.body.nivel_influenta || 1);
-        const canal_preferat = (req.body.canal_preferat || "Email").trim();
-        const limba = (req.body.limba || "RO").trim();
-        const activ = req.body.activ !== undefined ? (req.body.activ == 'true' || req.body.activ == 1) : true;
-        const note = (req.body.note || "").trim() || null;
-        const updated_by = req.body.updated_by_user_id ? Number(req.body.updated_by_user_id) : (req.user?.id || null);
+        // 3. Prepare New Data Object (Clean types for History Diff)
+        const newData = {
+            companie_id: companie_id,
+            filiala_id: req.body.filiala_id ? Number(req.body.filiala_id) : null,
+            santier_id: req.body.santier_id ? Number(req.body.santier_id) : null,
+            prenume: prenume,
+            nume: nume,
+            functie: (req.body.functie || "").trim(),
+            categorie_rol: (req.body.categorie_rol || "").trim(),
+            email: (req.body.email || "").trim() || null,
+            telefon: (req.body.telefon || "").trim() || null,
+            linkedin_url: (req.body.linkedin_url || "").trim() || null,
+            putere_decizie: Number(req.body.putere_decizie || 1),
+            nivel_influenta: Number(req.body.nivel_influenta || 1),
+            canal_preferat: (req.body.canal_preferat || "Email").trim(),
+            limba: (req.body.limba || "RO").trim(),
+            activ: req.body.activ !== undefined ? (req.body.activ == 'true' || req.body.activ == 1) : true,
+            note: (req.body.note || "").trim() || null,
+            logo_url: newLogoUrl,
+            updated_by_user_id: req.body.updated_by_user_id ? Number(req.body.updated_by_user_id) : (req.user?.id || null)
+        };
 
-        // 5. Execuție SQL Update
+        // 4. Update SQL
         await conn.execute(
             `UPDATE S10_Contacte SET
                 companie_id = ?, filiala_id = ?, santier_id = ?,
@@ -334,41 +332,46 @@ const editContact = async (req, res) => {
                 updated_by_user_id = ?, updated_at = CURRENT_TIMESTAMP
              WHERE id = ?`,
             [
-                companie_id, filiala_id, santier_id,
-                prenume, nume, functie, categorie_rol,
-                email, telefon, linkedin_url,
-                putere_decizie, nivel_influenta, canal_preferat, limba,
-                activ, note, newLogoUrl,
-                updated_by,
+                newData.companie_id, newData.filiala_id, newData.santier_id,
+                newData.prenume, newData.nume, newData.functie, newData.categorie_rol,
+                newData.email, newData.telefon, newData.linkedin_url,
+                newData.putere_decizie, newData.nivel_influenta, newData.canal_preferat, newData.limba,
+                newData.activ, newData.note, newData.logo_url,
+                newData.updated_by_user_id,
                 id
             ]
         );
 
         await conn.execute(
-            `UPDATE S10_Companii 
-             SET updated_at = CURRENT_TIMESTAMP, updated_by_user_id = ? 
-             WHERE id = ?`,
-            [updated_by, companie_id]
+            `UPDATE S10_Companii SET updated_at = CURRENT_TIMESTAMP, updated_by_user_id = ? WHERE id = ?`,
+            [newData.updated_by_user_id, newData.companie_id]
         );
+
+        // --- HISTORY ---
+        await logHistoryAndNotify(global.db, {
+            userId: newData.updated_by_user_id,
+            action: ' a editat contactul ',
+            entityType: 'contact',
+            entityId: id,
+            rootType: 'companie',
+            rootId: newData.companie_id,
+            oldData: oldContact, // Full old data
+            newData: newData,    // Clean new data
+            severity: 'normal',
+            notifyUsers: newData.updated_by_user_id ? [newData.updated_by_user_id] : [],
+        });
 
         await conn.commit();
         return res.status(200).json({ ok: true, message: "Contact actualizat." });
 
     } catch (err) {
-        // Rollback DB
         try { if (conn) await conn.rollback(); } catch (_) { }
-
-        // Ștergem fișierul nou uploadat dacă DB a crăpat (ca să nu avem fișiere orfane)
-        if (savedAbsPath) {
-            try { await fs.unlink(savedAbsPath); } catch (_) { }
-        }
+        if (savedAbsPath) { try { await fs.unlink(savedAbsPath); } catch (_) { } }
 
         console.log("editContact error:", err);
-
         if (err && (err.code === "ER_DUP_ENTRY" || err.errno === 1062)) {
             return res.status(409).json({ message: "Acest email există deja (duplicat)." });
         }
-
         return res.status(500).json({ message: "Eroare server la actualizare." });
     } finally {
         try { if (conn) conn.release(); } catch (_) { }
@@ -378,27 +381,34 @@ const editContact = async (req, res) => {
 const changeOwner = async (req, res) => {
     let conn;
     try {
-        // Preluăm datele din body (așa cum le trimite React hook-ul)
         const contactId = req.body.contactId;
         const companyId = req.body.companyId;
         const userId = req.body.user_id ? Number(req.body.user_id) : (req.user?.id || null);
 
         if (!contactId || !companyId || !userId) {
-            return res.status(400).json({ message: "Date incomplete (Contact, Company, User)." });
+            return res.status(400).json({ message: "Date incomplete." });
         }
 
         conn = await global.db.getConnection();
         await conn.beginTransaction();
-        // 1. Update Contact (Change 'updated_by' or if you have an 'owner_id' column, update that too)
-        // Presupunem că 'schimbare owner' înseamnă doar că acest user a interacționat ultimul
+
+        // --- STEP 1: FETCH NAMES (Contact & Company) ---
+        // We need the contact name for the notification
+        const [contactRows] = await conn.execute(
+            "SELECT nume, prenume FROM S10_Contacte WHERE id = ?",
+            [contactId]
+        );
+        const contactName = contactRows.length > 0
+            ? `${contactRows[0].nume} ${contactRows[0].prenume}`
+            : "Necunoscut";
+
+        // --- STEP 2: UPDATE CONTACT ---
         await conn.execute(
-            `UPDATE S10_Contacte 
-             SET updated_by_user_id = ?, updated_at = CURRENT_TIMESTAMP 
-             WHERE id = ?`,
+            `UPDATE S10_Contacte SET updated_by_user_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
             [userId, contactId]
         );
 
-        // 2. UPDATE COMPANY (Critical Step)
+        // --- STEP 3: UPDATE COMPANY ---
         await conn.execute(
             `UPDATE S10_Companii 
              SET utilizator_responsabil_id = ?, updated_by_user_id = ?, updated_at = CURRENT_TIMESTAMP
@@ -406,13 +416,28 @@ const changeOwner = async (req, res) => {
             [contactId, userId, companyId]
         );
 
+        // --- STEP 4: HISTORY (Custom Action String) ---
+        // Message will look like: "Gheorghita a setat responsabil pe Ion Popescu la Compania X"
+        await logHistoryAndNotify(global.db, {
+            userId: userId,
+            action: ` a setat responsabil pe ${contactName} la `, // <--- Custom Action with Name
+            entityType: 'companie',
+            entityId: companyId,
+            rootType: 'companie',
+            rootId: companyId,
+            newData: { utilizator_responsabil_id: contactId },
+            notifyUsers: [userId],
+            severity: 'low',
+            tableName: 'S10_Companii' // Falls back to Company Name if not in data
+        });
+
         await conn.commit();
         return res.status(200).json({ ok: true, message: "Owner updated successfully." });
 
     } catch (err) {
         try { if (conn) await conn.rollback(); } catch (_) { }
         console.error("changeOwner error:", err);
-        return res.status(500).json({ message: "Eroare server la schimbarea owner-ului." });
+        return res.status(500).json({ message: "Eroare server." });
     } finally {
         try { if (conn) conn.release(); } catch (_) { }
     }
@@ -421,19 +446,27 @@ const changeOwner = async (req, res) => {
 const removeOwner = async (req, res) => {
     let conn;
     try {
-        console.log("removeOwner called with body:", req.body);
         const companyId = req.body.companyId;
-        const contactId = req.body.contactId;
+        const contactId = req.body.contactId; // The ID being removed
         const userId = req.body.user_id ? Number(req.body.user_id) : (req.user?.id || null);
 
         if (!companyId || !contactId || !userId) {
-            return res.status(400).json({ message: "Date incomplete (Company, Contact, User)." });
+            return res.status(400).json({ message: "Date incomplete." });
         }
 
         conn = await global.db.getConnection();
         await conn.beginTransaction();
 
-        // SET utilizator_responsabil_id = NULL
+        // --- STEP 1: FETCH NAME ---
+        const [contactRows] = await conn.execute(
+            "SELECT nume, prenume FROM S10_Contacte WHERE id = ?",
+            [contactId]
+        );
+        const contactName = contactRows.length > 0
+            ? `${contactRows[0].nume} ${contactRows[0].prenume}`
+            : "Necunoscut";
+
+        // --- STEP 2: REMOVE FROM COMPANY ---
         await conn.execute(
             `UPDATE S10_Companii 
              SET utilizator_responsabil_id = NULL, updated_by_user_id = ?, updated_at = CURRENT_TIMESTAMP
@@ -441,12 +474,27 @@ const removeOwner = async (req, res) => {
             [userId, companyId]
         );
 
+        // --- STEP 3: TOUCH CONTACT ---
         await conn.execute(
-            `UPDATE S10_Contacte 
-             SET updated_by_user_id = ?, updated_at = CURRENT_TIMESTAMP 
-             WHERE id = ?`,
+            `UPDATE S10_Contacte SET updated_by_user_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
             [userId, contactId]
         );
+
+        // --- STEP 4: HISTORY ---
+        // Message: "Gheorghita a eliminat responsabilul Ion Popescu de la Compania X"
+        await logHistoryAndNotify(global.db, {
+            userId: userId,
+            action: ` a eliminat responsabilul ${contactName} de la `, // <--- Custom Action
+            entityType: 'companie',
+            entityId: companyId,
+            rootType: 'companie',
+            rootId: companyId,
+            oldData: { utilizator_responsabil_id: contactId }, // Keep ID in JSON for technical reference
+            newData: { utilizator_responsabil_id: null },
+            notifyUsers: [userId],
+            severity: 'normal',
+            tableName: 'S10_Companii'
+        });
 
         await conn.commit();
         return res.status(200).json({ ok: true, message: "Responsabil șters cu succes." });
@@ -454,7 +502,7 @@ const removeOwner = async (req, res) => {
     } catch (err) {
         try { if (conn) await conn.rollback(); } catch (_) { }
         console.error("removeOwner error:", err);
-        return res.status(500).json({ message: "Eroare server la ștergerea responsabilului." });
+        return res.status(500).json({ message: "Eroare server." });
     } finally {
         try { if (conn) conn.release(); } catch (_) { }
     }
@@ -463,18 +511,17 @@ const removeOwner = async (req, res) => {
 const deleteContact = async (req, res) => {
     let conn;
     try {
-        const { id } = req.params; // Contact ID
+        const { id } = req.params;
+        const userId = req.user?.id || null; // Capture who is deleting
 
-        if (!id) {
-            return res.status(400).json({ message: "ID-ul contactului lipsește." });
-        }
+        if (!id) return res.status(400).json({ message: "ID-ul contactului lipsește." });
 
         conn = await global.db.getConnection();
         await conn.beginTransaction();
 
-        // 1. GET DATA (Need logo_url and company_id before deleting)
+        // 1. GET FULL DATA BEFORE DELETE (for History)
         const [rows] = await conn.execute(
-            "SELECT id, logo_url, companie_id FROM S10_Contacte WHERE id = ?",
+            "SELECT * FROM S10_Contacte WHERE id = ?",
             [id]
         );
 
@@ -482,12 +529,9 @@ const deleteContact = async (req, res) => {
             await conn.rollback();
             return res.status(404).json({ message: "Contactul nu a fost găsit." });
         }
-
         const contact = rows[0];
 
         // 2. UNLINK RESPONSIBILITY 
-        // If this contact is the 'utilizator_responsabil_id' for their company, set it to NULL.
-        // We do this BEFORE deleting the contact to avoid Foreign Key constraints issues.
         await conn.execute(
             `UPDATE S10_Companii 
              SET utilizator_responsabil_id = NULL, updated_at = CURRENT_TIMESTAMP 
@@ -495,33 +539,37 @@ const deleteContact = async (req, res) => {
             [contact.companie_id, id]
         );
 
-        // 3. DELETE CONTACT
+        // --- HISTORY (Log BEFORE delete) ---
+        // We log it now because after delete, we might lose context if we query by ID
+        await logHistoryAndNotify(global.db, {
+            userId: userId,
+            action: ' a şters contactul ',
+            entityType: 'contact',
+            entityId: id,
+            rootType: 'companie',
+            rootId: contact.companie_id,
+            oldData: contact, // Pass the full object we just fetched
+            notifyUsers: [userId],
+            severity: 'high',
+            tableName: 'S10_Contacte'
+        });
+
+        // 3. DELETE
         await conn.execute("DELETE FROM S10_Contacte WHERE id = ?", [id]);
 
         await conn.commit();
 
-        // 4. FILE CLEANUP (Delete the contact's folder from disk)
-        // We do this after commit so we don't delete files if the DB operation fails.
+        // 4. FILE CLEANUP
         if (contact.logo_url) {
             try {
-                // logo_url example: /uploads/CRM/Companii/nume-comp/Contacte/nume-contact-id/foto.jpg
-
-                const relativePath = contact.logo_url.startsWith('/')
-                    ? contact.logo_url.substring(1)
-                    : contact.logo_url;
-
+                const relativePath = contact.logo_url.startsWith('/') ? contact.logo_url.substring(1) : contact.logo_url;
                 const fullFilePath = path.join(__dirname, "..", "..", relativePath);
-
-                // We want to delete the FOLDER containing the photo (nume-contact-id)
                 const contactFolderPath = path.dirname(fullFilePath);
-
-                // Safety Check: Ensure we are inside a "Contacte" folder to avoid deleting parents
                 if (contactFolderPath.includes("Contacte")) {
                     await fs.rm(contactFolderPath, { recursive: true, force: true });
                 }
             } catch (err) {
-                console.error("Warning: Failed to delete contact files from disk:", err.message);
-                // We don't return error here because DB delete was successful
+                console.error("Warning: Failed to delete contact files:", err.message);
             }
         }
 
@@ -529,9 +577,7 @@ const deleteContact = async (req, res) => {
 
     } catch (err) {
         console.log("deleteContact error:", err);
-        if (conn) {
-            try { await conn.rollback(); } catch (_) { }
-        }
+        if (conn) try { await conn.rollback(); } catch (_) { }
         return res.status(500).json({ message: "Eroare server la ștergerea contactului." });
     } finally {
         if (conn) conn.release();

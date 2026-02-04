@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-// IMPORT THE 3 SEPARATE HOOKS
+import { useNavigate } from 'react-router-dom';
 import { useGetNotifications, useMarkRead, useMarkAllRead } from '@/hooks/useNotifications';
 import {
     Popover,
@@ -8,26 +8,68 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faBell, faCheckDouble } from '@fortawesome/free-solid-svg-icons';
+import {
+    faBell,
+    faCheckDouble,
+    faCheck,
+    faInfoCircle,
+    faExclamationTriangle,
+    faBomb
+} from '@fortawesome/free-solid-svg-icons';
 import { cn } from "@/lib/utils";
-import { toast } from "sonner"; // IMPORT TOAST
+import { toast } from "sonner";
 
 // Helper for "5m ago"
 const timeAgo = (dateStr) => {
     const date = new Date(dateStr);
     const now = new Date();
-    const diff = (now - date) / 1000; // seconds
+    const diff = (now - date) / 1000;
 
-    if (diff < 60) return 'Just now';
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-    return `${Math.floor(diff / 86400)}d ago`;
+    if (diff < 60) return 'Chiar acum';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m în urmă`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h în urmă`;
+    return `${Math.floor(diff / 86400)}z în urmă`;
+};
+
+// 1. Helper: Determine Link based on Entity
+const getLink = (n) => {
+    if (n.link) return n.link;
+    switch (n.entity_type) {
+        case 'companie': return `/CRM/Companii/View/${n.entity_id}`;
+        case 'contact': return `/CRM/Companii`;
+        default: return '#';
+    }
+};
+
+// 2. Helper: Styling based on Severity
+const getSeverityStyles = (severity, isRead) => {
+    if (isRead) return "border-l-4 border-l-muted hover:bg-muted ";
+
+    switch (severity) {
+        case 'high':
+            return "border-l-4 border-l-red-500 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30";
+        case 'normal':
+            return "border-l-4 border-l-orange-500 bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/30";
+        case 'low':
+        default:
+            return "border-l-4 border-l-blue-500 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30";
+    }
+};
+
+// 3. Helper: Icon based on severity
+const getSeverityIcon = (severity) => {
+    switch (severity) {
+        case 'high': return <FontAwesomeIcon icon={faBomb} className="text-red-500 mt-0.5" />;
+        case 'normal': return <FontAwesomeIcon icon={faExclamationTriangle} className="text-orange-500 mt-0.5" />;
+        default: return <FontAwesomeIcon icon={faInfoCircle} className="text-blue-500 mt-0.5" />;
+    }
 };
 
 export default function NotificationBell() {
-    // 1. USE THE SEPARATE HOOKS
+    const navigate = useNavigate();
+
     const { data } = useGetNotifications();
-    const { mutateAsync: markReadMutation } = useMarkRead();
+    const markReadMutation = useMarkRead();
     const markAllReadMutation = useMarkAllRead();
 
     const notifications = data?.notifications || [];
@@ -35,46 +77,55 @@ export default function NotificationBell() {
 
     const [isOpen, setIsOpen] = useState(false);
 
-    // 2. TOAST LOGIC (Moved here because we removed the main hook)
+    // TOAST LOGIC
     const prevUnreadCountRef = useRef(0);
     const isFirstLoad = useRef(true);
 
     useEffect(() => {
         if (!data) return;
 
-        // Skip first load
         if (isFirstLoad.current) {
             isFirstLoad.current = false;
             prevUnreadCountRef.current = unreadCount;
             return;
         }
 
-        // Check for new items
         if (unreadCount > prevUnreadCountRef.current) {
             const diff = unreadCount - prevUnreadCountRef.current;
             toast.info("Notificare Nouă", {
-                description: diff > 1
-                    ? `Ai ${diff} notificări noi.`
-                    : "Ai primit o notificare nouă.",
+                description: diff > 1 ? `Ai ${diff} notificări noi.` : "Ai primit o notificare nouă.",
             });
         }
-
-        // Update ref
         prevUnreadCountRef.current = unreadCount;
     }, [unreadCount, data]);
 
+    // HANDLERS
+    const handleNotificationClick = (n) => {
+        setIsOpen(false);
 
-    const handleItemClick = (n) => {
+        // Mark as read when navigating
         if (!n.is_read) {
             markReadMutation.mutate(n.id);
         }
-        setIsOpen(false);
+
+        // Navigate
+        const link = getLink(n);
+        if (link && link !== '#') {
+            navigate(link);
+        }
+    };
+
+    const handleMarkRead = (e, n) => {
+        e.stopPropagation(); // Stop navigation
+        markReadMutation.mutate(n.id);
     };
 
     return (
+        // RESTORED: Fixed Position
         <div className='fixed top-4 right-4'>
             <Popover open={isOpen} onOpenChange={setIsOpen}>
                 <PopoverTrigger asChild>
+                    {/* RESTORED: Your Emerald Button Style */}
                     <Button variant="default" size="icon" className="relative text-white bg-emerald-500 hover:text-white hover:bg-emerald-500 px-5 py-5">
                         <FontAwesomeIcon icon={faBell} className="text-xl" />
                         {/* RED DOT BADGE */}
@@ -87,25 +138,31 @@ export default function NotificationBell() {
                     </Button>
                 </PopoverTrigger>
 
-                <PopoverContent align="end" className="w-80 sm:w-[30rem] p-0 shadow-xl border-border">
+                <PopoverContent align="end" className="w-80 sm:w-[28rem] p-0 shadow-xl border-border overflow-hidden">
                     {/* Header */}
-                    <div className="flex items-center justify-between px-4 py-3 border-b bg-muted">
-                        <h4 className="font-semibold text-base">Notificări</h4>
+                    <div className="flex items-center justify-between px-4 py-3 border-b bg-card">
+                        <div className="flex items-center gap-2">
+                            <h4 className="font-semibold text-base">Notificări</h4>
+                            {unreadCount > 0 && (
+                                <span className="bg-red-100 text-red-600 text-sm font-bold px-2 py-0.5 rounded-full">
+                                    {unreadCount} noi
+                                </span>
+                            )}
+                        </div>
                         {unreadCount > 0 && (
                             <Button
-                                variant="ghost"
+                                variant="default"
                                 size="sm"
-                                className="h-auto text-base text-muted-foreground hover:text-primary gap-1.5 px-2"
                                 onClick={() => markAllReadMutation.mutate()}
                             >
-                                <FontAwesomeIcon icon={faCheckDouble} />
-                                Mark all read
+                                <FontAwesomeIcon className='text-base' icon={faCheckDouble} />
+                                Marchează tot
                             </Button>
                         )}
                     </div>
 
                     {/* Notification List */}
-                    <div className="h-96 overflow-y-auto">
+                    <div className="max-h-[70vh] overflow-y-auto">
                         {notifications.length === 0 ? (
                             <div className="flex flex-col items-center justify-center h-64 text-muted-foreground gap-3">
                                 <FontAwesomeIcon icon={faBell} className="text-3xl" />
@@ -114,29 +171,50 @@ export default function NotificationBell() {
                         ) : (
                             <div className="flex flex-col">
                                 {notifications.map((n) => (
-                                    <button
+                                    <div
                                         key={n.id}
-                                        onClick={() => handleItemClick(n)}
+                                        onClick={() => handleNotificationClick(n)}
                                         className={cn(
-                                            "flex flex-col items-start gap-1 p-4 text-left transition-all hover:bg-muted/50 border-b last:border-0",
-                                            !n.is_read && "bg-blue-50/40 dark:bg-blue-900/20"
+                                            "group flex  w-full cursor-pointer transition-all border-b last:border-0 items-start",
+                                            getSeverityStyles(n.severity, n.is_read)
                                         )}
                                     >
-                                        <div className="flex w-full justify-between items-start gap-2">
-                                            <p className={cn(
-                                                "text-base leading-snug",
-                                                !n.is_read ? "font-medium text-foreground" : "text-muted-foreground"
-                                            )}>
-                                                {n.message}
-                                            </p>
-                                            {!n.is_read && (
-                                                <span className="h-2 w-2 shrink-0 rounded-full bg-blue-500 mt-1.5" />
-                                            )}
+                                        {/* Main Content Area */}
+                                        <div className="flex-1  flex gap-3 p-4">
+                                            {/* Icon based on severity */}
+                                            <div className="shrink-0 pt-0.5">
+                                                {getSeverityIcon(n.severity)}
+                                            </div>
+
+                                            <div className="flex flex-col gap-1">
+                                                <p className={cn(
+                                                    "text-base leading-snug",
+                                                    !n.is_read ? "font-semibold text-foreground" : "font-normal text-muted-foreground"
+                                                )}>
+                                                    {n.message}
+                                                </p>
+                                                <span className="text-sm text-muted-foreground/70">
+                                                    {timeAgo(n.created_at)}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <span className="text-base text-muted-foreground/70 font-medium mt-1">
-                                            {timeAgo(n.created_at)}
-                                        </span>
-                                    </button>
+
+                                        {/* Action Area (Right Side) */}
+                                        {!n.is_read && (
+                                            <div className="flex items-center self-center pr-4 pl-2">
+                                                <Button
+                                                    variant="outline"
+                                                    size="icon"
+                                                    // Changes: emerald text, subtle emerald border, light emerald bg on hover
+                                                    className="h-8 w-8 text-emerald-600  hover:bg-emerald-200 hover:text-emerald-800 hover:border-emerald-500 rounded-full"
+                                                    title="Marchează ca citit"
+                                                    onClick={(e) => handleMarkRead(e, n)}
+                                                >
+                                                    <FontAwesomeIcon icon={faCheck} className="text-base" />
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
                                 ))}
                             </div>
                         )}

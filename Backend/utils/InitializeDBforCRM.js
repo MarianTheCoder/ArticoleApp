@@ -81,11 +81,11 @@ async function InitializeDBforCRM(pool) {
 
         -- Chei Straine (Foreign Keys)
         CONSTRAINT fk_contacte_companie 
-            FOREIGN KEY (companie_id) REFERENCES S10_Companii(id) ON DELETE CASCADE,
+            FOREIGN KEY (companie_id) REFERENCES S10_Companii(id) ON DELETE RESTRICT,
             
         -- Nota: Daca ai tabelele S10_Filiale si S10_Santiere create, poti decomenta liniile de mai jos:
         -- CONSTRAINT fk_contacte_filiala FOREIGN KEY (filiala_id) REFERENCES S10_Filiale(id) ON DELETE SET NULL,
-        -- CONSTRAINT fk_contacte_santier FOREIGN KEY (santier_id) REFERENCES S10_Santiere(id) ON DELETE SET NULL,
+        CONSTRAINT fk_contacte_santier FOREIGN KEY (santier_id) REFERENCES S01_Santiere(id) ON DELETE SET NULL,
 
         -- Indexuri
         INDEX idx_contacte_companie (companie_id),
@@ -107,7 +107,7 @@ async function InitializeDBforCRM(pool) {
         entity_id INT NOT NULL,                -- id of the entity that changed
         root_entity_type VARCHAR(50) NULL,        -- top-level entity type for hierarchy (optional)
         root_entity_id INT NULL,               -- top-level entity id for hierarchy (optional)
-        action VARCHAR(20) NOT NULL,              -- added, edited, deleted
+        action VARCHAR(255) NOT NULL,              -- added, edited, deleted
         user_id INT NOT NULL,                  -- who performed the action
         details JSON NULL,                        -- minimal info about change
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

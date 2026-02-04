@@ -130,12 +130,13 @@ const postCompany = async (req, res) => {
         }
         logHistoryAndNotify(global.db, {
             userId: req.body.created_by_user_id,
-            action: 'a adăugat',
+            action: 'a adăugat compania ',
             entityType: 'companie',
             entityId: companyId,
             rootType: 'companie',
             rootId: companyId,
             newData: { ...payload },
+            severity: 'low',
             notifyUsers: payload.created_by_user_id ? [payload.created_by_user_id] : []
         }).catch(e => console.error("History Log Failed", e));
 
@@ -351,13 +352,14 @@ const editCompany = async (req, res) => {
         }
         logHistoryAndNotify(global.db, {
             userId: req.body.updated_by_user_id,
-            action: 'a editat',
+            action: 'a editat compania ',
             entityType: 'companie',
             entityId: id,
             rootType: 'companie',
             rootId: id,
             oldData: oldData,
             newData: { ...oldData, ...payload },
+            severity: 'normal',
             notifyUsers: payload.updated_by_user_id ? [payload.updated_by_user_id] : []
         }).catch(e => console.error("History Log Failed", e));
 
