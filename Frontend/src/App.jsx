@@ -21,7 +21,7 @@ const queryClient = new QueryClient({
       // Daca userul schimba tab-ul si revine in < 1 min, nu face request la server (ia din cache).
       staleTime: 1000 * 60 * 1,
       // Daca vrei sa nu faca refetch cand dai click inapoi pe fereastra (optional, bun in dev)
-      refetchOnWindowFocus: true,
+      refetchOnWindowFocus: false,
       // Reincearca de 1 data daca pica netul, nu de 3 ori (default)
       retry: 1,
     },

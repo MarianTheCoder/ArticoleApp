@@ -9,7 +9,8 @@ import {
     faCircleHalfStroke,
     faGear,
     faDesktop,
-    faBuilding
+    faBuilding,
+    faCity
 } from "@fortawesome/free-solid-svg-icons";
 import photo from '../assets/no-user-image-square.jpg';
 import { useNavigate } from 'react-router-dom';
@@ -243,13 +244,54 @@ function Navbar() {
                                                 <div className="flex items-center w-full">
                                                     <div className="flex items-center gap-3 pl-7">
                                                         <div className="w-7 h-7 grid place-items-center rounded-lg text-yellow-400">
-                                                            <FontAwesomeIcon icon={faBuilding} />
+                                                            <FontAwesomeIcon icon={faCity} />
                                                         </div>
                                                         <div className="font-medium text-foreground">Companii</div>
                                                     </div>
                                                 </div>
                                             </div>
-
+                                            <div
+                                                className="text-xl cursor-pointer rounded-lg px-3 py-2 hover:bg-accent transition
+                                                border border-transparent hover:border-border"
+                                                onClick={() => navigate("/CRM/Filiale")}
+                                            >
+                                                <div className="flex items-center w-full">
+                                                    <div className="flex items-center gap-3 pl-7">
+                                                        <div className="w-7 h-7 grid place-items-center rounded-lg text-cyan-500">
+                                                            <FontAwesomeIcon icon={faBuilding} />
+                                                        </div>
+                                                        <div className="font-medium text-foreground">Filiale</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div
+                                                className="text-xl cursor-pointer rounded-lg px-3 py-2 hover:bg-accent transition
+                                                border border-transparent hover:border-border"
+                                                onClick={() => navigate("/CRM/Santiere")}
+                                            >
+                                                <div className="flex items-center w-full">
+                                                    <div className="flex items-center gap-3 pl-7">
+                                                        <div className="w-7 h-7 grid place-items-center rounded-lg text-orange-600">
+                                                            <FontAwesomeIcon icon={faHelmetSafety} />
+                                                        </div>
+                                                        <div className="font-medium text-foreground">Șantiere</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div
+                                                className="text-xl cursor-pointer rounded-lg px-3 py-2 hover:bg-accent transition
+                                                border border-transparent hover:border-border"
+                                                onClick={() => navigate("/CRM/Contacte")}
+                                            >
+                                                <div className="flex items-center w-full">
+                                                    <div className="flex items-center gap-3 pl-7">
+                                                        <div className="w-7 h-7 grid place-items-center rounded-lg text-blue-600">
+                                                            <FontAwesomeIcon icon={faUser} />
+                                                        </div>
+                                                        <div className="font-medium text-foreground">Contacte</div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     )}
 

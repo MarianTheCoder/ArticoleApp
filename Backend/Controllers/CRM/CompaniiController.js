@@ -45,6 +45,9 @@ const postCompany = async (req, res) => {
             cod_postal: (req.body.cod_postal || "").trim() || null,
             website: (req.body.website || "").trim() || null,
 
+            email: (req.body.email || "").trim() || null,
+            telefon: (req.body.telefon || "").trim() || null,
+
             nivel_strategic: (req.body.nivel_strategic || "Tinta").trim(),
             status_relatie: (req.body.status_relatie || "Prospect").trim(),
             nivel_risc: (req.body.nivel_risc || "Mediu").trim(),
@@ -67,14 +70,14 @@ const postCompany = async (req, res) => {
         const [ins] = await conn.execute(
             `INSERT INTO S10_Companii
         (logo_url, nume_companie, grup_companie, domeniu_unitate_afaceri, forma_juridica,
-         tara, regiune, oras, adresa, cod_postal, website,
+         tara, regiune, oras, adresa, cod_postal, website, email, telefon,
          nivel_strategic, status_relatie, nivel_risc,
          nda_semnat, scor_conformitate, utilizator_responsabil_id, note, created_by_user_id, updated_by_user_id,
          created_at, updated_at)
        VALUES
         (NULL, ?, ?, ?, ?,
          ?, ?, ?, ?, ?, ?,
-         ?, ?, ?,
+         ?, ?, ?, ?, ?,
          ?, ?, ?, ?, ?, ?,
          CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
             [
@@ -89,6 +92,8 @@ const postCompany = async (req, res) => {
                 payload.adresa,
                 payload.cod_postal,
                 payload.website,
+                payload.email,
+                payload.telefon,
 
                 payload.nivel_strategic,
                 payload.status_relatie,
@@ -119,7 +124,7 @@ const postCompany = async (req, res) => {
             savedAbsPath = path.join(baseDir, fileName);
             await fs.writeFile(savedAbsPath, req.file.buffer);
 
-            const logo_url = `/uploads/CRM/Companii/${folderName}/${fileName}`;
+            const logo_url = `uploads/CRM/Companii/${folderName}/${fileName}`;
 
             await conn.execute(
                 `UPDATE S10_Companii
@@ -129,22 +134,27 @@ const postCompany = async (req, res) => {
             );
         }
         logHistoryAndNotify(global.db, {
-            userId: req.body.created_by_user_id,
-            action: 'a adăugat compania ',
-            entityType: 'companie',
-            entityId: companyId,
-            rootType: 'companie',
-            rootId: companyId,
+            titlu: "Adăugare Companie",
+            mesaj: `Compania ${payload.nume_companie} a fost adăugată.`,
+            severitate: "medium",
+
+            actiune: "Adăugare",
+            utilizator_id: payload.created_by_user_id,
+
+            tip_entitate: "companie",
+            entitate_id: companyId,
+            radacina_tip: "companie",
+            radacina_id: companyId,
+
             newData: { ...payload },
-            severity: 'low',
-            notifyUsers: payload.created_by_user_id ? [payload.created_by_user_id] : []
-        }).catch(e => console.error("History Log Failed", e));
+            notify_users: [payload.created_by_user_id]
+        }).then(() => { }).catch(e => console.log("History Log Failed", e));
 
         await conn.commit();
         // Răspuns simplu și rapid
         return res.status(201).json({
             ok: true,
-            id: companyId, // Trimitem ID-ul doar în caz că vrei să faci navigate(`/company/${id}`)
+            companyId, // Trimitem ID-ul doar în caz că vrei să faci navigate(`/company/${id}`)
             message: "Compania a fost creată."
         });
 
@@ -210,7 +220,7 @@ const getCompanies = async (req, res) => {
             LEFT JOIN users u2 ON u2.id = c.updated_by_user_id
             LEFT JOIN S10_Contacte r ON r.id = c.utilizator_responsabil_id
             ${whereSql}
-            ORDER BY c.created_at DESC, c.id DESC`,
+            ORDER BY c.updated_at DESC`,
             params
         );
 
@@ -248,6 +258,8 @@ const editCompany = async (req, res) => {
             adresa: (req.body.adresa || "").trim() || null,
             cod_postal: (req.body.cod_postal || "").trim() || null,
             website: (req.body.website || "").trim() || null,
+            email: (req.body.email || "").trim() || null,
+            telefon: (req.body.telefon || "").trim() || null,
 
             nivel_strategic: (req.body.nivel_strategic || "Tinta").trim(),
             status_relatie: (req.body.status_relatie || "Prospect").trim(),
@@ -288,12 +300,13 @@ const editCompany = async (req, res) => {
                 adresa = ?,
                 cod_postal = ?,
                 website = ?,
+                email = ?,
+                telefon = ?,
                 nivel_strategic = ?,
                 status_relatie = ?,
                 nivel_risc = ?,
                 nda_semnat = ?,
                 scor_conformitate = ?,
-                utilizator_responsabil_id = ?,
                 note = ?,
                 updated_by_user_id = ?,
                 updated_at = CURRENT_TIMESTAMP
@@ -309,12 +322,13 @@ const editCompany = async (req, res) => {
                 payload.adresa,
                 payload.cod_postal,
                 payload.website,
+                payload.email,
+                payload.telefon,
                 payload.nivel_strategic,
                 payload.status_relatie,
                 payload.nivel_risc,
                 payload.nda_semnat ? 1 : 0,
                 payload.scor_conformitate,
-                payload.utilizator_responsabil_id,
                 payload.note,
                 payload.updated_by_user_id,
                 id
@@ -340,7 +354,7 @@ const editCompany = async (req, res) => {
             savedAbsPath = path.join(baseDir, fileName);
             await fs.writeFile(savedAbsPath, req.file.buffer);
 
-            const logo_url = `/uploads/CRM/Companii/${folderName}/${fileName}`;
+            const logo_url = `uploads/CRM/Companii/${folderName}/${fileName}`;
 
             // Updatăm coloana logo_url
             await conn.execute(
@@ -351,17 +365,22 @@ const editCompany = async (req, res) => {
             );
         }
         logHistoryAndNotify(global.db, {
-            userId: req.body.updated_by_user_id,
-            action: 'a editat compania ',
-            entityType: 'companie',
-            entityId: id,
-            rootType: 'companie',
-            rootId: id,
+            titlu: "Actualizare Companie",
+            mesaj: `Compania ${oldData.nume_companie} a fost actualizată.`,
+            severitate: "medium",
+
+            actiune: "Editare",
+            utilizator_id: payload.updated_by_user_id,
+
+            tip_entitate: "companie",
+            entitate_id: id,
+            radacina_tip: "companie",
+            radacina_id: id,
+
             oldData: oldData,
-            newData: { ...oldData, ...payload },
-            severity: 'normal',
-            notifyUsers: payload.updated_by_user_id ? [payload.updated_by_user_id] : []
-        }).catch(e => console.error("History Log Failed", e));
+            newData: { ...oldData, ...payload, utilizator_responsabil_id: oldData.utilizator_responsabil_id },
+            notify_users: [payload.updated_by_user_id]
+        }).then(() => { }).catch(e => console.log("History Log Failed", e));
 
         await conn.commit();
         return res.status(200).json({
@@ -395,9 +414,12 @@ const deleteCompany = async (req, res) => {
     try {
         const { id } = req.params;
         const { code } = req.body; // Citim codul din BODY, e mai sigur decât din URL
-
+        const user_id = req.user?.id || null;
         if (!id) {
             return res.status(400).json({ message: "ID-ul companiei lipsește." });
+        }
+        if (user_id === null) {
+            return res.status(401).json({ message: "Trebuie să fii autentificat pentru a șterge o companie." });
         }
 
         conn = await global.db.getConnection();
@@ -499,5 +521,27 @@ const getCompany = async (req, res) => {
         return res.status(500).json({ message: "Eroare server." });
     }
 }
-// Nu uita să o adaugi la export:
-module.exports = { postCompany, getCompanies, editCompany, deleteCompany, getCompany };
+
+const getCompaniesSelect = async (req, res) => {
+    let conn;
+    try {
+        conn = await global.db.getConnection();
+        // Optimizare: Nu ai nevoie de JOIN cu Companii doar ca să filtrezi după companie_id
+        const [rows] = await conn.execute(
+            `
+                SELECT id, nume_companie
+                FROM S10_Companii 
+                ORDER BY updated_at DESC
+             `
+        );
+        return res.status(200).json(rows);
+    } catch (err) {
+        console.log("getSantiereForContacte error:", err);
+        return res.status(500).json({ message: "Eroare server." });
+    } finally {
+        if (conn) conn.release();
+    }
+
+}
+
+module.exports = { postCompany, getCompanies, editCompany, deleteCompany, getCompany, getCompaniesSelect };

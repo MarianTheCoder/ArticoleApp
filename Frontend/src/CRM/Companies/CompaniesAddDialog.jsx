@@ -97,11 +97,19 @@ export default function CompaniesAddDialog({
                 {buttonStyle}
             </DialogTrigger>
 
-            <DialogContent className="sm:max-w-[64rem] max-h-[85vh] overflow-y-scroll">
+            <DialogContent className="sm:max-w-[64rem] max-h-[95vh] overflow-y-scroll">
                 <form onSubmit={async (e) => {
                     e.preventDefault();
                     if (draft.nume_companie.trim() === "") {
                         toast.warning("Numele companiei este obligatoriu.");
+                        return;
+                    }
+                    if (draft.email.trim() === "") {
+                        toast.warning("Email-ul este obligatoriu.");
+                        return;
+                    }
+                    if (draft.telefon.trim() === "") {
+                        toast.warning("Telefonul este obligatoriu.");
                         return;
                     }
                     await onSubmitCompany();
@@ -248,6 +256,26 @@ export default function CompaniesAddDialog({
                                         </div>
                                     </div>
 
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="email">Email <span className="text-destructive">*</span></Label>
+                                        <Input
+                                            id="email"
+                                            name="email"
+                                            value={draft.email}
+                                            onChange={(e) => setField("email", e.target.value)}
+                                            placeholder="Ex: exemplu@domeniu.com"
+                                        />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="telefon">Telefon <span className="text-destructive">*</span></Label>
+                                        <Input
+                                            id="telefon"
+                                            name="telefon"
+                                            value={draft.telefon}
+                                            onChange={(e) => setField("telefon", e.target.value)}
+                                            placeholder="Ex: 0758612345"
+                                        />
+                                    </div>
                                     <div className="grid gap-2">
                                         <Label htmlFor="grup_companie">Grup companie</Label>
                                         <Input

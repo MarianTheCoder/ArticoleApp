@@ -31,7 +31,7 @@ services:
       SMTP_HOST: mail.btbtrust.ro
       SMTP_PORT: 465
       SMTP_USER: marian.ciobanu@btbtrust.ro
-      SMTP_PASS: Ciobanu33A
+      SMTP_PASS: Gta sa 22 !!
       JWT_SECRET: mamaligaCuBranza
       REPORT_TO: world.eilix22@yahoo.com,cristian@balyenergies.fr
       TZ: Europe/Bucharest

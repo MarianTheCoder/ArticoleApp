@@ -1,48 +1,6 @@
 const bcrypt = require("bcryptjs");
 
 async function initializeDB(pool) {
-  const createSantiereTableQuery = `
-    CREATE TABLE IF NOT EXISTS S01_Santiere (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      
-      -- Identification
-      nume VARCHAR(100) NOT NULL,
-      culoare_hex CHAR(7) NOT NULL DEFAULT '#FFFFFF',
-      
-      -- Hierarchy
-      companie_id INT NOT NULL,
-      filiala_id INT NULL,
-
-      -- Status & Dates
-      activ TINYINT(1) NOT NULL DEFAULT 1, -- cleaner than tinyint
-      notita TEXT NULL,
-      data_inceput DATE NULL,
-      data_sfarsit DATE NULL,
-
-      -- Location (Optimized for Maps)
-      adresa VARCHAR(255) NULL,
-      longitudine DECIMAL(10, 7) NULL, -- Standard GPS precision
-      latitudine DECIMAL(10, 7)  NULL, -- Standard GPS precision
-
-      -- Audit
-      created_by_user_id INT NULL,
-      updated_by_user_id INT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
-      -- Constraints
-      CONSTRAINT fk_santiere_companie FOREIGN KEY (companie_id) REFERENCES S10_Companii(id) ON DELETE RESTRICT,
-      -- CONSTRAINT fk_santiere_filiala FOREIGN KEY (filiala_id) REFERENCES S10_Filiale(id) ON DELETE SET NULL,
-
-      -- Indexes for performance
-      INDEX idx_santiere_companie (companie_id),
-      INDEX idx_santiere_filiala (filiala_id)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-  `;
-
-  await pool.execute(createSantiereTableQuery);
-  console.log("S01_Santiere table created or already exists.");
-
   const createMetaOptions = `
   CREATE TABLE IF NOT EXISTS Meta_Users (
     id INT AUTO_INCREMENT PRIMARY KEY,

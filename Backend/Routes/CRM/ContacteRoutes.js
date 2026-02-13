@@ -16,8 +16,6 @@ router.post("/removeOwner", removeOwner); // Reusing the same controller for rem
 
 router.get('/getContactsByCompany/:id', getContactsByCompany);
 
-// router.put('/editCompany/:id', uploadMem.single('logo'), editCompany);
-// router.delete('/deleteCompany/:id', deleteCompany); // Placeholder for delete route
 
 
 module.exports = router;

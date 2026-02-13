@@ -1,42 +1,45 @@
 // services/HistoryService.js
 
+// Helper simple for JSON diff (kept because it's useful for the 'detalii' column)
 const getChanges = (oldObj, newObj) => {
     let diff = {};
     if (!oldObj) return newObj;
     if (!newObj) return oldObj;
 
     Object.keys(newObj).forEach(key => {
-        if (oldObj[key] != newObj[key]) {
-            diff[key] = { old: oldObj[key], new: newObj[key] };
+        const oldVal = oldObj[key];
+        const newVal = newObj[key];
+        if ((oldVal == null || oldVal === '') && (newVal == null || newVal === '')) return;
+        if (oldVal != newVal) {
+            diff[key] = { old: oldVal, new: newVal };
         }
     });
     return diff;
 };
 
-const extractEntityName = (data) => {
-    if (!data) return "Necunoscut";
-    if (data.nume && data.prenume) return `${data.nume} ${data.prenume}`;
-    if (data.nume) return data.nume;
-    if (data.name) return data.name;
-    if (data.title) return data.title;
-    if (data.titlu) return data.titlu;
-    if (data.nume_companie) return data.nume_companie;
-    return "Element";
-};
-
 const logHistoryAndNotify = async (pool, params) => {
     const {
-        userId,
-        action,             // NOW PASS FULL VERB: ' a adăugat compania ', ' a şters contactul '
-        entityType,         // Still needed for DB filtering ('contact', 'companie')
-        entityId,
-        rootType = null,
-        rootId = null,
+        // 1. INPUTURI DIRECTE PENTRU AFISARE (Romanian Fields)
+        titlu,              // ex: "Actualizare Contact"
+        mesaj,              // ex: "Ion a modificat telefonul..."
+        severitate = 'medium', // 'low', 'medium', 'high'
+
+        // 2. CONTEXT TEHNIC
+        actiune,            // ex: 'edit', 'delete', 'create' (pentru filtrare in DB)
+        utilizator_id,      // Cine face actiunea
+
+        // 3. IERARHIA
+        tip_entitate,       // ex: 'contact'
+        entitate_id,        // ex: 55
+        radacina_tip = null,// ex: 'companie'
+        radacina_id = null, // ex: 10
+
+        // 4. DATE PENTRU PAYLOAD (JSON)
         oldData = null,
         newData = null,
-        notifyUsers = [],
-        tableName = null,
-        severity = 'normal',
+
+        // 5. DESTINATARI
+        notify_users = []   // Array de ID-uri
     } = params;
 
     const connection = await pool.getConnection();
@@ -44,63 +47,60 @@ const logHistoryAndNotify = async (pool, params) => {
     try {
         await connection.beginTransaction();
 
-        // 1. Get User Name
-        const [userRows] = await connection.execute("SELECT name FROM users WHERE id = ?", [userId]);
-        const userName = userRows.length > 0 ? userRows[0].name : `Utilizator ${userId}`;
+        // --- A. CALCULARE PAYLOAD (DETALII JSON) ---
+        // Folosim logica ta pentru a genera JSON-ul tehnic, in functie de actiune
+        let detalii = null;
 
-        // 2. Get Entity Name
-        let entityName = null;
-        if (action.includes('şters') || action.includes('deleted')) {
-            entityName = extractEntityName(oldData);
+        if (oldData && newData) {
+            // 2. Avem AMBELE -> Calculăm diferența (Edit)
+            detalii = getChanges(oldData, newData);
+        } else if (newData) {
+            // 3. Avem doar date NOI -> Le salvăm pe acestea (Create/Add)
+            detalii = newData;
+        } else if (oldData) {
+            // 4. Avem doar date VECHI -> Le salvăm pe acestea (Delete)
+            detalii = oldData;
         } else {
-            entityName = extractEntityName(newData) || extractEntityName(oldData);
+            detalii = {};
         }
 
-        if ((!entityName || entityName === "Element") && tableName && !action.includes('şters')) {
-            try {
-                const [rows] = await connection.query(`SELECT * FROM ?? WHERE id = ?`, [tableName, entityId]);
-                if (rows.length > 0) entityName = extractEntityName(rows[0]);
-            } catch (e) { console.log("Name fetch error:", e.message); }
-        }
-
-        // 3. Prepare Details
-        let details = null;
-        // Loose check for keywords since action is now custom
-        if (action.includes('adăugat') || action.includes('add')) details = newData;
-        if (action.includes('şters') || action.includes('delete')) details = oldData;
-        if (action.includes('editat') || action.includes('edit')) details = getChanges(oldData, newData);
-
-        // 4. Insert History
+        // --- B. INSERT ISTORIC (S11_Istoric) ---
+        // Scriem DIRECT ce am primit in parametri
         const [res] = await connection.execute(
-            `INSERT INTO S11_History 
-            (entity_type, entity_id, root_entity_type, root_entity_id, action, user_id, details) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [entityType, entityId, rootType, rootId, action, userId, JSON.stringify(details)]
+            `INSERT INTO S11_Istoric 
+            (utilizator_id, titlu, mesaj, severitate, actiune, tip_entitate, entitate_id, radacina_tip, radacina_id, detalii) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                utilizator_id,
+                titlu,          // <--- DIRECT
+                mesaj,          // <--- DIRECT
+                severitate,     // <--- DIRECT
+                actiune,        // 'edit', 'delete' etc.
+                tip_entitate,
+                entitate_id,
+                radacina_tip,
+                radacina_id,
+                JSON.stringify(detalii || {})
+            ]
         );
         const historyId = res.insertId;
 
-        // 5. NOTIFICATIONS (UPDATED)
-        const recipients = notifyUsers;
+        // --- C. INSERT NOTIFICARI (S11_Notificari) ---
+        if (notify_users.length > 0 && mesaj) {
 
-        if (recipients.length > 0) {
-            // --- CHANGE IS HERE ---
-            // OLD: `${userName} ${action} ${entityType}: ${entityName}`
-            // NEW: `${userName} ${action} ${entityName}`
-            // We removed ${entityType} and the colon so the 'action' string controls the flow.
-            const message = `${userName} ${action} ${entityName}`;
-
-            const values = recipients.map(rId => [
-                rId,
+            const values = notify_users.map(targetUserId => [
+                targetUserId,
                 historyId,
-                message,
-                severity,
-                entityType,
-                entityId
+                mesaj,          // <--- DIRECT
+                actiune,        // <--- DIRECT
+                severitate,     // <--- DIRECT
+                tip_entitate,
+                entitate_id
             ]);
 
             await connection.query(
-                `INSERT INTO S11_Notifications 
-                (user_id, history_id, message, severity, entity_type, entity_id) 
+                `INSERT INTO S11_Notificari 
+                (utilizator_id, istoric_id, mesaj, actiune, severitate, tip_entitate, entitate_id) 
                 VALUES ?`,
                 [values]
             );
@@ -111,7 +111,7 @@ const logHistoryAndNotify = async (pool, params) => {
 
     } catch (err) {
         await connection.rollback();
-        console.log("History Log Error:", err);
+        console.error("Eroare LogHistory:", err);
         throw err;
     } finally {
         connection.release();

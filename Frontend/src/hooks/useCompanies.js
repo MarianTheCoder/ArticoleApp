@@ -4,7 +4,7 @@ import api from "@/api/axiosAPI";
 
 export const useCompany = (id) => {
     return useQuery({
-        queryKey: ["company", id],
+        queryKey: ["companies", Number(id)],
         queryFn: async () => {
             const { data } = await api.get(`/CRM/Companies/getCompany/${id}`);
             return data;
@@ -13,10 +13,21 @@ export const useCompany = (id) => {
     });
 }
 
+export const useCompaniesSelect = () => {
+    return useQuery({
+        queryKey: ['companies', 'select'],
+        queryFn: async () => {
+            const res = await api.get(`/CRM/Companies/getCompaniesSelect`);
+            return res.data;
+        },
+        staleTime: 1000 * 60, // 1 minute
+    });
+}
+
 // 1. GET - Doar aduce datele
 export const useCompanies = (searchName) => {
     return useQuery({
-        queryKey: ["companies", { q: searchName }],
+        queryKey: ["companies", "company", { q: searchName }],
         queryFn: async () => {
             const { data } = await api.get("/CRM/Companies/getCompanies", {
                 params: { q: searchName }
@@ -53,10 +64,10 @@ export const useEditCompany = () => {
                 headers: { "Content-Type": "multipart/form-data" },
             });
         },
-        onSuccess: (data, variables) => {
+        onSuccess: () => {
             // Doar invalidăm lista ca să se actualizeze singură
             queryClient.invalidateQueries({ queryKey: ["companies"] });
-            queryClient.invalidateQueries({ queryKey: ["company", String(variables.id)] });
+
         }
     });
 };
@@ -74,5 +85,24 @@ export const useDeleteCompany = () => {
             // Invalidate the companies query to refresh the list
             queryClient.invalidateQueries({ queryKey: ["companies"] });
         }
+    });
+}
+
+//
+//
+// HISTORY FOR COMPANIES
+
+export const useCompanyHistory = (companyId) => {
+    return useQuery({
+        // Cheia include searchName pentru a declanșa refetch automat la tastare
+        queryKey: ['companies', 'history', companyId],
+
+        queryFn: async () => {
+            const { data } = await api.get(`/CRM/Notifications/history/company/${companyId}`);
+            return data;
+        },
+        // Nu face request dacă nu avem ID de companie
+        enabled: !!companyId,
+        placeholderData: (previousData) => previousData,
     });
 }

@@ -17,6 +17,9 @@ async function InitializeDBforCRM(pool) {
         cod_postal                VARCHAR(16)  NULL,
         website                   VARCHAR(255) NULL,
 
+        email                     VARCHAR(255) NULL,
+        telefon                   VARCHAR(50)  NULL,
+
         nivel_strategic           VARCHAR(20) NOT NULL DEFAULT 'Tinta',
         status_relatie            VARCHAR(20) NOT NULL DEFAULT 'Prospect',
         nivel_risc                VARCHAR(20) NOT NULL DEFAULT 'Mediu',
@@ -45,6 +48,90 @@ async function InitializeDBforCRM(pool) {
     `;
     await pool.execute(creatCompaniesTable);
     console.log("Table S10_Companii created or already exists.");
+
+    // --- 2. FILIALE (NEW TABLE) ---
+    const createFilialeTable = `
+        CREATE TABLE IF NOT EXISTS S10_Filiale (
+        id                      INT AUTO_INCREMENT PRIMARY KEY,
+        
+        -- Hierarchy
+        companie_id             INT NOT NULL,
+        
+        -- Details
+        nume_filiala            VARCHAR(255) NOT NULL,
+        tip_unitate             VARCHAR(50) NOT NULL DEFAULT 'Filiale', -- Filiale / Directie
+        
+        tara                    VARCHAR(100) NOT NULL DEFAULT 'Romania',
+        regiune                 VARCHAR(100) NULL,
+        oras                    VARCHAR(100) NULL,
+        
+        longitudine             DECIMAL(10, 7) NULL,
+        latitudine             DECIMAL(10, 7) NULL,
+
+        nivel_decizie           VARCHAR(50) NOT NULL DEFAULT 'Regional', -- Local / Regional / National
+        
+        telefon                 VARCHAR(50) NULL,
+        email                   VARCHAR(255) NULL,
+        note                    TEXT NULL,
+
+        -- Audit
+        created_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_by_user_id      INT NULL,
+        updated_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        updated_by_user_id      INT NULL,
+
+        -- Constraints
+        CONSTRAINT fk_filiale_companie FOREIGN KEY (companie_id) REFERENCES S10_Companii(id) ON DELETE RESTRICT,
+
+        -- Indexes
+        INDEX idx_filiale_companie (companie_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `;
+    await pool.execute(createFilialeTable);
+    console.log("Table S10_Filiale created or already exists.");
+
+
+    const createSantiereTableQuery = `
+        CREATE TABLE IF NOT EXISTS S01_Santiere (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        
+        -- Identification
+        nume VARCHAR(100) NOT NULL,
+        culoare_hex CHAR(7) NOT NULL DEFAULT '#FFFFFF',
+        
+        -- Hierarchy
+        companie_id INT NOT NULL,
+        filiala_id INT NULL,
+
+        -- Status & Dates
+        activ TINYINT(1) NOT NULL DEFAULT 1, -- cleaner than tinyint
+        notita TEXT NULL,
+        data_inceput DATE NULL,
+        data_sfarsit DATE NULL,
+
+        -- Location (Optimized for Maps)
+        adresa VARCHAR(255) NULL,
+        longitudine DECIMAL(10, 7) NULL, -- Standard GPS precision
+        latitudine DECIMAL(10, 7)  NULL, -- Standard GPS precision
+
+        -- Audit
+        created_by_user_id INT NULL,
+        updated_by_user_id INT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+        -- Constraints
+        CONSTRAINT fk_santiere_companie FOREIGN KEY (companie_id) REFERENCES S10_Companii(id) ON DELETE RESTRICT,
+        CONSTRAINT fk_santiere_filiala FOREIGN KEY (filiala_id) REFERENCES S10_Filiale(id) ON DELETE SET NULL,
+
+        -- Indexes for performance
+        INDEX idx_santiere_companie (companie_id)
+        -- INDEX idx_santiere_filiala (filiala_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `;
+
+    await pool.execute(createSantiereTableQuery);
+    console.log("S01_Santiere table created or already exists.");
 
     const createContactsTable = `
         CREATE TABLE IF NOT EXISTS S10_Contacte (
@@ -84,7 +171,7 @@ async function InitializeDBforCRM(pool) {
             FOREIGN KEY (companie_id) REFERENCES S10_Companii(id) ON DELETE RESTRICT,
             
         -- Nota: Daca ai tabelele S10_Filiale si S10_Santiere create, poti decomenta liniile de mai jos:
-        -- CONSTRAINT fk_contacte_filiala FOREIGN KEY (filiala_id) REFERENCES S10_Filiale(id) ON DELETE SET NULL,
+        CONSTRAINT fk_contacte_filiala FOREIGN KEY (filiala_id) REFERENCES S10_Filiale(id) ON DELETE SET NULL,
         CONSTRAINT fk_contacte_santier FOREIGN KEY (santier_id) REFERENCES S01_Santiere(id) ON DELETE SET NULL,
 
         -- Indexuri
@@ -99,47 +186,77 @@ async function InitializeDBforCRM(pool) {
     await pool.execute(createContactsTable);
     console.log("Table S10_Contacte created or already exists.");
 
-    // ================= HISTORY TABLE =================
+
+    // 1. TABEL ISTORIC (S11_Istoric)
     const createHistoryTable = `
-    CREATE TABLE IF NOT EXISTS S11_History (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        entity_type VARCHAR(50) NOT NULL,         -- company, filiala, santier, contact, etc.
-        entity_id INT NOT NULL,                -- id of the entity that changed
-        root_entity_type VARCHAR(50) NULL,        -- top-level entity type for hierarchy (optional)
-        root_entity_id INT NULL,               -- top-level entity id for hierarchy (optional)
-        action VARCHAR(255) NOT NULL,              -- added, edited, deleted
-        user_id INT NOT NULL,                  -- who performed the action
-        details JSON NULL,                        -- minimal info about change
-        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        
-        INDEX idx_history_root (root_entity_type, root_entity_id, created_at),
-        INDEX idx_history_entity (entity_type, entity_id, created_at)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    `;
+            CREATE TABLE IF NOT EXISTS S11_Istoric (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                
+                -- Cine a făcut acțiunea
+                utilizator_id INT NOT NULL,
+                
+                -- Ce s-a întâmplat (Display)
+                titlu VARCHAR(255) NOT NULL,       -- ex: "Actualizare Contact"
+                mesaj TEXT NULL,                   -- ex: "Ion Popescu a modificat telefonul..."
+                severitate ENUM('low', 'medium', 'high') NOT NULL DEFAULT 'medium',
+
+                -- Tehnic (Pt. Cod/Filtrare)
+                actiune VARCHAR(100) NOT NULL,     -- ex: "edit", "delete", "upload"
+
+                -- Ierarhia (Entitate & Rădăcină)
+                tip_entitate VARCHAR(50) NOT NULL, -- ex: "contact"
+                entitate_id INT NOT NULL,
+                
+                radacina_tip VARCHAR(50) NULL,     -- ex: "companie"
+                radacina_id INT NULL,
+
+                -- Payload-ul (Datele brute/Diff)
+                detalii JSON NULL, 
+
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+                -- Indexuri pentru performanță
+                INDEX idx_istoric_entitate (tip_entitate, entitate_id),
+                INDEX idx_istoric_radacina (radacina_tip, radacina_id),
+                INDEX idx_istoric_utilizator (utilizator_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            `;
     await pool.execute(createHistoryTable);
-    console.log("Table S11_History created or already exists.");
+    console.log("Tabela S11_Istoric creată.");
 
-    // ================= NOTIFICATIONS TABLE =================
+    // 2. TABEL NOTIFICĂRI (S11_Notificari)
     const createNotificationsTable = `
-    CREATE TABLE IF NOT EXISTS S11_Notifications (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NOT NULL,                  -- who should get the notification
-        history_id INT NOT NULL,               -- link to S10_History
-        message VARCHAR(512) NOT NULL,            -- human-readable notification
-        severity ENUM('low','normal','high') NOT NULL DEFAULT 'normal', -- severity/color
-        entity_type VARCHAR(50) NULL,             -- optional convenience
-        entity_id INT NULL,                    -- optional convenience
-        read_at TIMESTAMP NULL,                   -- timestamp when read
-        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CREATE TABLE IF NOT EXISTS S11_Notificari (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                
+                -- Cine primește notificarea
+                utilizator_id INT NOT NULL,
+                
+                -- Legătură cu istoricul
+                istoric_id INT NOT NULL,
+                
+                -- Copie pentru afișare rapidă în clopoțel
+                mesaj VARCHAR(512) NOT NULL,
+                actiune VARCHAR(100) NOT NULL,     
+                severitate ENUM('low','medium','high') NOT NULL DEFAULT 'medium',
+                
+                -- Navigare rapidă (opțional, dar util în frontend)
+                tip_entitate VARCHAR(50) NULL,
+                entitate_id INT NULL,
 
-        CONSTRAINT fk_notifications_history FOREIGN KEY (history_id) REFERENCES S11_History(id) ON DELETE CASCADE,
+                -- Status
+                citit_la TIMESTAMP NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-        INDEX idx_notifications_user_unread (user_id, read_at, created_at),
-        INDEX idx_notifications_entity (entity_type, entity_id, created_at)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    `;
+                CONSTRAINT fk_notificari_istoric FOREIGN KEY (istoric_id) REFERENCES S11_Istoric(id) ON DELETE CASCADE,
+
+                INDEX idx_notificari_utilizator_necitite (utilizator_id, citit_la, created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            `;
     await pool.execute(createNotificationsTable);
-    console.log("Table S11_Notifications created or already exists.");
+    console.log("Tabela S11_Notificari creată.");
+
+
 }
 
 module.exports = InitializeDBforCRM;

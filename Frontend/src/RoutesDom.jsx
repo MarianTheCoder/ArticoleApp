@@ -13,8 +13,12 @@ import NoPage from './MainElements/NoPage';
 import Pontaje from './BazaDeDate/Pontaje/Pontaje';
 import AtribuiriActivitate from './BazaDeDate/Pontaje/AtribuiriActivitate';
 import Dashboard from './CRM/Dashboard';
-import CompaniesAddPage from './CRM/Companies/CompaniesMainPage';
+import CompaniesMainPage from './CRM/Companies/CompaniesMainPage';
 import CompanyView from './CRM/Companies/CompanyView';
+import FilialaView from './CRM/Filiale/FilialaView';
+import FilialeMainCompany from './CRM/Filiale/FilialeMainCompany';
+import FilialaMainPage from './CRM/Filiale/FilialaMainPage';
+import SantiereMainPage from './CRM/Santiere/SantiereMainPage';
 
 function AppLayout() {
   // This layout only renders when a valid child route matches.
@@ -50,13 +54,23 @@ export default function RoutesDom() {
         <Route element={<AppLayout />}>
           <Route path="" element={<ProtectedRoute allowedRoles={["ofertant", "angajat", "beneficiar"]}></ProtectedRoute>} />
           <Route path="addArticles" element={<ProtectedRoute allowedRoles={['ofertant']}><RetetaForm /></ProtectedRoute>} />
-          <Route path="Santiere/:limbaUser/:idUser/:idSantier" element={<ProtectedRoute allowedRoles={["ofertant"]}><SantiereRoutes /></ProtectedRoute>} />
           <Route path="Pontaje" element={<ProtectedRoute allowedRoles={["ofertant"]}><Pontaje /></ProtectedRoute>} />
           <Route path="AtribuiriActivitate" element={<ProtectedRoute allowedRoles={["ofertant"]}><AtribuiriActivitate /></ProtectedRoute>} />
 
           <Route path='CRM' element={<ProtectedRoute allowedRoles={["ofertant"]}><Dashboard /></ProtectedRoute>} />
-          <Route path='CRM/Companii' element={<ProtectedRoute allowedRoles={["ofertant"]}><CompaniesAddPage /></ProtectedRoute>} />
+
+          <Route path='CRM/Companii' element={<ProtectedRoute allowedRoles={["ofertant"]}><CompaniesMainPage /></ProtectedRoute>} />
           <Route path='CRM/Companii/View/:companyId' element={<ProtectedRoute allowedRoles={["ofertant"]}><CompanyView /></ProtectedRoute>} />
+
+          <Route path='CRM/Filiale' element={<ProtectedRoute allowedRoles={["ofertant"]}><FilialaMainPage /></ProtectedRoute>} />
+          <Route path='CRM/Filiale/View/:companyId/:filialaID' element={<ProtectedRoute allowedRoles={["ofertant"]}><FilialaView /></ProtectedRoute>} />
+
+          <Route path='CRM/Santiere' element={<ProtectedRoute allowedRoles={["ofertant"]}><SantiereMainPage /></ProtectedRoute>} />
+          <Route path="Santiere/:limbaUser/:idUser/:idSantier" element={<ProtectedRoute allowedRoles={["ofertant"]}><SantiereRoutes /></ProtectedRoute>} />
+
+          <Route path='CRM/Contacte' element={<ProtectedRoute allowedRoles={["ofertant"]}><SantiereMainPage /></ProtectedRoute>} />
+
+
           {/* 
             <Route path="Echipa" element={<Echipa/>}/>
             <Route path="News" element={<News/>}/>

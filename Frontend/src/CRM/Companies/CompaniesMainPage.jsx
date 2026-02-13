@@ -15,7 +15,7 @@ import { AuthContext } from "@/context/TokenContext";
 import { useCompanies, useAddCompany } from "@/hooks/useCompanies";
 import { Button } from "@/components/ui/button";
 
-export default function CompaniesAddPage() {
+export default function CompaniesMainPage() {
     const { show, hide } = useLoading();
     const { user } = useContext(AuthContext);
     const [open, setOpen] = useState(false);
@@ -28,7 +28,6 @@ export default function CompaniesAddPage() {
     // isFetching e true cand se face request la server (search sau refresh)
     const { data, isFetching } = useCompanies(searchNameDebounced);
     const companiesList = data?.companies || [];
-
     // CONTROL FETCHING: Aici mimăm "fetchCompanies" din codul vechi
     // Când React Query lucrează, noi pornim spinner-ul. Când termină, îl oprim.
     useEffect(() => {
@@ -52,7 +51,7 @@ export default function CompaniesAddPage() {
     // --- STATE FORMULAR (Copiat din codul tău) ---
     const [draft, setDraft] = useState({
         nume_companie: "", grup_companie: "", domeniu_unitate_afaceri: "", forma_juridica: "", website: "",
-        tara: "RO", regiune: "", oras: "", adresa: "", cod_postal: "",
+        tara: "RO", regiune: "", oras: "", adresa: "", cod_postal: "", email: "", telefon: "",
         nivel_strategic: "Tinta", status_relatie: "Prospect", nivel_risc: "Mediu",
         nda_semnat: false, scor_conformitate: 0, note: "",
         logoFile: null, logoPreview: "",
@@ -66,7 +65,7 @@ export default function CompaniesAddPage() {
         if (draft.logoPreview) URL.revokeObjectURL(draft.logoPreview);
         setDraft({
             nume_companie: "", grup_companie: "", domeniu_unitate_afaceri: "", forma_juridica: "", website: "",
-            tara: "RO", regiune: "", oras: "", adresa: "", cod_postal: "",
+            tara: "RO", regiune: "", oras: "", adresa: "", cod_postal: "", email: "", telefon: "",
             nivel_strategic: "Tinta", status_relatie: "Prospect", nivel_risc: "Mediu",
             nda_semnat: false, scor_conformitate: 0, note: "",
             logoFile: null, logoPreview: "",
@@ -87,6 +86,8 @@ export default function CompaniesAddPage() {
         fd.append("oras", draft.oras || "");
         fd.append("adresa", draft.adresa || "");
         fd.append("cod_postal", draft.cod_postal || "");
+        fd.append("email", draft.email || "");
+        fd.append("telefon", draft.telefon || "");
         fd.append("nivel_strategic", draft.nivel_strategic || "Tinta");
         fd.append("status_relatie", draft.status_relatie || "Prospect");
         fd.append("nivel_risc", draft.nivel_risc || "Mediu");
@@ -150,7 +151,9 @@ export default function CompaniesAddPage() {
                     </div>
                 </div>
                 {companiesList.length > 0 ? (
-                    <CompaniesList companies={companiesList} searchName={searchNameDebounced} />
+                    <div className={`p-5  h-full w-full bg-card rounded-lg overflow-hidden relative`}>
+                        <CompaniesList companies={companiesList} searchName={searchNameDebounced} />
+                    </div>
                 ) : (
                     <div className="flex w-full h-full justify-center items-center">
                         <span className="text-2xl text-muted-foreground italic">

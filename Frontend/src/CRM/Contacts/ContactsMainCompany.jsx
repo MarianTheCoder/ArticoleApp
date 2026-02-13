@@ -6,7 +6,9 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faMagnifyingGlass,
     faPlus,
-    faColumns
+    faColumns,
+    faList,
+    faGrip
 } from "@fortawesome/free-solid-svg-icons";
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
@@ -26,7 +28,6 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import AskDialog from '@/components/ui/ask-dialog';
-import DeleteConfirmationDialog from '@/components/ui/delete-dialog';
 import WarningDialog from '@/components/ui/warning-dialog';
 import DeleteDialog from '@/components/ui/delete-dialog';
 
@@ -39,6 +40,8 @@ export default function ContactsMainCompany({ companyLimba, companyId }) {
 
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [selectedContact, setSelectedContact] = useState(null);
+
+    const [isCardView, setIsCardView] = useState(false);
 
     // --- 1. STATE VIZIBILITATE ---
     const [visibleColumns, setVisibleColumns] = useState({
@@ -63,13 +66,17 @@ export default function ContactsMainCompany({ companyLimba, companyId }) {
     // --- 2. DRAFT STATE (Include id și delete_logo) ---
     const [draft, setDraft] = useState({
         id: null, // Null = Add, ID = Edit
+        activ: true,
         prenume: "",
         nume: "",
         functie: "",
         categorie_rol: "",
         email: "",
         telefon: "",
+        limba: companyLimba || "RO",
         linkedin_url: "",
+        santier_id: null,
+        filiala_id: null,
         putere_decizie: 1,
         nivel_influenta: 1,
         canal_preferat: "Email",
@@ -113,6 +120,7 @@ export default function ContactsMainCompany({ companyLimba, companyId }) {
         }
         setDraft({
             id: null,
+            activ: true,
             prenume: "",
             nume: "",
             functie: "",
@@ -120,6 +128,9 @@ export default function ContactsMainCompany({ companyLimba, companyId }) {
             email: "",
             telefon: "",
             linkedin_url: "",
+            limba: companyLimba || "RO",
+            santier_id: null,
+            filiala_id: null,
             putere_decizie: 1,
             nivel_influenta: 1,
             canal_preferat: "Email",
@@ -147,6 +158,7 @@ export default function ContactsMainCompany({ companyLimba, companyId }) {
         }
 
         // Câmpuri text
+        fd.append("activ", draft.activ);
         fd.append("prenume", draft.prenume?.trim() || "");
         fd.append("nume", draft.nume?.trim() || "");
         fd.append("functie", draft.functie?.trim() || "");
@@ -158,9 +170,12 @@ export default function ContactsMainCompany({ companyLimba, companyId }) {
         fd.append("nivel_influenta", draft.nivel_influenta);
         fd.append("canal_preferat", draft.canal_preferat);
         fd.append("note", draft.note?.trim() || "");
-        fd.append("limba", companyLimba);
+        fd.append("limba", draft.limba || "RO");
         fd.append("companie_id", companyId);
         fd.append("updated_by_user_id", user.id);
+
+        fd.append("santier_id", draft.santier_id || "");
+        fd.append("filiala_id", draft.filiala_id || "");
 
         // Doar la creare avem nevoie de created_by, dar la update e ignorat de obicei
         if (!draft.id) {
@@ -302,6 +317,23 @@ export default function ContactsMainCompany({ companyLimba, companyId }) {
                 />
                 {/* ... RESTUL JSX-ULUI (DROPDOWN COLOANE, SEARCH, ETC) ... */}
                 <div className="relative justify-end w-full gap-2 xxl:gap-4 flex items-center">
+                    <div>
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsCardView(false)}
+                            className={`gap-2 rounded-r-none ${!isCardView ? "bg-accent text-accent-foreground" : "text-muted-foreground"}`}
+                        >
+                            <FontAwesomeIcon icon={faList} />
+                        </Button>
+
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsCardView(true)}
+                            className={`gap-2 rounded-l-none -ml-px ${isCardView ? "bg-accent text-accent-foreground" : "text-muted-foreground"}`}
+                        >
+                            <FontAwesomeIcon icon={faGrip} />
+                        </Button>
+                    </div>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" className="gap-2">
@@ -354,6 +386,8 @@ export default function ContactsMainCompany({ companyLimba, companyId }) {
                     <ContactsListByCompany
                         draft={draft}
                         setDraft={setDraft}
+
+                        isCardView={isCardView}
 
                         setOpen={setOpen}
                         openAsk={openAsk}

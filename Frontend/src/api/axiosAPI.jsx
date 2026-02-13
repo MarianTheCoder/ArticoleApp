@@ -32,7 +32,7 @@ api.interceptors.response.use(
   (response) => response, // If success, just return data
   (error) => {
     // Check if error is 401 (Unauthorized)
-    if (error.response && error.response.status === 401) {
+    if (error.response && error.response.status === 403) {
 
       // OPTIONAL: Prevent infinite loops if the login endpoint itself returns 401
       if (!error.config.url.includes('/login')) {

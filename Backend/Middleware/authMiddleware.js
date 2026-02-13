@@ -35,7 +35,7 @@ const authenticateToken = async (req, res, next) => {
         next();
     } catch (err) {
         // Don't log the specific error to console in Prod unless it's critical
-        // console.error("Token error:", err.message); 
+        console.log("Token error:", err.message);
         return res.status(403).json({ message: 'Invalid or expired token.' });
     }
 };

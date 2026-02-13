@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useMemo } from "react";
 import {
     Dialog,
     DialogClose,
@@ -29,8 +29,12 @@ import { faUndo } from "@fortawesome/free-solid-svg-icons";
 
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useContacteSelect } from "@/hooks/useContacts";
+import { useFilialeSelect } from "@/hooks/useFiliale";
+import { Switch } from "@/components/ui/switch";
 
 export default function ContactsAddDialog({
+    companyId,
     open,
     setOpen,
     onSubmitContact,
@@ -42,6 +46,9 @@ export default function ContactsAddDialog({
     title = "Adaugă un contact",
 }) {
 
+    const { data: santiereList = [], isLoading: loadingSantiere } = useContacteSelect(companyId);
+    const { data: filialeList = [], isLoading: loadingFiliale } = useFilialeSelect(companyId);
+
     const [isDragOver, setIsDragOver] = useState(false);
     const inputRef = useRef(null);
 
@@ -49,7 +56,53 @@ export default function ContactsAddDialog({
         setDraft((prev) => ({ ...prev, [key]: value }));
     };
 
-    // --- LOGICA FOTO ACTUALIZATĂ ---
+    // --- LOGICĂ FILTRARE & AUTO-SELECTARE ---
+
+    // 1. Filter Santiere based on selected Filiala
+    const filteredSantiere = useMemo(() => {
+        if (!draft.filiala_id) return santiereList;
+        // Show only santiere that belong to the selected filiala
+        return santiereList.filter(s => String(s.filiala_id) === String(draft.filiala_id));
+    }, [santiereList, draft.filiala_id]);
+
+    // 2. Handle Santier Change (Auto-select Filiala)
+    const handleSantierChange = (val) => {
+        const realVal = val === "0" ? null : val;
+        setField("santier_id", realVal);
+
+        if (realVal) {
+            const selectedSantier = santiereList.find(s => String(s.id) === String(realVal));
+            if (selectedSantier && selectedSantier.filiala_id) {
+                setField("filiala_id", String(selectedSantier.filiala_id));
+            }
+        }
+    };
+
+    // 3. Handle Filiala Change (Reset Santier if mismatch or if Filiala is cleared)
+    const handleFilialaChange = (val) => {
+        // Convert "0" to null
+        const realVal = val === "0" ? null : val;
+        setField("filiala_id", realVal);
+
+        // CASE A: User unselected the Filiala -> Clear the Santier
+        if (realVal === null) {
+            setField("santier_id", null);
+            return;
+        }
+
+        // CASE B: User switched to a different Filiala
+        // Check if the currently selected Santier belongs to this new Filiala.
+        if (draft.santier_id) {
+            const currentSantier = santiereList.find(s => String(s.id) === String(draft.santier_id));
+
+            // If the current santier exists but its filiala_id doesn't match the new selection, clear it.
+            if (currentSantier && String(currentSantier.filiala_id) !== String(realVal)) {
+                setField("santier_id", null);
+            }
+        }
+    };
+
+    // --- LOGICA FOTO ---
 
     const acceptLogo = (file) => {
         if (!file) return;
@@ -59,7 +112,6 @@ export default function ContactsAddDialog({
         }
 
         setDraft((prev) => {
-            // Dacă exista un preview anterior creat local (Blob), îl ștergem din memorie
             if (prev.logoPreview && prev.logoPreview.startsWith('blob:')) {
                 URL.revokeObjectURL(prev.logoPreview);
             }
@@ -69,7 +121,7 @@ export default function ContactsAddDialog({
                 ...prev,
                 logoFile: file,
                 logoPreview: url,
-                delete_logo: false // Dacă punem o poză nouă, anulăm ștergerea
+                delete_logo: false
             };
         });
     };
@@ -95,8 +147,8 @@ export default function ContactsAddDialog({
             return {
                 ...prev,
                 logoFile: null,
-                logoPreview: null, // Ascundem poza
-                delete_logo: true  // <--- SETĂM FLAGUL PENTRU SERVER
+                logoPreview: null,
+                delete_logo: true
             };
         });
         if (inputRef.current) inputRef.current.value = "";
@@ -108,9 +160,6 @@ export default function ContactsAddDialog({
         <Dialog open={open} onOpenChange={setOpen}>
 
             <DialogTrigger onClick={() => {
-
-                // Resetează draft-ul dacă e un contact existent
-                // daca nu e pe baza de user id, lasam salvat.
                 if (draft.id) {
                     resetDraft();
                 }
@@ -205,6 +254,82 @@ export default function ContactsAddDialog({
                                         />
                                     </div>
                                 </div>
+
+                                {/* NEW ROW: Santier, Filiala, Limba */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                                    {/* SELECT FILIALA FIRST */}
+                                    <div className="grid gap-2">
+                                        <Label>Filiala</Label>
+                                        <Select
+                                            disabled={loadingFiliale}
+                                            value={draft.filiala_id ? String(draft.filiala_id) : "0"}
+                                            onValueChange={handleFilialaChange}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder={loadingFiliale ? "Se încarcă..." : "Selectează filiala"} />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="0">- Fără filială -</SelectItem>
+                                                {filialeList.map((f) => (
+                                                    <SelectItem key={f.id} value={String(f.id)}>
+                                                        {f.nume_filiala || f.nume}
+                                                    </SelectItem>
+                                                ))}
+                                                {filialeList.length === 0 && (
+                                                    <div className="p-2 text-sm text-muted-foreground text-center">
+                                                        Nu există filiale.
+                                                    </div>
+                                                )}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {/* SELECT SANTIER */}
+                                    <div className="grid gap-2">
+                                        <Label>Șantier</Label>
+                                        <Select
+                                            disabled={loadingSantiere}
+                                            value={draft.santier_id ? String(draft.santier_id) : "0"}
+                                            onValueChange={handleSantierChange}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder={loadingSantiere ? "Se încarcă..." : "Selectează șantier"} />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="0">- Fără șantier -</SelectItem>
+                                                {filteredSantiere.length === 0 ? (
+                                                    <div className="p-2 text-sm text-muted-foreground text-center">
+                                                        {draft.filiala_id ? "Niciun șantier în această filială" : "Niciun șantier disponibil"}
+                                                    </div>
+                                                ) : (
+                                                    filteredSantiere.map((s) => (
+                                                        <SelectItem key={s.id} value={String(s.id)}>
+                                                            {s.nume}
+                                                        </SelectItem>
+                                                    ))
+                                                )}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    <div className="grid gap-2">
+                                        <Label>Limbă</Label>
+                                        <Select
+                                            value={draft.limba || "RO"}
+                                            onValueChange={(v) => setField("limba", v)}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Selectează limba" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="RO">Română (RO)</SelectItem>
+                                                <SelectItem value="FR">Franceză (FR)</SelectItem>
+                                                <SelectItem value="EN">Engleză (EN)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
                             </div>
 
                             <Separator />
@@ -257,7 +382,7 @@ export default function ContactsAddDialog({
                                     CRM & preferințe
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 gap-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-[auto_auto_auto_auto] gap-4 gap-y-6">
                                     <div className="grid gap-2">
                                         <Label>Putere decizie (1–5)</Label>
                                         <Input
@@ -294,6 +419,18 @@ export default function ContactsAddDialog({
                                                 <SelectItem value="LinkedIn">LinkedIn</SelectItem>
                                             </SelectContent>
                                         </Select>
+                                    </div>
+                                    <div className="grid items-end">
+                                        <div className="flex items-center whitespace-nowrap gap-2  justify-between border p-2 px-4 rounded-md  bg-muted/20">
+                                            <Label htmlFor="active-mode" className="cursor-pointer text-sm font-medium">
+                                                Status Contact (Activ)
+                                            </Label>
+                                            <Switch
+                                                id="active-mode"
+                                                checked={draft.activ}
+                                                onCheckedChange={(val) => setField("activ", val)}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -371,6 +508,7 @@ export default function ContactsAddDialog({
                                         />
                                     </div>
                                 </div>
+
                             </div>
                         </div>
                     </div>

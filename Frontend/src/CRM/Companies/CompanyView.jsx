@@ -19,11 +19,15 @@ import {
     faGlobe, faLocationDot, faBuilding, faFileContract,
     faCalendarDays, faPenToSquare, faHistory,
     faEnvelope, faCheckCircle, faTimesCircle, faPhone, faFlag,
-    faUser, faUserTie
+    faUser, faUserTie,
+    faCity
 } from "@fortawesome/free-solid-svg-icons";
 import CompaniesAddDialog from "./CompaniesAddDialog";
 import { toast } from "sonner";
 import ContactsMainCompany from "../Contacts/ContactsMainCompany";
+import CompanyHistory from "./CompanyHistory";
+import SantiereMainCompany from "../Santiere/SantiereMainCompany";
+import FilialeMainCompany from "../Filiale/FilialeMainCompany";
 
 export default function CompanyView() {
 
@@ -35,7 +39,6 @@ export default function CompanyView() {
     // --- DATA FETCHING ---
     const { mutateAsync: editCompany } = useEditCompany();
     const { data, isFetching } = useCompany(companyId);
-    console.log("Company data:", isFetching, companyId);
 
     const c = data?.company || null;
 
@@ -44,7 +47,7 @@ export default function CompanyView() {
     const [draft, setDraft] = useState({
         id: null, // ID-ul e critic pentru editare
         nume_companie: "", grup_companie: "", domeniu_unitate_afaceri: "", forma_juridica: "", website: "",
-        tara: "RO", regiune: "", oras: "", adresa: "", cod_postal: "",
+        tara: "RO", regiune: "", oras: "", adresa: "", cod_postal: "", email: "", telefon: "",
         nivel_strategic: "Tinta", status_relatie: "Prospect", nivel_risc: "Mediu",
         nda_semnat: false, scor_conformitate: 0, note: "",
         logoFile: null, logoPreview: "",
@@ -59,6 +62,8 @@ export default function CompanyView() {
             domeniu_unitate_afaceri: c.domeniu_unitate_afaceri || "",
             forma_juridica: c.forma_juridica || "",
             website: c.website || "",
+            email: c.email || "",
+            telefon: c.telefon || "",
             tara: c.tara || "RO",
             regiune: c.regiune || "",
             oras: c.oras || "",
@@ -72,7 +77,7 @@ export default function CompanyView() {
             note: c.note || "",
             logoFile: null, // Nu avem fișier nou selectat încă
             // Construim URL-ul pentru logo-ul existent
-            logoPreview: c.logo_url ? photoApi + c.logo_url : ""
+            logoPreview: c.logo_url ? photoApi + "/" + c.logo_url : ""
         });
         setOpen(true);
     };
@@ -93,6 +98,8 @@ export default function CompanyView() {
         fd.append("regiune", draft.regiune || "");
         fd.append("oras", draft.oras || "");
         fd.append("adresa", draft.adresa || "");
+        fd.append("email", draft.email || "");
+        fd.append("telefon", draft.telefon || "");
         fd.append("cod_postal", draft.cod_postal || "");
         fd.append("nivel_strategic", draft.nivel_strategic || "Tinta");
         fd.append("status_relatie", draft.status_relatie || "Prospect");
@@ -100,6 +107,7 @@ export default function CompanyView() {
         fd.append("nda_semnat", draft.nda_semnat ? "1" : "0");
         fd.append("scor_conformitate", String(Number(draft.scor_conformitate || 0)));
         fd.append("note", draft.note || "");
+
 
         // La editare setăm doar updated_by
         fd.append("updated_by_user_id", user.id);
@@ -152,7 +160,7 @@ export default function CompanyView() {
         return <div className="flex h-full items-center justify-center text-muted-foreground text-lg">Compania nu a fost găsită.</div>;
     }
 
-    const logoUrl = c?.logo_url ? photoApi + c.logo_url : null;
+    const logoUrl = c?.logo_url ? photoApi + "/" + c.logo_url : null;
     const countryName = c?.tara ? new Intl.DisplayNames(['ro'], { type: 'region' }).of(c.tara) : c?.tara;
 
     // Construct full address string for single line display
@@ -174,7 +182,7 @@ export default function CompanyView() {
                                 {logoUrl ? (
                                     <img src={logoUrl} alt="Logo" className="h-full w-full object-contain" />
                                 ) : (
-                                    <FontAwesomeIcon icon={faBuilding} className="text-4xl text-muted-foreground" />
+                                    <FontAwesomeIcon icon={faCity} className="text-4xl text-muted-foreground" />
                                 )}
                             </div>
 
@@ -191,7 +199,7 @@ export default function CompanyView() {
                             {/* --- OWNER SECTION (NOU) --- */}
                             <div className="w-full rounded-lg p-3  border border-border flex items-center gap-3 text-left">
                                 <Avatar className="h-10 w-10 border border-background shadow-sm">
-                                    <AvatarImage src={c?.responsabil_logo_url ? photoApi + c.responsabil_logo_url : null} />
+                                    <AvatarImage src={c?.responsabil_logo_url ? photoApi + "/" + c.responsabil_logo_url : null} />
                                     <AvatarFallback className="bg-muted font-bold">
                                         <FontAwesomeIcon icon={faUserTie} />
                                     </AvatarFallback>
@@ -246,6 +254,18 @@ export default function CompanyView() {
                                         <FontAwesomeIcon icon={faLocationDot} />
                                     </div>
                                     <span className="text-foreground leading-snug">{fullAddress}</span>
+                                </div>
+                                <div className="flex items-center gap-3 text-base">
+                                    <div className="w-5 flex justify-center text-muted-foreground">
+                                        <FontAwesomeIcon icon={faEnvelope} />
+                                    </div>
+                                    <span className="font-bold text-foreground">{safeText(c?.email)}</span>
+                                </div>
+                                <div className="flex items-center gap-3 text-base">
+                                    <div className="w-5 flex justify-center text-muted-foreground">
+                                        <FontAwesomeIcon icon={faPhone} />
+                                    </div>
+                                    <span className="font-bold text-foreground">{safeText(c?.telefon)}</span>
                                 </div>
                             </div>
 
@@ -379,10 +399,10 @@ export default function CompanyView() {
 
                         <div className="flex-1 bg-card overflow-y-auto  h-full  rounded-lg">
                             <TabsContent value="istoric" className="h-full m-0 w-full">
-
+                                <CompanyHistory companyId={c?.id || null} />
                             </TabsContent>
-                            <TabsContent value="activitati" className="h-full m-0 w-full">
 
+                            <TabsContent value="activitati" className="h-full m-0 w-full">
                             </TabsContent>
 
                             <TabsContent value="contacte" className="h-full m-0 relative  w-full">
@@ -390,16 +410,14 @@ export default function CompanyView() {
                             </TabsContent>
 
                             <TabsContent value="santiere" className="h-full m-0 w-full">
-
+                                <SantiereMainCompany companyId={c?.id || null} />
                             </TabsContent>
 
                             <TabsContent value="filiale" className="h-full m-0 w-full">
-
+                                <FilialeMainCompany companyId={c?.id || null} />
                             </TabsContent>
 
-                            {/* TAB: FISIERE */}
                             <TabsContent value="files" className="h-full m-0 w-full">
-
                             </TabsContent>
                         </div>
                     </Tabs>

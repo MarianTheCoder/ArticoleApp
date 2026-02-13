@@ -5,7 +5,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 export const useContactsByCompany = (companyId, searchName = "") => {
     return useQuery({
         // Cheia include searchName pentru a declanșa refetch automat la tastare
-        queryKey: ['contactsByCompany', companyId, searchName],
+        queryKey: ['contacts', 'company', companyId, searchName],
 
         queryFn: async () => {
             const { data } = await api.get(`/CRM/Contacts/getContactsByCompany/${companyId}`, {
@@ -18,6 +18,19 @@ export const useContactsByCompany = (companyId, searchName = "") => {
         placeholderData: (previousData) => previousData,
     });
 }
+
+export const useContacteSelect = (companyId) => {
+    return useQuery({
+        queryKey: ['contacts', 'select', companyId],
+        queryFn: async () => {
+            const res = await api.get(`/CRM/Santiere/getSantiereForContacte/${companyId}`);
+            return res.data;
+        },
+        staleTime: 1000 * 60, // 1 minute
+        enabled: !!companyId,
+    });
+}
+
 
 // 2. ADD Contact
 export const useAddContact = () => {
@@ -34,14 +47,15 @@ export const useAddContact = () => {
         onSuccess: (data, variables) => {
             // Invalidează lista specifică acelei companii
             // Funcționează perfect cu Fuzzy Matching (invalidează și căutările)
-            queryClient.invalidateQueries({ queryKey: ['contactsByCompany', variables.companyId] });
-            queryClient.invalidateQueries({ queryKey: ['company'] });
+            queryClient.invalidateQueries({ queryKey: ['contacts'] });
+            queryClient.invalidateQueries({ queryKey: ['santiere'] });
+            queryClient.invalidateQueries({ queryKey: ['filiale'] });
             queryClient.invalidateQueries({ queryKey: ['companies'] });
-
         }
     });
 };
 
+// 3. EDIT Contact
 export const useEditContact = () => {
     const queryClient = useQueryClient();
 
@@ -52,15 +66,14 @@ export const useEditContact = () => {
             });
         },
         onSuccess: (data, variables) => {
-            // Invalidează lista specifică acelei companii
-            queryClient.invalidateQueries({ queryKey: ['contactsByCompany', variables.companyId] });
-            queryClient.invalidateQueries({ queryKey: ['company'] });
+            queryClient.invalidateQueries({ queryKey: ['contacts'] });
+            queryClient.invalidateQueries({ queryKey: ['santiere'] });
+            queryClient.invalidateQueries({ queryKey: ['filiale'] });
             queryClient.invalidateQueries({ queryKey: ['companies'] });
-
         }
     });
 }
-
+// 4. CHANGE OWNER
 export const useChangeOwner = () => {
     const queryClient = useQueryClient();
 
@@ -73,14 +86,15 @@ export const useChangeOwner = () => {
             });
         },
         onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: ['contactsByCompany', variables.companyId] });
-            queryClient.invalidateQueries({ queryKey: ['company'] });
+            queryClient.invalidateQueries({ queryKey: ['contacts'] });
+            queryClient.invalidateQueries({ queryKey: ['santiere'] });
+            queryClient.invalidateQueries({ queryKey: ['filiale'] });
             queryClient.invalidateQueries({ queryKey: ['companies'] });
         }
     });
 };
 
-
+// 5. REMOVE OWNER
 export const useRemoveOwner = () => {
     const queryClient = useQueryClient();
 
@@ -93,13 +107,15 @@ export const useRemoveOwner = () => {
             });
         },
         onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: ['contactsByCompany', variables.companyId] });
-            queryClient.invalidateQueries({ queryKey: ['company'] });
+            queryClient.invalidateQueries({ queryKey: ['contacts'] });
+            queryClient.invalidateQueries({ queryKey: ['santiere'] });
+            queryClient.invalidateQueries({ queryKey: ['filiale'] });
             queryClient.invalidateQueries({ queryKey: ['companies'] });
         }
     });
 };
 
+// 6. DELETE Contact
 export const useDeleteContact = () => {
     const queryClient = useQueryClient();
 
@@ -108,11 +124,33 @@ export const useDeleteContact = () => {
             return api.delete(`/CRM/Contacts/deleteContact/${contactId}`);
         },
         onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: ['contactsByCompany', variables.companyId] });
-            queryClient.invalidateQueries({ queryKey: ['company'] });
+            queryClient.invalidateQueries({ queryKey: ['contacts'] });
+            queryClient.invalidateQueries({ queryKey: ['santiere'] });
+            queryClient.invalidateQueries({ queryKey: ['filiale'] });
             queryClient.invalidateQueries({ queryKey: ['companies'] });
         }
     });
 }
 
+
+
+
+
+// 
+//
+// HISTORY FOR CONTACTS
+export const useContactHistory = (contactId) => {
+    return useQuery({
+        // Cheia include searchName pentru a declanșa refetch automat la tastare
+        queryKey: ['contacts', 'history', contactId],
+
+        queryFn: async () => {
+            const { data } = await api.get(`/CRM/Notifications/history/contact/${contactId}`);
+            return data;
+        },
+        // Nu face request dacă nu avem ID de companie
+        enabled: !!contactId,
+        placeholderData: (previousData) => previousData,
+    });
+}
 
