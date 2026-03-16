@@ -1,5 +1,6 @@
 const express = require('express');
 const { addReteta, getRetete, getSpecificReteta, editCantitateInterior, deleteReteta, doubleReteta, editReteta, deleteFromReteta, addRetetaObjects, getReteteLight } = require('../Controllers/RetetaController');
+const { authenticateToken } = require('../Middleware/authMiddleware');
 
 const router = express.Router();
 
@@ -12,18 +13,18 @@ router.get('/getReteteLight', getReteteLight);
 
 
 //post
-router.post('/addReteta', addReteta);
-router.post('/addRetetaObjects', addRetetaObjects);
-router.post("/doubleReteta/:id", doubleReteta);
+router.post('/addReteta', authenticateToken("retete", "c"), addReteta);
+router.post('/addRetetaObjects', authenticateToken("retete", "c"), addRetetaObjects);
+router.post("/doubleReteta/:id", authenticateToken("retete", "c"), doubleReteta);
 
 
 //edit
-router.put("/editReteta/:id", editReteta);
-router.put("/editCantitateInterior/:retetaId/:objectId/:whatIs", editCantitateInterior);
+router.put("/editReteta/:id", authenticateToken("retete", "e"), editReteta);
+router.put("/editCantitateInterior/:retetaId/:objectId/:whatIs", authenticateToken("retete", "e"), editCantitateInterior);
 
 //delete
-router.delete("/deleteReteta/:id", deleteReteta);
-router.delete("/deleteFromReteta/:retetaId/:id/:whatIs", deleteFromReteta);
+router.delete("/deleteReteta/:id", authenticateToken("retete", "s"), deleteReteta);
+router.delete("/deleteFromReteta/:retetaId/:id/:whatIs", authenticateToken("retete", "s"), deleteFromReteta);
 
 
 

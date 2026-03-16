@@ -1,7 +1,13 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
-const { addRetetaToInitialOfera, aplicaFurnizorPeToate, getFurnizoriForOfertaPart, saveNextItem, dubleazaRetete, actualizeReteteForOfertaPart, actualizeOneReteta, getNextItem, getReteteByOfertaWithPrices, updateReteteOrder, editOfertaPart, deleteSantier, getSantiereDetailsSantierID, deleteOfertaPart, addOfertaPartToTheSantier, getOfertePartsForThisSantier, updateSantierDetails, addOfertaToTheSantier, changeNameForOferta, getOferteForThisSantier, deleteRetetaFromSantier, getSantiereDetails, getSpecificRetetaForOfertaInitiala, updateSantierRetetaPrices, getReteteLightForSantiereWithPrices } = require("../Controllers/SantiereController")
+const { addRetetaToInitialOfera, aplicaFurnizorPeToate, getFurnizoriForOfertaPart, saveNextItem,
+    dubleazaRetete, actualizeReteteForOfertaPart, actualizeOneReteta, getNextItem, getReteteByOfertaWithPrices,
+    updateReteteOrder, editOfertaPart, deleteOfertaPart, addOfertaPartToTheSantier,
+    getOfertePartsForThisSantier, addOfertaToTheSantier,
+    changeNameForOferta, getOferteForThisSantier, deleteRetetaFromSantier,
+    getSpecificRetetaForOfertaInitiala, updateSantierRetetaPrices, getReteteLightForSantiereWithPrices } = require("../Controllers/SantiereController");
+const { authenticateToken } = require('../Middleware/authMiddleware');
 
 const router = express.Router();
 
@@ -19,46 +25,42 @@ router.get('/getSpecificRetetaForOfertaInitiala/:id', getSpecificRetetaForOferta
 //afiseaza retele pentru o lucrare specifica
 router.get('/getReteteLightForSantiereWithPrices/:id', getReteteLightForSantiereWithPrices);
 //update retete order
-router.put('/updateReteteOrder', updateReteteOrder);
+router.put('/updateReteteOrder', authenticateToken("oferte", "e"), updateReteteOrder);
 //add reteta to oferta from absolute 
-router.post('/addRetetaToInitialOferta', addRetetaToInitialOfera);
+router.post('/addRetetaToInitialOferta', authenticateToken("oferte", "c"), addRetetaToInitialOfera);
 //get next item in line  -> manopera, materiale, transport, utilaje
 router.get('/getNextItem', getNextItem);
 //Save the next item or REVERT only to parent 
-router.post('/saveNextItem', saveNextItem);
+router.post('/saveNextItem', authenticateToken("oferte", "c"), saveNextItem);
 //detele reteta from santier
-router.delete('/deleteRetetaFromSantier/:id', deleteRetetaFromSantier);
+router.delete('/deleteRetetaFromSantier/:id', authenticateToken("oferte", "s"), deleteRetetaFromSantier);
 //handle accept edit and update the prices and canitate reteta
-router.put('/updateSantierRetetaPrices', updateSantierRetetaPrices);
+router.put('/updateSantierRetetaPrices', authenticateToken("oferte", "e"), updateSantierRetetaPrices);
 //actualizare retete pentru oferta part
-router.post('/actualizeReteteForOfertaPart/:id', actualizeReteteForOfertaPart);
+router.post('/actualizeReteteForOfertaPart/:id', authenticateToken("oferte", "e"), actualizeReteteForOfertaPart);
 //acutalizeaza doar o reteta din oferta
-router.post('/actualizeOneReteta/:id', actualizeOneReteta);
+router.post('/actualizeOneReteta/:id', authenticateToken("oferte", "e"), actualizeOneReteta);
 //dublam retetele selectate in lucrare
-router.post('/dubleazaRetete/:ofertaPartId', dubleazaRetete);
+router.post('/dubleazaRetete/:ofertaPartId', authenticateToken("oferte", "c"), dubleazaRetete);
 //tabel ofertare
 
 
 //santier
-router.put('/updateSantierDetails/:id', updateSantierDetails);
-router.delete('/deleteEntireSantier/:id', deleteSantier);
-router.get('/getSantiereDetails/:id', getSantiereDetails);
-router.get('/getSantiereDetailsSantierID/:id', getSantiereDetailsSantierID);
 
 
 
 //oferta
 router.get('/getOferteForThisSantier/:id', getOferteForThisSantier);
-router.put('/changeNameForOferta/:id', changeNameForOferta);
-router.post('/addOfertaToTheSantier/:id', addOfertaToTheSantier);
+router.put('/changeNameForOferta/:id', authenticateToken("oferte", "e"), changeNameForOferta);
+router.post('/addOfertaToTheSantier/:id', authenticateToken("oferte", "c"), addOfertaToTheSantier);
 
 //oferta parts
 router.get('/getOfertePartsForThisSantier/:id', getOfertePartsForThisSantier);
-router.post('/addOfertaPartToTheSantier/:id', addOfertaPartToTheSantier);
-router.delete('/deleteOfertaPart/:id', deleteOfertaPart);
-router.put('/editOfertaPart/:id', editOfertaPart);
+router.post('/addOfertaPartToTheSantier/:id', authenticateToken("oferte", "c"), addOfertaPartToTheSantier);
+router.delete('/deleteOfertaPart/:id', authenticateToken("oferte", "s"), deleteOfertaPart);
+router.put('/editOfertaPart/:id', authenticateToken("oferte", "e"), editOfertaPart);
 //aplicam furnizori pentru oferta part
 router.get('/getFurnizoriForOfertaPart/:ofertaPartId', getFurnizoriForOfertaPart);
-router.post("/aplicaFurnizorPeToate/:ofertaPartId", aplicaFurnizorPeToate);
+router.post("/aplicaFurnizorPeToate/:ofertaPartId", authenticateToken("oferte", "e"), aplicaFurnizorPeToate);
 
 module.exports = router;

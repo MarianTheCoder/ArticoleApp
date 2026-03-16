@@ -3,42 +3,70 @@ const bcrypt = require('bcryptjs');
 
 const login = async (req, res) => {
     const { email, password } = req.body;
-    // console.log(email, password)
+
     if (!email || !password) {
-        return res.status(400).json({ message: 'All fields are required.' });
+        return res.status(400).json({ message: 'Toate câmpurile sunt obligatorii.' });
     }
+
     try {
-        const selectQuery = `SELECT * FROM users WHERE email = ?`;
+        // Corecție SQL: Numele tabelei urmat de alias
+        const selectQuery = `
+            SELECT u.*, c.nume AS companie_nume, c.culoare_hex
+            FROM S00_Utilizatori u
+            LEFT JOIN S00_Companii_Interne c ON u.companie_interna_id = c.id
+            WHERE u.email = ?
+        `;
+
         const [rows] = await global.db.execute(selectQuery, [email.trim()]);
+
         if (rows.length === 0) {
-            return res.status(400).json({ message: 'Invalid credentials.' });
+            return res.status(400).json({ message: 'Date de autentificare invalide.' });
         }
+
         const user = rows[0];
         const isPasswordValid = await bcrypt.compare(password, user.password);
 
         if (!isPasswordValid) {
-            return res.status(400).json({ message: 'Invalid credentials.' });
+            return res.status(400).json({ message: 'Date de autentificare invalide.' });
         }
 
+        // Menținem 403 pentru a permite afișarea mesajului în pagina de Login
         if (user.activ === 0) {
-            return res.status(403).json({ message: 'Account is deactivated.' });
+            return res.status(403).json({ message: 'Cont dezactivat. Contactați administratorul.' });
         }
 
-        // Create JWT with role and name/id in the payload
+        // Structura JSON implicită dacă coloana e goală
+        const defaultPerms = {
+            permissions: {},
+            superAdmin: false,
+            lang: ["RO"],
+            companies: [user.companie_interna_id]
+        };
+
+        let permsRaw = user.permissions;
+        if (typeof permsRaw === 'string') {
+            try { permsRaw = JSON.parse(permsRaw); } catch (e) { permsRaw = null; }
+        }
+
+        const tokenPayload = {
+            id: user.id,
+            user: user.name,
+            company_id: user.companie_interna_id,
+            permissions: permsRaw || defaultPerms
+        };
+
         const token = jwt.sign(
-            {
-                id: user.id,
-                role: user.role,
-                user: user.name,
-                photo: user.photo_url
-            },
-            process.env.JWT_SECRET || 'your_jwt_secret'
+            tokenPayload,
+            process.env.JWT_SECRET,
         );
 
-        res.status(200).json({ message: 'Login successful.', token });
+        res.status(200).json({
+            message: 'Login reușit',
+            token
+        });
     } catch (err) {
-        console.log('Error logging in user:', err);
-        res.status(500).json({ message: 'Database error.' });
+        console.error('Eroare la autentificare utilizator:', err);
+        res.status(500).json({ message: 'Eroare la baza de date.' });
     }
 };
 

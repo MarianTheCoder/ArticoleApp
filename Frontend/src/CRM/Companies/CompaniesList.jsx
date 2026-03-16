@@ -297,9 +297,9 @@ export default function CompaniesList({
                                 </div>
 
                                 <div className="mt-4 flex items-center border-t gap-3 pt-3">
-                                    <Avatar className="h-8 w-8 border border-border">
+                                    <Avatar className="h-10 w-10 rounded-lg border border-border">
                                         <AvatarImage src={ownerPhotoUrl} />
-                                        <AvatarFallback className="text-base bg-muted"><FontAwesomeIcon icon={faUserTie} /></AvatarFallback>
+                                        <AvatarFallback className="text-base bg-muted rounded-lg"><FontAwesomeIcon icon={faUserTie} /></AvatarFallback>
                                     </Avatar>
                                     <span className="text-base font-medium text-foreground/90 truncate">
                                         {ownerName || "Nealocat"}

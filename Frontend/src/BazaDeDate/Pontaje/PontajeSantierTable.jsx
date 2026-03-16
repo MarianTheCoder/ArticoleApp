@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFileArrowDown, faFilter } from "@fortawesome/free-solid-svg-icons";
-import ExportPontajeSantiere from "./ExportPontajeSantiere";
+import ExportPontajeSantiere from "./Export/ExportPontajeSantiere";
 
 export default function PontajeSantierTable({
     data = [],

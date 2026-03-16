@@ -9,6 +9,7 @@ export const useCompany = (id) => {
             const { data } = await api.get(`/CRM/Companies/getCompany/${id}`);
             return data;
         },
+        enabled: !!id, // Nu face request dacă id e falsy
         placeholderData: (previousData) => previousData, // Păstrează datele vechi ca să nu dea flash
     });
 }
@@ -92,13 +93,15 @@ export const useDeleteCompany = () => {
 //
 // HISTORY FOR COMPANIES
 
-export const useCompanyHistory = (companyId) => {
+export const useCompanyHistory = (companyId, filialaId = null, santierId = null) => {
     return useQuery({
         // Cheia include searchName pentru a declanșa refetch automat la tastare
-        queryKey: ['companies', 'history', companyId],
+        queryKey: ['companies', 'history', companyId, filialaId, santierId],
 
         queryFn: async () => {
-            const { data } = await api.get(`/CRM/Notifications/history/company/${companyId}`);
+            const { data } = await api.get(`/CRM/Notifications/history/company/${companyId}`,
+                { params: { filialaId, santierId } }
+            );
             return data;
         },
         // Nu face request dacă nu avem ID de companie

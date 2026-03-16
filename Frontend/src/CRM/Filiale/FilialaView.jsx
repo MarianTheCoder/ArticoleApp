@@ -1,303 +1,380 @@
-import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import api from '@/api/axiosAPI';
+import React, { useContext, useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useFiliala, useEditFiliale } from "@/hooks/useFiliale";
+import { useCompany } from "@/hooks/useCompanies";
+import { useLoading } from "@/context/LoadingContext";
+import { AuthContext } from "@/context/TokenContext";
+import photoApi from "@/api/photoAPI";
 
-// --- UI COMPONENTS ---
-import {
-    Sheet,
-    SheetContent,
-    SheetHeader,
-    SheetTitle,
-    SheetDescription,
-} from "@/components/ui/sheet";
+// UI Components
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-// --- ICONS ---
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-    faBuilding,
-    faMapLocationDot,
-    faPhone,
-    faEnvelope,
-    faSitemap,
-    faGlobe,
-    faLayerGroup,
-    faXmark,
-    faPenToSquare,
-    faHelmetSafety,
-    faUsers
-} from '@fortawesome/free-solid-svg-icons';
+    faLocationDot, faBuilding, faFileContract,
+    faCalendarDays, faPenToSquare, faHistory,
+    faEnvelope, faPhone, faFlag,
+    faUser, faCity, faMapPin, faArrowUpRightFromSquare, faStickyNote,
+    faCircleArrowRight
+} from "@fortawesome/free-solid-svg-icons";
 
-// --- SUB-COMPONENTS (Reusing your lists) ---
-import ContactsListByCompany from '../Contacts/ContactsListByCompany'; // Ensure path is correct
-import SantiereListByCompany from '../Santiere/SantiereListByCompany'; // Ensure path is correct
+import FilialeAddDialog from "./FilialeAddDialog";
+import { toast } from "sonner";
+import ContactsMainCompany from "../Contacts/ContactsMainCompany";
+import SantiereMainCompany from "../Santiere/SantiereMainCompany";
+import CompanyHistory from "../Companies/CompanyHistory";
 
-// --- FETCH HOOK (Inline for this view) ---
-const useFilialaDetails = (filialaId) => {
-    return useQuery({
-        queryKey: ['filiala', filialaId, 'detail'],
-        queryFn: async () => {
-            // "Single fetch" - Assuming this endpoint returns filiala info + joined company info
-            // + optionally lists of contacts/santiere if your backend supports it.
-            // If lists are heavy, you might want to fetch them separately in the Tabs.
-            const { data } = await api.get(`/CRM/Filiale/getFiliala/${filialaId}`);
-            return data;
-        },
-        enabled: !!filialaId,
+export default function FilialaView() {
+
+    const { filialaId, companyId } = useParams();
+    const navigate = useNavigate();
+    const { show, hide } = useLoading();
+    // eslint-disable-next-line no-unused-vars
+    const { user } = useContext(AuthContext);
+
+    // --- DATA FETCHING ---
+    const { mutateAsync: editFiliala } = useEditFiliale();
+
+    // 1. Fetch Filiala
+    const { data: filialaData, isFetching: loadingFiliala } = useFiliala(filialaId);
+
+    // 2. Fetch Company
+    const targetCompanyId = companyId || filialaData?.filiala?.companie_id;
+    const { data: companyData, isFetching: loadingCompany } = useCompany(targetCompanyId);
+
+    const f = filialaData?.filiala || null;
+    const c = companyData?.company || null;
+
+    const isFetching = loadingFiliala || loadingCompany;
+
+    const [open, setOpen] = useState(false);
+    // State formular (Draft)
+    const [draft, setDraft] = useState({
+        id: null,
+        companie_id: null,
+        nume_filiala: "",
+        tip_unitate: "",
+        telefon: "",
+        email: "",
+        tara: "",
+        regiune: "",
+        oras: "",
+        latitudine: "",
+        longitudine: "",
+        nivel_decizie: "Local",
+        note: "",
     });
-};
 
-export default function FilialaView({
-    filialaId,
-    openDrawer,
-    setOpenDrawer,
-    onEdit
-}) {
-    // 1. Data Fetching
-    const { data, isLoading, isError } = useFilialaDetails(filialaId);
+    const handleEditClick = () => {
+        if (!f) return;
+        setDraft({
+            id: f.id,
+            companie_id: f.companie_id,
+            nume_filiala: f.nume_filiala || "",
+            tip_unitate: f.tip_unitate || "",
+            telefon: f.telefon || "",
+            email: f.email || "",
+            tara: f.tara || "",
+            regiune: f.regiune || "",
+            oras: f.oras || "",
+            latitudine: f.latitudine || "",
+            longitudine: f.longitudine || "",
+            nivel_decizie: f.nivel_decizie || "Local",
+            note: f.note || "",
+        });
+        setOpen(true);
+    };
 
-    // Derived state
-    const filiala = data?.filiala || {};
-    const company = data?.companie || {}; // Assuming backend joins company info
-    const contactsList = data?.contacte || []; // Assuming backend returns these, or fetch separately
-    const santiereList = data?.santiere || [];
+    const submitEdit = async () => {
+        const payload = {
+            ...draft,
+            updated_by_user_id: user.id
+        };
 
-    // 2. Helpers
-    const getDecisionBadge = (level) => {
-        switch (level) {
-            case 'National': return "bg-purple-100 text-purple-700 border-purple-200";
-            case 'Regional': return "bg-blue-100 text-blue-700 border-blue-200";
-            default: return "bg-gray-100 text-gray-700 border-gray-200";
+        show();
+        try {
+            await editFiliala({ filialaId: draft.id, companyId: draft.companie_id, data: payload });
+            toast.success("Filiala a fost actualizată!");
+            setOpen(false);
+        } catch (error) {
+            const msg = error?.response?.data?.message || "A apărut o eroare la salvare.";
+            toast.error(msg);
+        } finally {
+            hide();
         }
     };
 
-    const LoadingView = () => (
-        <div className="h-full w-full grid grid-cols-[350px_1fr] gap-6 p-6">
-            <div className="space-y-6">
-                <Skeleton className="h-12 w-12 rounded-lg" />
-                <div className="space-y-2">
-                    <Skeleton className="h-6 w-3/4" />
-                    <Skeleton className="h-4 w-1/2" />
-                </div>
-                <Separator />
-                <div className="space-y-4">
-                    <Skeleton className="h-24 w-full" />
-                    <Skeleton className="h-24 w-full" />
-                </div>
-            </div>
-            <div className="space-y-4">
-                <Skeleton className="h-10 w-48" />
-                <Skeleton className="h-[500px] w-full" />
-            </div>
-        </div>
-    );
+    useEffect(() => {
+        if (isFetching) show();
+        else hide();
+    }, [isFetching]);
+
+    // Helpers
+    const safeText = (v) => (v && String(v).trim() ? String(v).trim() : "—");
+
+    const formatDate = (dateString) => {
+        if (!dateString) return "—";
+        const d = new Date(dateString);
+        return new Intl.DateTimeFormat("ro-RO", {
+            dateStyle: "long", timeStyle: "short"
+        }).format(d);
+    };
+
+    const getDecisionBadgeColor = (level) => {
+        switch (level) {
+            case 'Regional': return "text-blue-700 border-blue-200 bg-blue-50";
+            case 'National': return "text-purple-700 border-purple-200 bg-purple-50";
+            default: return "text-gray-700 border-gray-200 bg-gray-50"; // Local
+        }
+    };
+
+    if (!isFetching && !f) {
+        return <div className="flex h-full items-center justify-center text-muted-foreground text-lg">Filiala nu a fost găsită.</div>;
+    }
+    const companyLogoUrl = c?.logo_url ? `${photoApi}/${c.logo_url}` : null;
+
+    // Prepare Location String
+    const locationParts = [f?.oras, f?.regiune, f?.tara].filter(Boolean);
+    const fullLocation = locationParts.length > 0 ? locationParts.join(", ") : "—";
 
     return (
-        <Sheet open={openDrawer} onOpenChange={setOpenDrawer}>
-            <SheetContent
-                side="right"
-                className="w-full sm:max-w-[90vw] md:max-w-[85vw] p-0 overflow-hidden bg-background"
-            >
-                {isLoading ? <LoadingView /> : isError ? (
-                    <div className="flex items-center justify-center h-full text-destructive">
-                        Eroare la încărcarea datelor filialei.
-                    </div>
-                ) : (
-                    <div className="h-full grid grid-cols-1 lg:grid-cols-[22rem_1fr] overflow-hidden">
+        <div className="h-full w-full flex overflow-hidden justify-center items-center">
+            <div className="w-[95%] h-[95%] bg-background p-4 rounded-lg grid grid-cols-1 lg:grid-cols-5 gap-4">
 
-                        {/* --- LEFT SIDEBAR (Filiala Info) --- */}
-                        <aside className="bg-muted/10 border-r h-full flex flex-col overflow-hidden">
-                            <ScrollArea className="flex-1">
-                                <div className="p-6 space-y-6">
-
-                                    {/* Header */}
-                                    <div className="space-y-4">
-                                        <div className="flex items-start justify-between">
-                                            <div className="h-14 w-14 rounded-xl bg-primary/10 flex items-center justify-center text-primary text-2xl border border-primary/20 shadow-sm">
-                                                <FontAwesomeIcon icon={faBuilding} />
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <Button variant="ghost" size="icon" onClick={() => onEdit?.(filiala)}>
-                                                    <FontAwesomeIcon icon={faPenToSquare} className="text-muted-foreground" />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" onClick={() => setOpenDrawer(false)}>
-                                                    <FontAwesomeIcon icon={faXmark} className="text-muted-foreground" />
-                                                </Button>
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <h2 className="text-2xl font-bold text-foreground leading-tight">
-                                                {filiala.nume_filiala}
-                                            </h2>
-                                            <div className="flex flex-wrap gap-2 mt-2">
-                                                <Badge variant="outline" className="font-normal text-muted-foreground">
-                                                    {filiala.tip_unitate || "Filială"}
-                                                </Badge>
-                                                <Badge className={`font-normal shadow-none border px-2 ${getDecisionBadge(filiala.nivel_decizie)}`}>
-                                                    {filiala.nivel_decizie}
-                                                </Badge>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <Separator />
-
-                                    {/* Details Blocks */}
-                                    <div className="space-y-6">
-
-                                        {/* Company Connection */}
-                                        <div className="space-y-2">
-                                            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                                                <FontAwesomeIcon icon={faLayerGroup} /> Companie Mamă
-                                            </h3>
-                                            <div className="p-3 bg-card border rounded-lg shadow-sm">
-                                                <div className="font-medium text-foreground">
-                                                    {company.nume_companie || "—"}
-                                                </div>
-                                                <div className="text-xs text-muted-foreground mt-1">
-                                                    CUI: {company.cui || "—"}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Location */}
-                                        <div className="space-y-3">
-                                            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                                                <FontAwesomeIcon icon={faMapLocationDot} /> Locație
-                                            </h3>
-                                            <div className="grid gap-2 text-sm">
-                                                <div className="flex justify-between items-center py-1 border-b border-border/50">
-                                                    <span className="text-muted-foreground">Țară</span>
-                                                    <span className="font-medium flex items-center gap-1">
-                                                        <FontAwesomeIcon icon={faGlobe} className="text-muted-foreground text-xs" />
-                                                        {filiala.tara}
-                                                    </span>
-                                                </div>
-                                                <div className="flex justify-between items-center py-1 border-b border-border/50">
-                                                    <span className="text-muted-foreground">Regiune</span>
-                                                    <span className="font-medium">{filiala.regiune || "—"}</span>
-                                                </div>
-                                                <div className="flex justify-between items-center py-1">
-                                                    <span className="text-muted-foreground">Oraș</span>
-                                                    <span className="font-medium">{filiala.oras || "—"}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Contact */}
-                                        <div className="space-y-3">
-                                            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                                                <FontAwesomeIcon icon={faPhone} /> Contact
-                                            </h3>
-                                            <div className="space-y-2 text-sm">
-                                                {filiala.telefon && (
-                                                    <div className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors">
-                                                        <div className="h-8 w-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xs">
-                                                            <FontAwesomeIcon icon={faPhone} />
-                                                        </div>
-                                                        <span className="font-medium">{filiala.telefon}</span>
-                                                    </div>
-                                                )}
-                                                {filiala.email && (
-                                                    <div className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors">
-                                                        <div className="h-8 w-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center text-xs">
-                                                            <FontAwesomeIcon icon={faEnvelope} />
-                                                        </div>
-                                                        <a href={`mailto:${filiala.email}`} className="font-medium hover:underline truncate">
-                                                            {filiala.email}
-                                                        </a>
-                                                    </div>
-                                                )}
-                                                {!filiala.telefon && !filiala.email && (
-                                                    <span className="text-muted-foreground italic text-xs">Nu există date de contact.</span>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* Notes */}
-                                        {filiala.note && (
-                                            <div className="p-3 bg-yellow-50/50 dark:bg-yellow-900/10 border border-yellow-100 dark:border-yellow-900/30 rounded-lg text-sm">
-                                                <div className="font-semibold text-yellow-700 dark:text-yellow-500 mb-1 text-xs">Note interne</div>
-                                                <p className="text-foreground/80 leading-relaxed whitespace-pre-wrap">
-                                                    {filiala.note}
-                                                </p>
-                                            </div>
-                                        )}
-                                    </div>
+                {/* --- LEFT SIDEBAR (1/5) --- */}
+                <aside className="w-full lg:col-span-1 flex flex-col gap-4 overflow-y-auto">
+                    {/* 1. PARENT COMPANY CARD (UPDATED: Big Arrow Right) */}
+                    {c && (
+                        <Card
+                            className="border-border shadow-sm shrink-0 cursor-pointer  transition-colors group"
+                            onClick={() => navigate(`/CRM/Companii/View/${c.id}`)}
+                            title="Mergi la compania mamă"
+                        >
+                            <CardContent className="p-4 flex items-center gap-4">
+                                {/* Logo */}
+                                <div className="h-14 w-14 shrink-0 rounded border bg-white flex items-center justify-center overflow-hidden p-1 shadow-sm">
+                                    {companyLogoUrl ? (
+                                        <img src={companyLogoUrl} alt="Company Logo" className="h-full w-full object-contain" />
+                                    ) : (
+                                        <FontAwesomeIcon icon={faCity} className="text-2xl text-muted-foreground" />
+                                    )}
                                 </div>
-                            </ScrollArea>
 
-                            {/* Sidebar Footer */}
-                            <div className="p-4 border-t bg-background text-xs text-center text-muted-foreground">
-                                Creat la: {new Date(filiala.created_at).toLocaleDateString("ro-RO")}
+                                {/* Name */}
+                                <div className="flex flex-col overflow-hidden min-w-0">
+                                    <span className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Companie Mamă</span>
+                                    <span className="text-base font-bold text-foreground truncate leading-tight">
+                                        {c.nume_companie}
+                                    </span>
+                                </div>
+
+                                {/* Big Arrow To The Right */}
+                                <FontAwesomeIcon
+                                    icon={faArrowUpRightFromSquare}
+                                    className="ml-auto text-xl text-muted-foreground group-hover:text-primary transition-all group-hover:opacity-100 group-hover:scale-110"
+                                />
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* 2. FILIALA IDENTITY CARD */}
+                    <Card className="border-border shadow-sm shrink-0">
+                        <CardContent className="p-5 relative flex flex-col items-center text-center">
+
+                            <div className="h-20 w-20 mb-3 rounded-xl border bg-muted/30 flex items-center justify-center overflow-hidden shadow-sm text-primary/80">
+                                <FontAwesomeIcon icon={faBuilding} className="text-4xl" />
                             </div>
-                        </aside>
 
-                        {/* --- RIGHT CONTENT (Tabs) --- */}
-                        <main className="flex flex-col h-full overflow-hidden bg-card">
-                            <Tabs defaultValue="contacts" className="flex flex-col h-full">
+                            <h1 className="text-xl font-bold text-foreground leading-tight mb-1">
+                                {safeText(f?.nume_filiala)}
+                            </h1>
 
-                                {/* Tabs Header */}
-                                <div className="px-6 py-3 border-b flex items-center justify-between bg-background">
-                                    <TabsList className="bg-muted/50">
-                                        <TabsTrigger value="contacts" className="gap-2">
-                                            <FontAwesomeIcon icon={faUsers} />
-                                            Contacte
-                                            <Badge variant="secondary" className="ml-1.5 h-5 px-1.5 min-w-[1.25rem]">{contactsList.length}</Badge>
-                                        </TabsTrigger>
-                                        <TabsTrigger value="santiere" className="gap-2">
-                                            <FontAwesomeIcon icon={faHelmetSafety} />
-                                            Șantiere
-                                            <Badge variant="secondary" className="ml-1.5 h-5 px-1.5 min-w-[1.25rem]">{santiereList.length}</Badge>
-                                        </TabsTrigger>
-                                    </TabsList>
+                            {f?.tip_unitate && (
+                                <Badge variant="secondary" className="mb-4 text-sm font-semibold uppercase tracking-wide">
+                                    {f.tip_unitate}
+                                </Badge>
+                            )}
+
+                            <div className="absolute top-0 p-2 right-0">
+                                <Button variant="ghost" disabled={!f} onClick={() => handleEditClick()} size="iconLg" className="text-muted-foreground hover:text-low">
+                                    <FontAwesomeIcon icon={faPenToSquare} className="text-lg" />
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* 3. DETAILS CARD */}
+                    <Card className="border-border shadow-sm">
+                        <CardHeader className="py-3 px-5">
+                            <CardTitle className="text-base font-bold uppercase text-muted-foreground flex items-center gap-2">
+                                <FontAwesomeIcon icon={faFileContract} /> Detalii Filială
+                            </CardTitle>
+                        </CardHeader>
+                        <Separator />
+                        <CardContent className="p-5 flex flex-col gap-4">
+
+                            {/* -- LOCATION & CONTACT -- */}
+                            <div className="space-y-3">
+                                <div className="flex items-start gap-3 text-base">
+                                    <div className="w-5 flex justify-center text-muted-foreground mt-0.5">
+                                        <FontAwesomeIcon icon={faLocationDot} />
+                                    </div>
+                                    <span className="text-foreground leading-snug font-medium">
+                                        {fullLocation}
+                                    </span>
                                 </div>
 
-                                {/* Tabs Body */}
-                                <div className="flex-1 bg-muted/5 p-4 overflow-hidden relative">
-
-                                    <TabsContent value="contacts" className="h-full m-0 data-[state=active]:flex flex-col">
-                                        <div className="h-full overflow-hidden rounded-md border bg-background shadow-sm">
-                                            {/* Reuse existing component, passing specific list */}
-                                            <ContactsListByCompany
-                                                contacts={contactsList}
-                                                visibleColumns={{ nume: true, functie: true, email: true, telefon: true }} // Customize columns
-                                                isCardView={true} // Force card view or pass prop
-                                                // You might need to mock or pass dummy handlers if you don't want full interactivity here yet
-                                                handleDeleteClick={() => { }}
-                                                setDraft={() => { }}
-                                                setOpen={() => { }}
-                                            />
-                                        </div>
-                                    </TabsContent>
-
-                                    <TabsContent value="santiere" className="h-full m-0 data-[state=active]:flex flex-col">
-                                        <div className="h-full overflow-hidden rounded-md border bg-background shadow-sm">
-                                            {/* Reuse existing component, passing specific list */}
-                                            <SantiereListByCompany
-                                                santiere={santiereList}
-                                                visibleColumns={{ nume: true, status: true, adresa: true }}
-                                                isCardView={true}
-                                                handleDeleteClick={() => { }}
-                                                setDraft={() => { }}
-                                                setOpen={() => { }}
-                                            />
-                                        </div>
-                                    </TabsContent>
-
+                                <div className="flex items-center gap-3 text-base">
+                                    <div className="w-5 flex justify-center text-muted-foreground">
+                                        <FontAwesomeIcon icon={faEnvelope} />
+                                    </div>
+                                    <span className="text-foreground">{safeText(f?.email)}</span>
                                 </div>
-                            </Tabs>
-                        </main>
 
-                    </div>
-                )}
-            </SheetContent>
-        </Sheet>
+                                <div className="flex items-center gap-3 text-base">
+                                    <div className="w-5 flex justify-center text-muted-foreground">
+                                        <FontAwesomeIcon icon={faPhone} />
+                                    </div>
+                                    <span className="text-foreground">{safeText(f?.telefon)}</span>
+                                </div>
+
+                                {/* -- COORDINATES (Same Row) -- */}
+                                <div className="flex items-center gap-3 text-base">
+                                    <div className="w-5 flex justify-center text-muted-foreground">
+                                        <FontAwesomeIcon icon={faMapPin} />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4 w-full">
+                                        <div className="flex items-center gap-2 text-sm">
+                                            <span className="text-muted-foreground">Lat:</span>
+                                            <span className="font-mono text-foreground font-medium">{safeText(f?.latitudine)}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-sm">
+                                            <span className="text-muted-foreground">Long:</span>
+                                            <span className="font-mono text-foreground font-medium">{safeText(f?.longitudine)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+
+
+                            {/* -- DECISION LEVEL BADGE -- */}
+                            <div className="flex flex-wrap gap-2">
+                                <Badge variant="outline" className={`text-sm font-medium px-2 py-0.5 border ${getDecisionBadgeColor(f?.nivel_decizie)}`}>
+                                    Nivel Decizie: {safeText(f?.nivel_decizie)}
+                                </Badge>
+                            </div>
+
+                        </CardContent>
+                    </Card>
+
+                    {/* 4. HISTORY / UPDATES CARD */}
+                    <Card className="border-border shadow-sm shrink-0">
+                        <CardHeader className="py-3 px-5">
+                            <CardTitle className="text-base font-bold uppercase text-muted-foreground flex items-center gap-2">
+                                <FontAwesomeIcon icon={faHistory} /> Actualizări
+                            </CardTitle>
+                        </CardHeader>
+                        <Separator />
+                        <CardContent className="p-5 space-y-5">
+
+                            {/* UPDATED BY */}
+                            <div className="flex gap-3 items-start">
+                                <Avatar className="h-10 w-10 border rounded-lg">
+                                    <AvatarImage src={f?.updated_by_photo_url ? `${photoApi}/${f.updated_by_photo_url}` : null} />
+                                    <AvatarFallback className="bg-muted text-sm font-medium rounded-lg"><FontAwesomeIcon icon={faUser} /></AvatarFallback>
+                                </Avatar>
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-bold text-muted-foreground uppercase">Ultima actualizare</span>
+                                    <div className="text-sm">
+                                        <span className="font-semibold text-foreground">{f?.updated_by_name || "Sistem"}</span>
+                                        <div className="text-muted-foreground text-sm flex items-center gap-1 mt-0.5">
+                                            <FontAwesomeIcon icon={faCalendarDays} className="w-2.5" />
+                                            {formatDate(f?.updated_at)}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <Separator className="opacity-40" />
+
+                            {/* CREATED BY */}
+                            <div className="flex gap-3 items-start opacity-80">
+                                <Avatar className="h-8 w-8 border rounded-lg">
+                                    <AvatarImage src={f?.created_by_photo_url ? `${photoApi}/${f.created_by_photo_url}` : null} />
+                                    <AvatarFallback className="bg-muted text-sm font-medium rounded-lg"><FontAwesomeIcon icon={faUser} /></AvatarFallback>
+                                </Avatar>
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-bold text-muted-foreground uppercase">Creat inițial</span>
+                                    <div className="text-sm">
+                                        <span className="font-medium text-foreground">{f?.created_by_name || "Sistem"}</span>
+                                        <span className="text-muted-foreground text-sm ml-2">
+                                            {formatDate(f?.created_at)}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </CardContent>
+                    </Card>
+
+                </aside>
+
+                {/* --- RIGHT MAIN AREA (4/5) --- */}
+                <main className="w-full lg:col-span-4 h-full overflow-hidden">
+                    <Tabs defaultValue="contacte" className="h-full w-full flex flex-col gap-4">
+                        <TabsList className="bg-card px-6 py-4 rounded-lg justify-start h-auto w-full">
+                            <div className="border-b w-full flex gap-6">
+                                {["istoric", "activitati", "contacte", "santiere", "fișiere"].map((tab) => (
+                                    <TabsTrigger
+                                        key={tab}
+                                        value={tab}
+                                        className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 !shadow-none data-[state=active]:border-b-primary data-[state=inactive]:border-t-2 border-t-transparent data-[state=active]:text-foreground rounded-none pb-3 px-1 text-base font-bold text-muted-foreground capitalize transition-all"
+                                    >
+                                        {tab}
+                                    </TabsTrigger>
+                                ))}
+                            </div>
+                        </TabsList>
+
+                        <div className="flex-1 bg-card overflow-y-auto h-full rounded-lg">
+                            <TabsContent value="istoric" className="h-full m-0 w-full">
+                                <CompanyHistory filialaId={f?.id} companyId={f?.companie_id} />
+                            </TabsContent>
+                            <TabsContent value="activitati" className="h-full m-0 w-full">
+                                <div className="p-10 text-center text-muted-foreground">Activitati Filială</div>
+                            </TabsContent>
+                            <TabsContent value="contacte" className="h-full m-0 relative w-full">
+                                <ContactsMainCompany companyId={f?.companie_id} filialaId={f?.id} />
+                            </TabsContent>
+                            <TabsContent value="santiere" className="h-full m-0 w-full">
+                                <SantiereMainCompany companyId={f?.companie_id} filialaId={f?.id} />
+                            </TabsContent>
+
+                            <TabsContent value="fișiere" className="h-full m-0 w-full">
+                                <div className="p-10 text-center text-muted-foreground">Fișiere</div>
+                            </TabsContent>
+                        </div>
+                    </Tabs>
+                </main>
+
+            </div>
+
+            <FilialeAddDialog
+                open={open}
+                setOpen={setOpen}
+                draft={draft}
+                setDraft={setDraft}
+                onSubmit={submitEdit}
+                resetDraft={() => setOpen(false)}
+                title="Editează Filiala"
+                companyId={f?.companie_id}
+            />
+        </div>
     );
 }

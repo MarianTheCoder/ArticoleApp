@@ -3,13 +3,14 @@ const multer = require("multer");
 const path = require("path");
 const { Jimp } = require("jimp");
 const fs = require("fs/promises");
+const { authenticateToken } = require("../Middleware/authMiddleware");
 
 const router = express.Router();
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-router.post("/api/setUtilajDef", upload.single("poza"), async (req, res) => {
+router.post("/api/setUtilajDef", authenticateToken("utilaje", "c"), upload.single("poza"), async (req, res) => {
   const conn = await global.db.getConnection();
   try {
     const {
@@ -158,7 +159,7 @@ router.post("/api/setUtilajDef", upload.single("poza"), async (req, res) => {
   }
 });
 
-router.post("/api/setUtilaj", upload.single("poza"), async (req, res) => {
+router.post("/api/setUtilaj", authenticateToken("utilaje", "c"), upload.single("poza"), async (req, res) => {
   const conn = await global.db.getConnection();
   try {
     const {
@@ -457,7 +458,7 @@ router.get('/api/utilajeLight', async (req, res) => {
   }
 });
 
-router.delete("/api/deleteUtilajDef/:id", async (req, res) => {
+router.delete("/api/deleteUtilajDef/:id", authenticateToken("utilaje", "s"), async (req, res) => {
   const { id } = req.params;
 
   const conn = await global.db.getConnection();
@@ -533,7 +534,7 @@ router.delete("/api/deleteUtilajDef/:id", async (req, res) => {
 });
 
 
-router.delete("/api/utilaj/:id", async (req, res) => {
+router.delete("/api/utilaj/:id", authenticateToken("utilaje", "s"), async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -592,6 +593,7 @@ router.delete("/api/utilaj/:id", async (req, res) => {
 
 router.put(
   "/api/editUtilajDef/:id",
+  authenticateToken("utilaje", "e"),
   upload.single("poza"),
   async (req, res) => {
     const { id } = req.params;
@@ -704,7 +706,7 @@ router.put(
   }
 );
 
-router.put("/api/editUtilaj", upload.single("poza"), async (req, res) => {
+router.put("/api/editUtilaj", authenticateToken("utilaje", "e"), upload.single("poza"), async (req, res) => {
   const {
     id,
     definitie_id,

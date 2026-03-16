@@ -11,49 +11,15 @@ export default function SantiereRoutes() {
 
     const { idUser, idSantier } = useParams();
 
-    // UI State
-    const [loading, setLoading] = useState(true);
-    const [isValid, setIsValid] = useState(false);
     const [selectedButton, setSelectedButton] = useState(1);
 
-    // --- FETCH DATA LOCALLY ---
-    useEffect(() => {
-        const validateRoute = async () => {
-            try {
-                // Fetch the lists directly from API
-                const [usersRes, santiereRes] = await Promise.all([
-                    api.get('/users/GetUsersName'),
-                    api.get('/users/getSantiere')
-                ]);
-
-                const beneficiari = usersRes.data || [];
-                const santiere = santiereRes.data || [];
-
-                // Check if the IDs in the URL actually exist
-                const existsUser = beneficiari.some(item => item.id == idUser);
-                const existsSantier = santiere.some(item => item.id == idSantier);
-
-                if (existsSantier && existsUser) {
-                    setIsValid(true);
-                } else {
-                    console.warn("Invalid Santier or User ID in URL");
-                }
-            } catch (err) {
-                console.error("Validation failed:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        validateRoute();
-    }, [idUser, idSantier]);
 
     // Helper for button classes to keep JSX clean
     const getBtnClass = (index) => {
         const isActive = selectedButton === index;
-        const base = "relative w-40 transition-all duration-[150ms] text-white px-6 p-3 xxxl:px-4 rounded-tr-[4rem] rounded-tl-2xl hover:-translate-y-1";
-        const active = "bg-[#26415f] -translate-y-1 shadow-[8px_8px_15px_rgba(0,0,0,1)] z-40";
-        const inactive = "bg-blue-500 shadow-[4px_4px_10px_rgba(0,0,0,1)]";
+        const base = "relative w-40 text-foreground font-semibold tracking-wide transition-all duration-[150ms]  px-6 p-3 xxxl:px-4 rounded-tr-[4rem] rounded-tl-2xl hover:-translate-y-1";
+        const active = "bg-primary text-white -translate-y-1 shadow-[8px_8px_15px_rgba(0,0,0,1)] z-40";
+        const inactive = "bg-background shadow-[2px_2px_10px_rgba(0,0,0,1)]";
 
         // Z-index layering logic from your original code
         const zIndex = `z-[${50 - (index * 10)}]`;
@@ -61,9 +27,6 @@ export default function SantiereRoutes() {
         return `${base} ${isActive ? active : inactive} ${zIndex}`;
     };
 
-    if (loading) return <div className="h-screen w-full flex items-center justify-center">Loading...</div>;
-
-    if (!isValid) return <div className="h-screen w-full flex items-center justify-center text-red-500">Nu s-a găsit șantierul sau beneficiarul.</div>;
 
     return (
         <div className='relative h-screen w-full flex text-sm leading-tight items-center justify-center'>
@@ -79,7 +42,7 @@ export default function SantiereRoutes() {
                 </div>
 
                 {/* Content Body */}
-                <div className="containerNoGlass relative z-50 w-full h-full flex flex-col items-center rounded-lg">
+                <div className="bg-background relative z-50 w-full h-full flex flex-col items-center rounded-lg">
                     {selectedButton === 1 && <Prezentare key={`${idUser}-${idSantier}`} />}
                     {selectedButton === 2 && <OferteWrapper key={`${idUser}-${idSantier}`} />}
                     {selectedButton === 3 && <SarciniMain key={`${idUser}-${idSantier}`} />}

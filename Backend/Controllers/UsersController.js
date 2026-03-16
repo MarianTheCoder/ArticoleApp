@@ -1,135 +1,413 @@
 const fs = require("fs");
 const path = require("path");
 const { format } = require("date-fns");
+const bcrypt = require("bcryptjs");
 
 
-const getOptionsUsers = async (req, res) => {
-  const { type } = req.query;
-  if (!type || !['firma', 'departament', 'specializare'].includes(type)) {
-    return res.status(400).json({ error: 'Invalid or missing type parameter.' });
-  }
+
+const GetAllUsers = async (req, res) => {
   try {
-    const [rows] = await global.db.execute(
-      `SELECT id, type, name, color_hex FROM Meta_Users WHERE type = ? ORDER BY name ASC`,
-      [type]
-    );
-    return res.json(rows);
-  } catch (err) {
-    console.error('Error retrieving user options:', err);
-    return res.status(500).json({ error: 'Failed to retrieve user options' });
-  }
-}
+    const { q } = req.query;   // Termenul de căutare
 
-const postOptionsUsers = async (req, res) => {
-  const { type, name, color_hex } = req.body;
-  if (!type || !['firma', 'departament', 'specializare'].includes(type)) {
-    return res.status(400).json({ error: 'Invalid or missing type parameter.' });
-  }
-  try {
-    const [result] = await global.db.execute(
-      `INSERT INTO Meta_Users (type, name, color_hex) VALUES (?, ?, ?)`,
-      [type, name, color_hex]
-    );
-    return res.status(201).json({ id: result.insertId, type, name, color_hex });
-  } catch (err) {
-    console.error('Error creating user option:', err);
-    return res.status(500).json({ error: 'Failed to create user option' });
-  }
-}
+    let sql = `
+            SELECT 
+                u.*,
+                DATE_FORMAT(u.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at,
+                DATE_FORMAT(u.updated_at, '%Y-%m-%dT%H:%i:%sZ') AS updated_at,
+                
+                u1.name AS created_by_name,
+                u1.photo_url AS created_by_photo_url,
+                u2.name AS updated_by_name,
+                u2.photo_url AS updated_by_photo_url,
 
-const getAngajati = async (req, res) => {
-  try {
-    const [rows] = await global.db.execute(
-      'SELECT * FROM users ORDER BY role ASC',
-    );
-    return res.send(rows);
-  } catch (err) {
-    console.error('Error retrieving angajati:', err);
-    return res.status(500).json({ error: 'Failed to retrieve angajati' });
-  }
-}
+                comp.nume as nume_companie_interna,
+                comp.culoare_hex as companie_interna_color,
 
-const getAngajatiName = async (req, res) => {
-  try {
-    const [rows] = await global.db.execute(
-      'SELECT id, name, limba, created_at FROM users WHERE role = ?',
-      ["beneficiar"]
-    );
-    return res.send(rows);
-  } catch (err) {
-    console.error('Error retrieving angajati:', err);
-    return res.status(500).json({ error: 'Failed to retrieve angajati' });
-  }
-}
+                -- Magia pentru RBAC: 
+                -- Dacă are template, ia json-ul din template. Dacă nu, ia json-ul custom din Utilizatori.
+                COALESCE(t.json_permisiuni, u.permissions) AS active_permissions,
+                t.nume_rol AS template_name
 
-const addSantier = async (req, res) => {
-  const { userId, name } = req.body;
-  const connection = await global.db.getConnection();  // Get a database connection
+            FROM S00_Utilizatori u
 
-  try {
-    // Start a transaction
-    await connection.beginTransaction();
+            LEFT JOIN S00_Companii_Interne comp ON comp.id = u.companie_interna_id
+            LEFT JOIN S00_Utilizatori u1 ON u1.id = u.created_by_user_id
+            LEFT JOIN S00_Utilizatori u2 ON u2.id = u.updated_by_user_id
+            -- Adăugăm JOIN-ul cu tabela de permisiuni predefinite
+            LEFT JOIN S00_Permisiuni_Predefinite t ON t.id = u.permissions_template_id
+        `;
 
-    // Insert into Santiere table
-    const query = `INSERT INTO Santiere (name, user_id) VALUES (?, ?)`;
-    const [rows] = await connection.execute(query, [name, userId]);
+    const params = [];
 
-    // Fetch user details
-    const getDetalii = `SELECT email, telephone, name FROM users WHERE id = ?`;
-    const [userRows] = await connection.execute(getDetalii, [userId]);
-
-    if (!userRows.length) {
-      throw new Error("User not found for this santier");
+    // Dacă folosești WHERE aici, asigură-te că nu mai ai alt WHERE înainte
+    if (q) {
+      sql += ` WHERE (u.name LIKE ? OR u.email LIKE ?)`;
+      params.push(`%${q}%`, `%${q}%`);
     }
 
-    const { email, telephone, name: beneficiar } = userRows[0];
+    sql += ` ORDER BY u.activ DESC, u.name ASC`;
 
-    // Insert into Santiere_detalii with beneficiar, email, telefon
-    const queryDetails = `
-  INSERT INTO Santiere_detalii (santier_id, beneficiar, email, telefon)
-  VALUES (?, ?, ?, ?)
-`;
-    await connection.execute(queryDetails, [rows.insertId, beneficiar, email, telephone]);
+    const [rows] = await global.db.execute(sql, params);
 
-    await connection.commit();
+    return res.status(200).json({
+      conturi: rows,
+      total: rows.length
+    });
 
-    // Return the ID of the newly inserted record
-    res.status(200).send({ message: 'Santier added successfully', santierId: rows.insertId });
+  } catch (err) {
+    console.log("GetAllUsers error:", err);
+    return res.status(500).json({ message: "Eroare server." });
+  }
+};
+
+const addCont = async (req, res) => {
+  try {
+    const {
+      email, name, specializare, password,
+      telephone, telephone_1, data_nastere,
+      activ, companie_interna_id,
+      permissions, permissions_template_id,
+    } = req.body;
+
+    if (!name?.trim()) return res.status(400).json({ message: "Numele este obligatoriu." });
+    if (!email?.trim()) return res.status(400).json({ message: "Email-ul este obligatoriu." });
+    if (!password?.trim()) return res.status(400).json({ message: "Parola este obligatorie." });
+
+    const [existing] = await global.db.execute(
+      `SELECT id FROM S00_Utilizatori WHERE email = ? LIMIT 1`,
+      [email.trim()]
+    );
+    if (existing.length) return res.status(409).json({ message: "Email-ul este deja folosit." });
+
+    const hashedPassword = await bcrypt.hash(password.trim(), 10);
+
+    let photo_url = req.file ? req.file.path : `uploads/Angajati/no-user-image-square.jpg`;
+
+    if (photo_url) {
+      photo_url = path.relative(path.join(__dirname, '../'), photo_url); // Store relative path
+    }
+
+    let permissionsJson = null;
+    let templateId = null;
+    const tidRaw = permissions_template_id;
+    if (tidRaw && tidRaw !== "" && tidRaw !== "null") {
+      templateId = parseInt(tidRaw);
+    } else {
+      try {
+        permissionsJson = typeof permissions === "string"
+          ? permissions
+          : JSON.stringify(permissions ?? {});
+      } catch { permissionsJson = "{}"; }
+    }
+
+    const [result] = await global.db.execute(
+      `INSERT INTO S00_Utilizatori 
+                (email, name, specializare, password, telephone, telephone_1, 
+                 data_nastere, activ, companie_interna_id, photo_url,
+                 permissions, permissions_template_id, created_by_user_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        email.trim(),
+        name.trim(),
+        specializare?.trim() || null,
+        hashedPassword,
+        telephone || null,
+        telephone_1 || null,
+        data_nastere || null,
+        activ == "1" || activ == true ? 1 : 0,
+        companie_interna_id ? parseInt(companie_interna_id) : null,
+        photo_url,
+        permissionsJson,
+        templateId,
+        req.user?.id || null,
+      ]
+    );
+
+    return res.status(201).json({ message: "Cont creat cu succes.", userId: result.insertId });
+
   } catch (error) {
-    // Rollback the transaction in case of any error
-    await connection.rollback();
-    res.status(500).json({ message: "Internal server error", error: error.message });
-  } finally {
-    // Release the connection
-    connection.release();
+    console.log("addCont error:", error);
+    return res.status(500).json({ message: "Eroare server." });
   }
 };
 
 
-const getSantiere = async (req, res) => {
+const updateCont = async (req, res) => {
   try {
+    const userId = req.params.id;
+    const {
+      email, name, specializare, password,
+      telephone, telephone_1, data_nastere,
+      activ, companie_interna_id,
+      permissions, permissions_template_id,
+    } = req.body;
+
+    if (!userId) return res.status(400).json({ message: "ID lipsă." });
+    if (!name?.trim()) return res.status(400).json({ message: "Numele este obligatoriu." });
+    if (!email?.trim()) return res.status(400).json({ message: "Email-ul este obligatoriu." });
+
+    // ── Check user exists ─────────────────────────────────────
     const [rows] = await global.db.execute(
-      'SELECT id, name, user_id FROM Santiere',
+      `SELECT id, photo_url FROM S00_Utilizatori WHERE id = ? LIMIT 1`,
+      [userId]
     );
-    return res.send(rows);
+    if (!rows.length) return res.status(404).json({ message: "Utilizatorul nu există." });
+
+    // ── Check email unique (exclude self) ─────────────────────
+    const [emailCheck] = await global.db.execute(
+      `SELECT id FROM S00_Utilizatori WHERE email = ? AND id != ? LIMIT 1`,
+      [email.trim(), userId]
+    );
+    if (emailCheck.length) return res.status(409).json({ message: "Email-ul este deja folosit." });
+
+    // ── Password (only if provided) ───────────────────────────
+    let hashedPassword = null;
+    if (password?.trim()) {
+      hashedPassword = await bcrypt.hash(password.trim(), 10);
+    }
+    // ── Photo ─────────────────────────────────────────────────
+    let photo_url = rows[0].photo_url; // keep existing
+    if (req.file) {
+      // delete old file if not default
+      const oldPath = rows[0].photo_url;
+      if (oldPath && !oldPath.includes("no-user-image")) {
+        const fullOldPath = path.join(__dirname, "..", "uploads", oldPath);
+        if (fs.existsSync(fullOldPath)) fs.unlinkSync(fullOldPath);
+      }
+      photo_url = path.relative(path.join(__dirname, '../'), req.file.path); // Store relative path
+    }
+
+    // ── Permissions ───────────────────────────────────────────
+    let permissionsJson = null;
+    let templateId = null;
+
+    const tidRaw = permissions_template_id;
+    if (tidRaw && tidRaw !== "" && tidRaw !== "null") {
+      templateId = parseInt(tidRaw);
+    } else {
+      try {
+        permissionsJson = typeof permissions === "string"
+          ? permissions
+          : JSON.stringify(permissions ?? {});
+      } catch { permissionsJson = "{}"; }
+    }
+
+    // ── Build dynamic SET ─────────────────────────────────────
+    const fields = [
+      "email = ?", "name = ?", "specializare = ?",
+      "telephone = ?", "telephone_1 = ?", "data_nastere = ?",
+      "activ = ?", "companie_interna_id = ?", "photo_url = ?",
+      "permissions = ?", "permissions_template_id = ?",
+      "updated_by_user_id = ?",
+    ];
+    const values = [
+      email.trim(),
+      name.trim(),
+      specializare?.trim() || null,
+      telephone || null,
+      telephone_1 || null,
+      data_nastere || null,
+      activ === "1" || activ === true ? 1 : 0,
+      companie_interna_id ? parseInt(companie_interna_id) : null,
+      photo_url,
+      permissionsJson,
+      templateId,
+      req.user?.id || null,
+    ];
+
+    // Only update password if provided
+    if (hashedPassword) {
+      fields.push("password = ?");
+      values.push(hashedPassword);
+    }
+
+    values.push(userId); // for WHERE
+
+    await global.db.execute(
+      `UPDATE S00_Utilizatori SET ${fields.join(", ")} WHERE id = ?`,
+      values
+    );
+
+    return res.status(200).json({ message: "Cont actualizat cu succes." });
+
+  } catch (error) {
+    console.log("updateCont error:", error);
+    return res.status(500).json({ message: "Eroare server." });
+  }
+
+};
+
+const GetAllRoleTemplates = async (req, res) => {
+  try {// Termenul de căutare
+    let [rows] = await global.db.execute(`
+            SELECT * FROM S00_Permisiuni_Predefinite
+        `);
+    return res.status(200).json({
+      templates: rows,
+      total: rows.length
+    });
+
   } catch (err) {
-    console.error('Error retrieving Santiere:', err);
-    return res.status(500).json({ error: 'Failed to retrieve angajati' });
+    console.log("GetAllUsers template error:", err);
+    return res.status(500).json({ message: "Eroare server." });
+  }
+};
+
+const saveTemplate = async (req, res) => {
+  const { nume_rol, descriere, json_permisiuni } = req.body;
+  const jsonString = JSON.stringify(json_permisiuni);
+  try {
+    if (!nume_rol || !json_permisiuni) {
+      return res.status(400).json({ message: "Nume rol și permisiuni sunt obligatorii." });
+    }
+    // Save the predefined role to the database
+    const [result] = await global.db.execute(
+      `INSERT INTO S00_Permisiuni_Predefinite (nume_rol, descriere, json_permisiuni) VALUES (?, ?, ?)`,
+      [nume_rol, descriere || null, jsonString]
+    );
+    return res.status(201).json({ message: "Șablon salvat cu succes.", templateId: result.insertId });
+  } catch (err) {
+    console.log("savePredefinedRole error:", err);
+    return res.status(500).json({ message: "Eroare la salvarea șablonului." });
   }
 }
+
+const saveEditTemplate = async (req, res) => {
+  const { nume_rol, descriere, json_permisiuni } = req.body;
+  const id = req.params.id;
+  const jsonString = JSON.stringify(json_permisiuni);
+  if (!id || !nume_rol || !json_permisiuni) {
+    return res.status(400).json({ message: "ID, nume rol și permisiuni sunt obligatorii." });
+  }
+  try {
+    // Update the predefined role in the database
+    await global.db.execute(
+      `UPDATE S00_Permisiuni_Predefinite SET nume_rol = ?, descriere = ?, json_permisiuni = ? WHERE id = ?`,
+      [nume_rol, descriere || null, jsonString, id]
+    );
+    return res.status(200).json({ message: "Șablon actualizat cu succes." });
+  } catch (err) {
+    console.log("saveEditTemplate error:", err);
+    return res.status(500).json({ message: "Eroare la actualizarea șablonului." });
+  }
+}
+
+const deleteTemplate = async (req, res) => {
+  const { id } = req.params;
+  const { code } = req.body;
+  if (!id || !code) {
+    return res.status(400).json({ message: "ID și codul de confirmare sunt obligatorii." });
+  }
+  if (code != 321) {
+    return res.status(400).json({ message: "Codul de confirmare este incorect." });
+  }
+  try {
+    await global.db.execute("DELETE FROM S00_Permisiuni_Predefinite WHERE id = ?", [id]);
+    return res.status(200).json({ message: "Șablon șters cu succes." });
+  } catch (err) {
+    console.log("deleteTemplate error:", err);
+    return res.status(500).json({ message: "Eroare la ștergerea șablonului." });
+  }
+}
+
+const getNavbarData = async (req, res) => {
+  const userId = req.params.userId;
+  try {
+    const [rows] = await global.db.execute(`
+            SELECT 
+                c.id AS companie_id,
+                c.nume_companie,
+                c.tara,
+                s.id AS santier_id,
+                s.nume AS santier_nume,
+                s.filiala_id,
+                f.nume_filiala
+            FROM S10_Companii c
+            INNER JOIN S01_Santiere s ON s.companie_id = c.id
+            LEFT JOIN S10_Filiale f ON f.id = s.filiala_id
+            WHERE s.activ = 1
+            ORDER BY c.nume_companie ASC, f.nume_filiala ASC, s.nume ASC
+        `);
+    const [userData] = await global.db.execute(`
+            SELECT 
+            u.id, 
+            u.name, 
+            u.email, 
+            u.photo_url, 
+            m.id AS firma_id,
+            m.nume AS firma_nume,
+            m.culoare_hex AS firma_color
+            FROM S00_Utilizatori u
+            LEFT JOIN S00_Companii_Interne m ON m.id = u.companie_interna_id
+            WHERE u.id = ?
+      `, [userId]);
+    // Build hierarchy: companie -> filiala (optional) -> santiere
+    const companiiMap = {};
+
+    rows.forEach(row => {
+      // Init company
+      if (!companiiMap[row.companie_id]) {
+        companiiMap[row.companie_id] = {
+          id: row.companie_id,
+          tara: row.tara,
+          nume_companie: row.nume_companie,
+          filiale: {},   // filiala_id -> { filiala info + santiere[] }
+          santiere: []   // santiere without filiala
+        };
+      }
+
+      const companie = companiiMap[row.companie_id];
+
+      if (row.filiala_id) {
+        // Has filiala -> group under it
+        if (!companie.filiale[row.filiala_id]) {
+          companie.filiale[row.filiala_id] = {
+            id: row.filiala_id,
+            nume_filiala: row.nume_filiala,
+            santiere: []
+          };
+        }
+        companie.filiale[row.filiala_id].santiere.push({
+          id: row.santier_id,
+          nume: row.santier_nume
+        });
+      } else {
+        // No filiala -> directly under company
+        companie.santiere.push({
+          id: row.santier_id,
+          nume: row.santier_nume
+        });
+      }
+    });
+
+    // Convert maps to arrays
+    const result = Object.values(companiiMap).map(c => ({
+      ...c,
+      filiale: Object.values(c.filiale)
+    }));
+    return res.status(200).json({
+      user: userData[0] || null,
+      companii: result
+    });
+
+  } catch (err) {
+    console.log("getCompaniesWithSantiere error:", err);
+    return res.status(500).json({ message: "Eroare server." });
+  }
+};
 
 const deleteUser = async (req, res) => {
   const { id } = req.params;
   try {
     // Step 1: Retrieve the image filename from the database
-    const [rows] = await global.db.execute("SELECT photo_url FROM users WHERE id = ?", [id]);
+    const [rows] = await global.db.execute("SELECT photo_url FROM S00_Utilizatori WHERE id = ?", [id]);
     if (rows.length === 0) {
       return res.status(404).json({ message: "Product not found" });
     }
 
     const imagePath = rows[0].photo_url;
 
-    await global.db.query("DELETE FROM users WHERE id = ?", [id]);
+    await global.db.query("DELETE FROM S00_Utilizatori WHERE id = ?", [id]);
 
     // Step 2: Delete the image from the server
     const defaultImage = "no-user-image-square.jpg";
@@ -145,7 +423,7 @@ const deleteUser = async (req, res) => {
     res.status(200).send({ message: "User deleted successfully", ok: true });
   }
   catch (error) {
-    console.error(error);
+    console.log(error);
     res.status(500).json({ message: "Internal server error" });
   }
 }
@@ -182,7 +460,7 @@ const startWork = async (req, res) => {
     console.log("Started session:", "user:", user_id);
     res.status(201).json({ message: 'Session started', session_id: result.insertId });
   } catch (err) {
-    console.error(err);
+    console.log(err);
     res.status(500).json({ error: 'Failed to start session' });
   }
 };
@@ -231,7 +509,7 @@ const endWork = async (req, res) => {
       end_time: snapISO, // <— identic cu ce trimite getSessions
     });
   } catch (err) {
-    console.error(err);
+    console.log(err);
     return res.status(500).json({ error: 'Failed to end session' });
   }
 };
@@ -257,9 +535,9 @@ const getSessions = async (req, res) => {
             DATE_FORMAT(sl.start_time, '%Y-%m-%dT%H:%i:%sZ') AS start_time,
             DATE_FORMAT(sl.end_time,   '%Y-%m-%dT%H:%i:%sZ') AS end_time,
             sl.start_lat, sl.start_lng, sl.end_lat, sl.end_lng, sl.session_date, sl.status, sl.note, sl.edited, sl.created_at, sl.updated_at, 
-            s.color_hex
+            s.culoare_hex
       FROM sesiuni_de_lucru sl
-      LEFT JOIN santiere s ON s.id = sl.santier_id
+      LEFT JOIN S01_Santiere s ON s.id = sl.santier_id
       WHERE sl.user_id = ?
         AND sl.start_time >= ?
         AND sl.start_time <  ?
@@ -269,7 +547,7 @@ const getSessions = async (req, res) => {
     // await new Promise(resolve => setTimeout(resolve, 6000));
     res.json(rows);
   } catch (err) {
-    console.error(err);
+    console.log(err);
     res.status(500).json({ error: 'Failed to fetch daily sessions' });
   }
 };
@@ -283,24 +561,22 @@ const getWorkSessionsForDates = async (req, res) => {
     if (!Array.isArray(dates) || dates.length === 0) {
       return res.status(400).json({ error: "Invalid dates" });
     }
-    // Expecting ['YYYY-MM-DD', ...]
-    // (No tz math needed: session_date is derived from start_time in the DB)
 
-    // 1) Users (except beneficiari)
-    const [users] = await global.db.query(
+
+    // 1) S00_Utilizatori (except beneficiari)
+    const [S00_Utilizatori] = await global.db.query(
       `SELECT 
           u.id as id,
           m.id as firma_id, 
           u.name as name, 
+          u.specializare as specializare,
           u.email as email, 
           u.photo_url as photo_url, 
-          u.role as role,
-          m.name as firma,
-          m.color_hex as firma_color
-        FROM users u
-        LEFT JOIN Meta_Users m ON m.id = u.firma_id AND m.type = 'firma'
-        WHERE u.role != 'beneficiar'
-        ORDER BY u.role ASC
+          u.activ as activ,
+          m.nume as firma,
+          m.culoare_hex as firma_color
+        FROM S00_Utilizatori u
+        LEFT JOIN S00_Companii_Interne m ON m.id = u.companie_interna_id 
         `
     );
 
@@ -312,14 +588,14 @@ const getWorkSessionsForDates = async (req, res) => {
           DATE_FORMAT(sl.start_time, '%Y-%m-%dT%H:%i:%sZ') AS start_time,
           DATE_FORMAT(sl.end_time,   '%Y-%m-%dT%H:%i:%sZ') AS end_time,
           sl.start_lat, sl.start_lng, sl.end_lat, sl.end_lng, sl.rating,
-          sl.status, sl.note, sl.edited,
+          sl.status, sl.note, sl.edited, sl.updated_by_user_id,
           DATE_FORMAT(sl.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at,
           DATE_FORMAT(sl.updated_at, '%Y-%m-%dT%H:%i:%sZ') AS updated_at,
           DATE_FORMAT(sl.session_date, '%Y-%m-%d')        AS session_date,
-          s.name AS santier_name,
-          s.color_hex AS santier_color
-        FROM sesiuni_de_lucru sl
-        LEFT JOIN santiere s ON s.id = sl.santier_id
+          s.nume AS santier_name,
+          s.culoare_hex AS santier_color
+        FROM S06_Sesiuni_De_Lucru sl
+        LEFT JOIN S01_Santiere s ON s.id = sl.santier_id
        WHERE sl.session_date IN (?)
        ORDER BY sl.user_id, sl.start_time`,
       [dates]
@@ -335,7 +611,7 @@ const getWorkSessionsForDates = async (req, res) => {
             sesiune_id,
             lat, lng,
             DATE_FORMAT(recorded_at, '%Y-%m-%dT%H:%i:%sZ') AS recorded_at
-           FROM sesiuni_locatii
+           FROM S06_Sesiuni_Locatii
           WHERE sesiune_id IN (?)
           ORDER BY sesiune_id, recorded_at`,
         [sessionIds]
@@ -362,7 +638,7 @@ const getWorkSessionsForDates = async (req, res) => {
     }
 
     // 5) Build payload per user, per requested date (preserving input dates order)
-    const result = users.map(user => {
+    const result = S00_Utilizatori.map(user => {
       const work_sessions = dates.map(dateStr => {
         const key = `${user.id}_${dateStr}`;
         const daySessions = sessionsByUserDate.get(key) || [];
@@ -377,45 +653,38 @@ const getWorkSessionsForDates = async (req, res) => {
 
     res.json(result);
   } catch (err) {
-    console.error("Eroare la preluare:", err);
+    console.log("Eroare la preluare:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 };
 
 const getAtribuiri = async (req, res) => {
   try {
-    // useri
-    const [users] = await global.db.query(
-      `SELECT id, name, photo_url, role, limba FROM users 
-      WHERE role != 'beneficiar' ORDER BY name ASC`
-    );
-
-    // santiere
-    const [santiere] = await global.db.query(
-      `SELECT s.id, s.name, s.color_hex, u.limba
-      FROM santiere s
-      JOIN users u ON u.id = s.user_id
-      ORDER BY s.name ASC`
-    );
-
-    // asignari existente
-    const [assignments] = await global.db.query(
-      "SELECT id, user_id, santier_id FROM atribuire_activitate"
-    );
+    const [[users], [santiere], [assignments]] = await Promise.all([
+      global.db.query(`SELECT id, name, photo_url FROM S00_Utilizatori ORDER BY name ASC`),
+      global.db.query(`
+        SELECT s.id, s.nume, s.culoare_hex, u.tara
+        FROM S01_Santiere s
+        JOIN S10_Companii u ON u.id = s.companie_id
+        WHERE s.activ = 1 AND u.tara IN ('FR', 'RO')
+        ORDER BY u.tara, s.nume ASC
+      `),
+      global.db.query(`SELECT id, user_id, santier_id FROM S01_Atribuire_Activitate`),
+    ]);
 
     res.json({ users, santiere, assignments });
   } catch (err) {
-    console.error("❌ Eroare la fetch assign-santiere-data:", err);
+    console.log("❌ Eroare la fetch assign-santiere-data:", err);
     res.status(500).json({ error: "Eroare la încărcarea datelor" });
   }
-}
+};
 
 const saveAtribuiri = async (req, res) => {
-  const { user_id, santier_ids } = req.body;
+  const { utilizatorID, santier_ids } = req.body;
 
   try {
     // 1) Basic validation
-    if (!Number.isInteger(user_id)) {
+    if (!Number.isInteger(utilizatorID)) {
       return res.status(400).json({ ok: false, error: 'user_id invalid' });
     }
     if (!Array.isArray(santier_ids)) {
@@ -430,50 +699,39 @@ const saveAtribuiri = async (req, res) => {
 
       // 2) Remove old assignments for this user
       await conn.query(
-        `DELETE FROM atribuire_activitate WHERE user_id = ?`,
-        [user_id]
+        `DELETE FROM S01_Atribuire_Activitate WHERE user_id = ?`,
+        [utilizatorID]
       );
 
       // 3) Insert new ones (if any)
       if (cleanIds.length > 0) {
-        const values = cleanIds.map(sid => [user_id, sid]);
+        const values = cleanIds.map(sid => [utilizatorID, sid]);
         await conn.query(
-          `INSERT INTO atribuire_activitate (user_id, santier_id) VALUES ?`,
+          `INSERT INTO S01_Atribuire_Activitate (user_id, santier_id) VALUES ?`,
           [values]
         );
       }
-
-      // 4) Read back fresh rows for this user
-      const [rows] = await conn.query(
-        `SELECT id, user_id, santier_id
-           FROM atribuire_activitate
-          WHERE user_id = ?
-          ORDER BY id ASC`,
-        [user_id]
-      );
 
       await conn.commit();
       conn.release();
 
       return res.json({
         ok: true,
-        assignmentsForUser: rows, // frontend expects this
       });
     } catch (txErr) {
       await conn.rollback();
       conn.release();
-      console.error('TX error in saveAtribuiri:', txErr);
+      console.log('TX error in saveAtribuiri:', txErr);
       return res.status(500).json({ ok: false, error: 'Transaction failed' });
     }
   } catch (err) {
-    console.error('saveAtribuiri error:', err);
+    console.log('saveAtribuiri error:', err);
     return res.status(500).json({ ok: false, error: 'Internal server error' });
   }
 }
 
 const santiereAsignate = async (req, res) => {
   const { userId } = req.params;
-  console.log("santiereAsignate called for userId:", userId);
 
   if (!userId) {
     return res.status(400).json({ ok: false, message: "User ID lipsă" });
@@ -482,9 +740,9 @@ const santiereAsignate = async (req, res) => {
   try {
     const [rows] = await global.db.query(
       `
-            SELECT s.id, s.name, s.color_hex
-            FROM atribuire_activitate a
-            JOIN santiere s ON s.id = a.santier_id
+            SELECT s.id, s.nume, s.culoare_hex
+            FROM S01_Atribuire_Activitate a
+            JOIN S01_Santiere s ON s.id = a.santier_id
             WHERE a.user_id = ?
             `,
       [userId]
@@ -496,7 +754,7 @@ const santiereAsignate = async (req, res) => {
       santiere: rows
     });
   } catch (err) {
-    console.error("❌ Eroare la fetch santiere_asignate:", err);
+    console.log("❌ Eroare la fetch santiere_asignate:", err);
     return res.status(500).json({
       ok: false,
       message: "Eroare server la preluarea șantierelor"
@@ -529,7 +787,7 @@ const getActiveSession = async (req, res) => {
       res.json(null);
     }
   } catch (err) {
-    console.error('Error fetching active session:', err);
+    console.log('Error fetching active session:', err);
     res.status(500).json({ error: 'Database error' });
   }
 }
@@ -616,14 +874,14 @@ const switchWorkSession = async (req, res) => {
     });
   } catch (err) {
     await conn.rollback();
-    console.error('switchWorkSession error:', err);
+    console.log('switchWorkSession error:', err);
     res.status(500).json({ ok: false, error: 'Server error' });
   } finally {
     conn.release();
   }
 }
 
-// controllers/users.js (for example)
+// controllers/S00_Utilizatori.js (for example)
 const saveWorkLocation = async (req, res) => {
   try {
     const { user_id, lat, lng, accuracy = null, ts = null } = req.body;
@@ -709,7 +967,7 @@ const saveWorkLocation = async (req, res) => {
     });
 
   } catch (err) {
-    console.error('saveWorkLocation error:', err);
+    console.log('saveWorkLocation error:', err);
     return res.status(500).json({ error: 'Failed to save location' });
   }
 };
@@ -733,10 +991,9 @@ const exportPontaje = async (req, res) => {
 
     // 1) Utilizatorii selectați (excludem beneficiari, dacă vrei)
     const [users] = await global.db.query(
-      `SELECT id, name, email, photo_url, role
-         FROM users
+      `SELECT id, name, email, photo_url
+         FROM S00_Utilizatori
         WHERE id IN (?)
-          AND role != 'beneficiar'
         ORDER BY name ASC`,
       [user_ids]
     );
@@ -747,13 +1004,13 @@ const exportPontaje = async (req, res) => {
 
     const [santiere_all] = await global.db.query(
       `SELECT id, name, color_hex
-         FROM santiere
+         FROM S01_Santiere
         ORDER BY name ASC`
     );
 
     const santiere_map = {};
     for (const s of santiere_all) {
-      santiere_map[s.id] = { id: s.id, name: s.name, color_hex: s.color_hex };
+      santiere_map[s.id] = { id: s.id, name: s.nume, color_hex: s.culoare_hex };
     }
 
     // 2) Sesiunile DOAR pentru datele cerute (folosești session_date din DB)
@@ -766,10 +1023,10 @@ const exportPontaje = async (req, res) => {
           DATE_FORMAT(sl.session_date, '%Y-%m-%d')        AS session_date,
 
           -- detalii șantier
-          s.name      AS santier_name,
-          s.color_hex AS santier_color
+          s.nume      AS santier_name,
+          s.culoare_hex AS santier_color
         FROM sesiuni_de_lucru sl
-        LEFT JOIN santiere s ON s.id = sl.santier_id
+        LEFT JOIN S01_Santiere s ON s.id = sl.santier_id
        WHERE sl.session_date IN (?)
          AND sl.user_id      IN (?)
        ORDER BY sl.user_id, sl.session_date, sl.start_time`,
@@ -804,7 +1061,6 @@ const exportPontaje = async (req, res) => {
       name: u.name,
       email: u.email,
       photo_url: u.photo_url,
-      role: u.role,
       sessions: sessionsByUser.get(u.id) || []
     }));
 
@@ -813,10 +1069,10 @@ const exportPontaje = async (req, res) => {
       user_ids,
       users: payload,
       santiere_all: santiere_all, // toate santierele
-      santiere_map: santiere_map // santiere mapat după ID
+      santiere_map: santiere_map // S01_Santiere mapat după ID
     });
   } catch (err) {
-    console.error("sessions-by-dates error:", err);
+    console.log("sessions-by-dates error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 }
@@ -836,10 +1092,10 @@ const exportPontajeSantiere = async (req, res) => {
       return res.status(400).json({ error: "santier_ids is required" });
     }
 
-    // 1) santiere selectate
+    // 1) S01_Santiere selectate
     const [santiere] = await global.db.query(
       `SELECT id, name, color_hex
-         FROM santiere
+         FROM S01_Santiere
         WHERE id IN (?)
         ORDER BY name ASC`,
       [santier_ids]
@@ -849,11 +1105,11 @@ const exportPontajeSantiere = async (req, res) => {
     // 2) asignări curente (fără beneficiari)
     const [assignments] = await global.db.query(
       `SELECT a.user_id, a.santier_id,
-              u.name, u.role, u.photo_url, u.email
+              u.name, u.photo_url, u.email
          FROM atribuire_activitate a
-         JOIN users u ON u.id = a.user_id
+         JOIN S00_Utilizatori u ON u.id = a.user_id
         WHERE a.santier_id IN (?)
-          AND u.role != 'beneficiar'`,
+       `,
       [santier_ids]
     );
 
@@ -893,8 +1149,8 @@ const exportPontajeSantiere = async (req, res) => {
     for (const s of santiere) {
       santierMap.set(s.id, {
         id: s.id,
-        name: s.name,
-        color_hex: s.color_hex,
+        name: s.nume,
+        color_hex: s.culoare_hex,
         // per zi pentru santier
         by_date: zeroByDate(dates),
         // utilizatori asignați (îi punem cu 0)
@@ -911,7 +1167,6 @@ const exportPontajeSantiere = async (req, res) => {
       const uRef = {
         id: a.user_id,
         name: a.name,
-        role: a.role,
         email: a.email,
         photo_url: a.photo_url,
         by_date: zeroByDate(dates) // doar pe acest santier
@@ -942,7 +1197,7 @@ const exportPontajeSantiere = async (req, res) => {
       const mapForS = assignedBySantier.get(r.santier_id);
       let uRef = mapForS?.get(r.user_id);
       if (!uRef && include_unassigned_workers) {
-        uRef = { id: r.user_id, name: undefined, role: undefined, email: undefined, photo_url: undefined, by_date: zeroByDate(dates) };
+        uRef = { id: r.user_id, name: undefined, email: undefined, photo_url: undefined, by_date: zeroByDate(dates) };
         if (!assignedBySantier.has(r.santier_id)) assignedBySantier.set(r.santier_id, new Map());
         assignedBySantier.get(r.santier_id).set(r.user_id, uRef);
         sObj.extra_users.push(uRef);
@@ -957,21 +1212,21 @@ const exportPontajeSantiere = async (req, res) => {
       }
     }
 
-    // 6) backfill identități pentru extra users (o singură interogare)
+    // 6) backfill identități pentru extra S00_Utilizatori (o singură interogare)
     const extraIds = [];
     for (const s of santierMap.values()) {
       for (const u of s.extra_users) if (!u.name) extraIds.push(u.id);
     }
     if (extraIds.length) {
       const [ux] = await global.db.query(
-        `SELECT id, name, role, email, photo_url FROM users WHERE id IN (?)`,
+        `SELECT id, name, email, photo_url FROM S00_Utilizatori WHERE id IN (?)`,
         [Array.from(new Set(extraIds))]
       );
       const info = new Map(ux.map(x => [x.id, x]));
       for (const s of santierMap.values()) {
         for (const u of s.extra_users) {
           const i = info.get(u.id);
-          if (i) { u.name = i.name; u.role = i.role; u.email = i.email; u.photo_url = i.photo_url; }
+          if (i) { u.name = i.name; u.email = i.email; u.photo_url = i.photo_url; }
         }
       }
     }
@@ -983,7 +1238,7 @@ const exportPontajeSantiere = async (req, res) => {
       santiere: Array.from(santierMap.values())
     });
   } catch (err) {
-    console.error("exportPontajeSantiere error:", err);
+    console.log("exportPontajeSantiere error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -993,11 +1248,11 @@ const getContData = async (req, res) => {
   try {
     const [rows] = await global.db.execute(
       `SELECT 
-          u.id, u.name, u.email, u.photo_url, u.role, u.telefon_prefix, u.telephone,
+          u.id, u.name, u.email, u.photo_url, u.telefon_prefix, u.telephone,
           f.id AS firma_id, f.name AS firma, f.color_hex AS firma_color,
-          s.id AS specializare_id, s.name AS specializare, s.color_hex AS specializare_color,
+          s.id AS specializare_id, s.nume AS specializare, s.culoare_hex AS specializare_color,
           d.id AS departament_id, d.name AS departament, d.color_hex AS departament_color
-        FROM users u
+        FROM S00_Utilizatori u
         LEFT JOIN Meta_Users f ON f.id = u.firma_id AND f.type = 'firma'
         LEFT JOIN Meta_Users s ON s.id = u.specializare_id AND s.type = 'specializare'
         LEFT JOIN Meta_Users d ON d.id = u.departament_id AND d.type = 'departament'
@@ -1011,7 +1266,7 @@ const getContData = async (req, res) => {
     // await new Promise(resolve => setTimeout(resolve, 6000)); // simulate delay
     res.json({ data: rows[0] });
   } catch (err) {
-    console.error(err);
+    console.log(err);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -1042,11 +1297,11 @@ const getSumarOre = async (req, res) => {
         -- o singură notă pe zi (dacă sunt mai multe, ia una nenulă / cea mai mare alfabetic)
         MAX(sl.note) AS note,
 
-        -- seconds DOAR pentru santiere care NU sunt pauza/pauză
+        -- seconds DOAR pentru S01_Santiere care NU sunt pauza/pauză
         SUM(
           CASE 
             WHEN s.id IS NULL 
-                OR TRIM(LOWER(s.name)) NOT IN ('pauza','pauză')
+                OR TRIM(LOWER(s.nume)) NOT IN ('pauza','pauză')
             THEN TIMESTAMPDIFF(SECOND, sl.start_time, COALESCE(sl.end_time, NOW()))
             ELSE 0
           END
@@ -1056,13 +1311,13 @@ const getSumarOre = async (req, res) => {
         SUM(
           CASE 
             WHEN s.id IS NULL 
-                OR TRIM(LOWER(s.name)) NOT IN ('pauza','pauză')
+                OR TRIM(LOWER(s.nume)) NOT IN ('pauza','pauză')
             THEN 1 ELSE 0
           END
         ) AS sessions_count
 
       FROM sesiuni_de_lucru sl
-      LEFT JOIN santiere s ON s.id = sl.santier_id
+      LEFT JOIN S01_Santiere s ON s.id = sl.santier_id
       WHERE sl.user_id = ?
         AND sl.session_date >= ? AND sl.session_date < ?
       GROUP BY day
@@ -1114,7 +1369,7 @@ const getSumarOre = async (req, res) => {
       daily,
     });
   } catch (err) {
-    console.error('getSumarOre error:', err);
+    console.log('getSumarOre error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -1143,9 +1398,15 @@ const saveToken = async (req, res) => {
 
     res.json({ ok: true });
   } catch (e) {
-    console.error('savePushToken error:', e);
+    console.log('savePushToken error:', e);
     res.status(500).json({ error: 'Failed to save token' });
   }
 };
 
-module.exports = { getAngajati, getContData, getSumarOre, santiereAsignate, getOptionsUsers, saveToken, postOptionsUsers, exportPontajeSantiere, saveWorkLocation, switchWorkSession, getActiveSession, saveAtribuiri, deleteUser, getAngajatiName, exportPontaje, addSantier, getSantiere, endWork, startWork, getSessions, getAtribuiri, getWorkSessionsForDates };
+module.exports = {
+  GetAllUsers, getContData, getSumarOre, santiereAsignate, saveToken,
+  exportPontajeSantiere, saveWorkLocation, switchWorkSession, getActiveSession, saveAtribuiri,
+  deleteUser, getNavbarData, exportPontaje, endWork, startWork, getSessions, getAtribuiri,
+  getWorkSessionsForDates, GetAllRoleTemplates, saveTemplate, saveEditTemplate, deleteTemplate,
+  addCont, updateCont
+};

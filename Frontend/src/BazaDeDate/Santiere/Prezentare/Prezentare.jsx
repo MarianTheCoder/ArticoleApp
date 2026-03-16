@@ -1,346 +1,425 @@
-import React, { useEffect, useState } from 'react'
-import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCancel, faL, faPenToSquare } from '@fortawesome/free-solid-svg-icons';
-import api from '../../../api/axiosAPI';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useContext, useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useSantiereByCompany, useEditSantier, useSantier } from "@/hooks/useSantiere";
+import { useFiliala } from "@/hooks/useFiliale";
+import { useCompany } from "@/hooks/useCompanies";
+import { useLoading } from "@/context/LoadingContext";
+import { AuthContext } from "@/context/TokenContext";
+import photoApi from "@/api/photoAPI";
 
-export default function Prezentare() {
+// UI Components
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-    const [formData, setFormData] = useState({
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+    faLocationDot, faBuilding, faFileContract,
+    faCalendarDays, faPenToSquare, faHistory,
+    faUser, faCity, faMapPin, faArrowUpRightFromSquare,
+    faStickyNote, faHelmetSafety, faCalendarCheck,
+    faPhone,
+    faEnvelope,
+    faFlag,
+    faUserTie,
+    faHourglassStart,
+    faHourglassEnd
+} from "@fortawesome/free-solid-svg-icons";
+
+import { toast } from "sonner";
+import ContactsMainCompany from "../../../CRM/Contacts/ContactsMainCompany";
+import SantiereAddDialog from "../../../CRM/Santiere/SantiereAddDialog";
+import { Building } from "lucide-react";
+import { GoogleMap, Marker } from "@react-google-maps/api";
+import CompanyHistory from "@/CRM/Companies/CompanyHistory";
+
+export default function SantierView() {
+    const { idSantier } = useParams();
+    const navigate = useNavigate();
+    const { show, hide } = useLoading();
+    const { user } = useContext(AuthContext);
+
+    // --- DATA FETCHING ---
+    const { mutateAsync: editSantier } = useEditSantier();
+    const { data: santierData, isFetching: loadingSantier } = useSantier(idSantier);
+
+    const s = santierData?.santier || null;
+    // Hierarchy Data
+    const { data: filialaData, isFetching: loadingFiliala } = useFiliala(s?.filiala_id);
+    const { data: companyData, isFetching: loadingCompany } = useCompany(s?.companie_id);
+
+    const f = filialaData?.filiala || null;
+    const c = companyData?.company || null;
+    const isFetching = loadingSantier || loadingFiliala || loadingCompany;
+
+    const [open, setOpen] = useState(false);
+    const [draft, setDraft] = useState({
+        id: null,
         nume: "",
-        beneficiar: "",
+        culoare_hex: "#FFFFFF",
+        companie_id: null,
+        filiala_id: null,
+        activ: 1,
+        notita: "",
+        data_inceput: "",
+        data_sfarsit: "",
         adresa: "",
-        email: "",
-        telefon: "",
-        creatDe: "",
-        aprobatDe: "",
-        detalii_executie: "",
-        latitudine: 47.1690109360525,
-        longitudine: 27.594116580043583,
-        hex: "#FFFFFF"
+        latitudine: "",
+        longitudine: "",
     });
 
-    const { idSantier, limbaUser } = useParams();
-
-    const navigate = useNavigate();
-
-
-    useEffect(() => {
-        fetchData();
-    }, [])
-
-    const fetchData = async () => {
-        try {
-            const response = await api.get(`/Santiere/getSantiereDetailsSantierID/${idSantier}`);
-            let data = response.data.santierDetails[0];
-            let name = response.data.name;
-            let color_hex = response.data.color_hex || "#FFFFFF";
-            // console.log(data);
-            setFormData({
-                nume: name,
-                beneficiar: data.beneficiar,
-                adresa: data.adresa,
-                email: data.email,
-                telefon: data.telefon,
-                creatDe: data.creatDe,
-                aprobatDe: data.aprobatDe,
-                detalii_executie: data.detalii_executie,
-                latitudine: data.latitudine != '' ? data.latitudine : 47.1690109360525,
-                longitudine: data.longitudine != '' ? data.longitudine : 27.594116580043583,
-                hex: color_hex
-            });
-        } catch (error) {
-            console.error("Error fetching data:", error);
-        }
-    }
-
-    const [isDisabled, setIsDisabled] = useState(true);
-    const [isDisabledDeleteSantier, setIsDisabledDeleteSantier] = useState(true);
-    const [stergeSantierParola, setstergeSantierParola] = useState("");
-
-    const handleDeleteSantier = async () => {
-        if (!isDisabled) {
-            setIsDisabled(true);
-            fetchData();
-        }
-        if (isDisabledDeleteSantier == true) {
-            setIsDisabledDeleteSantier(false);
-        }
-        else if (stergeSantierParola == "53124") {
-            try {
-                const res = await api.delete(`/Santiere/deleteEntireSantier/${idSantier}`);
-                navigate('/logedUser');
-            } catch (error) {
-                console.log(error);
-            }
-        }
-        else {
-            alert("Cod Incorect");
-            return;
-        }
-    }
-
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value }));
+    const handleEditClick = () => {
+        if (!s) return;
+        setDraft({
+            id: s.id,
+            nume: s.nume || "",
+            culoare_hex: s.culoare_hex || "#FFFFFF",
+            companie_id: s.companie_id,
+            filiala_id: s.filiala_id || null,
+            activ: s.activ ?? 1,
+            notita: s.notita || "",
+            data_inceput: s.data_inceput || "",
+            data_sfarsit: s.data_sfarsit || "",
+            adresa: s.adresa || "",
+            latitudine: s.latitudine || "",
+            longitudine: s.longitudine || "",
+        });
+        setOpen(true);
     };
 
-    const handleSave = async () => {
-        if (isDisabled) {
-            setIsDisabled(false);
-            return;
-        }
-        else {
-            setIsDisabled(true);
-        }
+    const submitEdit = async () => {
+        show();
         try {
-            await api.put(`/Santiere/updateSantierDetails/${idSantier}`, {
-                ...formData,
-            });
-            fetchData();
-            console.log("Data saved successfully!");
+            await editSantier({ santierId: draft.id, data: { ...draft, updated_by_user_id: user.id } });
+            toast.success("Șantierul a fost actualizat!");
+            setOpen(false);
         } catch (error) {
-            console.error("Error saving data:", error);
+            toast.error(error?.response?.data?.message || "Eroare la salvare.");
+        } finally {
+            hide();
         }
-    }
-
-    const cancelEdit = () => {
-        setIsDisabled(true);
-        fetchData();
     };
 
     useEffect(() => {
-        document.addEventListener('click', handleClickOutside);
-        return () => {
-            document.removeEventListener('click', handleClickOutside);
-        };
-    }, []);
+        if (isFetching) show();
+        else hide();
+    }, [isFetching]);
 
-    const handleClickOutside = (event) => {
-        if (!event.target.closest('.dropdown-container')) {
-            setstergeSantierParola("")
-            setIsDisabledDeleteSantier(true);
-        }
+    const safeText = (v) => (v && String(v).trim() ? String(v).trim() : "—");
+
+    // Updated to accept optional time display
+    const formatDate = (dateString, includeTime = true) => {
+        if (!dateString) return "—";
+        const d = new Date(dateString);
+        return new Intl.DateTimeFormat("ro-RO", {
+            dateStyle: "long",
+            ...(includeTime && { timeStyle: "short" })
+        }).format(d);
     };
 
-    const handleHex = (v) => {
-        if (/^#([A-Fa-f0-9]{6})$/.test(v)) {
-            setFormData((prev) => ({ ...prev, hex: v }));
-        }
-    };
+    if (!isFetching && !s) {
+        return <div className="flex h-full items-center justify-center text-muted-foreground text-lg">Șantierul nu a fost găsit.</div>;
+    }
 
+    const companyLogoUrl = c?.logo_url ? `${photoApi}/${c.logo_url}` : null;
 
     return (
-        <div className='h-full w-full text-black p-8 grid grid-rows-[auto_1fr] gap-4'>
-            <div className='w-full h-auto p-6 px-4 rounded-xl grid grid-cols-[auto_auto_0.7fr_0.7fr_1fr_0.7fr_1fr_auto] gap-4 items-center  bg-white'>
-                {/* nume snatier , beneficiar, google maps, locatia scrisa , persoana responsabila , detalii executie care se pune la pdf */}
-                <div className="flex flex-col items-center">
-                    <label htmlFor="code" className=" font-medium text-black">
-                        Culoare
-                    </label>
-                    <div className="flex items-center gap-3">
-                        {/* Native picker */}
-                        <input
-                            type="color"
-                            disabled={isDisabled}
-                            value={formData.hex}
-                            onChange={(e) => handleHex(e.target.value)}
-                            className={`h-9 w-9 p-0 outline outline-1 ${isDisabled ? "outline-gray-300" : "outline-green-500"} rounded cursor-pointer`}
-                            aria-label="Pick a color"
-                        />
+        <div className="h-full w-full flex overflow-hidden justify-center items-center">
+            <div className="w-full h-full bg-background p-4 rounded-lg grid grid-cols-1 lg:grid-cols-5 gap-4">
 
-                        {/* Hex field */}
-                        <input
-                            type="text"
-                            disabled={isDisabled}
-                            value={formData.hex}
-                            onChange={(e) => handleHex(e.target.value)}
-                            className={`px-2 py-1 rounded border text-black w-28 outline outline-1 ${isDisabled ? "outline-gray-300" : "outline-green-500"} uppercase`}
-                            placeholder="#FFFFFF"
-                            maxLength={7}
-                        />
+                {/* --- LEFT SIDEBAR (1/5) --- */}
+                <aside className="w-full lg:col-span-1 flex flex-col gap-4 overflow-y-auto">
 
-                        {/* Preview chip (perfect circle) */}
-                        <span
-                            className="rounded-full w-8 h-8 border"
-                            style={{ backgroundColor: formData.hex }}
-                            title={formData.hex}
-                        />
-                    </div>
-                </div>
-                <div className="flex flex-col items-center">
-                    <label htmlFor="code" className=" font-medium text-black">
-                        Limbă
-                    </label>
-                    <input
-                        disabled={true}
-                        value={limbaUser}
-                        className={`px-2 w-24 outline outline-1 text-center py-2 rounded-lg shadow-lg outline-gray-300 `}
-                    />
-                </div>
-                <div className="flex flex-col items-center">
-                    <label htmlFor="code" className=" font-medium text-black">
-                        Nume șantier
-                    </label>
-                    <input
-                        disabled={isDisabled}
-                        type="text"
-                        id="nume"
-                        name="nume"
-                        value={formData.nume}
-                        onChange={handleChange}
-                        className={`px-2 w-full outline outline-1 text-center py-2 rounded-lg shadow-lg ${isDisabled ? "outline-gray-300" : "outline-green-500"} `}
-                    />
-                </div>
-                <div className="flex flex-col items-center">
-                    <label htmlFor="code" className=" font-medium text-black">
-                        Beneficiar
-                    </label>
-                    <input
-                        disabled={isDisabled}
-                        type="text"
-                        id="beneficiar"
-                        name="beneficiar"
-                        value={formData.beneficiar}
-                        onChange={handleChange}
-                        className={`px-2 w-full outline outline-1 text-center py-2 rounded-lg shadow-lg ${isDisabled ? "outline-gray-300" : "outline-green-500"} `} />
-                </div>
-                <div className="flex flex-col items-center">
-                    <label htmlFor="code" className=" font-medium text-black">
-                        Email
-                    </label>
-                    <input
-                        disabled={isDisabled}
-                        type="text"
-                        id="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleChange}
-                        className={`px-2 w-full outline outline-1 text-center py-2 rounded-lg shadow-lg ${isDisabled ? "outline-gray-300" : "outline-green-500"} `} />
-                </div>
-                <div className="flex flex-col items-center">
-                    <label htmlFor="code" className=" font-medium text-black">
-                        Telefon
-                    </label>
-                    <input
-                        disabled={isDisabled}
-                        type="text"
-                        id="telefon"
-                        name="telefon"
-                        value={formData.telefon}
-                        onChange={handleChange}
-                        className={`px-2 w-full outline outline-1 text-center py-2 rounded-lg shadow-lg ${isDisabled ? "outline-gray-300" : "outline-green-500"} `} />
-                </div>
-                <div className="flex flex-col items-center">
-                    <label htmlFor="code" className=" font-medium text-black">
-                        Adresa
-                    </label>
-                    <input
-                        disabled={isDisabled}
-                        type="text"
-                        id="adresa"
-                        name="adresa"
-                        value={formData.adresa}
-                        onChange={handleChange}
-                        className={`px-2 w-full outline outline-1 text-center py-2 rounded-lg shadow-lg ${isDisabled ? "outline-gray-200" : "outline-green-400"} `}
-                    />
-                </div>
-                <div className='h-full flex items-end p-2 gap-4 text-3xl '>
-                    <FontAwesomeIcon className={`text-green-500 hover:text-green-600 cursor-pointer ${isDisabled ? "pr-12" : ""}`} onClick={() => handleSave()} icon={faPenToSquare} />
-                    {!isDisabled ?
-                        <FontAwesomeIcon className='text-red-500 hover:text-red-600 hover:cursor-pointer' onClick={() => cancelEdit()} icon={faCancel} />
-                        :
-                        ""
-                    }
-                </div>
-            </div>
-            <div className='w-full h-full rounded-xl grid grid-cols-[1fr_1fr] gap-4'>
-                <div className='w-full h-full grid grid-rows-[1fr_auto]  rounded-lg  gap-4 '>
-                    <div className='bg-white rounded-lg  p-6 flex flex-col gap-4'>
-                        <p className=' font-medium'>Detalii Șantier:</p>
-                        <textarea disabled={isDisabled} value={formData.detalii_executie} name='detalii_executie' onChange={handleChange} className={`p-2 px-4 w-full h-full outline outline-1 resize-none rounded-lg shadow-lg ${isDisabled ? "outline-gray-200" : "outline-green-400"} `}
-                        >
+                    {c && (
+                        <Card className="border-border shadow-sm shrink-0 transition-colors group hover:shadow-md">
+                            <CardContent className="p-4">
+                                {/* Grid: logo | content */}
+                                <div className="grid grid-cols-[auto_1fr] gap-4">
+                                    {/* Logo column */}
+                                    <div className="h-full flex gap-2 flex-col items-center">
+                                        <div className="h-14 w-14 rounded-lg border bg-white flex items-center justify-center  p-1 shadow-sm">
+                                            {companyLogoUrl ? (
+                                                <img src={companyLogoUrl} alt="Logo" className="h-full w-full object-contain" />
+                                            ) : (
+                                                <FontAwesomeIcon icon={faCity} className="text-2xl flex-shrink-0 text-muted-foreground" />
+                                            )}
+                                        </div>
+                                        <div className="h-full bg-muted-foreground w-px"></div>
+                                    </div>
 
-                        </textarea>
-                        <div className='w-full flex gap-4 items-center justify-center'>
-                            <label htmlFor="latitudine" className="">Latitudine:</label>
-                            <input
-                                disabled={isDisabled}
-                                type="text"
-                                id="latitudine"
-                                name="latitudine"
-                                value={formData.latitudine}
-                                onChange={handleChange}
-                                className={`px-2 outline outline-1 text-center py-2 rounded-lg shadow-lg ${isDisabled ? "outline-gray-300" : "outline-green-500"} w-full`}
-                            />
-                            <label htmlFor="latitudine" className="">Longitudine:</label>
-                            <input
-                                disabled={isDisabled}
-                                type="text"
-                                id="longitudine"
-                                name="longitudine"
-                                value={formData.longitudine}
-                                onChange={handleChange}
-                                className={`px-2 outline outline-1 text-center py-2 rounded-lg shadow-lg ${isDisabled ? "outline-gray-300" : "outline-green-500"} w-full`}
-                            />
-                        </div>
-                    </div>
-                    <div className='grid  bg-white rounded-xl grid-cols-[1fr_auto] w-full'>
-                        <div className='flex  flex-col  justify-between '>
-                            <div className=' rounded-xl p-4 pb-0 flex  items-center  '>Creat de :&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                                <input
-                                    disabled={isDisabled}
-                                    type="text"
-                                    id="creatDe"
-                                    name="creatDe"
-                                    value={formData.creatDe}
-                                    onChange={handleChange}
-                                    className={`px-2 w-96 outline outline-1 text-center py-2 rounded-lg shadow-lg ${isDisabled ? "outline-gray-300" : "outline-green-500"} `} />
+                                    {/* Content column */}
+                                    <div className="flex flex-col min-w-0">
+                                        {/* Top row with title and arrow */}
+                                        <div className="flex items-start justify-between">
+                                            <div>
+                                                <span className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Companie Mamă</span>
+                                                <h3 className="text-base font-bold text-foreground truncate">{c.nume_companie}</h3>
+                                            </div>
+                                            <button onClick={() => navigate(`/CRM/Companii/View/${c.id}`)} className="p-1 -mt-1 -mr-1 text-muted-foreground hover:text-primary transition-colors">
+                                                <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="text-xl" />
+                                            </button>
+                                        </div>
+
+                                        {/* Details stacked vertically */}
+                                        <div className="mt-3 space-y-2 text-sm">
+                                            <div className="flex items-center gap-2 text-muted-foreground">
+                                                <FontAwesomeIcon icon={faFlag} className="w-4 shrink-0" />
+                                                <span className="truncate text-foreground">{c?.tara || '—'}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-muted-foreground">
+                                                <FontAwesomeIcon icon={faEnvelope} className="w-4 shrink-0" />
+                                                <span className="truncate text-foreground">{c?.email || '—'}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-muted-foreground">
+                                                <FontAwesomeIcon icon={faPhone} className="w-4 shrink-0" />
+                                                <span className="truncate text-foreground">{c?.telefon || '—'}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-3 flex items-center gap-3 p-2 rounded-lg border border-border bg-muted/30">
+                                            <Avatar className="h-10 w-10 rounded-lg border border-background shadow-sm">
+                                                <AvatarImage src={c?.responsabil_logo_url ? `${photoApi}/${c.responsabil_logo_url}` : null} />
+                                                <AvatarFallback className="bg-muted rounded-lg">
+                                                    <FontAwesomeIcon icon={faUserTie} className="text-sm" />
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Responsabil Extern</div>
+                                                <div className="text-sm font-semibold text-foreground truncate">
+                                                    {c?.responsabil_nume ?
+                                                        `${c?.responsabil_prenume || ''} ${c?.responsabil_nume || ''}`
+                                                        :
+                                                        'Nealocat'
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+                    {f && (
+                        <Card className="border-border shadow-sm shrink-0 transition-colors group hover:shadow-md">
+                            <CardContent className="p-4">
+                                {/* Grid: logo | content */}
+                                <div className="grid grid-cols-[auto_1fr] gap-4">
+                                    {/* Logo column */}
+                                    <div className="h-full flex gap-2 flex-col items-center">
+                                        <div className="h-14 flex-shrink-0 w-14 rounded-lg border bg-white flex items-center justify-center  p-1 shadow-sm">
+                                            <FontAwesomeIcon icon={faBuilding} className="text-lg h-full text-muted-foreground" />
+                                        </div>
+                                        <div className="h-full bg-muted-foreground w-px"></div>
+                                    </div>
+
+                                    {/* Content column */}
+                                    <div className="flex flex-col min-w-0">
+                                        {/* Top row with title and arrow */}
+                                        <div className="flex items-start justify-between">
+                                            <div>
+                                                <span className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Filială</span>
+                                                <h3 className="text-base font-bold text-foreground truncate">{f.nume_filiala}</h3>
+                                            </div>
+                                            <button onClick={() => navigate(`/CRM/Filiale/View/${f.companie_id}/${f.id}`)} className="p-1 -mt-1 -mr-1 text-muted-foreground hover:text-primary transition-colors">
+                                                <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="text-xl" />
+                                            </button>
+                                        </div>
+
+                                        {/* Details stacked vertically */}
+                                        {(f?.tara || f?.email || f?.telefon) && (
+                                            <div className="mt-3 space-y-2 text-sm">
+                                                <div className="flex items-center gap-2 text-muted-foreground">
+                                                    <FontAwesomeIcon icon={faEnvelope} className="w-4 shrink-0" />
+                                                    <span className="truncate text-foreground">{f?.email || '—'}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2 text-muted-foreground">
+                                                    <FontAwesomeIcon icon={faPhone} className="w-4 shrink-0" />
+                                                    <span className="truncate text-foreground">{f?.telefon || '—'}</span>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* 2. SANTIER IDENTITY CARD */}
+                    <Card className="border-border shadow-sm shrink-0">
+                        <CardContent className="p-5 relative flex flex-col items-center text-center">
+                            <div
+                                className={`h-20 w-20  mb-3 rounded-xl border flex items-center justify-center overflow-hidden shadow-sm`}
+                                style={{
+                                    backgroundColor: s?.culoare_hex ? s.culoare_hex : "#fff",
+                                }}
+                            >
                             </div>
-                            <div className=' rounded-xl p-4 flex  items-center  '>Aprobat de:&nbsp;&nbsp;
-                                <input
-                                    disabled={isDisabled}
-                                    type="text"
-                                    id="aprobatDe"
-                                    name="aprobatDe"
-                                    value={formData.aprobatDe}
-                                    onChange={handleChange}
-                                    className={`px-2 w-96 outline outline-1 text-center py-2 rounded-lg shadow-lg ${isDisabled ? "outline-gray-300" : "outline-green-500"} `} />
+
+                            <h1 className="text-xl font-bold text-foreground leading-tight mb-1">
+                                {safeText(s?.nume)}
+                            </h1>
+
+                            {s?.activ ?
+                                <Badge className="text-low hover:bg-transparent bg-transparent border-low shadow-none">Activ</Badge>
+                                :
+                                <Badge variant="destructive" className="shadow-none">Inactiv</Badge>
+                            }
+
+                            <div className="absolute top-0 p-2 right-0">
+                                <Button variant="ghost" onClick={handleEditClick} size="iconLg" className="text-muted-foreground hover:text-low">
+                                    <FontAwesomeIcon icon={faPenToSquare} className="text-lg" />
+                                </Button>
                             </div>
-                        </div>
-                        <div className='p-4 flex gap-4 items-center'>
-                            <input
-                                disabled={isDisabledDeleteSantier}
-                                type="text"
-                                id="stergeSantierParola"
-                                name="stergeSantierParola"
-                                value={stergeSantierParola}
-                                onChange={(e) => setstergeSantierParola(e.target.value)}
-                                placeholder='Cod'
-                                maxLength={10}
-                                className={` dropdown-container  text-center transition-all duration-300 outline-red-500 rounded-lg ${isDisabledDeleteSantier ? "w-0" : "p-4 w-32 shadow-lg outline outline-1"} `} />
+                        </CardContent>
+                    </Card>
 
-                            <button onClick={() => handleDeleteSantier()} className='bg-red-500 dropdown-container hover:bg-red-600 rounded-lg p-4'><FontAwesomeIcon className='pr-2' icon={faCancel} />Șterge Șantier</button>
-                        </div>
-                    </div>
-                </div>
-                <div className='w-full h-full '>
-                    <GoogleMap
-                        mapContainerStyle={{ height: '100%', width: '100%', borderRadius: '1rem' }}
-                        center={{ lat: parseFloat(formData.latitudine), lng: parseFloat(formData.longitudine) }}
-                        zoom={12}
-                    >
-                        <Marker position={{ lat: parseFloat(formData.latitudine), lng: parseFloat(formData.longitudine) }} />
-                        <div className='absolute top-0 right-0 m-2 bg-white p-2 rounded-lg shadow-md'>
-                            <h1 className='text-lg font-bold'>Locația</h1>
-                            <p>{formData.adresa}</p>
-                        </div>
-                    </GoogleMap>
+                    {/* 3. DETAILS CARD */}
+                    <Card className="border-border shadow-sm">
+                        <CardHeader className="py-3 px-5">
+                            <CardTitle className="text-base font-bold uppercase text-muted-foreground flex items-center gap-2">
+                                <FontAwesomeIcon icon={faFileContract} /> Detalii Șantier
+                            </CardTitle>
+                        </CardHeader>
+                        <Separator />
+                        <CardContent className="p-5 flex flex-col gap-4">
+                            <div className="space-y-3">
+                                {/* Address */}
+                                <div className="flex items-start gap-3 text-base">
+                                    <div className="w-5 flex justify-center text-muted-foreground mt-0.5">
+                                        <FontAwesomeIcon icon={faLocationDot} />
+                                    </div>
+                                    <span className="text-foreground leading-snug font-medium">
+                                        {safeText(s?.adresa)}
+                                    </span>
+                                </div>
+                                <div className="flex items-start gap-3 text-base">
+                                    <div className="w-5 flex justify-center text-muted-foreground mt-0.5">
+                                        <FontAwesomeIcon icon={faHourglassStart} />
+                                    </div>
+                                    <span className="text-foreground leading-snug font-medium">
+                                        <span className="text-muted-foreground">Început: <span className="text-foreground">{formatDate(s?.data_inceput, false)}</span></span>
+                                    </span>
+                                </div>
+                                <div className="flex items-start gap-3 text-base">
+                                    <div className="w-5 flex justify-center text-muted-foreground mt-0.5">
+                                        <FontAwesomeIcon icon={faHourglassEnd} />
+                                    </div>
+                                    <span className="text-foreground leading-snug font-medium">
+                                        <span className="text-muted-foreground">Sfârșit: <span className="text-foreground">{formatDate(s?.data_sfarsit, false)}</span></span>
+                                    </span>
+                                </div>
+                            </div>
+                            {/* Notita Removed */}
+                        </CardContent>
+                    </Card>
 
-                </div>
+                    {/* 4. HISTORY CARD */}
+                    <Card className="border-border shadow-sm shrink-0">
+                        <CardHeader className="py-3 px-5">
+                            <CardTitle className="text-base font-bold uppercase text-muted-foreground flex items-center gap-2">
+                                <FontAwesomeIcon icon={faHistory} /> Actualizări
+                            </CardTitle>
+                        </CardHeader>
+                        <Separator />
+                        <CardContent className="p-5 space-y-5">
+                            {/* UPDATED BY */}
+                            <div className="flex gap-3 items-start">
+                                <Avatar className="h-10 w-10 rounded-lg border">
+                                    <AvatarImage src={s?.updated_by_photo_url ? `${photoApi}/${s.updated_by_photo_url}` : null} />
+                                    <AvatarFallback className="bg-muted rounded-lg text-sm font-medium"><FontAwesomeIcon icon={faUser} /></AvatarFallback>
+                                </Avatar>
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-bold text-muted-foreground uppercase">Ultima actualizare</span>
+                                    <div className="text-sm">
+                                        <span className="font-semibold text-foreground">{s?.updated_by_name || "Sistem"}</span>
+                                        <div className="text-muted-foreground text-sm flex items-center gap-1 mt-0.5">
+                                            <FontAwesomeIcon icon={faCalendarDays} className="w-2.5" />
+                                            {formatDate(s?.updated_at)}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <Separator className="opacity-40" />
+
+                            {/* CREATED BY */}
+                            <div className="flex gap-3 items-start opacity-80">
+                                <Avatar className="h-8 w-8 rounded-lg border">
+                                    <AvatarImage src={s?.created_by_photo_url ? `${photoApi}/${s.created_by_photo_url}` : null} />
+                                    <AvatarFallback className="bg-muted rounded-lg text-sm font-medium"><FontAwesomeIcon icon={faUser} /></AvatarFallback>
+                                </Avatar>
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-bold text-muted-foreground uppercase">Creat inițial</span>
+                                    <div className="text-sm">
+                                        <span className="font-medium text-foreground">{s?.created_by_name || "Sistem"}</span>
+                                        <span className="text-muted-foreground text-sm ml-2">
+                                            {formatDate(s?.created_at)}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </aside>
+
+                {/* --- RIGHT MAIN AREA (4/5) --- */}
+                <main className="w-full lg:col-span-4 h-full overflow-hidden">
+                    <Tabs defaultValue="locatie" className="h-full w-full flex flex-col gap-4">
+                        <TabsList className="bg-card px-6 py-4 rounded-lg justify-start h-auto w-full">
+                            <div className="border-b w-full flex gap-6">
+                                {["locatie", "istoric", "activitati", "contacte", "fișiere"].map((tab) => (
+                                    <TabsTrigger
+                                        key={tab}
+                                        value={tab}
+                                        className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 !shadow-none data-[state=active]:border-b-primary data-[state=inactive]:border-t-2 border-t-transparent data-[state=active]:text-foreground rounded-none pb-3 px-1 text-base font-bold text-muted-foreground capitalize transition-all"
+                                    >
+                                        {tab}
+                                    </TabsTrigger>
+                                ))}
+                            </div>
+                        </TabsList>
+
+                        <div className="flex-1 bg-card overflow-y-auto h-full rounded-lg">
+                            <TabsContent value="locatie" className="h-full m-0 relative w-full">
+                                <div className='w-full h-full  p-4'>
+                                    <div className='w-full h-full border-border border-2 rounded-[1rem]'>
+                                        <GoogleMap
+                                            mapContainerStyle={{ height: '100%', width: '100%', borderRadius: '1rem' }}
+                                            center={{ lat: parseFloat(s?.latitudine || 0), lng: parseFloat(s?.longitudine || 0) }}
+                                            zoom={12}
+                                        >
+                                            <Marker position={{ lat: parseFloat(s?.latitudine || 0), lng: parseFloat(s?.longitudine || 0) }} />
+                                            <div className='absolute top-0 right-0 m-2 bg-white p-2 rounded-lg shadow-md'>
+                                                <h1 className='text-lg text-black font-bold'>Locația</h1>
+                                                <p className='text-black'>{safeText(s?.adresa)}</p>
+                                            </div>
+                                        </GoogleMap>
+                                    </div>
+                                </div>
+                            </TabsContent>
+                            <TabsContent value="contacte" className="h-full m-0 relative w-full">
+                                <ContactsMainCompany companyId={s?.companie_id} filialaId={s?.filiala_id} santierId={s?.id} />
+                            </TabsContent>
+                            <TabsContent value="istoric" className="h-full m-0 relative w-full">
+                                <CompanyHistory companyId={s?.companie_id} santierId={s?.id} />
+                            </TabsContent>
+                            {/* Other tabs follow the placeholder pattern */}
+                        </div>
+                    </Tabs>
+                </main>
             </div>
+
+            <SantiereAddDialog
+                open={open}
+                setOpen={setOpen}
+                draft={draft}
+                setDraft={setDraft}
+                onSubmit={submitEdit}
+                title="Editează Șantier"
+            />
         </div>
-    )
+    );
 }

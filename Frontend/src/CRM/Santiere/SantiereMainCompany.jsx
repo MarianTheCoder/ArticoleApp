@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useAddSantier, useSantiereByCompany, useEditSantier, useDeleteSantier } from "@/hooks/useSantiere";
 import { Button } from "@/components/ui/button";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -29,7 +29,7 @@ import DeleteDialog from '@/components/ui/delete-dialog';
 import SantiereAddDialog from './SantiereAddDialog';
 import SantiereListByCompany from './SantiereListByCompany';
 
-export default function SantiereMainCompany({ companyId = null }) {
+export default function SantiereMainCompany({ companyId = null, filialaId = null }) {
     const { user } = useContext(AuthContext);
     const { hide, show, loading } = useLoading();
 
@@ -41,7 +41,7 @@ export default function SantiereMainCompany({ companyId = null }) {
 
     // --- VISIBILITY STATE ---
     const [visibleColumns, setVisibleColumns] = useState({
-        ...(companyId ? {} : { companie: true }), // Afișăm numele companiei doar dacă suntem în view-ul general
+        companie: true,
         filiala: true,
         nume: true,
         culoare: true,
@@ -58,9 +58,9 @@ export default function SantiereMainCompany({ companyId = null }) {
     const [draft, setDraft] = useState({
         id: null,
         nume: "",
-        companie_id: null,
+        companie_id: companyId,
+        filiala_id: filialaId, // Selectable logic if you have Filiale
         culoare_hex: "#FFFFFF",
-        filiala_id: null, // Selectable logic if you have Filiale
         activ: true,
         notita: "",
         data_inceput: "",
@@ -74,7 +74,7 @@ export default function SantiereMainCompany({ companyId = null }) {
     const [searchNameDebounced, setSearchNameDebounced] = useState("");
 
     // --- HOOKS ---
-    const { data, isFetching } = useSantiereByCompany(companyId, searchNameDebounced);
+    const { data, isFetching } = useSantiereByCompany(companyId, searchNameDebounced, filialaId);
     const { mutateAsync: addSantier } = useAddSantier();
     const { mutateAsync: updateSantier } = useEditSantier();
     const { mutateAsync: deleteSantier } = useDeleteSantier();
@@ -90,10 +90,10 @@ export default function SantiereMainCompany({ companyId = null }) {
     const resetDraft = () => {
         setDraft({
             id: null,
-            companie_id: null,
+            companie_id: companyId || null,
+            filiala_id: filialaId || null,
             nume: "",
             culoare_hex: "#ffffff", // Default nice blue or white
-            filiala_id: null,
             activ: true,
             notita: "",
             data_inceput: "",
@@ -104,6 +104,18 @@ export default function SantiereMainCompany({ companyId = null }) {
         });
     }
 
+
+    useEffect(() => {
+        setVisibleColumns(prev => {
+            const next = { ...prev };
+
+            if (filialaId) delete next.filiala;
+            if (companyId) delete next.companie;
+
+            return next;
+        });
+    }, [filialaId, companyId]);
+
     // --- ACTIONS ---
     const submitSantier = async () => {
         if (!companyId && !draft.companie_id) return toast.error("Eroare: ID Companie lipsă.");
@@ -111,6 +123,7 @@ export default function SantiereMainCompany({ companyId = null }) {
         const payload = {
             ...draft,
             companie_id: draft.companie_id || companyId,
+            filiala_id: draft.filiala_id || filialaId,
             updated_by_user_id: user.id,
         }
         if (!draft.id) {
@@ -137,10 +150,10 @@ export default function SantiereMainCompany({ companyId = null }) {
         }
     };
 
-    const handleDeleteClick = ({ id, nume }) => {
+    const handleDeleteClick = useCallback(({ id, nume }) => {
         setSelectedSantier({ id, nume });
         setDeleteOpen(true);
-    };
+    }, []);
 
     const handleConfirmDelete = async (code) => {
         if (!selectedSantier) return;
@@ -161,11 +174,13 @@ export default function SantiereMainCompany({ companyId = null }) {
         setVisibleColumns(prev => ({ ...prev, [key]: val }));
     };
 
+
     return (
         <div className="h-full w-full relative flex gap-4 flex-col items-center overflow-hidden">
             {/* --- HEADER CONTROLS --- */}
             <div className="w-full bg-card grid grid-cols-[auto_1fr] rounded-lg px-8 p-6 shrink-0 z-10">
                 <SantiereAddDialog
+                    filialaId={filialaId}
                     companyId={companyId}
                     open={open}
                     reset={!draft.id ? true : false}
@@ -261,6 +276,7 @@ export default function SantiereMainCompany({ companyId = null }) {
                 <div className={`p-5 ${companyId ? "pt-0" : ""} h-full w-full bg-card rounded-lg overflow-hidden relative`}>
                     <SantiereListByCompany
                         companyId={companyId}
+                        filialaId={filialaId}
                         santiere={santiere}
                         draft={draft}
                         setDraft={setDraft}

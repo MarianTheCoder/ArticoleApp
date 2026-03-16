@@ -1,15 +1,24 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { AuthContext } from '../context/TokenContext';
+import { useLoading } from '@/context/LoadingContext';
 
 const GuestRoute = ({ children }) => {
     const { user, loading } = useContext(AuthContext);
+    const { show, hide } = useLoading();
 
-    // 1. Wait for Auth Check to finish
+    useEffect(() => {
+        if (loading) {
+            show();
+        } else {
+            hide();
+        }
+    }, [loading]);
+
     if (loading) {
         return null; // or <Spinner />
     }
-
+    // console.log("GuestRoute - user:", user);
     // 2. If User IS Logged In -> Kick them to Dashboard
     if (user && user.id) {
         return <Navigate to="/" replace />;

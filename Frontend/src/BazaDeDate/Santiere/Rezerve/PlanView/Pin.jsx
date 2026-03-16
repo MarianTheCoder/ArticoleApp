@@ -15,6 +15,7 @@ const Pin = React.memo(function Pin({
     React.useEffect(() => {
         const body = bodyRef.current;
         if (!body) return;
+        body.clearCache(); // ✅ Clear old cache first (prevents memory leak)
         body.cache({ pixelRatio: 2 });
         body.draw();
     }, [label, color]); // don't recache on showBang
@@ -27,7 +28,7 @@ const Pin = React.memo(function Pin({
             scaleX={clampedScale}
             scaleY={clampedScale}
             offsetY={90}
-            onTap={onClick}
+            // onTap={onClick}
             onContextMenu={(e) => { e.evt.preventDefault(); e.cancelBubble = true; }}
             onMouseOver={(e) => e.target.getStage().container().style.cursor = 'pointer'}
             onMouseLeave={(e) => e.target.getStage().container().style.cursor = 'default'}
@@ -37,7 +38,11 @@ const Pin = React.memo(function Pin({
             {/* 🚀 cached body (no clipping issues) */}
             <Group ref={bodyRef} listening={true} onClick={onClick}
             >
-                <Circle radius={R} fill={color} stroke="white" strokeWidth={5} shadowBlur={6} />
+                <Circle radius={R} fill={color}
+                    stroke="white"
+                    strokeWidth={5}
+                    shadowBlur={6}
+                />
                 <RegularPolygon sides={3} radius={R * 0.6} fill={color} y={R} rotation={180} />
                 <Text
                     text={String(label ?? "")}
@@ -55,7 +60,6 @@ const Pin = React.memo(function Pin({
                 />
             </Group>
 
-            {/* ❗ badge is a sibling, not cached, and non-listening so it never steals clicks */}
             {showBang && (
                 <Group x={0} y={-R - 32} listening={false}>
                     <Circle radius={24} fill="#ef4444" />

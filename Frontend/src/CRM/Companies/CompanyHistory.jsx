@@ -23,8 +23,8 @@ import {
     faCity
 } from '@fortawesome/free-solid-svg-icons';
 
-export default function CompanyHistory({ companyId }) {
-    const { data: historyData, isLoading } = useCompanyHistory(companyId);
+export default function CompanyHistory({ companyId, filialaId = null, santierId = null }) {
+    const { data: historyData, isLoading } = useCompanyHistory(companyId, filialaId, santierId);
 
     // --- HELPERS ---
     const formatDate = (dateString) => {
@@ -119,7 +119,7 @@ export default function CompanyHistory({ companyId }) {
 
         if (typeof details === 'object') {
             const visibleEntries = Object.entries(details).filter(([key]) =>
-                !['id', 'updated_by_user_id', 'created_by_user_id', 'companie_id', 'root_entity_id', 'root_entity_type', 'filiala_id', 'santier_id', 'created_at', 'updated_at'].includes(key)
+                !['id', 'updated_by_user_id', 'created_by_user_id', 'root_entity_id', 'root_entity_type', 'created_at', 'updated_at'].includes(key)
             );
 
             if (visibleEntries.length === 0) return null;
@@ -158,7 +158,12 @@ export default function CompanyHistory({ companyId }) {
         <Card className="border-border shadow-sm h-full flex flex-col overflow-hidden">
             <CardHeader className="py-3 px-5 bg-muted/10 border-b shrink-0 z-10">
                 <CardTitle className="text-base font-bold uppercase text-muted-foreground flex items-center gap-2">
-                    <FontAwesomeIcon icon={faHistory} /> Istoric Companie
+                    <FontAwesomeIcon icon={faHistory} />
+                    {
+                        santierId ? `Istoric Șantier` :
+                            filialaId ? `Istoric Filială` :
+                                `Istoric Companie`
+                    }
                 </CardTitle>
             </CardHeader>
 
@@ -178,9 +183,9 @@ export default function CompanyHistory({ companyId }) {
                                         {/* --- TOP ROW: Avatar + Header Info --- */}
                                         <div className="flex items-center gap-3">
                                             {/* Avatar (Fixed width 12 / 48px) */}
-                                            <Avatar className="h-12 w-12 border border-border z-10 shrink-0 bg-background">
+                                            <Avatar className="h-12 w-12 border border-border rounded-lg z-10 shrink-0 bg-background">
                                                 <AvatarImage src={item.author?.photo ? `${photoApi}/${item.author.photo}` : null} />
-                                                <AvatarFallback className="bg-muted text-[12px] text-muted-foreground">
+                                                <AvatarFallback className="bg-muted rounded-lg text-[12px] text-muted-foreground">
                                                     <FontAwesomeIcon icon={faUser} />
                                                 </AvatarFallback>
                                             </Avatar>

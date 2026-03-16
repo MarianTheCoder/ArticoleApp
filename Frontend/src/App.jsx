@@ -1,7 +1,7 @@
 import { useContext, useState } from 'react';
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from './context/TokenContext';
-import Login from './Login/Login.jsx';
+import Login from './MainPages/Login.jsx';
 import RoutesDOM from './RoutesDom.jsx';
 import ProtectedRouteAfterLogin from './MainElements/ProtectedRouteAfterLogin.jsx'
 import { LoadScript } from '@react-google-maps/api';
@@ -39,7 +39,7 @@ function App() {
               <AuthProvider>
                 <LoadingProvider>
                   <Routes>
-                    <Route path="/login" element={<ProtectedRouteAfterLogin ><Login /></ProtectedRouteAfterLogin>} />
+                    <Route path="/login" element={<ProtectedRouteAfterLogin><Login /></ProtectedRouteAfterLogin>} />
                     <Route path='*' element={<RoutesDOM />} />
                   </Routes>
                 </LoadingProvider>
@@ -57,7 +57,7 @@ function App() {
         position="bottom-right"
         richColors={true}
         toastOptions={{
-          style: { fontSize: '1.2rem', minWidth: '36rem' },
+          style: { fontSize: '1.2rem', minWidth: '36rem', gap: '1rem' },
         }}
       />
     </div>

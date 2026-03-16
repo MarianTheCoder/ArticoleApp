@@ -204,17 +204,19 @@ const postContact = async (req, res) => {
 
 const getContactsByCompany = async (req, res) => {
     try {
-        const { id } = req.params; // ID-ul companiei
-        const { q } = req.query;   // Termenul de căutare
+        const { id } = req.params;
+        const { q, filiala_id, santier_id } = req.query; // ← add filiala_id and santier_id
+
+        if (!id) {
+            return res.status(400).json({ message: "ID-ul companiei este obligatoriu." });
+        }
 
         let sql = `
             SELECT 
                 c.*,
-                -- Formatare date
                 DATE_FORMAT(c.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at,
                 DATE_FORMAT(c.updated_at, '%Y-%m-%dT%H:%i:%sZ') AS updated_at,
                 
-                -- Detalii Useri
                 u1.name AS created_by_name,
                 u1.photo_url AS created_by_photo_url,
                 u2.name AS updated_by_name,
@@ -222,36 +224,46 @@ const getContactsByCompany = async (req, res) => {
 
                 s.nume as nume_santier,
                 f.nume_filiala,
+                comp.tara as tara_companie,
 
-                -- CHECK BOOLEAN: Comparăm ID-ul responsabilului companiei cu ID-ul contactului
                 (comp.utilizator_responsabil_id = c.id) AS is_responsible
 
             FROM S10_Contacte c
             JOIN S10_Companii comp ON comp.id = c.companie_id
-            
-            LEFT JOIN users u1 ON u1.id = c.created_by_user_id
-            LEFT JOIN users u2 ON u2.id = c.updated_by_user_id
+            LEFT JOIN S00_Utilizatori u1 ON u1.id = c.created_by_user_id
+            LEFT JOIN S00_Utilizatori u2 ON u2.id = c.updated_by_user_id
             LEFT JOIN S01_Santiere s ON s.id = c.santier_id
             LEFT JOIN S10_Filiale f ON f.id = c.filiala_id
 
             WHERE c.companie_id = ?
-            ORDER BY c.updated_at DESC
-
         `;
 
         const params = [id];
+
+        // ← Filter by filiala if provided
+        if (filiala_id) {
+            sql += ` AND c.filiala_id = ?`;
+            params.push(filiala_id);
+        }
+        if (santier_id) {
+            sql += ` AND c.santier_id = ?`;
+            params.push(santier_id);
+        }
+
 
         if (q) {
             sql += ` AND (c.nume LIKE ? OR c.prenume LIKE ? OR c.email LIKE ?)`;
             params.push(`%${q}%`, `%${q}%`, `%${q}%`);
         }
 
+        // ← ORDER BY must always be last
+        sql += ` ORDER BY c.updated_at DESC`;
+
         const [rows] = await global.db.execute(sql, params);
 
-        // Transformăm 1/0 în true/false pentru frontend (opțional, dar curat)
         const sanitizedRows = rows.map(r => ({
             ...r,
-            is_responsible: !!r.is_responsible // Cast la boolean
+            is_responsible: !!r.is_responsible
         }));
 
         return res.status(200).json({
@@ -263,7 +275,8 @@ const getContactsByCompany = async (req, res) => {
         console.log("getContactsByCompany error:", err);
         return res.status(500).json({ message: "Eroare server." });
     }
-}
+};
+
 
 const editContact = async (req, res) => {
     let conn;
@@ -639,4 +652,68 @@ const deleteContact = async (req, res) => {
     }
 };
 
-module.exports = { postContact, getContactsByCompany, editContact, changeOwner, removeOwner, deleteContact };
+const getAllContacts = async (req, res) => {
+    try {
+        const { q } = req.query;   // Termenul de căutare
+
+        let sql = `
+            SELECT 
+                c.*,
+                -- Formatare date
+                DATE_FORMAT(c.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at,
+                DATE_FORMAT(c.updated_at, '%Y-%m-%dT%H:%i:%sZ') AS updated_at,
+                
+                -- Detalii Useri
+                u1.name AS created_by_name,
+                u1.photo_url AS created_by_photo_url,
+                u2.name AS updated_by_name,
+                u2.photo_url AS updated_by_photo_url,
+
+                s.nume as nume_santier,
+                f.nume_filiala as nume_filiala,
+                comp.nume_companie as nume_companie,
+                comp.tara as tara_companie,
+
+                -- CHECK BOOLEAN: Comparăm ID-ul responsabilului companiei cu ID-ul contactului
+                (comp.utilizator_responsabil_id = c.id) AS is_responsible
+
+            FROM S10_Contacte c
+            JOIN S10_Companii comp ON comp.id = c.companie_id
+            
+            LEFT JOIN S00_Utilizatori u1 ON u1.id = c.created_by_user_id
+            LEFT JOIN S00_Utilizatori u2 ON u2.id = c.updated_by_user_id
+            LEFT JOIN S01_Santiere s ON s.id = c.santier_id
+            LEFT JOIN S10_Filiale f ON f.id = c.filiala_id
+
+            ORDER BY c.updated_at DESC
+
+        `;
+
+        const params = [];
+
+        // if (q) {
+        //     sql += ` WHERE (c.nume LIKE ? OR c.prenume LIKE ? OR c.email LIKE ?)`;
+        //     params.push(`%${q}%`, `%${q}%`, `%${q}%`);
+        // }
+
+        const [rows] = await global.db.execute(sql, params);
+
+        // Transformăm 1/0 în true/false pentru frontend (opțional, dar curat)
+        const sanitizedRows = rows.map(r => ({
+            ...r,
+            is_responsible: !!r.is_responsible // Cast la boolean
+        }));
+
+        return res.status(200).json({
+            contacts: sanitizedRows,
+            total: rows.length
+        });
+
+    } catch (err) {
+        console.log("getAllContacts error:", err);
+        return res.status(500).json({ message: "Eroare server." });
+    }
+
+}
+
+module.exports = { postContact, getContactsByCompany, editContact, changeOwner, removeOwner, getAllContacts, deleteContact };

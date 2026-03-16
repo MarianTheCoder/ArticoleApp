@@ -34,6 +34,7 @@ import { useCompaniesSelect } from "@/hooks/useCompanies";
 export default function SantiereAddDialog({
     open,
     companyId, // If provided, the dialog is locked to this company
+    filialaId, // Optional: If provided, the dialog is locked to this branch
     setOpen,
     onSubmit,
     draft,
@@ -45,6 +46,8 @@ export default function SantiereAddDialog({
 }) {
     // 1. Determine which company is currently "active" (Prop OR Draft selection)
     const currentCompanyId = companyId || draft.companie_id;
+    const isFilialaDisabled = !!filialaId;
+
 
     // 2. Fetch Filiale based on the CURRENT active company
     const { data: filialeList = [], isLoading: loadingFiliale } = useFilialeSelect(currentCompanyId);
@@ -143,7 +146,7 @@ export default function SantiereAddDialog({
                                     <Label>Filiala</Label>
                                     <Select
                                         // Disable if no company is selected yet
-                                        disabled={!currentCompanyId || loadingFiliale}
+                                        disabled={!currentCompanyId || loadingFiliale || isFilialaDisabled}
                                         value={draft.filiala_id ? String(draft.filiala_id) : "0"}
                                         onValueChange={(v) => setField("filiala_id", v === "0" ? null : v)}
                                     >

@@ -15,6 +15,7 @@ export default function MainRezerve() {
 
     const [key, setKey] = useState(0); // to force remount if needed
 
+
     // When a plan is chosen, clear 3D
     const handleSelectPlan = (plan) => {
         setZoneManagement(false);
@@ -39,8 +40,8 @@ export default function MainRezerve() {
 
 
     return (
-        <div className='grid grid-cols-[1fr_5fr] h-full w-full bg-gray-200 gap-6 rounded-lg p-6'>
-            <div className='w-full h-full p-4 overflow-hidden bg-white rounded-lg'>
+        <div className='grid grid-cols-[1fr_5fr] h-full w-full bg-background gap-6 rounded-lg p-6'>
+            <div className='w-full h-full  overflow-hidden rounded-lg'>
                 <SidebarRezerve
                     onSelectPlan={handleSelectPlan}
                     onSelectLucrare3D={handleSelectLucrare3D}
@@ -48,7 +49,7 @@ export default function MainRezerve() {
                 />
             </div>
 
-            <div className='w-full h-full p-4 bg-white rounded-lg'>
+            <div className='w-full h-full p-4 bg-card rounded-lg'>
                 {selectedPlan ? (
                     !zoneManagement && !drawingZone ?
                         <PlanView plan={selectedPlan} onPlanReplaced={onPlanReplaced} key={key} onSelectManagementZone={setZoneManagement} onSelectDrawingZone={setDrawingZone} />

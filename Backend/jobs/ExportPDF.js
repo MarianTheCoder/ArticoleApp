@@ -80,7 +80,7 @@ function siteCode(name = '') {
 }
 
 /**
- * Fetch ALL users (even those with 0 pontaj), optionally filtered by userIds OR firmaId.
+ * Fetch ALL S00_Utilizatori (even those with 0 pontaj), optionally filtered by userIds OR firmaId.
  * Added: firmaId parameter
  */
 async function getAllUsers(userIds = null, firmaId = null) {
@@ -88,7 +88,7 @@ async function getAllUsers(userIds = null, firmaId = null) {
 
     let sql = `
     SELECT id, name
-      FROM users
+      FROM S00_Utilizatori
      WHERE role != 'beneficiar'
      /*USER_FILTER*/
      /*FIRMA_FILTER*/

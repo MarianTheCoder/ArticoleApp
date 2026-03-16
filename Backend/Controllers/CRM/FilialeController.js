@@ -25,8 +25,8 @@ const getFilialeByCompany = async (req, res) => {
                 c.id as companie_id
 
              FROM S10_Filiale f
-             LEFT JOIN users u1 ON f.created_by_user_id = u1.id
-             LEFT JOIN users u2 ON f.updated_by_user_id = u2.id
+             LEFT JOIN S00_Utilizatori u1 ON f.created_by_user_id = u1.id
+             LEFT JOIN S00_Utilizatori u2 ON f.updated_by_user_id = u2.id
              LEFT JOIN S10_Companii c ON f.companie_id = c.id
              WHERE f.companie_id = ?
              ORDER BY f.updated_at DESC`,
@@ -40,6 +40,44 @@ const getFilialeByCompany = async (req, res) => {
         if (conn) conn.release();
     }
 };
+
+const getFiliala = async (req, res) => {
+    let conn;
+    try {
+        const filiala_id = Number(req.params.id); // Route: /api/filiale/:filialaId
+
+        if (!filiala_id) return res.status(400).json({ message: "ID-ul filialei este necesar." });
+
+        conn = await global.db.getConnection();
+        const [rows] = await conn.execute(
+            `SELECT 
+                f.*, 
+                DATE_FORMAT(f.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at,
+                DATE_FORMAT(f.updated_at, '%Y-%m-%dT%H:%i:%sZ') AS updated_at,
+                
+                u1.name as created_by_name, 
+                u1.photo_url AS created_by_photo_url,
+                u2.name as updated_by_name,
+                u2.photo_url AS updated_by_photo_url,
+                c.nume_companie as companie_nume,
+                c.id as companie_id
+
+             FROM S10_Filiale f
+             LEFT JOIN S00_Utilizatori u1 ON f.created_by_user_id = u1.id
+             LEFT JOIN S00_Utilizatori u2 ON f.updated_by_user_id = u2.id
+             LEFT JOIN S10_Companii c ON f.companie_id = c.id
+             WHERE f.id = ?
+            `,
+            [filiala_id]
+        );
+        return res.status(200).json({ filiala: rows[0] || null });
+    } catch (err) {
+        console.error("getFiliala error:", err);
+        return res.status(500).json({ message: "Eroare la preluarea filialei." });
+    } finally {
+        if (conn) conn.release();
+    }
+}
 
 const getAllFiliale = async (req, res) => {
     let conn;
@@ -58,8 +96,8 @@ const getAllFiliale = async (req, res) => {
                 c.nume_companie as companie_nume
 
                 FROM S10_Filiale f
-                LEFT JOIN users u1 ON f.created_by_user_id = u1.id
-                LEFT JOIN users u2 ON f.updated_by_user_id = u2.id
+                LEFT JOIN S00_Utilizatori u1 ON f.created_by_user_id = u1.id
+                LEFT JOIN S00_Utilizatori u2 ON f.updated_by_user_id = u2.id
                 LEFT JOIN S10_Companii c ON f.companie_id = c.id
                 ORDER BY f.updated_at DESC`,
         );
@@ -404,11 +442,14 @@ const getFilialeForSantiere = async (req, res) => {
 }
 
 
+
+
 module.exports = {
     getFilialeByCompany,
     postFiliala,
     editFiliala,
     deleteFiliala,
     getFilialeForSantiere,
-    getAllFiliale
+    getAllFiliale,
+    getFiliala
 };

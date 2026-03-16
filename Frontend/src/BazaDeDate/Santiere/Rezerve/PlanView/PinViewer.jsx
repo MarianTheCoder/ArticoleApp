@@ -7,7 +7,7 @@ import {
     faPlus, faTrash, faImages, faCamera,
     faPen,
     faPenToSquare,
-    faArrowRight
+    faArrowRight, faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
@@ -17,6 +17,18 @@ import "yet-another-react-lightbox/plugins/thumbnails.css";
 import { AuthContext } from "../../../../context/TokenContext";
 import { useRef } from "react";
 import { use } from "react";
+import { useAddComment, useComments, useEditComment } from "@/hooks/useRezerve";
+import { toast } from "sonner";
+
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const STATUS_LABELS = {
     new: "Nou", in_progress: "În lucru", done: "Finalizat",
@@ -59,12 +71,15 @@ const fmtDateAndTime = (isoOrSql) => {
  *  - onPinPatched?: (pinId:number, patch:any) => void
  *  - userId?: number
  */
-export default function PlanPinDrawer({ open, pin, onClose, onPinPatched, remainCommentState, setRemainCommentState, onEditPin, onDeletePin }) {
+export default function PlanPinDrawer({ open, pin, onClose, remainCommentState, setRemainCommentState, onEditPin, onDeletePin }) {
 
     // keep a local snapshot
     const [localPin, setLocalPin] = useState(pin || null);
     useEffect(() => {
         setLocalPin(pin || null);
+        if (pin) {
+            setRecStatus(pin.status || "new");
+        }
     }, [pin]);
 
     const { user } = useContext(AuthContext);
@@ -83,30 +98,10 @@ export default function PlanPinDrawer({ open, pin, onClose, onPinPatched, remain
         () => [localPin?.photo1_path, localPin?.photo2_path, localPin?.photo3_path].filter(Boolean),
         [localPin]
     );
-
     // comments
-    const [comments, setComments] = useState([]);
-    const [commentsLoading, setCommentsLoading] = useState(false);
-    const [commentsError, setCommentsError] = useState(null);
-
-    const loadComments = useCallback(async () => {
-        if (!open || !localPin?.id) return;
-        try {
-            setCommentsLoading(true);
-            setCommentsError(null);
-            const { data } = await api.get("/rezerve/comentarii", { params: { pin_id: localPin.id } });
-            const list = Array.isArray(data?.comments) ? data.comments : [];
-            list.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-            setComments(list);
-        } catch (e) {
-            setCommentsError(e?.message || "Nu am putut încărca comentariile.");
-        } finally {
-            setCommentsLoading(false);
-        }
-    }, [open, localPin?.id]);
-
-
-    useEffect(() => { loadComments(); }, [loadComments]);
+    const { data: comments, isFetching: commentsLoading, error: commentsError } = useComments(localPin?.id);
+    const addComment = useAddComment();
+    const editComment = useEditComment();
 
     // Lightboxes
     const [lbOpen, setLbOpen] = useState(false);
@@ -152,7 +147,6 @@ export default function PlanPinDrawer({ open, pin, onClose, onPinPatched, remain
     // Submit record (adapted for web)
     const submitRecord = useCallback(async () => {
         if (savingRecord) return;
-
         try {
             const nothingToSave = !recDesc.trim() && recPhotos.length === 0 && !recChangeStatus;
             if (nothingToSave) { setPanelOpen(false); resetPanel(); return; }
@@ -167,37 +161,17 @@ export default function PlanPinDrawer({ open, pin, onClose, onPinPatched, remain
             if (recChangeStatus) {
                 fd.append("status_to", recStatus);
             }
-
             recPhotos.slice(0, 3).forEach((file, idx) => {
                 // browser File already has name & type
                 fd.append("photos", file, file.name || `photo_${idx + 1}.jpg`);
             });
-
-            const { data } = await api.post("/rezerve/comentarii", fd, {
-                headers: { "Content-Type": "multipart/form-data" },
-            });
-
-            // Patch status if backend changed it
-            const newStatus = data?.pin?.status;
-            if (newStatus && newStatus !== localPin.status) {
-                setLocalPin((prev) => ({ ...prev, status: newStatus }));
-                if (typeof onPinPatched === "function") onPinPatched(localPin.id, { status: newStatus });
-            }
-            setLocalPin((prev) => ({ ...prev, updated_at: data?.pin?.updated_at || prev.updated_at }));
-            if (typeof onPinPatched === "function" && data?.pin?.updated_at) {
-                onPinPatched(localPin.id, { updated_at: data.pin.updated_at });
-            }
-
-            // Append created comment (backend returns {comment})
-            if (data?.comment) {
-                setComments((prev) => [...prev, data.comment]);
-            } else {
-                // fallback: reload
-                loadComments();
-            }
+            const data = await addComment.mutateAsync({ formData: fd, planId: localPin?.plan_id, pinId: localPin?.id, userId: user?.id });
+            setLocalPin((prev) => ({ ...prev, updated_at: data.pin.updated_at, status: data.pin.status }));
+            toast.success("Comentariul a fost adăugat cu succes.");
         } catch (err) {
-            console.error("Failed to save record:", err);
-            alert("Eroare: Nu am putut salva înregistrarea.");
+            console.log("Failed to save record:", err);
+            const msg = err?.response?.data?.message || "A apărut o eroare la salvarea comentariului.";
+            toast.error(msg);
         } finally {
             setPanelOpen(false);
             if (!remainCommentState) resetPanel();
@@ -206,7 +180,7 @@ export default function PlanPinDrawer({ open, pin, onClose, onPinPatched, remain
         }
     }, [
         savingRecord, recDesc, recPhotos, recChangeStatus, recStatus, remainCommentState,
-        localPin?.id, localPin?.status, user?.id, onPinPatched, loadComments, resetPanel
+        localPin?.id, localPin?.status, user?.id, resetPanel
     ]);
 
     // -------------------------------------------------------
@@ -282,7 +256,6 @@ export default function PlanPinDrawer({ open, pin, onClose, onPinPatched, remain
         }
 
         setEditSaving(true);
-
         const fd = new FormData();
         fd.append("comment_id", String(editingCommentId));
         if (user?.id != null) fd.append("user_id", String(user.id));
@@ -296,22 +269,13 @@ export default function PlanPinDrawer({ open, pin, onClose, onPinPatched, remain
             fd.append("photos", file, file.name || `photo_${idx + 1}.jpg`);
         });
         try {
-            const { data } = await api.put("/rezerve/comentarii", fd, {
-                headers: { "Content-Type": "multipart/form-data" },
-            });
-            if (data?.comment) {
-                setComments((prev) => prev.map((c) => (c.id === data.comment.id ? data.comment : c)));
-            } else {
-                await loadComments();
-            }
-
-            if (data?.pin?.updated_at) {
-                setLocalPin((prev) => ({ ...prev, updated_at: data.pin.updated_at }));
-                onPinPatched?.(localPin.id, { updated_at: data.pin.updated_at });
-            }
+            const data = await editComment.mutateAsync({ formData: fd, pinId: localPin?.id, userId: user?.id, planId: localPin?.plan_id });
+            setLocalPin((prev) => ({ ...prev, updated_at: data.pin.updated_at }));
+            toast.success("Comentariul a fost actualizat cu succes.");
         } catch (err) {
             console.log("Failed to update comment:", err);
-            alert("Eroare: Nu am putut actualiza comentariul.");
+            const msg = err?.response?.data?.message || "A apărut o eroare la actualizarea comentariului.";
+            toast.error(msg);
         } finally {
             setPanelOpen(false);
             setEditingCommentId(null);
@@ -326,7 +290,7 @@ export default function PlanPinDrawer({ open, pin, onClose, onPinPatched, remain
         isEditing, editSaving, editingCommentId,
         editDesc, editInitialDesc,
         editExistingPhotos, editInitialPhotos, editNewPhotos,
-        user?.id, maxPhotos, loadComments, onPinPatched, localPin?.id
+        user?.id, maxPhotos, localPin?.id, localPin?.plan_id
     ]);
 
     const [isDragOverUpload, setIsDragOverUpload] = useState(false);
@@ -431,7 +395,7 @@ export default function PlanPinDrawer({ open, pin, onClose, onPinPatched, remain
             {/* Backdrop */}
             <div
                 className={[
-                    "absolute inset-0 bg-black/20 transition-opacity duration-300",
+                    "absolute inset-0 bg-black/40  transition-opacity duration-300",
                     open ? "opacity-100 pointer-events-auto" : "opacity-0",
                 ].join(" ")}
                 onClick={onClose}
@@ -441,197 +405,189 @@ export default function PlanPinDrawer({ open, pin, onClose, onPinPatched, remain
             {/* Right drawer */}
             <div
                 className={[
-                    "absolute right-0 top-0 bottom-0 h-full",
-                    "transition-transform duration-300 bg-white ease-out",
-                    open ? "translate-x-0" : "translate-x-full",
-                    "pointer-events-none",
+                    "absolute right-0 top-0 bottom-0 h-full flex flex-col",
+                    "transition-transform duration-300 bg-card border-l border-input ease-out",
+                    open ? "translate-x-0 shadow-2xl pointer-events-auto" : "translate-x-full pointer-events-none",
                 ].join(" ")}
-                style={{ width: 550, maxWidth: "90vw" }}
+                style={{ width: "38rem", maxWidth: "90vw" }}
             >
-                <div
-                    className={[
-                        "h-full bg-white text-black flex flex-col  relative",
-                        open ? "pointer-events-auto shadow-2xl" : "pointer-events-none",
-                    ].join(" ")}
-                >
-                    <div className="overflow-y-auto p-5 ">
-                        {/* Header */}
-                        {/* === Header (same structure/handlers, fancier styles) === */}
-                        <div className="flex items-center justify-between mb-4">
-                            {/* Left: action buttons */}
-                            <div className="flex items-center gap-2">
-                                <button
-                                    className="text-white bg-red-600 hover:bg-red-700 active:scale-[.98] transition-all text-2xl rounded-xl w-10 h-10 grid place-items-center shadow-sm ring-1 ring-red-500/30 focus:outline-none focus:ring-2 focus:ring-red-400"
-                                    onClick={onClose}
-                                    aria-label="Închide"
-                                    title="Închide"
-                                >
-                                    ✕
-                                </button>
-
-                                <div className="h-8 w-px bg-gray-300 mx-1 rounded-full" />
-
-                                <button
-                                    className="text-white bg-green-600 hover:bg-green-700 active:scale-[.98] transition-all text-xl rounded-xl w-10 h-10 grid place-items-center shadow-sm ring-1 ring-green-500/30 focus:outline-none focus:ring-2 focus:ring-green-400"
-                                    onClick={() => onEditPin(localPin)}
-                                    aria-label="Editează pin"
-                                    title="Editează pin"
-                                >
-                                    <FontAwesomeIcon icon={faPen} />
-                                </button>
-
-                                <button
-                                    className="text-white bg-rose-600 hover:bg-rose-700 active:scale-[.98] transition-all text-xl rounded-xl w-10 h-10 grid place-items-center shadow-sm ring-1 ring-rose-500/30 focus:outline-none focus:ring-2 focus:ring-rose-400"
-                                    onClick={() => onDeletePin(localPin)}
-                                    aria-label="Șterge pin"
-                                    title="Șterge pin"
-                                >
-                                    <FontAwesomeIcon icon={faTrash} />
-                                </button>
-                            </div>
-
-                            {/* Middle: code pill */}
-                            <div className="h-10 px-3 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 text-gray-900 flex items-center min-w-0 shadow-sm border border-gray-200">
-                                <span className="text-base font-bold truncate tracking-wide">#{localPin?.code || "—"}</span>
-                            </div>
-
-                            {/* Right: status pill */}
-                            <div
-                                className="h-10 px-3 rounded-full text-white flex items-center shadow-sm border border-white/20 transition-all hover:brightness-110 "
-                                style={{
-                                    background: `linear-gradient(135deg, ${statusColor} 0%, ${statusColor}CC 100%)`,
-                                }}
+                <div className="flex-1 overflow-y-auto p-5 text-foreground relative">
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-4">
+                        {/* Left: action buttons */}
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="destructive"
+                                size="icon"
+                                className="rounded-xl h-10 w-10 shadow-sm"
+                                onClick={onClose}
+                                aria-label="Închide"
+                                title="Închide"
                             >
-                                <span className="text-base font-semibold drop-shadow-sm">{statusLabel}</span>
-                            </div>
+                                <FontAwesomeIcon icon={faXmark} className="text-lg" />
+                            </Button>
+
+                            <Separator orientation="vertical" className="h-8 mx-1" />
+                            <Button
+                                className="bg-green-600 hover:bg-green-700 text-white rounded-xl h-10 w-10 shadow-sm"
+                                size="icon"
+                                onClick={() => onEditPin(localPin)}
+                                aria-label="Editează pin"
+                                title="Editează pin"
+                            >
+                                <FontAwesomeIcon icon={faPen} />
+                            </Button>
+
+                            <Button
+                                variant="destructive"
+                                size="icon"
+                                className="rounded-xl h-10 w-10 shadow-sm"
+                                onClick={() => onDeletePin(localPin)}
+                                aria-label="Șterge pin"
+                                title="Șterge pin"
+                            >
+                                <FontAwesomeIcon icon={faTrash} />
+                            </Button>
                         </div>
 
-                        {/* === Title & description row (kept positions, nicer chips) === */}
-                        <div className="flex items-center mb-6 text-sm justify-between gap-2">
-                            <div className="bg-gray-100/80 backdrop-blur-sm font-medium px-4 py-1.5 rounded-full border border-gray-200 shadow-sm">
-                                <span className="text-gray-600 mr-1.5">Creat la:</span>
-                                <span className="font-semibold text-gray-900">{creatLabel}</span>
-                            </div>
-                            <div className="bg-gray-100/80 backdrop-blur-sm font-medium px-4 py-1.5 rounded-full border border-gray-200 shadow-sm">
-                                <span className="text-gray-600 mr-1.5">Actualizat la:</span>
-                                <span className="font-semibold text-gray-900">{actualizareLabel}</span>
-                            </div>
+                        {/* Middle: code pill */}
+                        <Badge variant="outline" className="px-4 h-10 rounded-full text-base font-bold  shadow-sm bg-background ">
+                            #{localPin?.code || "—"}
+                        </Badge>
+
+                        {/* Right: status pill */}
+                        <Badge
+                            className="h-10 px-4 rounded-full text-base font-semibold shadow-sm text-white border-0"
+                            style={{
+                                background: `linear-gradient(135deg, ${statusColor} 0%, ${statusColor}CC 100%)`,
+                            }}
+                        >
+                            {statusLabel}
+                        </Badge>
+                    </div>
+
+                    {/* Title & description row */}
+                    <div className="flex items-center mb-6 text-sm justify-between gap-2">
+                        <Badge variant="outline" className="px-4 py-1.5 rounded-full text-sm font-medium shadow-sm gap-2 bg-background ">
+                            <span className="text-foreground">Creat la:</span>
+                            <span>{creatLabel}</span>
+                        </Badge>
+                        <Badge variant="outline" className="px-4 py-1.5 rounded-full text-sm font-medium shadow-sm gap-2 bg-background ">
+                            <span className="text-foreground">Actualizat la:</span>
+                            <span>{actualizareLabel}</span>
+                        </Badge>
+                    </div>
+
+                    <div className="mb-1 text-2xl font-extrabold tracking-tight">
+                        {localPin?.title || "Pin nou"}
+                    </div>
+                    <div className="mb-3 text-muted-foreground leading-relaxed">
+                        {localPin?.description || "Fără descriere"}
+                    </div>
+
+                    {/* Meta vertical */}
+                    <div className="my-4 flex flex-col gap-3">
+                        <div className="inline-flex items-center gap-2">
+                            <Badge variant="outline" className="px-4 py-2 rounded-full text-sm font-medium shadow-sm gap-2 bg-background ">
+                                <FontAwesomeIcon icon={faAddressCard} className="text-foreground" />
+                                {createdBy || "—"}
+                            </Badge>
                         </div>
 
-                        <div className="mb-1 text-xl font-extrabold tracking-tight text-gray-900">
-                            {localPin?.title || "Pin nou"}
+                        <div className="flex flex-wrap items-center gap-3">
+                            <Badge variant="outline" className="px-4 py-2 rounded-full text-sm font-medium shadow-sm gap-2 bg-background ">
+                                <FontAwesomeIcon icon={faLocationDot} className="text-foreground" />
+                                {reperText}
+                            </Badge>
+                            <Badge variant="outline" className="px-4 py-2 rounded-full text-sm font-medium shadow-sm gap-2 bg-background ">
+                                <FontAwesomeIcon icon={faCalendar} className="text-foreground" />
+                                {dueText}
+                            </Badge>
+                            <Badge variant="outline" className="px-4 py-2 rounded-full text-sm font-medium shadow-sm gap-2 bg-background ">
+                                <FontAwesomeIcon icon={faUser} className="text-foreground" />
+                                {assignedName}
+                            </Badge>
                         </div>
-                        <div className="mb-3 text-gray-600 leading-relaxed">
-                            {localPin?.description || "Fără descriere"}
+                    </div>
+
+                    {/* Photos grid */}
+                    {photos.length > 0 && (
+                        <div className="mb-4 grid grid-cols-3 gap-2">
+                            {photos.map((uri, idx) => (
+                                <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={() => { setLbIndex(idx); setLbOpen(true); }}
+                                    className="group block rounded-lg border border-input overflow-hidden shadow-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all hover:shadow-md"
+                                    title={`Foto ${idx + 1}`}
+                                    aria-label={`Deschide foto ${idx + 1}`}
+                                >
+                                    <img
+                                        src={`${baseURL}${uri}`}
+                                        alt={`pin-photo-${idx}`}
+                                        className="w-full h-40 object-cover group-hover:scale-[1.02] transition-transform duration-200"
+                                        loading="lazy"
+                                    />
+                                </button>
+                            ))}
                         </div>
+                    )}
 
-                        {/* === Meta vertical (same content, refined pills) === */}
-                        <div className="my-4 flex flex-col gap-3">
-                            <div className="inline-flex items-center gap-2">
-                                <span className="text-gray-900 px-4 py-2 rounded-full bg-gray-100 border border-gray-200 font-medium shadow-sm">
-                                    <FontAwesomeIcon icon={faAddressCard} className="mr-2 opacity-80" />
-                                    {`${createdBy || "—"}`}
-                                </span>
-                            </div>
-
-                            {/* Pills: row 2 = Reper, Termen, Atribuit */}
-                            <div className="flex flex-wrap items-center gap-3">
-                                <span className="text-gray-900 px-4 py-2 rounded-full bg-gray-100 border border-gray-200 font-medium shadow-sm">
-                                    <FontAwesomeIcon icon={faLocationDot} className="mr-2 opacity-80" />
-                                    {reperText}
-                                </span>
-                                <span className="text-gray-900 px-4 py-2 rounded-full bg-gray-100 border border-gray-200 font-medium shadow-sm">
-                                    <FontAwesomeIcon icon={faCalendar} className="mr-2 opacity-80" />
-                                    {dueText}
-                                </span>
-                                <span className="text-gray-900 px-4 py-2 rounded-full bg-gray-100 border border-gray-200 font-medium shadow-sm">
-                                    <FontAwesomeIcon icon={faUser} className="mr-2 opacity-80" />
-                                    {assignedName}
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* === Photos grid (same behavior, subtle hover) === */}
-                        {photos.length > 0 && (
-                            <div className="mb-4 grid grid-cols-3 gap-2">
-                                {photos.map((uri, idx) => (
-                                    <button
-                                        key={idx}
-                                        type="button"
-                                        onClick={() => { setLbIndex(idx); setLbOpen(true); }}
-                                        className="group block rounded-lg border border-gray-300 overflow-hidden shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all hover:shadow-md"
-                                        title={`Foto ${idx + 1}`}
-                                        aria-label={`Deschide foto ${idx + 1}`}
-                                    >
-                                        <img
-                                            src={`${baseURL}${uri}`}
-                                            alt={`pin-photo-${idx}`}
-                                            className="w-full h-40 object-cover group-hover:scale-[1.02] transition-transform duration-200"
-                                            loading="lazy"
-                                        />
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-
-                        {/* Comments */}
-                        {/* Comments */}
-                        <div className="mb-6">
-                            {commentsLoading ? (
-                                <div className="text-gray-500 italic">Se încarcă…</div>
-                            ) : commentsError ? (
-                                <div className="text-red-600">{commentsError}</div>
-                            ) : comments.length === 0 ? (
-                                <div className="text-gray-500">Nu există comentarii încă.</div>
-                            ) : (
-                                <div className="flex flex-col gap-3">
-                                    {comments.map((c) => (
-                                        <div
-                                            key={c.id}
-                                            className="rounded-2xl border border-gray-400 bg-white/80 backdrop-blur-sm p-4 shadow-sm hover:shadow-md transition-all"
-                                        >
+                    {/* Comments */}
+                    <div className="mb-6">
+                        {comments == null ? (
+                            <div className="text-muted-foreground">Se încarcă comentariile...</div>
+                        ) : comments.length === 0 ? (
+                            <div className="text-muted-foreground">Nu există comentarii încă.</div>
+                        ) : (
+                            <div className="flex flex-col gap-3">
+                                {comments.map((c) => (
+                                    <Card onClick={() => console.log(c)} key={c.id} className="rounded-2xl border-input shadow-sm hover:shadow-md transition-all">
+                                        <div className="p-4">
                                             {/* Header */}
                                             <div className="flex items-center justify-between gap-3">
                                                 <div className="flex items-center gap-3 min-w-0">
-                                                    <div className="h-9 w-9 rounded-full bg-gray-200 border border-gray-200 grid place-items-center text-sm font-semibold text-gray-700">
+                                                    <div className="h-9 w-9 rounded-full bg-background border border-input grid place-items-center text-sm font-semibold text-secondary-foreground">
                                                         {(c.user_name?.[0] || "—").toUpperCase()}
                                                     </div>
                                                     <div className="truncate">
-                                                        <div className="font-semibold text-gray-900 truncate">
+                                                        <div className="font-semibold text-foreground truncate">
                                                             {c.user_name || "—"}
                                                         </div>
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    <button
-                                                        disabled={panelOpen}
+                                                    <Button
+                                                        className="bg-green-600 hover:bg-green-700 h-8 w-8 text-white rounded-xlshadow-sm"
+                                                        size="icon"
                                                         onClick={() => openEdit(c)}
-                                                        className="text-white bg-green-600 hover:bg-green-700 active:scale-[.98] transition-all text-base rounded-xl p-1 px-2 shadow-sm ring-1 ring-green-500/30 focus:outline-none focus:ring-2 focus:ring-green-400"
+                                                        disabled={panelOpen}
+
+
                                                     >
-                                                        <FontAwesomeIcon className="" icon={faPen} />
-                                                    </button>
-                                                    <span className="shrink-0 text-sm text-black bg-gray-200 border border-gray-300 rounded-full px-2 py-1">
-                                                        {fmtDateAndTime(c.created_at)}
-                                                    </span>
+                                                        <FontAwesomeIcon icon={faPen} />
+                                                    </Button>
+
+
                                                 </div>
                                             </div>
 
                                             {/* Status change (if any) */}
                                             {c.status_from && c.status_to && (
                                                 <div className="flex items-center gap-2 mt-3 mb-2 flex-wrap">
-                                                    <span className="text-xs uppercase tracking-wide text-gray-500 font-semibold">
+                                                    <span className="text-sm uppercase tracking-wide text-muted-foreground font-semibold">
                                                         Status
                                                     </span>
                                                     <span
                                                         className="font-semibold"
-                                                        style={{ color: STATUS_COLORS[c.status_from] || "#111827" }}
+                                                        style={{ color: STATUS_COLORS[c.status_from] || "inherit" }}
                                                     >
                                                         {STATUS_LABELS[c.status_from] || c.status_from}
                                                     </span>
-                                                    <span className="opacity-60"><FontAwesomeIcon icon={faArrowRight} />    </span>
+                                                    <span className="opacity-60 text-muted-foreground"><FontAwesomeIcon icon={faArrowRight} /></span>
                                                     <span
                                                         className="font-semibold"
-                                                        style={{ color: STATUS_COLORS[c.status_to] || "#111827" }}
+                                                        style={{ color: STATUS_COLORS[c.status_to] || "inherit" }}
                                                     >
                                                         {STATUS_LABELS[c.status_to] || c.status_to}
                                                     </span>
@@ -639,18 +595,18 @@ export default function PlanPinDrawer({ open, pin, onClose, onPinPatched, remain
                                             )}
 
                                             {/* Body */}
-                                            <div className="text-gray-800 leading-relaxed">
+                                            <div className="text-foreground leading-relaxed mt-2">
                                                 {c.body_text ? (
-                                                    <p className="whitespace-pre-wrap">{c.body_text}</p>
+                                                    <p className="whitespace-pre-wrap text-sm">{c.body_text}</p>
                                                 ) : (
-                                                    <span className="opacity-60">Fără descriere</span>
+                                                    <span className="text-muted-foreground italic text-sm">Fără descriere</span>
                                                 )}
                                             </div>
 
                                             {/* Photos */}
                                             {Array.isArray(c.photos) && c.photos.length > 0 && (
                                                 <>
-                                                    <div className="my-3 border-t border-dashed border-gray-400" />
+                                                    <div className="my-3 border-t border-dashed border-input" />
                                                     <div className="flex gap-2 flex-wrap">
                                                         {c.photos.slice(0, 3).map((p, pi) => (
                                                             <button
@@ -662,13 +618,12 @@ export default function PlanPinDrawer({ open, pin, onClose, onPinPatched, remain
                                                                     setLbIndexCom(pi);
                                                                     setLbOpenCom(true);
                                                                 }}
-                                                                className="group h-32 max-w-32 block cursor-pointer rounded-lg overflow-hidden border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all hover:shadow-md"
+                                                                className="group h-24 w-24 block cursor-pointer rounded-lg overflow-hidden border border-input focus:outline-none focus:ring-2 focus:ring-primary transition-all hover:shadow-md"
                                                                 title={`Foto ${pi + 1}`}
-                                                                aria-label={`Deschide foto ${pi + 1}`}
                                                             >
                                                                 <img
                                                                     src={`${baseURL}${p}`}
-                                                                    className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-200"
+                                                                    className="w-full h-full object-cover group-hover:scale-[1.05] transition-transform duration-200"
                                                                     alt="comment-photo"
                                                                     loading="lazy"
                                                                 />
@@ -677,66 +632,62 @@ export default function PlanPinDrawer({ open, pin, onClose, onPinPatched, remain
                                                     </div>
                                                 </>
                                             )}
+                                            <div className="flex flex-col">
+                                                <div className="my-3 border-t border-dashed border-input" />
+                                                <div className="flex justify-between">
+                                                    <Badge variant="outline" className="px-4 h-8 items-center flex justify-center rounded-full text-sm font-medium shadow-sm gap-2 bg-background ">
+                                                        <span className="text-foreground">Creat la:</span>
+                                                        {fmtDateAndTime(c.created_at)}
+                                                    </Badge>
+                                                    <Badge variant="outline" className="px-4 h-8 items-center flex justify-center rounded-full text-sm font-medium shadow-sm gap-2 bg-background ">
+                                                        <span className="text-foreground">Actualizat la:</span>
+                                                        {fmtDateAndTime(c.updated_at)}
+                                                    </Badge>
+                                                </div>
+                                            </div>
                                         </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        {lbOpen && (
-                            <Lightbox
-                                open
-                                close={() => setLbOpen(false)}
-                                index={lbIndex}
-                                slides={slides}
-                                plugins={[Zoom, Thumbnails]}
-                                controller={{ closeOnBackdropClick: true }}
-                            />
+                                    </Card>
+                                ))}
+                            </div>
                         )}
-                        {lbOpenCom && (
-                            <Lightbox
-                                open
-                                close={() => setLbOpenCom(false)}
-                                index={lbIndexCom}
-                                slides={lbComSlides}
-                                plugins={[Zoom, Thumbnails]}
-                                controller={{ closeOnBackdropClick: true }}
-                            />
-                        )}
-
-
-
-
-
                     </div>
-                    <div className="p-4 flex justify-center border-t-2">
-                        {/* Slide-up panel inside drawer */}
-                        {panelOpen ? (
 
-                            <div className="p-4 flex flex-col gap-5 w-full rounded-2xl border border-gray-200 bg-white/80 backdrop-blur-sm shadow-sm">
+                    {lbOpen && (
+                        <Lightbox open close={() => setLbOpen(false)} index={lbIndex} slides={slides} plugins={[Zoom, Thumbnails]} controller={{ closeOnBackdropClick: true }} />
+                    )}
+                    {lbOpenCom && (
+                        <Lightbox open close={() => setLbOpenCom(false)} index={lbIndexCom} slides={lbComSlides} plugins={[Zoom, Thumbnails]} controller={{ closeOnBackdropClick: true }} />
+                    )}
+
+                </div>
+
+                <div className="p-4 flex justify-center border-t border-input bg-muted/10">
+                    {/* Slide-up panel inside drawer */}
+                    {panelOpen ? (
+                        <Card className="w-full rounded-2xl shadow-md border-input">
+                            <div className="p-5 flex flex-col gap-5">
                                 {/* Header */}
-                                <div className="text-xl flex items-center justify-between font-extrabold">
+                                <div className="text-xl flex items-center justify-between font-extrabold text-foreground">
                                     <span className="tracking-tight">{isEditing ? "Editează comentariu" : "Înregistrare nouă"}</span>
 
                                     {!isEditing && (
-                                        <label className="flex items-center gap-3 text-sm font-medium text-gray-700 select-none">
-                                            <span className="inline-flex items-center gap-2 bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-full">
-                                                Menține înregistrarea
-                                                <input
-                                                    type="checkbox"
-                                                    className="w-5 h-5 accent-blue-600 rounded cursor-pointer"
-                                                    checked={remainCommentState}
-                                                    onChange={(e) => setRemainCommentState(e.target.checked)}
-                                                    aria-label="Menține înregistrarea după salvare"
-                                                />
-                                            </span>
-                                        </label>
+                                        <div className="flex items-center space-x-2">
+                                            <Checkbox
+                                                id="remain-checkbox"
+                                                checked={remainCommentState}
+                                                onCheckedChange={(checked) => setRemainCommentState(checked)}
+                                                className="h-6 w-6"
+                                            />
+                                            <Label htmlFor="remain-checkbox" className="text-sm font-medium cursor-pointer">
+                                                Menține Comentariul
+                                            </Label>
+                                        </div>
                                     )}
                                 </div>
 
                                 {/* Photos row */}
                                 <div>
-                                    <div className="font-semibold mb-2 text-gray-900">Fotografii</div>
+                                    <Label className="mb-2 block font-semibold text-foreground">Fotografii</Label>
 
                                     {/* === Galerie button === */}
                                     {(() => {
@@ -756,26 +707,19 @@ export default function PlanPinDrawer({ open, pin, onClose, onPinPatched, remain
                                                 onDragLeave={handleDragLeaveUpload}
                                                 onDrop={handleDropUpload}
                                                 className={[
-                                                    "mb-3 rounded-xl border-2 border-dashed px-2 py-2 transition-all",
-                                                    "flex items-center justify-start bg-white",
+                                                    "mb-3 rounded-xl border-2 border-dashed px-3 py-3 transition-all flex items-center",
                                                     isFull
-                                                        ? "opacity-60 cursor-not-allowed"
-                                                        : "cursor-pointer hover:bg-gray-50 hover:shadow-sm",
-                                                    isDragOverUpload && !isFull ? "border-blue-500 bg-blue-50" : "border-gray-300",
+                                                        ? "opacity-60 cursor-not-allowed bg-muted"
+                                                        : "cursor-pointer hover:bg-background/10",
+                                                    isDragOverUpload && !isFull ? "border-primary bg-primary/5" : "border-input",
                                                 ].join(" ")}
                                             >
-                                                <div
-                                                    className={[
-                                                        "inline-flex items-center gap-2 rounded-lg px-3 py-2",
-                                                        "transition-all",
-                                                    ].join(" ")}
-                                                >
-                                                    <FontAwesomeIcon className="opacity-80" icon={faImages} />
-                                                    <span className="font-medium">
+                                                <div className="inline-flex items-center gap-2 text-foreground">
+                                                    <FontAwesomeIcon icon={faImages} />
+                                                    <span className="font-medium text-sm">
                                                         {isFull ? "Limită fotografii atinsă" : "Click sau trage din Galerie"}
                                                     </span>
 
-                                                    {/* hidden input – still uses the same handlers */}
                                                     <input
                                                         ref={uploadInputRef}
                                                         type="file"
@@ -793,84 +737,52 @@ export default function PlanPinDrawer({ open, pin, onClose, onPinPatched, remain
                                     {/* === Thumbnails row === */}
                                     {isEditing ? (
                                         (editExistingPhotos.length > 0 || editNewPhotos.length > 0) && (
-                                            <div className="flex gap-2  pb-1">
-                                                {/* Existing photos */}
+                                            <div className="flex gap-2 pb-1">
                                                 {editExistingPhotos.map((p, i) => (
                                                     <div key={`ex-${i}`} className="relative flex-shrink-0">
-                                                        {/* delete button ABOVE the box */}
-                                                        <button
-                                                            type="button"
-                                                            className="absolute -top-2 -right-2 bg-red-600 hover:bg-red-700 text-white w-6 h-6 rounded-full text-xs shadow ring-1 ring-red-500/30 z-10"
+                                                        <Button
+                                                            size="icon"
+                                                            className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-destructive text-xs shadow z-10"
                                                             onClick={() => removeExistingEditPhotoAt(i)}
-                                                            title="Șterge"
-                                                        >
-                                                            ✕
-                                                        </button>
-                                                        {/* image box */}
-                                                        <div className="relative rounded-xl border border-gray-300 bg-white overflow-hidden shadow-sm hover:shadow-md transition-all w-32 h-32">
-                                                            <img
-                                                                src={`${baseURL}${p}`}
-                                                                alt={`exist-${i}`}
-                                                                className="w-full h-full object-cover"
-                                                            />
+                                                        >✕</Button>
+                                                        <div className="relative rounded-xl border border-input overflow-hidden shadow-sm w-24 h-24">
+                                                            <img src={`${baseURL}${p}`} alt={`exist-${i}`} className="w-full h-full object-cover" />
                                                         </div>
                                                     </div>
                                                 ))}
-
-                                                {/* Newly added photos */}
-                                                {editNewPhotos.map((f, i) => {
-                                                    return (
-                                                        <div key={`new-${i}`} className="relative flex-shrink-0">
-                                                            {/* delete button ABOVE the box */}
-                                                            <button
-                                                                type="button"
-                                                                className="absolute -top-2 -right-2 bg-red-600 hover:bg-red-700 text-white w-6 h-6 rounded-full text-xs shadow ring-1 ring-red-500/30 z-10"
-                                                                onClick={() => removeNewEditPhotoAt(i)}
-                                                                title="Șterge"
-                                                            >
-                                                                ✕
-                                                            </button>
-                                                            {/* image box */}
-                                                            <div className="relative rounded-xl border border-gray-300 bg-white overflow-hidden shadow-sm hover:shadow-md transition-all w-32 h-32">
-                                                                <img
-                                                                    key={editNewPhotoUrls[i]}
-                                                                    src={editNewPhotoUrls[i]}
-                                                                    alt={`new-${i}`}
-                                                                    className="w-full h-full object-cover"
-                                                                />
-                                                            </div>
+                                                {editNewPhotos.map((f, i) => (
+                                                    <div key={`new-${i}`} className="relative flex-shrink-0">
+                                                        <Button
+                                                            variant="destructive"
+                                                            size="icon"
+                                                            className="absolute -top-2 -right-2 w-6 h-6 rounded-full text-xs shadow z-10"
+                                                            onClick={() => removeNewEditPhotoAt(i)}
+                                                            title="Șterge"
+                                                        >✕</Button>
+                                                        <div className="relative rounded-xl border border-input overflow-hidden shadow-sm w-24 h-24">
+                                                            <img key={editNewPhotoUrls[i]} src={editNewPhotoUrls[i]} alt={`new-${i}`} className="w-full h-full object-cover" />
                                                         </div>
-                                                    )
-                                                })}
+                                                    </div>
+                                                ))}
                                             </div>
                                         )
                                     ) : (
                                         recPhotos.length > 0 && (
-                                            <div className="flex gap-2  pb-1">
-                                                {recPhotos.map((f, i) => {
-                                                    return (
-                                                        <div key={`rec-${i}`} className="relative flex-shrink-0">
-                                                            {/* delete button ABOVE the box */}
-                                                            <button
-                                                                type="button"
-                                                                className="absolute -top-2 -right-2 bg-red-600 hover:bg-red-700 text-white w-6 h-6 rounded-full text-xs shadow ring-1 ring-red-500/30 z-10"
-                                                                onClick={() => removeRecPhotoAt(i)}
-                                                                title="Șterge"
-                                                            >
-                                                                ✕
-                                                            </button>
-                                                            {/* image box */}
-                                                            <div className="relative rounded-xl border border-gray-300 bg-white overflow-hidden shadow-sm hover:shadow-md transition-all w-32 h-32">
-                                                                <img
-                                                                    key={recPhotoUrls[i]}
-                                                                    src={recPhotoUrls[i]}
-                                                                    alt={`rec-${i}`}
-                                                                    className="w-full h-full object-cover"
-                                                                />
-                                                            </div>
+                                            <div className="flex gap-2 pb-1">
+                                                {recPhotos.map((f, i) => (
+                                                    <div key={`rec-${i}`} className="relative flex-shrink-0">
+                                                        <Button
+                                                            variant="destructive"
+                                                            size="icon"
+                                                            className="absolute -top-2 -right-2 w-6 h-6 rounded-full text-xs shadow z-10"
+                                                            onClick={() => removeRecPhotoAt(i)}
+                                                            title="Șterge"
+                                                        >✕</Button>
+                                                        <div className="relative rounded-xl border border-input overflow-hidden shadow-sm w-24 h-24">
+                                                            <img key={recPhotoUrls[i]} src={recPhotoUrls[i]} alt={`rec-${i}`} className="w-full h-full object-cover" />
                                                         </div>
-                                                    )
-                                                })}
+                                                    </div>
+                                                ))}
                                             </div>
                                         )
                                     )}
@@ -878,92 +790,84 @@ export default function PlanPinDrawer({ open, pin, onClose, onPinPatched, remain
 
                                 {/* Description */}
                                 <div>
-                                    <div className="font-semibold mb-2 text-gray-900">Descriere</div>
-                                    <div className="relative">
-                                        <textarea
-                                            rows={4}
-                                            className="w-full border border-gray-300 rounded-xl px-3 py-2 focus:outline-none resize-none focus:ring-2 focus:ring-blue-500 bg-white/90"
-                                            value={isEditing ? editDesc : recDesc}
-                                            onChange={(e) => isEditing ? setEditDesc(e.target.value) : setRecDesc(e.target.value)}
-                                            placeholder="Adaugă detalii relevante…"
-                                        />
-
-                                    </div>
+                                    <Label className="mb-2 block font-semibold text-foreground">Descriere</Label>
+                                    <Textarea
+                                        rows={3}
+                                        value={isEditing ? editDesc : recDesc}
+                                        onChange={(e) => isEditing ? setEditDesc(e.target.value) : setRecDesc(e.target.value)}
+                                        placeholder="Adaugă detalii relevante…"
+                                    />
                                 </div>
 
                                 {/* Change status */}
                                 {!isEditing && (
-                                    <>
+                                    <div className="flex flex-col gap-3">
                                         <div className="flex items-center justify-between">
-                                            <div className="font-semibold text-gray-900">Schimbă statusul</div>
-
-                                            <label className="inline-flex items-center cursor-pointer select-none">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={recChangeStatus}
-                                                    onChange={(e) => setRecChangeStatus(e.target.checked)}
-                                                    className="sr-only peer"
-                                                    aria-label="Activează schimbarea statusului"
-                                                />
-                                                <div className="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-blue-600 transition-colors relative shadow-inner">
-                                                    <div className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-5 shadow" />
-                                                </div>
-                                            </label>
+                                            <Label className="font-semibold text-foreground cursor-pointer" htmlFor="status-toggle">
+                                                Schimbă statusul
+                                            </Label>
+                                            <Checkbox
+                                                id="status-toggle"
+                                                checked={recChangeStatus}
+                                                onCheckedChange={setRecChangeStatus}
+                                                className="h-6 w-6"
+                                            />
                                         </div>
 
                                         {recChangeStatus && (
-                                            <select
-                                                className="w-full border border-gray-300 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            <Select
                                                 value={recStatus}
-                                                onChange={(e) => setRecStatus(e.target.value)}
-                                                aria-label="Alege noul status"
+                                                onValueChange={(value) => setRecStatus(value)}
                                             >
-                                                {Object.keys(STATUS_LABELS).map((k) => (
-                                                    <option key={k} value={k}>
-                                                        {STATUS_LABELS[k]}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                                <SelectTrigger className="mt-1">
+                                                    <SelectValue placeholder="Toți" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+
+                                                    {Object.keys(STATUS_LABELS).map((k) => (
+                                                        <SelectItem key={k} value={k}>
+                                                            {STATUS_LABELS[k]}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+
+                                            </Select>
                                         )}
-                                    </>
+                                    </div>
                                 )}
 
                                 {/* Footer buttons */}
-                                <div className="flex gap-2 pt-2">
-                                    <button
-                                        type="button"
-                                        className="flex-1 rounded-full bg-red-600 hover:bg-red-700 active:scale-[.99] transition-all text-white px-4 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-red-400 disabled:opacity-60 disabled:cursor-not-allowed"
-                                        onClick={() => {
-                                            cancelPanel();
-                                        }}
+                                <div className="flex gap-3 pt-2">
+                                    <Button
+                                        variant="destructive"
+                                        className="flex-1 rounded-full"
+                                        onClick={cancelPanel}
                                         disabled={savingRecord}
                                     >
                                         Anulează
-                                    </button>
+                                    </Button>
 
-                                    <button
-                                        type="button"
-                                        className="flex-1 rounded-full bg-blue-900 hover:bg-blue-800 active:scale-[.99] transition-all text-white px-4 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                                    <Button
+                                        className="flex-1 rounded-full bg-blue-600 hover:bg-blue-700 text-white"
                                         onClick={isEditing ? submitEdit : submitRecord}
                                         disabled={isEditing ? editSaving : savingRecord}
-                                        aria-busy={(isEditing ? editSaving : savingRecord) ? "true" : "false"}
                                     >
                                         {(isEditing ? (editSaving ? "Se actualizează…" : "Actualizează")
                                             : (savingRecord ? "Se salvează…" : "Salvează"))}
-                                    </button>
+                                    </Button>
                                 </div>
                             </div>
-                        ) : (
-                            <button
-                                className="rounded-full bg-blue-600 text-white px-4 py-2 flex-1 flex items-center justify-center gap-2"
-                                onClick={togglePanel}
-                                title="Adaugă înregistrare"
-                            >
-                                <FontAwesomeIcon icon={faPlus} />
-                                Adaugă înregistrare
-                            </button>
-                        )}
-                    </div>
+                        </Card>
+                    ) : (
+                        <Button
+                            className="rounded-full flex-1 w-full gap-2 text-base h-12"
+                            onClick={togglePanel}
+                            title="Adaugă înregistrare"
+                        >
+                            <FontAwesomeIcon icon={faPlus} />
+                            Adaugă înregistrare
+                        </Button>
+                    )}
                 </div>
             </div>
         </div>

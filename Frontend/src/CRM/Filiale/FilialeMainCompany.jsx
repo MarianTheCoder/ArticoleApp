@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useAddFiliale, useFilialeByCompany, useEditFiliale, useDeleteFiliale } from "@/hooks/useFiliale"; // You need to create this hook file
 import { Button } from "@/components/ui/button";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -137,10 +137,10 @@ export default function FilialeMainCompany({ companyId = null }) {
         }
     };
 
-    const handleDeleteClick = ({ id, nume }) => {
+    const handleDeleteClick = useCallback(({ id, nume }) => {
         setSelectedFiliala({ id, nume });
         setDeleteOpen(true);
-    };
+    }, []);
 
     const handleConfirmDelete = async (code) => {
         if (!selectedFiliala) return;
@@ -160,6 +160,7 @@ export default function FilialeMainCompany({ companyId = null }) {
     const toggleCol = (key, val) => {
         setVisibleColumns(prev => ({ ...prev, [key]: val }));
     };
+
 
     return (
         <div className="h-full w-full relative flex gap-4 flex-col items-center overflow-hidden">

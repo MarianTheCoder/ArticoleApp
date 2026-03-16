@@ -31,10 +31,13 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useContacteSelect } from "@/hooks/useContacts";
 import { useFilialeSelect } from "@/hooks/useFiliale";
+import { useCompaniesSelect } from "@/hooks/useCompanies";
 import { Switch } from "@/components/ui/switch";
 
 export default function ContactsAddDialog({
     companyId,
+    filialaId = null,
+    santierId = null,
     open,
     setOpen,
     onSubmitContact,
@@ -46,8 +49,15 @@ export default function ContactsAddDialog({
     title = "Adaugă un contact",
 }) {
 
-    const { data: santiereList = [], isLoading: loadingSantiere } = useContacteSelect(companyId);
-    const { data: filialeList = [], isLoading: loadingFiliale } = useFilialeSelect(companyId);
+    // 1. Determine active Company ID (Prop or Draft)
+    const currentCompanyId = companyId || draft.companie_id;
+
+    // 2. Fetch Dependent Lists (Filiale & Santiere) only if company is selected
+    const { data: santiereList = [], isLoading: loadingSantiere } = useContacteSelect(currentCompanyId);
+    const { data: filialeList = [], isLoading: loadingFiliale } = useFilialeSelect(currentCompanyId);
+
+    // 3. Fetch Companies List (Only needed if companyId prop is missing)
+    const { data: companiiList = [], isLoading: loadingCompanii } = useCompaniesSelect();
 
     const [isDragOver, setIsDragOver] = useState(false);
     const inputRef = useRef(null);
@@ -56,14 +66,22 @@ export default function ContactsAddDialog({
         setDraft((prev) => ({ ...prev, [key]: value }));
     };
 
+    // --- LOCK FLAGS ---
+    const isCompanyDisabled = !!draft.id;
+    const isFilialaDisabled = !!filialaId;
+    const isSantierDisabled = !!santierId;
+
     // --- LOGICĂ FILTRARE & AUTO-SELECTARE ---
 
-    // 1. Filter Santiere based on selected Filiala
+    // prop takes priority over draft for both value and filtering
+    const activeFilialaId = filialaId || draft.filiala_id;
+    const activeSantierId = santierId || draft.santier_id;
+
+    // 1. Filter Santiere based on active Filiala (prop or draft)
     const filteredSantiere = useMemo(() => {
-        if (!draft.filiala_id) return santiereList;
-        // Show only santiere that belong to the selected filiala
-        return santiereList.filter(s => String(s.filiala_id) === String(draft.filiala_id));
-    }, [santiereList, draft.filiala_id]);
+        if (!activeFilialaId) return santiereList;
+        return santiereList.filter(s => String(s.filiala_id) === String(activeFilialaId));
+    }, [santiereList, activeFilialaId]);
 
     // 2. Handle Santier Change (Auto-select Filiala)
     const handleSantierChange = (val) => {
@@ -80,7 +98,6 @@ export default function ContactsAddDialog({
 
     // 3. Handle Filiala Change (Reset Santier if mismatch or if Filiala is cleared)
     const handleFilialaChange = (val) => {
-        // Convert "0" to null
         const realVal = val === "0" ? null : val;
         setField("filiala_id", realVal);
 
@@ -91,11 +108,8 @@ export default function ContactsAddDialog({
         }
 
         // CASE B: User switched to a different Filiala
-        // Check if the currently selected Santier belongs to this new Filiala.
         if (draft.santier_id) {
             const currentSantier = santiereList.find(s => String(s.id) === String(draft.santier_id));
-
-            // If the current santier exists but its filiala_id doesn't match the new selection, clear it.
             if (currentSantier && String(currentSantier.filiala_id) !== String(realVal)) {
                 setField("santier_id", null);
             }
@@ -154,8 +168,6 @@ export default function ContactsAddDialog({
         if (inputRef.current) inputRef.current.value = "";
     };
 
-    // -------------------------------
-
     return (
         <Dialog open={open} onOpenChange={setOpen}>
 
@@ -170,6 +182,10 @@ export default function ContactsAddDialog({
             <DialogContent className="sm:max-w-[56rem] max-h-[85vh] overflow-y-scroll">
                 <form onSubmit={async (e) => {
                     e.preventDefault();
+                    if (!currentCompanyId) {
+                        toast.warning("Selectează o companie.");
+                        return;
+                    }
                     if (!draft.prenume?.trim() || !draft.nume?.trim()) {
                         toast.warning("Te rog completează Prenumele și Numele.");
                         return;
@@ -212,6 +228,34 @@ export default function ContactsAddDialog({
                                 <div className="text-lg font-semibold text-foreground">
                                     Informații de bază
                                 </div>
+
+                                {/* --- COMPANY SELECTION (Only if not fixed by props) --- */}
+                                {!companyId && (
+                                    <div className="grid gap-2">
+                                        <Label>Companie <span className="text-destructive">*</span></Label>
+                                        <Select
+                                            disabled={isCompanyDisabled}
+                                            value={draft.companie_id ? String(draft.companie_id) : ""}
+                                            onValueChange={(val) => {
+                                                setField("companie_id", val);
+                                                // Reset dependent fields when company changes
+                                                setField("filiala_id", null);
+                                                setField("santier_id", null);
+                                            }}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder={loadingCompanii ? "Se încarcă..." : "Selectează compania"} />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {companiiList.map((comp) => (
+                                                    <SelectItem key={comp.id} value={String(comp.id)}>
+                                                        {comp.nume_companie}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                )}
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="grid gap-2">
@@ -262,12 +306,16 @@ export default function ContactsAddDialog({
                                     <div className="grid gap-2">
                                         <Label>Filiala</Label>
                                         <Select
-                                            disabled={loadingFiliale}
-                                            value={draft.filiala_id ? String(draft.filiala_id) : "0"}
+                                            disabled={!currentCompanyId || loadingFiliale || isFilialaDisabled}
+                                            value={activeFilialaId ? String(activeFilialaId) : "0"}
                                             onValueChange={handleFilialaChange}
                                         >
                                             <SelectTrigger>
-                                                <SelectValue placeholder={loadingFiliale ? "Se încarcă..." : "Selectează filiala"} />
+                                                <SelectValue placeholder={
+                                                    !currentCompanyId
+                                                        ? "Selectează întâi compania"
+                                                        : (loadingFiliale ? "Se încarcă..." : "Selectează filiala")
+                                                } />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="0">- Fără filială -</SelectItem>
@@ -289,12 +337,16 @@ export default function ContactsAddDialog({
                                     <div className="grid gap-2">
                                         <Label>Șantier</Label>
                                         <Select
-                                            disabled={loadingSantiere}
-                                            value={draft.santier_id ? String(draft.santier_id) : "0"}
+                                            disabled={!currentCompanyId || loadingSantiere || isSantierDisabled}
+                                            value={activeSantierId ? String(activeSantierId) : "0"}
                                             onValueChange={handleSantierChange}
                                         >
                                             <SelectTrigger>
-                                                <SelectValue placeholder={loadingSantiere ? "Se încarcă..." : "Selectează șantier"} />
+                                                <SelectValue placeholder={
+                                                    !currentCompanyId
+                                                        ? "Selectează întâi compania"
+                                                        : (loadingSantiere ? "Se încarcă..." : "Selectează șantier")
+                                                } />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="0">- Fără șantier -</SelectItem>
@@ -421,7 +473,7 @@ export default function ContactsAddDialog({
                                         </Select>
                                     </div>
                                     <div className="grid items-end">
-                                        <div className="flex items-center whitespace-nowrap gap-2  justify-between border p-2 px-4 rounded-md  bg-muted/20">
+                                        <div className="flex items-center whitespace-nowrap gap-2 justify-between border p-2 px-4 rounded-md bg-muted/20">
                                             <Label htmlFor="active-mode" className="cursor-pointer text-sm font-medium">
                                                 Status Contact (Activ)
                                             </Label>

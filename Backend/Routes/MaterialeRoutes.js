@@ -3,6 +3,7 @@ const multer = require("multer");
 const path = require("path");
 const { Jimp } = require("jimp");
 const fs = require("fs/promises");
+const { authenticateToken } = require("../Middleware/authMiddleware");
 
 const router = express.Router();
 const storage = multer.memoryStorage();
@@ -12,7 +13,7 @@ const upload = multer({ storage });
 //
 //
 
-router.post("/api/setMaterialDef", upload.single("poza"), async (req, res) => {
+router.post("/api/setMaterialDef", authenticateToken("materiale", "c"), upload.single("poza"), async (req, res) => {
   const conn = await global.db.getConnection(); // Folosește conexiune separată pentru tranzacție
   try {
     const {
@@ -164,7 +165,7 @@ router.post("/api/setMaterialDef", upload.single("poza"), async (req, res) => {
   }
 });
 
-router.post("/api/setMaterial", upload.single("poza"), async (req, res) => {
+router.post("/api/setMaterial", authenticateToken("materiale", "c"), upload.single("poza"), async (req, res) => {
   const conn = await global.db.getConnection();
   try {
     const {
@@ -476,7 +477,7 @@ router.get('/api/materialeLight', async (req, res) => {
 //
 
 
-router.delete("/api/deleteMaterialDef/:id", async (req, res) => {
+router.delete("/api/deleteMaterialDef/:id", authenticateToken("materiale", "s"), async (req, res) => {
   const { id } = req.params;
 
   const conn = await global.db.getConnection(); // ⛓️ Ia conexiune separată pt tranzacție
@@ -550,7 +551,7 @@ router.delete("/api/deleteMaterialDef/:id", async (req, res) => {
   }
 });
 
-router.delete("/api/material/:id", async (req, res) => {
+router.delete("/api/material/:id", authenticateToken("materiale", "s"), async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -613,6 +614,7 @@ router.delete("/api/material/:id", async (req, res) => {
 
 router.put(
   "/api/editMaterialDef/:id",
+  authenticateToken("materiale", "e"),
   upload.single("poza"),
   async (req, res) => {
     const { id } = req.params;
@@ -729,7 +731,7 @@ router.put(
   }
 );
 
-router.put("/api/editMaterial", upload.single("poza"), async (req, res) => {
+router.put("/api/editMaterial", authenticateToken("materiale", "e"), upload.single("poza"), async (req, res) => {
   const {
     id,
     definitie_id,

@@ -11,6 +11,7 @@ const {
   AddManoperaDef,
   GetManopereDef,
 } = require("../Controllers/ManoperaController");
+const { authenticateToken } = require("../Middleware/authMiddleware");
 
 const router = express.Router();
 
@@ -21,15 +22,15 @@ router.get("/getSpecificManopera/:id", getSpecificManopera);
 router.get("/FetchManopereLight", GetManopereLight);
 
 // post manopera
-router.post("/SetManopera", AddManopera);
-router.post("/SetManoperaDef", AddManoperaDef);
+router.post("/SetManopera", authenticateToken("manopere", "c"), AddManopera);
+router.post("/SetManoperaDef", authenticateToken("manopere", "c"), AddManoperaDef);
 
 //edit manopera
-router.put("/EditManopera", EditManopera);
-router.put("/EditManoperaDef", EditManoperaDef);
+router.put("/EditManopera", authenticateToken("manopere", "e"), EditManopera);
+router.put("/EditManoperaDef", authenticateToken("manopere", "e"), EditManoperaDef);
 
 //delete manopera
-router.delete("/DeleteManopera/:id", DeleteManopera);
-router.delete("/DeleteManoperaDef/:id", DeleteManoperaDef);
+router.delete("/DeleteManopera/:id", authenticateToken("manopere", "s"), DeleteManopera);
+router.delete("/DeleteManoperaDef/:id", authenticateToken("manopere", "s"), DeleteManoperaDef);
 
 module.exports = router;

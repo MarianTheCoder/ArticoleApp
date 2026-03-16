@@ -1,88 +1,113 @@
 // src/components/Rezerve/SidebarRezerve.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useContext } from "react";
 import { useParams } from "react-router-dom";
 import api from "../../../api/axiosAPI";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faEdit, faEllipsisV, faFilePdf, faTrash } from '@fortawesome/free-solid-svg-icons';
+import {
+    faEdit, faEllipsis, faFilePdf, faTrash, faPlus,
+    faChevronDown, faChevronRight, faCube, faFileLines
+} from '@fortawesome/free-solid-svg-icons';
 import { AuthContext } from "../../../context/TokenContext";
-import { useContext } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
-export default function SidebarRezerve({ onPlanUploaded, onSelectPlan, onSelectLucrare3D, selectedPlanSideBar }) {
+// React Query hooks
+import {
+    useLucrari,
+    useAddLucrare,
+    useAddLucrare3D,
+    useEditLucrare,
+    useDeleteLucrare,
+    useUploadPlan,
+    useEditPlan,
+    useDeletePlan
+} from "@/hooks/useRezerve";
+import { toast } from "sonner";
+import { useLoading } from "@/context/LoadingContext";
+import SpinnerElement from "@/MainElements/SpinnerElement";
+import DeleteDialog from "@/components/ui/delete-dialog";
+
+export default function SidebarRezerve({ onSelectPlan, onSelectLucrare3D, selectedPlanSideBar }) {
     const { idSantier } = useParams();
     const { user } = useContext(AuthContext);
+    const { show, hide, loading } = useLoading();
 
 
-    const [unseenCounts, setUnseenCounts] = useState({});
-    const [lucrari, setLucrari] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
+    // --- React Query ---
+    const { data: lucrariData, isLoading: loadingLucrari, isFetching: fetchingLucrari, error: lucrariError } = useLucrari(idSantier, user.id);
+    const addLucrare = useAddLucrare();
+    const addLucrare3D = useAddLucrare3D();
+    const editLucrare = useEditLucrare();
+    const deleteLucrare = useDeleteLucrare();
+    const uploadPlanAsync = useUploadPlan();
+    const editPlan = useEditPlan();
+    const deletePlan = useDeletePlan();
 
+    // console.log(lucrariData)
+
+
+    // Separate 3D and 2D lucrari
+    const lucrari = useMemo(() => {
+        if (!lucrariData?.lucrari) return [];
+        const only3D = lucrariData.lucrari.filter(l => l.is_3d).sort((a, b) => a.name.localeCompare(b.name));
+        const only2D = lucrariData.lucrari.filter(l => !l.is_3d).sort((a, b) => a.name.localeCompare(b.name));
+        return [...only3D, ...only2D];
+    }, [lucrariData]);
+
+    // UI state
     const [openIds, setOpenIds] = useState(new Set());
-    const [plansByLucrare, setPlansByLucrare] = useState({});
-    const [loadingPlans, setLoadingPlans] = useState({});
-
     const [selectedLucrareId, setSelectedLucrareId] = useState(null);
+
+    // Dialog states
+    const [openAddLucrare, setOpenAddLucrare] = useState(false);
+    const [openAddLucrare3D, setOpenAddLucrare3D] = useState(false);
+    const [openEditLucrare, setOpenEditLucrare] = useState(false);
+    const [openDeleteLucrare, setOpenDeleteLucrare] = useState(false);
+    const [openUploadPlan, setOpenUploadPlan] = useState(false);
+    const [openEditPlan, setOpenEditPlan] = useState(false);
+    const [openDeletePlan, setOpenDeletePlan] = useState(false);
+
+    // Form values
+    const [newLucrare, setNewLucrare] = useState({ name: "", description: "" });
+    const [newLucrare3D, setNewLucrare3D] = useState({ name: "", description: "", file: null });
+    const [editingLucrare, setEditingLucrare] = useState({ id: null, name: "", description: "" }); // { id, name, description }
+    const [deletingLucrareId, setDeletingLucrareId] = useState(null);
+    const [uploadPlan, setUploadPlan] = useState({ title: "", scale: "1:50", dpi: 300, file: null });
+    const [editingPlan, setEditingPlan] = useState(null); // { id, lucrareId, title }
+    const [deletingPlan, setDeletingPlan] = useState(null); // { id, lucrareId }
+
+    // Selected lucrare object
     const selectedLucrare = useMemo(
         () => lucrari.find(l => l.id === selectedLucrareId) || null,
         [lucrari, selectedLucrareId]
     );
 
-    // toggles
-    const [showAdd, setShowAdd] = useState(false);
-    const [showUpload, setShowUpload] = useState(false);
-    const [showAdd3D, setShowAdd3D] = useState(false);
-
-    // add/edit lucrare (2D)
-    const [newName, setNewName] = useState("");
-    const [newDesc, setNewDesc] = useState("");
-
-    const [editingOpen, setEditingOpen] = useState(null);
-    const [editingId, setEditingId] = useState(null);
-    const [editName, setEditName] = useState("");
-    const [editDesc, setEditDesc] = useState("");
-
-    const [editingPlanOpen, setEditingPlanOpen] = useState(null);
-    const [editingPlanId, setEditingPlanId] = useState(null);
-    const [editingPlanName, setEditingPlanName] = useState("");
-
-    // upload plan (PDF)
-    const [title, setTitle] = useState("");
-    const [scale, setScale] = useState("1:50");
-    const [dpi, setDpi] = useState(300);
-    const [file, setFile] = useState(null);
-    const [uploading, setUploading] = useState(false);
-
-    // add lucrare 3D
-    const [new3DName, setNew3DName] = useState("");
-    const [new3DDesc, setNew3DDesc] = useState("");
-    const [file3D, setFile3D] = useState(null);
-    const [uploading3D, setUploading3D] = useState(false);
-
-    // initial load lucrari
-    useEffect(() => {
-        if (!idSantier) return;
-        (async () => {
-            try {
-                setLoading(true);
-                setError("");
-                const { data } = await api.get("/Rezerve/lucrari", { params: { santier_id: idSantier } });
-                const only3D = data?.lucrari?.filter(l => l.is_3d) || [];
-                const only2D = data?.lucrari?.filter(l => !l.is_3d) || [];
-                setLucrari(prev => [...only3D.sort((a, b) => a.name.localeCompare(b.name)), ...only2D.sort((a, b) => a.name.localeCompare(b.name))]);
-            } catch (e) {
-                setError(e?.response?.data?.error || "Failed to load lucrări");
-            } finally {
-                setLoading(false);
-            }
-        })();
-    }, [idSantier]);
-
-    // helpers
+    // Handlers
     const toggleOpen = async (lucrareId) => {
         const l = lucrari.find(x => x.id === lucrareId);
         if (!l) return;
 
-        // If lucrare is 3D → do not drop down; just select and notify parent
         if (l.is_3d) {
             setSelectedLucrareId(lucrareId);
             setOpenIds(prev => {
@@ -94,165 +119,29 @@ export default function SidebarRezerve({ onPlanUploaded, onSelectPlan, onSelectL
             return;
         }
 
-        // Normal 2D lucrare → expand/collapse and lazy-load plans
         const next = new Set(openIds);
         if (next.has(lucrareId)) {
             next.delete(lucrareId);
             setOpenIds(next);
-            setSelectedLucrareId(lucrareId);
+            setSelectedLucrareId(null);
             return;
         }
         next.add(lucrareId);
         setOpenIds(next);
         setSelectedLucrareId(lucrareId);
-        if (!plansByLucrare[lucrareId]) {
-            try {
-                setLoadingPlans(prev => ({ ...prev, [lucrareId]: true }));
-
-                const { data } = await api.get("/Rezerve/plans", {
-                    params: { lucrare_id: lucrareId }
-                });
-
-                const plans = Array.isArray(data) ? data : (data?.plans ?? []);
-                console.log("Fetched plans:", plans);
-                setPlansByLucrare(prev => ({ ...prev, [lucrareId]: plans }));
-
-                // fetch unseen counts only if we have a user and at least one plan
-                if (user?.id && plans.length > 0) {
-                    const planIds = plans.map(p => p.id);
-
-                    // send as CSV (backend should split), or send as array if your API supports arrays
-                    const { data: seen } = await api.get("/Rezerve/pins/unseenPinsCount", {
-                        params: { user_id: user.id, plan_ids: planIds.join(",") }
-                    });
-
-                    // expect { counts: { [planId]: number } }
-                    const counts = seen?.counts || {};
-                    console.log("Fetched unseen pin counts:", counts);
-                    setUnseenCounts(prev => ({ ...prev, ...counts }));
-                }
-            } catch (e) {
-                console.log(e);
-                setError(e?.response?.data?.error || "Failed to load plans");
-            } finally {
-                setLoadingPlans(prev => ({ ...prev, [lucrareId]: false }));
-            }
-        }
     };
 
-    // CRUD lucrari (2D)
-    async function addLucrare() {
-        if (!newName.trim()) return;
-        try {
-            const { data } = await api.post("/Rezerve/lucrari", {
-                santier_id: idSantier,
-                name: newName.trim(),
-                description: newDesc?.trim() || null,
-            });
-            const created = data?.lucrare || data;
-            setLucrari(prev => [created, ...prev]);
-            setNewName(""); setNewDesc("");
-            setShowAdd(false);
-        } catch (e) {
-            setError(e?.response?.data?.error || "Failed to add lucrare");
-        }
-    }
-
-    async function saveEdit(id) {
-        try {
-            await api.put(`/Rezerve/lucrari/${id}`, {
-                name: editName.trim(),
-                description: editDesc.trim() || null,
-            });
-            setLucrari(prev => prev.map(l => (l.id === id ? { ...l, name: editName.trim(), description: editDesc.trim() || null } : l)));
-            setEditingId(null);
-        } catch (e) {
-            setError(e?.response?.data?.error || "Failed to save lucrare");
-        }
-    }
-
-    async function saveEditPlan(id, lucrareId) {
-        try {
-            await api.put(`/Rezerve/plans/${id}`, {
-                name: editingPlanName.trim(),
-            });
-            setPlansByLucrare(prev => ({
-                ...prev,
-                [lucrareId]: (prev[lucrareId] || []).map(p => (p.id === id ? { ...p, title: editingPlanName.trim() } : p)),
-            }));
-            setEditingPlanId(null);
-        } catch (e) {
-            setError(e?.response?.data?.error || "Failed to save lucrare");
-        }
-    }
-
-    async function deleteLucrare(id) {
-        if (!confirm("Ștergi lucrarea? Se vor șterge și planurile ei.")) return;
-        try {
-            await api.delete(`/Rezerve/lucrari/${id}`);
-            setLucrari(prev => prev.filter(l => l.id !== id));
-            const nextOpen = new Set(openIds); nextOpen.delete(id); setOpenIds(nextOpen);
-            setPlansByLucrare(prev => { const p = { ...prev }; delete p[id]; return p; });
-            if (selectedLucrareId === id) setSelectedLucrareId(null);
-        } catch (e) {
-            setError(e?.response?.data?.error || "Failed to delete lucrare");
-        }
-    }
-
-    // Upload plan (PDF)
-    async function uploadPlan(e) {
-        e.preventDefault();
-        if (!selectedLucrareId || !file) return;
-        try {
-            setUploading(true);
-            const fd = new FormData();
-            fd.append("title", title || file.name.replace(/\.pdf$/i, "") || "Plan");
-            fd.append("scale_label", scale || "1:50");
-            fd.append("dpi", String(dpi || 300));
-            fd.append("planPdf", file);
-            const { data } = await api.post(`/Rezerve/plans/${selectedLucrareId}/upload`, fd, {
-                headers: { "Content-Type": "multipart/form-data" },
-            });
-
-            setTitle(""); setScale("1:50"); setDpi(300); setFile(null);
-            setShowUpload(false);
-
-            const plan = data?.plan || data;
-            setPlansByLucrare(prev => ({
-                ...prev,
-                [selectedLucrareId]: [plan, ...(prev[selectedLucrareId] || [])],
-            }));
-            onPlanUploaded?.(plan);
-        } catch (e) {
-            setError(e?.response?.data?.error || "Upload failed");
-        } finally {
-            setUploading(false);
-        }
-    }
-
-    async function deletePlan(planId, lucrareId) {
-        if (!confirm("Ștergi planul (PDF + imagini)?")) return;
-        try {
-            await api.delete(`/Rezerve/plans/${planId}`);
-            setPlansByLucrare(prev => ({
-                ...prev,
-                [lucrareId]: (prev[lucrareId] || []).filter(p => p.id !== planId),
-            }));
-        } catch (e) {
-            setError(e?.response?.data?.error || "Failed to delete plan");
-        }
-    }
-
-    function toApiUrl(pathLike) {
+    // Helper for API URLs
+    const toApiUrl = (pathLike) => {
         if (!pathLike) return "";
         try {
             return new URL(pathLike, api.defaults.baseURL).href;
         } catch {
             return pathLike;
         }
-    }
+    };
 
-    async function downloadPdf(url, filename = "plan.pdf") {
+    const downloadPdf = async (url, filename = "plan.pdf") => {
         try {
             const absolute = toApiUrl(url);
             const res = await fetch(absolute, { credentials: "include" });
@@ -266,398 +155,618 @@ export default function SidebarRezerve({ onPlanUploaded, onSelectPlan, onSelectL
             link.remove();
             URL.revokeObjectURL(link.href);
         } catch (e) {
-            console.error(e);
-            setError("Nu am putut descărca PDF-ul.");
+            toast.error("Nu am putut descărca PDF-ul.");
         }
-    }
+    };
 
-    // Add lucrare 3D
-    async function addLucrare3D(e) {
-        e?.preventDefault?.();
-        if (!new3DName.trim() || !file3D) return;
+    // Submit handlers for dialogs
+    const handleAddLucrare = async (e) => {
+        e.preventDefault();
+        if (!newLucrare.name.trim()) {
+            toast.warning("Numele lucrării este obligatoriu.");
+            return;
+        }
         try {
-            setUploading3D(true);
-            const fd = new FormData();
-            fd.append("santier_id", idSantier);
-            fd.append("name", new3DName.trim());
-            if (new3DDesc?.trim()) fd.append("description", new3DDesc.trim());
-            fd.append("modelFile", file3D);
-            const { data } = await api.post("/Rezerve/lucrari3d", fd, {
-                headers: { "Content-Type": "multipart/form-data" },
+            show();
+            await addLucrare.mutateAsync({
+                santierId: idSantier,
+                name: newLucrare.name.trim(),
+                description: newLucrare.description.trim()
             });
-            const created = data?.lucrare || data;
-            setLucrari(prev => [created, ...prev]);
-            setNew3DName(""); setNew3DDesc(""); setFile3D(null);
-            setShowAdd3D(false);
-        } catch (e) {
-            setError(e?.response?.data?.error || "Failed to add 3D lucrare");
-        } finally {
-            setUploading3D(false);
+            setNewLucrare({ name: "", description: "" });
+            setOpenAddLucrare(false);
+        } catch (err) {
+            const msg = err?.response?.data?.message || "A apărut o eroare la adăugarea lucrării.";
+            toast.error(msg);
         }
-    }
+        finally {
+            hide();
+        }
+    };
 
-    useEffect(() => {
-        const onDocClick = (ev) => {
-            const el = ev.target;
-            if (el instanceof Element && el.closest('.editing-menu')) {
-                setEditingPlanId(null);
-                setEditingPlanOpen(null);
-                return;
-            }
-            if (el instanceof Element && el.closest('.editing-plan')) {
-                setEditingId(null);
-                setEditingOpen(null);
-                return;
-            }
-            setEditingId(null);
-            setEditingOpen(null);
-            setEditingPlanId(null);
-            setEditingPlanOpen(null);
-        };
-        document.addEventListener('click', onDocClick);
-        return () => {
-            document.removeEventListener('click', onDocClick);
-        };
-    }, []);
+    const handleAddLucrare3D = async (e) => {
+        e.preventDefault();
+        if (!newLucrare3D.name.trim() || !newLucrare3D.file) {
+            toast.warning("Numele și fișierul modelului 3D sunt obligatorii.");
+            return;
+        }
+        const formData = new FormData();
+        formData.append("santier_id", idSantier);
+        formData.append("name", newLucrare3D.name.trim());
+        if (newLucrare3D.description.trim()) formData.append("description", newLucrare3D.description.trim());
+        formData.append("modelFile", newLucrare3D.file);
+        try {
+            show();
+            await addLucrare3D.mutateAsync(formData);
+            setNewLucrare3D({ name: "", description: "", file: null });
+            setOpenAddLucrare3D(false);
+        } catch (err) {
+            const msg = err?.response?.data?.message || "A apărut o eroare la adăugarea modelului 3D.";
+            toast.error(msg);
+        }
+        finally {
+            hide();
+        }
+    };
 
+    const handleEditLucrare = async (e) => {
+        e.preventDefault();
+        if (!editingLucrare?.name.trim()) {
+            toast.warning("Numele lucrării este obligatoriu.");
+            return;
+        }
+        try {
+            show();
+            await editLucrare.mutateAsync({
+                id: editingLucrare.id,
+                name: editingLucrare.name,
+                description: editingLucrare.description
+            });
+            setEditingLucrare(null);
+            setOpenEditLucrare(false);
+        } catch (err) {
+            const msg = err?.response?.data?.message || "A apărut o eroare la editarea lucrării.";
+            toast.error(msg);
+        }
+        finally {
+            hide();
+        }
+    };
+
+    const handleDeleteLucrare = async () => {
+        if (!deletingLucrareId) {
+            toast.warning("Lucrarea selectată nu este validă.");
+            return;
+        }
+        try {
+            show();
+            await deleteLucrare.mutateAsync(deletingLucrareId);
+            setDeletingLucrareId(null);
+            setOpenDeleteLucrare(false);
+        } catch (err) {
+            const msg = err?.response?.data?.message || "A apărut o eroare la ștergerea lucrării.";
+            toast.error(msg);
+        }
+        finally {
+            hide();
+        }
+    };
+
+    const handleUploadPlan = async (e) => {
+        e.preventDefault();
+        if (!selectedLucrareId || !uploadPlan.file || !uploadPlan.title.trim()) {
+            toast.warning("Selectați o lucrare, un fișier PDF și introduceți un titlu pentru încărcare.");
+            return;
+        }
+        setOpenUploadPlan(false);
+        const formData = new FormData();
+        formData.append("title", uploadPlan.title || uploadPlan.file.name.replace(/\.pdf$/i, "") || "Plan");
+        formData.append("scale_label", uploadPlan.scale);
+        formData.append("dpi", String(uploadPlan.dpi));
+        formData.append("planPdf", uploadPlan.file);
+        try {
+            show();
+            await uploadPlanAsync.mutateAsync({
+                lucrareId: selectedLucrareId,
+                formData
+            });
+
+            setUploadPlan({ title: "", scale: "1:50", dpi: 300, file: null });
+            setOpenUploadPlan(false);
+        } catch (err) {
+            console.log("Upload plan error:", err);
+            const msg = err?.response?.data?.message || "A apărut o eroare la încărcarea planului.";
+            toast.error(msg);
+        }
+        finally {
+            hide();
+        }
+    };
+
+    const handleEditPlan = async (e) => {
+        e.preventDefault();
+        if (!editingPlan?.title.trim()) {
+            toast.warning("Titlul planului este obligatoriu.");
+            return;
+        }
+        try {
+            show();
+            await editPlan.mutateAsync({
+                id: editingPlan.id,
+                name: editingPlan.title
+            });
+            setEditingPlan(null);
+            setOpenEditPlan(false);
+        } catch (err) {
+            const msg = err?.response?.data?.message || "A apărut o eroare la editarea planului.";
+            toast.error(msg);
+        }
+        finally {
+            hide();
+        }
+    };
+
+    const handleDeletePlan = async () => {
+        if (!deletingPlan) {
+            toast.warning("Planul selectat nu este valid.");
+            return;
+        }
+        try {
+            await deletePlan.mutateAsync(deletingPlan.id);;
+            setDeletingPlan(null);
+            setOpenDeletePlan(false);
+            onSelectPlan(null); // Clear plan view if the deleted plan was selected
+        } catch (err) {
+            const msg = err?.response?.data?.message || "A apărut o eroare la ștergerea planului.";
+            toast.error(msg);
+        }
+    };
+
+    // Determine if upload is possible
     const canUploadPdf = !!selectedLucrare && !selectedLucrare.is_3d;
 
     return (
-        <div className="h-full w-full flex flex-col text-black gap-2 p-3">
-            {/* Header + add buttons */}
-            <div className="flex items-center justify-between gap-2">
-                <h3 className="text-lg font-semibold">Lucrări</h3>
-                <div className="flex items-center gap-2">
-                    <button
-                        className="rounded-full bg-blue-600 text-white px-3 py-1 text-sm"
-                        onClick={() => setShowAdd(v => !v)}
-                    >
-                        {showAdd ? "– Închide" : "Adaugă lucrare"}
-                    </button>
-                    <button
-                        className="rounded-full bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 text-sm"
-                        onClick={() => setShowAdd3D(v => !v)}
-                    >
-                        {showAdd3D ? "– Închide 3D" : "Adaugă 3D"}
-                    </button>
-                </div>
-            </div>
+        <div className="h-full w-full flex border rounded-lg flex-col bg-card">
+            {/* Header */}
+            <div className="shrink-0 p-4 border-b border-border">
+                <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-xl font-bold text-foreground">Lucrări</h3>
+                    <div className="flex items-center gap-2">
+                        {/* Add 2D Dialog Trigger */}
+                        <Dialog open={openAddLucrare} onOpenChange={setOpenAddLucrare}>
+                            <DialogTrigger asChild>
+                                <Button size="sm" className="gap-2 items-center">
+                                    <FontAwesomeIcon icon={faPlus} />
+                                    Lucrare 2D
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <form onSubmit={handleAddLucrare}>
+                                    <DialogHeader>
+                                        <DialogTitle>Adaugă lucrare 2D</DialogTitle>
+                                        <DialogDescription>
+                                            Introduceți numele lucrării și o descriere opțională.
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="grid gap-4 py-4">
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="name">Nume lucrare <span className="text-high">*</span></Label>
+                                            <Input
+                                                id="name"
+                                                value={newLucrare.name}
+                                                onChange={e => setNewLucrare(prev => ({ ...prev, name: e.target.value }))}
+                                                placeholder="Ex: Plan parter"
+                                            />
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="desc">Descriere</Label>
+                                            <Textarea
+                                                id="desc"
+                                                value={newLucrare.description}
+                                                onChange={e => setNewLucrare(prev => ({ ...prev, description: e.target.value }))}
+                                                rows={3}
+                                            />
+                                        </div>
+                                    </div>
+                                    <DialogFooter>
+                                        <DialogClose asChild>
+                                            <Button type="button" variant="outline">Anulează</Button>
+                                        </DialogClose>
+                                        <Button type="submit" disabled={addLucrare.isPending}>
+                                            {addLucrare.isPending ? "Se salvează..." : "Salvează"}
+                                        </Button>
+                                    </DialogFooter>
+                                </form>
+                            </DialogContent>
+                        </Dialog>
 
-            {/* Add lucrare (2D) */}
-            <div className={`overflow-hidden transition-all duration-200 ${showAdd ? "max-h-96 opacity-100" : "max-h-0 opacity-0"}`}>
-                <div className="mt-2 rounded-xl border border-black p-3 bg-white shadow-sm">
-                    <div className="flex flex-col gap-2">
-                        <input className="w-full rounded-lg border px-3 py-2" placeholder="Nume lucrare"
-                            value={newName} onChange={e => setNewName(e.target.value)} />
-                        <textarea className="w-full rounded-lg resize-none border px-3 py-2" placeholder="Descriere (opțional)" rows={2}
-                            value={newDesc} onChange={e => setNewDesc(e.target.value)} />
-                        <div className="flex gap-2">
-                            <button onClick={addLucrare} className="rounded-full bg-blue-600 text-white px-4 py-2 disabled:opacity-50"
-                                disabled={!newName.trim() || !idSantier}>Salvează</button>
-                            <button className="rounded-full bg-red-500 hover:bg-red-600 text-white px-4 py-2" onClick={() => setShowAdd(false)}>Anulează</button>
-                        </div>
+                        {/* Add 3D Dialog Trigger */}
+                        <Dialog open={openAddLucrare3D} onOpenChange={setOpenAddLucrare3D}>
+                            <DialogTrigger asChild>
+                                <Button size="sm" className="bg-purple-500 hover:bg-purple-600 gap-2">
+                                    <FontAwesomeIcon icon={faPlus} />
+                                    3D
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <form onSubmit={handleAddLucrare3D}>
+                                    <DialogHeader>
+                                        <DialogTitle>Adaugă lucrare 3D</DialogTitle>
+                                        <DialogDescription>
+                                            Încărcați un model 3D (GLB).
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="grid gap-4 py-4">
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="name3d">Nume lucrare <span className="text-high">*</span></Label>
+                                            <Input
+                                                id="name3d"
+                                                value={newLucrare3D.name}
+                                                onChange={e => setNewLucrare3D({ ...newLucrare3D, name: e.target.value })}
+                                                placeholder="Ex: Model clădire"
+                                            />
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="desc3d">Descriere</Label>
+                                            <Textarea
+                                                id="desc3d"
+                                                value={newLucrare3D.description}
+                                                onChange={e => setNewLucrare3D({ ...newLucrare3D, description: e.target.value })}
+                                                rows={2}
+                                            />
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="file3d">Fișier model <span className="text-high">*</span></Label>
+                                            <Input
+                                                id="file3d"
+                                                type="file"
+                                                accept=".glb"
+                                                className="cursor-pointer"
+                                                onChange={e => setNewLucrare3D({ ...newLucrare3D, file: e.target.files?.[0] || null })}
+                                            />
+                                            <p className="text-xs text-muted-foreground">Format recomandat: GLB</p>
+                                        </div>
+                                    </div>
+                                    <DialogFooter>
+                                        <DialogClose asChild>
+                                            <Button type="button" variant="outline">Anulează</Button>
+                                        </DialogClose>
+                                        <Button type="submit" className="bg-purple-500 hover:bg-purple-600" disabled={addLucrare3D.isPending}>
+                                            {addLucrare3D.isPending ? "Se încarcă..." : "Salvează"}
+                                        </Button>
+                                    </DialogFooter>
+                                </form>
+                            </DialogContent>
+                        </Dialog>
                     </div>
                 </div>
             </div>
 
-            {/* Add lucrare 3D */}
-            <div className={`overflow-hidden transition-all duration-200 ${showAdd3D ? "max-h-[28rem] opacity-100" : "max-h-0 opacity-0"}`}>
-                <div className="mt-2 rounded-xl border border-purple-700 p-3 bg-white shadow-sm">
-                    <form className="flex flex-col gap-2" onSubmit={addLucrare3D}>
-                        <div className="font-semibold text-purple-700">Lucrare 3D</div>
-                        <input
-                            className="w-full rounded-lg border px-3 py-2"
-                            placeholder="Nume lucrare 3D"
-                            value={new3DName}
-                            onChange={e => setNew3DName(e.target.value)}
-                        />
-                        <textarea
-                            className="w-full rounded-lg resize-none border px-3 py-2"
-                            placeholder="Descriere (opțional)"
-                            rows={2}
-                            value={new3DDesc}
-                            onChange={e => setNew3DDesc(e.target.value)}
-                        />
-                        <input
-                            type="file"
-                            accept=".glb,.gltf,.bin,.ifc,.fbx,model/gltf-binary,model/gltf+json,application/octet-stream"
-                            onChange={e => setFile3D(e.target.files?.[0] || null)}
-                            className="rounded-lg border px-3 py-2"
-                        />
-                        <div className="flex gap-2">
-                            <button
-                                type="submit"
-                                className="rounded-full bg-purple-600 text-white px-4 py-2 hover:bg-purple-700 disabled:opacity-50"
-                                disabled={!new3DName.trim() || !file3D || uploading3D || !idSantier}
-                            >
-                                {uploading3D ? "Se încarcă…" : "Salvează 3D"}
-                            </button>
-                            <button
-                                type="button"
-                                className="rounded-full bg-red-500 hover:bg-red-600 text-white px-4 py-2"
-                                onClick={() => { setShowAdd3D(false); }}
-                            >
-                                Anulează
-                            </button>
-                        </div>
-                        <div className="text-[11px] text-gray-500">
-                            Formate acceptate: <span className="font-bold text-black">GLB</span>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            {/* List */}
-            <div className="flex-1 overflow-auto rounded-xl border border-black bg-white">
-                {loading ? (
-                    <div className="p-4 text-sm text-gray-500">Loading…</div>
+            {/* List of lucrari */}
+            <div className="flex-1 overflow-y-auto">
+                {loadingLucrari ? (
+                    <div className="p-4 text-sm text-muted-foreground">Se încarcă…</div>
                 ) : lucrari.length === 0 ? (
-                    <div className="p-4 text-sm text-gray-500">Nicio lucrare încă.</div>
+                    <div className="p-4 text-sm text-muted-foreground">Nicio lucrare încă.</div>
                 ) : (
-                    <ul className="divide-y divide-black">
+                    <div className="">
                         {lucrari.map(l => {
                             const isOpen = openIds.has(l.id);
                             const isSelected = selectedLucrareId === l.id;
-                            const plans = plansByLucrare[l.id] || [];
-
-                            const handleRowClick = () => toggleOpen(l.id);
+                            const plans = l.plans || [];
 
                             return (
-                                <li key={l.id} className="p-0">
+                                <div key={l.id}
+                                    className="border-b border-muted-foreground">
                                     {/* Row */}
                                     <div
-                                        className={`p-3 flex items-start justify-between gap-2 ${isSelected ? "bg-blue-50" : "bg-white"}`}
+                                        className={`p-4 flex items-center gap-3  cursor-pointer  transition-colors border-l-[6px] ${isSelected ? " border-l-primary" : "hover:bg-accent/50 border-l-muted-foreground"} ${l.is_3d ? "bg-purple-50" : ""}`}
+                                        onClick={() => toggleOpen(l.id)}
+
                                     >
-                                        <button className="flex items-center gap-2 flex-1 text-left" onClick={handleRowClick}>
-                                            {/* Caret only for non-3D */}
-                                            {!l.is_3d && <span className="text-lg">{isOpen ? "▾" : "▸"}</span>}
-                                            <div>
-                                                <div className="font-medium">
-                                                    {l.name}
-                                                    {l.is_3d ? (
-                                                        <span className="ml-2 text-[11px] rounded bg-purple-100 text-purple-700 px-2 py-0.5">
-                                                            3D
-                                                        </span>
-                                                    ) : null}
+                                        <button
+                                            className="flex items-center  h-full gap-3 flex-1 text-left min-w-0"
+                                        >
+                                            {!l.is_3d && (
+                                                <FontAwesomeIcon icon={isOpen ? faChevronDown : faChevronRight} className="text-muted-foreground shrink-0 text-base" />
+                                            )}
+                                            <div className="min-w-0 flex-1">
+                                                <div className="font-semibold text-foreground text-base flex items-center gap-2">
+                                                    <span className="truncate first-letter:uppercase">{l.name}</span>
+                                                    {l.is_3d ? (<Badge variant="secondary" className="shrink-0 gap-1"><FontAwesomeIcon icon={faCube} />3D</Badge>) : null}
                                                 </div>
-                                                {l.description ? (
-                                                    <div className="text-xs text-gray-500 mt-0.5">{l.description}</div>
-                                                ) : null}
+                                                {l.description && <div className="text-sm text-muted-foreground truncate mt-1">{l.description}</div>}
                                             </div>
                                         </button>
 
-                                        <div className="relative editing-menu">
-                                            <button
-                                                className="p-2 hover:scale-125 transition-all duration-200 text-black"
-                                                onClick={(e) => {
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent">
+                                                    <FontAwesomeIcon icon={faEllipsis} />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-48">
+                                                <DropdownMenuItem onClick={(e) => {
                                                     e.stopPropagation();
-                                                    if (editingPlanOpen != null || editingPlanId != null) return;
-                                                    setEditingOpen(l.id);
-                                                }}
-                                            >
-                                                <FontAwesomeIcon icon={faEllipsisV} />
-                                            </button>
+                                                    setEditingLucrare({ id: l.id, name: l.name, description: l.description || "" });
+                                                    setOpenEditLucrare(true);
+                                                }} className="gap-3 items-center cursor-pointer">
+                                                    <FontAwesomeIcon icon={faEdit} className="text-low text-abse" />
+                                                    <span className="text-low">Editează</span>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setDeletingLucrareId(l.id);
+                                                    setOpenDeleteLucrare(true);
+                                                }} className="gap-3 items-center text-destructive focus:text-destructive cursor-pointer">
+                                                    <FontAwesomeIcon icon={faTrash} className="w-4" />
+                                                    <span>Șterge</span>
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
 
-                                            {editingOpen == l.id && (
-                                                <div className="absolute editing-menu right-0 flex flex-col bg-white border rounded shadow-lg z-10">
-                                                    <button
-                                                        className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100"
-                                                        onClick={() => {
-                                                            setEditingOpen(null);
-                                                            setEditDesc(l.description || "");
-                                                            setEditName(l.name);
-                                                            setEditingId(l.id);
-                                                        }}
-                                                    >
-                                                        <FontAwesomeIcon icon={faEdit} className="text-green-600" /> Edit
-                                                    </button>
-                                                    <button
-                                                        className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100"
-                                                        onClick={() => { setEditingOpen(null); deleteLucrare(l.id); }}
-                                                    >
-                                                        <FontAwesomeIcon icon={faTrash} className="text-red-600" /> Delete
-                                                    </button>
+                                    {/* Plans for 2D */}
+                                    {!l.is_3d && isOpen && (
+                                        <div className="bg-muted/20">
+                                            {plans.length === 0 ? (
+                                                <div className="p-3 text-xs text-muted-foreground">Niciun plan încă.</div>
+                                            ) : (
+                                                <div className="">
+                                                    {plans.map((p, idx) => {
+                                                        const count = p.unseen || 0;
+                                                        return (
+                                                            <div
+                                                                key={p.id}
+                                                            >
+                                                                <div
+                                                                    onClick={() => {
+                                                                        setSelectedLucrareId(l.id);
+                                                                        onSelectPlan?.(p);
+                                                                    }}
+                                                                    className={`flex items-center justify-between gap-3 px-4 py-3 bg-card cursor-pointer transition-all  border-l-2
+                                                                        ${selectedPlanSideBar?.id == p.id
+                                                                            ? 'bg-primary/20  border-primary shadow-sm'
+                                                                            : 'hover:bg-accent/50 border-muted-foreground'
+                                                                        }`}
+                                                                >
+                                                                    <div className="flex-1  min-w-0">
+                                                                        <div className="text-sm font-semibold text-foreground flex items-center gap-2">
+                                                                            <span className="truncate first-letter:uppercase">{p.title}</span>
+                                                                        </div>
+                                                                        <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2">
+                                                                            <span>{p.scale_label}</span>
+                                                                            <span>•</span>
+                                                                            <span>{p.dpi} DPI</span>
+                                                                            <span>•</span>
+                                                                            <span>{p.width_px}×{p.height_px}px</span>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div className="flex items-center gap-2 shrink-0">
+                                                                        {count > 0 && (
+                                                                            <Badge variant="destructive" className="font-bold pointer-events-none">
+                                                                                {count}
+                                                                            </Badge>
+                                                                        )}
+                                                                        <DropdownMenu>
+                                                                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent">
+                                                                                    <FontAwesomeIcon icon={faEllipsis} />
+                                                                                </Button>
+                                                                            </DropdownMenuTrigger>
+                                                                            <DropdownMenuContent align="end" className="w-48">
+                                                                                <DropdownMenuItem onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    downloadPdf(p.pdf_path, `${p.title}.pdf`);
+                                                                                }} className="gap-3 cursor-pointer">
+                                                                                    <FontAwesomeIcon icon={faFilePdf} className="text-primary w-4" />
+                                                                                    <span className="text-primary">Descarcă PDF</span>
+                                                                                </DropdownMenuItem>
+                                                                                <DropdownMenuItem onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    setEditingPlan({ id: p.id, lucrareId: l.id, title: p.title });
+                                                                                    setOpenEditPlan(true);
+                                                                                }} className="gap-3 cursor-pointer">
+                                                                                    <FontAwesomeIcon icon={faEdit} className="text-low w-4" />
+                                                                                    <span className="text-low">Editează</span>
+                                                                                </DropdownMenuItem>
+                                                                                <DropdownMenuItem onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    setDeletingPlan({ id: p.id, lucrareId: l.id });
+                                                                                    setOpenDeletePlan(true);
+                                                                                }} className="gap-3 text-destructive focus:text-destructive cursor-pointer">
+                                                                                    <FontAwesomeIcon icon={faTrash} className="w-4" />
+                                                                                    <span>Șterge</span>
+                                                                                </DropdownMenuItem>
+                                                                            </DropdownMenuContent>
+                                                                        </DropdownMenu>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
                                             )}
                                         </div>
-                                    </div>
-
-                                    {/* Plans only for non-3D */}
-                                    {!l.is_3d && (
-                                        <div className={` transition-all ${isOpen ? "max-h-[1000px]" : "max-h-0 hidden"}`}>
-                                            <div className=" pb-3">
-                                                {loadingPlans[l.id] ? (
-                                                    <div className="p-3 text-xs text-gray-500"> Se încarcă...</div>
-                                                ) : plans.length === 0 ? (
-                                                    <div className="p-3 text-xs text-gray-500">Niciun plan încă.</div>
-                                                ) : (
-                                                    <ul className="mt-1 space-y-2">
-                                                        {plans.map(p => {
-                                                            const count = unseenCounts[p.id] || 0;
-
-                                                            return (
-                                                                <div
-                                                                    key={p.id}
-                                                                    className="flex flex-col"
-                                                                >
-                                                                    <div
-                                                                        onClick={() => {
-                                                                            setSelectedLucrareId(l.id);
-                                                                            onSelectPlan?.(p);
-                                                                            setUnseenCounts(prev => ({ ...prev, [p.id]: 0 }));
-                                                                        }}
-                                                                        className={`flex items-center justify-between px-4 py-1 rounded hover:bg-gray-200 hover:cursor-pointer ${selectedPlanSideBar?.id === p.id ? 'bg-gray-200' : ''
-                                                                            }`}
-                                                                    >
-                                                                        <div
-                                                                            className="text-left"
-                                                                        >
-                                                                            <div className="text-sm font-medium">{p.title}</div>
-                                                                            <div className="text-xs text-gray-500">
-                                                                                {p.scale_label} • {p.dpi} DPI
-                                                                            </div>
-                                                                            <div className="text-xs text-gray-500">
-                                                                                {p.width_px} x {p.height_px} px
-                                                                            </div>
-
-                                                                        </div>
-
-                                                                        <div className="flex relative items-center editing-plan gap-2">
-                                                                            {count > 0 && (
-                                                                                <span className="inline-flex items-center gap-1 text-base rounded-full text-red-700 px-2 py-[2px] font-semibold">
-                                                                                    {count} <span className="font-bold">!</span>
-                                                                                </span>
-                                                                            )}
-                                                                            <button
-                                                                                className="p-2 hover:scale-125 transition-all duration-200 text-black"
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation();
-                                                                                    if (editingId != null || editingOpen != null) return;
-                                                                                    setEditingPlanOpen(p.id)
-                                                                                }}
-                                                                            >
-                                                                                <FontAwesomeIcon icon={faEllipsisV} />
-                                                                            </button>
-
-                                                                            {editingPlanOpen == p.id && (
-                                                                                <div className="absolute editing-plan right-0 top-full flex flex-col bg-white border rounded shadow-lg z-10">
-                                                                                    <button
-                                                                                        className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100"
-                                                                                        onClick={(e) => {
-                                                                                            e.stopPropagation();
-                                                                                            downloadPdf(p.pdf_path, `${p.title}.pdf`);
-                                                                                        }}
-                                                                                    >
-                                                                                        <FontAwesomeIcon icon={faFilePdf} className="text-blue-600" /> PDF
-                                                                                    </button>
-                                                                                    <button
-                                                                                        className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100"
-                                                                                        onClick={(e) => {
-                                                                                            e.stopPropagation();
-                                                                                            setEditingPlanOpen(null);
-                                                                                            setEditingPlanName(p.title);
-                                                                                            setEditingPlanId(p.id);
-                                                                                        }}
-                                                                                    >
-                                                                                        <FontAwesomeIcon icon={faEdit} className="text-green-600" /> Edit
-                                                                                    </button>
-                                                                                    <button
-                                                                                        className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100"
-
-                                                                                        onClick={(e) => {
-                                                                                            e.stopPropagation();
-                                                                                            deletePlan(p.id, l.id);
-                                                                                        }}>
-                                                                                        <FontAwesomeIcon icon={faTrash} className="text-red-600" /> Delete
-                                                                                    </button>
-                                                                                </div>
-                                                                            )}
-
-
-                                                                        </div>
-
-                                                                    </div>
-                                                                    {editingPlanId === p.id && (
-                                                                        <div className="px-3 editing-plan pb-3">
-                                                                            <div className="mt-2 rounded-xl border border-gray-200 p-3 bg-white">
-                                                                                <div className="flex flex-col gap-2">
-                                                                                    <input className="rounded-lg border px-3 py-2" value={editingPlanName} onChange={e => setEditingPlanName(e.target.value)} />
-                                                                                    <div className="flex gap-2">
-                                                                                        <button className="rounded-full bg-green-600 hover:bg-green-700 text-white px-3 py-1" onClick={() => saveEditPlan(p.id, l.id)}>Salvează</button>
-                                                                                        <button className="rounded-full bg-red-600 hover:bg-red-700 text-white px-3 py-1" onClick={() => setEditingPlanId(null)}>Anulează</button>
-                                                                                    </div>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-
-                                                            )
-                                                        })}
-                                                    </ul>
-                                                )}
-                                            </div>
-                                        </div>
                                     )}
-                                    {/* Inline edit */}
-                                    {editingId === l.id && (
-                                        <div className="px-3 editing-menu pb-3">
-                                            <div className="mt-2 rounded-xl border border-gray-200 p-3 bg-white">
-                                                <div className="flex flex-col gap-2">
-                                                    <input className="rounded-lg border px-3 py-2" value={editName} onChange={e => setEditName(e.target.value)} />
-                                                    <textarea className="rounded-lg resize-none border px-3 py-2" rows={2} value={editDesc} onChange={e => setEditDesc(e.target.value)} />
-                                                    <div className="flex gap-2">
-                                                        <button className="rounded-full bg-green-600 hover:bg-green-700 text-white px-3 py-1" onClick={() => saveEdit(l.id)}>Salvează</button>
-                                                        <button className="rounded-full bg-red-600 hover:bg-red-700 text-white px-3 py-1" onClick={() => setEditingId(null)}>Anulează</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                </li>
+                                </div>
                             );
                         })}
-                    </ul>
+                    </div>
                 )}
             </div>
 
-            {/* Upload toggle (PDF) — hidden/disabled for 3D */}
-            <div className={`flex items-center justify-between ${canUploadPdf ? "" : "opacity-50"}`}>
-                <div className="font-medium">Încarcă plan (PDF)</div>
-                <button
-                    className="rounded-full bg-blue-600 text-white px-3 py-1 text-sm disabled:opacity-50"
-                    onClick={() => canUploadPdf && setShowUpload(v => !v)}
-                    disabled={!canUploadPdf}
-                >
-                    {showUpload ? "– Închide" : "Încarcă"}
-                </button>
-            </div>
+            {/* Upload Plan section (always visible) */}
+            <div className="shrink-0 border-t border-border">
+                <div className="p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                        <div className="font-semibold text-foreground flex items-center gap-2">
+                            <FontAwesomeIcon icon={faFilePdf} className="text-blue-600 text-xl" />
+                            <span>Încarcă un plan PDF</span>
+                        </div>
+                        <Dialog open={openUploadPlan} onOpenChange={setOpenUploadPlan}>
+                            <DialogTrigger asChild>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-9 text-base font-medium border-border text-foreground bg-background hover:bg-primary hover:text-primary-foreground hover:border-primary  transition-colors"
+                                    disabled={!canUploadPdf}
+                                >
+                                    Încarcă
+                                </Button>
 
-            {/* Upload form (PDF) — render only when non-3D is selected */}
-            {canUploadPdf && (
-                <div className={`overflow-hidden transition-all duration-200 ${showUpload ? "max-h-96 opacity-100" : "max-h-0 opacity-0"}`}>
-                    <div className="mt-2 rounded-xl border border-gray-200 p-3 bg-white">
-                        <form className="flex flex-col gap-2" onSubmit={uploadPlan}>
-                            <input className="rounded-lg border px-3 py-2" placeholder="Titlu plan (ex. Parter)"
-                                value={title} onChange={e => setTitle(e.target.value)} />
-                            <div className="flex gap-2">
-                                <input className="rounded-lg border px-3 py-2 w-1/2" placeholder="Scară (ex. 1:50)"
-                                    value={scale} onChange={e => setScale(e.target.value)} />
-                                <input className="rounded-lg border px-3 py-2 w-1/2" placeholder="DPI (ex. 200)" type="number"
-                                    value={dpi} onChange={e => setDpi(Number(e.target.value))} />
-                            </div>
-                            <input type="file" accept="application/pdf" onChange={e => setFile(e.target.files?.[0] || null)} className="rounded-lg border px-3 py-2" />
-                            <button type="submit" className="self-start rounded-full bg-blue-600 text-white px-4 py-2 hover:bg-blue-700 disabled:opacity-50"
-                                disabled={!file || uploading}>
-                                {uploading ? "Se încarcă…" : "Încarcă PDF"}
-                            </button>
-                        </form>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <form onSubmit={handleUploadPlan}>
+                                    <DialogHeader>
+                                        <DialogTitle>Încarcă plan PDF</DialogTitle>
+                                        <DialogDescription>
+                                            Selectați un fișier PDF și completați detaliile.
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="grid gap-4 py-4">
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="title">Titlu plan <span className="text-high">*</span></Label>
+                                            <Input
+                                                id="title"
+                                                value={uploadPlan.title}
+                                                onChange={e => setUploadPlan({ ...uploadPlan, title: e.target.value })}
+                                                placeholder="Ex: Plan parter"
+                                            />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="scale">Scară</Label>
+                                                <Input
+                                                    id="scale"
+                                                    value={uploadPlan.scale}
+                                                    onChange={e => setUploadPlan({ ...uploadPlan, scale: e.target.value })}
+                                                    placeholder="1:50"
+                                                />
+                                            </div>
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="dpi">DPI</Label>
+                                                <Input
+                                                    id="dpi"
+                                                    type="number"
+                                                    value={uploadPlan.dpi}
+                                                    onChange={e => setUploadPlan({ ...uploadPlan, dpi: Number(e.target.value) })}
+                                                    placeholder="300"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="file">Fișier PDF <span className="text-high">*</span></Label>
+                                            <Input
+                                                id="file"
+                                                type="file"
+                                                accept="application/pdf"
+                                                className="cursor-pointer"
+                                                onChange={e => setUploadPlan({ ...uploadPlan, file: e.target.files?.[0] || null })}
+                                            />
+                                        </div>
+                                    </div>
+                                    <DialogFooter>
+                                        <DialogClose asChild>
+                                            <Button type="button" variant="outline">Anulează</Button>
+                                        </DialogClose>
+                                        <Button type="submit" className="text-foreground" disabled={!uploadPlan.file}>
+                                            Încarcă
+                                        </Button>
+                                    </DialogFooter>
+                                </form>
+                            </DialogContent>
+                        </Dialog>
                     </div>
                 </div>
-            )}
+            </div>
 
-            {error ? <div className="text-red-600 text-sm">{error}</div> : null}
+            {/* Edit Lucrare Dialog */}
+            <Dialog open={openEditLucrare} onOpenChange={setOpenEditLucrare}>
+                <DialogContent>
+                    <form onSubmit={handleEditLucrare}>
+                        <DialogHeader>
+                            <DialogTitle>Editează lucrarea</DialogTitle>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="edit-name">Nume lucrare <span className="text-high">*</span></Label>
+                                <Input
+                                    id="edit-name"
+                                    value={editingLucrare?.name || ""}
+                                    onChange={e => setEditingLucrare(prev => prev ? { ...prev, name: e.target.value } : null)}
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="edit-desc">Descriere</Label>
+                                <Textarea
+                                    id="edit-desc"
+                                    value={editingLucrare?.description || ""}
+                                    onChange={e => setEditingLucrare(prev => prev ? { ...prev, description: e.target.value } : null)}
+                                    rows={3}
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <DialogClose asChild>
+                                <Button variant="outline">Anulează</Button>
+                            </DialogClose>
+                            <Button type="submit" disabled={editLucrare.isPending}>
+                                {editLucrare.isPending ? "Se salvează..." : "Salvează"}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            <DeleteDialog
+                open={openDeleteLucrare}
+                setOpen={setOpenDeleteLucrare}
+                title="Șterge lucrare"
+                description="Ești sigur că vrei să ștergi această lucrare? Se vor șterge și toate planurile asociate."
+                onSubmit={handleDeleteLucrare}
+            />
+
+            {/* Edit Plan Dialog */}
+            <Dialog open={openEditPlan} onOpenChange={setOpenEditPlan}>
+                <DialogContent>
+                    <form onSubmit={handleEditPlan}>
+                        <DialogHeader>
+                            <DialogTitle>Editează planul</DialogTitle>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="edit-plan-title">Titlu plan <span className="text-high">*</span></Label>
+                                <Input
+                                    id="edit-plan-title"
+                                    value={editingPlan?.title || ""}
+                                    onChange={e => setEditingPlan(prev => prev ? { ...prev, title: e.target.value } : null)}
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <DialogClose asChild>
+                                <Button variant="outline">Anulează</Button>
+                            </DialogClose>
+                            <Button type="submit" disabled={editPlan.isPending}>
+                                {editPlan.isPending ? "Se salvează..." : "Salvează"}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            <DeleteDialog
+                open={openDeletePlan}
+                setOpen={setOpenDeletePlan}
+                title="Șterge planul"
+                description="Ești sigur că vrei să ștergi acest plan? Acțiunea este ireversibilă."
+                onSubmit={handleDeletePlan}
+            />
+            {fetchingLucrari && !loading && (
+                <SpinnerElement text={2} />
+            )}
         </div>
     );
 }

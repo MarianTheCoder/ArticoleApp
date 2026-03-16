@@ -1,13 +1,14 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 const ThemeContext = createContext(null);
-const STORAGE_KEY = "theme"; // "light" | "dark"
+const STORAGE_KEY = "theme"; // "light" | "dark" | "aqua"
 
 function applyTheme(theme) {
     document.documentElement.classList.toggle("dark", theme === "dark");
+    document.documentElement.classList.toggle("blue", theme === "aqua");
 }
 
-export function ThemeProvider({ children, defaultTheme = "light" }) {
+export function ThemeProvider({ children, defaultTheme = "dark" }) {
     const [theme, setTheme] = useState(() => {
         const saved = localStorage.getItem(STORAGE_KEY) || defaultTheme;
         applyTheme(saved); // apply immediately to avoid flash

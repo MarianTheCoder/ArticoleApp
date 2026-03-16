@@ -2,19 +2,21 @@ import api from "@/api/axiosAPI";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 
 // 1. GET Contacts
-export const useContactsByCompany = (companyId, searchName = "") => {
+export const useContactsByCompany = (companyId, searchName = "", filialaId = null, santierId = null) => {
     return useQuery({
         // Cheia include searchName pentru a declanșa refetch automat la tastare
-        queryKey: ['contacts', 'company', companyId, searchName],
+        queryKey: ['contacts', companyId ? 'company' : 'all', companyId, searchName, filialaId, santierId],
 
         queryFn: async () => {
-            const { data } = await api.get(`/CRM/Contacts/getContactsByCompany/${companyId}`, {
-                params: { q: searchName }
+            const url = companyId
+                ? `/CRM/Contacts/getContactsByCompany/${companyId}` // Get specific
+                : `/CRM/Contacts/getAllContacts`;
+            const { data } = await api.get(url, {
+                params: { q: searchName, filiala_id: filialaId, santier_id: santierId } // Adaugă filiala_id și santier_id ca parametri de query
             });
             return data;
         },
         // Nu face request dacă nu avem ID de companie
-        enabled: !!companyId,
         placeholderData: (previousData) => previousData,
     });
 }
@@ -131,9 +133,6 @@ export const useDeleteContact = () => {
         }
     });
 }
-
-
-
 
 
 // 

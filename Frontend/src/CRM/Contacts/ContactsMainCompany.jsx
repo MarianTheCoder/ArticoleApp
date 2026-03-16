@@ -1,4 +1,4 @@
-import React, { act, useContext, useEffect, useState } from 'react';
+import React, { act, useContext, useEffect, useMemo, useState } from 'react';
 // 1. Asigură-te că imporți și hook-ul de Update
 import { useAddContact, useContactsByCompany, useEditContact, useChangeOwner, useRemoveOwner, useDeleteContact } from "@/hooks/useContacts";
 import { Button } from "@/components/ui/button";
@@ -31,9 +31,10 @@ import AskDialog from '@/components/ui/ask-dialog';
 import WarningDialog from '@/components/ui/warning-dialog';
 import DeleteDialog from '@/components/ui/delete-dialog';
 
-export default function ContactsMainCompany({ companyLimba, companyId }) {
+export default function ContactsMainCompany({ companyLimba = "RO", companyId = null, filialaId = null, santierId = null }) {
     const { user } = useContext(AuthContext);
     const { hide, show, loading } = useLoading();
+
     const [open, setOpen] = useState(false);
     const [openAsk, setOpenAsk] = useState(false);
     const [openAskRemove, setOpenAskRemove] = useState(false);
@@ -43,14 +44,16 @@ export default function ContactsMainCompany({ companyLimba, companyId }) {
 
     const [isCardView, setIsCardView] = useState(false);
 
+
     // --- 1. STATE VIZIBILITATE ---
     const [visibleColumns, setVisibleColumns] = useState({
+        companie: true,
+        filiala: true,
+        santier: true,
         nume: true,
         functie: true,
         email: true,
         telefon: true,
-        santier: true,
-        filiala: true,
         limba: true,
         activ: true,
         categorie_rol: false,
@@ -67,6 +70,9 @@ export default function ContactsMainCompany({ companyLimba, companyId }) {
     const [draft, setDraft] = useState({
         id: null, // Null = Add, ID = Edit
         activ: true,
+        companie_id: companyId || null,    // ← prop
+        filiala_id: filialaId || null,     // ← prop
+        santier_id: santierId || null,
         prenume: "",
         nume: "",
         functie: "",
@@ -75,8 +81,6 @@ export default function ContactsMainCompany({ companyLimba, companyId }) {
         telefon: "",
         limba: companyLimba || "RO",
         linkedin_url: "",
-        santier_id: null,
-        filiala_id: null,
         putere_decizie: 1,
         nivel_influenta: 1,
         canal_preferat: "Email",
@@ -90,7 +94,7 @@ export default function ContactsMainCompany({ companyLimba, companyId }) {
     const [searchNameDebounced, setSearchNameDebounced] = useState("");
 
     // Hooks
-    const { data, isFetching } = useContactsByCompany(companyId, searchNameDebounced);
+    const { data, isFetching } = useContactsByCompany(companyId, searchNameDebounced, filialaId, santierId);
     const { mutateAsync: addContact } = useAddContact();
     const { mutateAsync: updateContact } = useEditContact(); // Hook-ul de editare
     const { mutateAsync: changeOwner } = useChangeOwner();
@@ -121,6 +125,9 @@ export default function ContactsMainCompany({ companyLimba, companyId }) {
         setDraft({
             id: null,
             activ: true,
+            companie_id: companyId || null,    // ← prop, not null
+            filiala_id: filialaId || null,     // ← prop, not null
+            santier_id: santierId || null,
             prenume: "",
             nume: "",
             functie: "",
@@ -129,8 +136,6 @@ export default function ContactsMainCompany({ companyLimba, companyId }) {
             telefon: "",
             linkedin_url: "",
             limba: companyLimba || "RO",
-            santier_id: null,
-            filiala_id: null,
             putere_decizie: 1,
             nivel_influenta: 1,
             canal_preferat: "Email",
@@ -141,9 +146,22 @@ export default function ContactsMainCompany({ companyLimba, companyId }) {
         });
     }
 
+
+    useEffect(() => {
+        setVisibleColumns(prev => {
+            const next = { ...prev };
+
+            if (filialaId) delete next.filiala;
+            if (companyId) delete next.companie;
+            if (santierId) delete next.santier;
+
+            return next;
+        });
+    }, [filialaId, companyId, santierId]);
+
     // --- 3. SUBMIT LOGIC (ADD vs EDIT) ---
     const submitContact = async () => {
-        if (!companyId) {
+        if (!companyId && !draft.companie_id) {
             toast.error("Eroare: ID Companie lipsă.");
             return;
         }
@@ -171,11 +189,11 @@ export default function ContactsMainCompany({ companyLimba, companyId }) {
         fd.append("canal_preferat", draft.canal_preferat);
         fd.append("note", draft.note?.trim() || "");
         fd.append("limba", draft.limba || "RO");
-        fd.append("companie_id", companyId);
         fd.append("updated_by_user_id", user.id);
 
-        fd.append("santier_id", draft.santier_id || "");
-        fd.append("filiala_id", draft.filiala_id || "");
+        fd.append("filiala_id", draft.filiala_id || filialaId || "");   // ← add filialaId fallback
+        fd.append("santier_id", draft.santier_id || santierId || "");   // ← add santierId fallback
+        fd.append("companie_id", draft.companie_id || companyId);
 
         // Doar la creare avem nevoie de created_by, dar la update e ignorat de obicei
         if (!draft.id) {
@@ -187,11 +205,11 @@ export default function ContactsMainCompany({ companyLimba, companyId }) {
             if (draft.id) {
                 // --- UPDATE ---
                 // Presupunem că updateContact primește { id, companyId, formData }
-                await updateContact({ contactId: draft.id, companyId, formData: fd });
+                await updateContact({ contactId: draft.id, companyId: draft.companie_id || companyId, formData: fd });
                 toast.success("Contact actualizat cu succes!");
             } else {
                 // --- ADD ---
-                await addContact({ companyId, formData: fd });
+                await addContact({ companyId: draft.companie_id || companyId, formData: fd });
                 toast.success("Contact adăugat cu succes!");
             }
 
@@ -267,13 +285,13 @@ export default function ContactsMainCompany({ companyLimba, companyId }) {
             hide();
         }
     }
-
-
     return (
-        <div className="h-full w-full relative  flex flex-col items-center overflow-hidden">
+        <div className="h-full w-full relative gap-4 flex flex-col items-center overflow-hidden">
             <div className="w-full bg-card grid grid-cols-[auto_1fr] rounded-lg px-8 p-6 shrink-0 z-10">
                 <ContactsAddDialog
                     companyId={companyId}
+                    filialaId={filialaId}
+                    santierId={santierId}
                     open={open}
                     setOpen={setOpen}
                     buttonStyle={
@@ -290,7 +308,7 @@ export default function ContactsMainCompany({ companyLimba, companyId }) {
                     draft={draft}
                     setDraft={setDraft}
                     resetDraft={resetDraft}
-                    reset={!draft.id} // Arată butonul de reset doar dacă NU edităm
+                    reset={!draft.id ? true : false} // Arată butonul de reset doar dacă NU edităm
                     title={draft.id ? "Editează contact" : "Adaugă un contact"}
                 />
                 <AskDialog
@@ -382,8 +400,12 @@ export default function ContactsMainCompany({ companyLimba, companyId }) {
                 <SpinnerElement text={2} />
             )}
             {contacts.length > 0 ? (
-                <div className='p-5 pt-0 h-full w-full overflow-hidden relative'>
+                <div className={`p-5 ${companyId ? "pt-0" : ""} h-full w-full bg-card rounded-lg overflow-hidden relative`}>
                     <ContactsListByCompany
+                        companyId={companyId}
+                        filialaId={filialaId}
+                        santierId={santierId}
+
                         draft={draft}
                         setDraft={setDraft}
 

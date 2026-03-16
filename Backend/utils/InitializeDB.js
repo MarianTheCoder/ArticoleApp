@@ -1,58 +1,76 @@
 const bcrypt = require("bcryptjs");
 
 async function initializeDB(pool) {
-  const createMetaOptions = `
-  CREATE TABLE IF NOT EXISTS Meta_Users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    type ENUM('departament','specializare','firma') NOT NULL,
-    name VARCHAR(150) NOT NULL,
-    color_hex CHAR(7) DEFAULT '#FFFFFF',
-    UNIQUE KEY uniq_type_name (type, name)
+
+  const createCompaniesTable = `
+    CREATE TABLE IF NOT EXISTS S00_Companii_Interne (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nume VARCHAR(100) NOT NULL,
+      culoare_hex VARCHAR(20) DEFAULT '#3b82f6', -- Cod Hex pentru UI (ex: Tailwind Blue 500)
+      logo_url VARCHAR(255),
+      created_by_user_id INT,
+      updated_by_user_id INT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP  
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-`;
-  await pool.execute(createMetaOptions);
+  `;
+  await pool.execute(createCompaniesTable);
+  console.log("S00_Companii_Interne table created or already exists.");
+
+  const permisuniui = `
+    CREATE TABLE IF NOT EXISTS S00_Permisiuni_Predefinite (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nume_rol VARCHAR(50) NOT NULL UNIQUE,
+      descriere VARCHAR(255),
+      json_permisiuni JSON NOT NULL, -- Stochează structura de bife
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `;
+  await pool.execute(permisuniui);
+  console.log("S00_Permisiuni_Predefinite table created or already exists.");
 
   const createUsersTable = `
-  CREATE TABLE IF NOT EXISTS users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    limba VARCHAR(20) NOT NULL DEFAULT 'RO',
-    email VARCHAR(100) NOT NULL UNIQUE,
-    name VARCHAR(50) NOT NULL,
+  CREATE TABLE IF NOT EXISTS S00_Utilizatori (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      companie_interna_id INT NOT NULL,
+      email VARCHAR(100) NOT NULL UNIQUE,
+      password VARCHAR(255) NOT NULL,
+      name VARCHAR(50) NOT NULL,
+      
+      -- Specializare devine câmp text/user
+      specializare VARCHAR(100) DEFAULT NULL, 
+      
+      telephone VARCHAR(20),
+      telephone_1 VARCHAR(20),
+      telefon_prefix VARCHAR(10),
+      telefon_prefix_1 VARCHAR(10),
+      data_nastere DATE,
+         
+      -- Permisiunile granulare (copiate din template sau personalizate)
+      permissions JSON DEFAULT NULL, 
+      permissions_template_id INT DEFAULT NULL, -- referință la S00_Permisiuni_Predefinite pentru template
+      
+      photo_url VARCHAR(255) DEFAULT 'default_user.png',
+      activ TINYINT NOT NULL DEFAULT 1,
+      created_by_user_id INT,
+      updated_by_user_id INT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    firma_id INT NULL,
-    departament_id INT NULL,
-    specializare_id INT NULL,
+      INDEX idx_users_companie (companie_interna_id),
+      INDEX idx_users_permissions_template (permissions_template_id),
 
-    password VARCHAR(255) NOT NULL,
-    telephone VARCHAR(20),
-    telephone_1 VARCHAR(20),
-    telefon_prefix VARCHAR(10),
-    telefon_prefix_1 VARCHAR(10),
-    data_nastere DATE,
-    role ENUM('ofertant', 'angajat', 'beneficiar') NOT NULL DEFAULT 'angajat',
-    photo_url VARCHAR(255) NOT NULL,
-    activ TINYINT NOT NULL DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    INDEX idx_users_firma_id (firma_id),
-    INDEX idx_users_departament_id (departament_id),
-    INDEX idx_users_specializare_id (specializare_id),
-
-    CONSTRAINT fk_users_firma
-      FOREIGN KEY (firma_id) REFERENCES Meta_Users(id)
+      CONSTRAINT fk_users_companie_interna
+      FOREIGN KEY (companie_interna_id) REFERENCES S00_Companii_Interne(id)
       ON DELETE SET NULL ON UPDATE CASCADE,
 
-    CONSTRAINT fk_users_departament
-      FOREIGN KEY (departament_id) REFERENCES Meta_Users(id)
-      ON DELETE SET NULL ON UPDATE CASCADE,
-
-    CONSTRAINT fk_users_specializare
-      FOREIGN KEY (specializare_id) REFERENCES Meta_Users(id)
+      CONSTRAINT fk_users_permissions_template
+      FOREIGN KEY (permissions_template_id) REFERENCES S00_Permisiuni_Predefinite(id)
       ON DELETE SET NULL ON UPDATE CASCADE
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 `;
   await pool.execute(createUsersTable);
-  console.log("meta_options + users created (fresh).");
+  console.log("meta_options + S00_Utilizatori created (fresh).");
 
   //push notificaitons table
   const pushTable = `
@@ -370,7 +388,7 @@ async function initializeDB(pool) {
   //
   //
   //
-  // CREATE SANTIERE TABLES
+  // CREATE S01_Santiere TABLES
   // Santier_retete
   const createOfertaReteteTable = `
     CREATE TABLE IF NOT EXISTS Oferta (
@@ -378,7 +396,7 @@ async function initializeDB(pool) {
         name VARCHAR(255) NOT NULL,  
         santier_id INT NOT NULL,  
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (santier_id) REFERENCES Santiere(id) 
+        FOREIGN KEY (santier_id) REFERENCES S01_Santiere(id) 
     );
   `;
   await pool.execute(createOfertaReteteTable);
@@ -658,7 +676,7 @@ async function initializeDB(pool) {
   //
 
   const sesiuniDeLucru = `
-      CREATE TABLE IF NOT EXISTS sesiuni_de_lucru (
+      CREATE TABLE IF NOT EXISTS S06_Sesiuni_De_Lucru (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
         santier_id INT NOT NULL,
@@ -682,9 +700,10 @@ async function initializeDB(pool) {
 
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        updated_by_user_id INT,
 
-        FOREIGN KEY (user_id) REFERENCES users(id),
-        FOREIGN KEY (santier_id) REFERENCES santiere(id),
+        FOREIGN KEY (user_id) REFERENCES S00_Utilizatori(id),
+        FOREIGN KEY (santier_id) REFERENCES S01_Santiere(id),
 
         INDEX idx_user_date (user_id),
         INDEX idx_santier_date (santier_id),
@@ -693,24 +712,24 @@ async function initializeDB(pool) {
       );
     `;
   await pool.execute(sesiuniDeLucru);
-  console.log("sesiuni_de_lucru table created or already exists.");
+  console.log("S06_Sesiuni_De_Lucru table created or already exists.");
 
   const sesiuniLocatii = `
-    CREATE TABLE IF NOT EXISTS sesiuni_locatii (
+    CREATE TABLE IF NOT EXISTS S06_Sesiuni_Locatii (
         id INT AUTO_INCREMENT PRIMARY KEY,
         sesiune_id INT NOT NULL,
         lat FLOAT NOT NULL,
         lng FLOAT NOT NULL,
         recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-        FOREIGN KEY (sesiune_id) REFERENCES sesiuni_de_lucru(id)
+        FOREIGN KEY (sesiune_id) REFERENCES S06_Sesiuni_De_Lucru(id)
     );
   `;
   await pool.execute(sesiuniLocatii);
-  console.log("sesiuni_locatii table created or already exists.");
+  console.log("S06_Sesiuni_Locatii table created or already exists.");
 
   const atribuireActivitate = `
-      CREATE TABLE IF NOT EXISTS atribuire_activitate (
+      CREATE TABLE IF NOT EXISTS S01_Atribuire_Activitate (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
         santier_id INT NOT NULL,
@@ -718,17 +737,17 @@ async function initializeDB(pool) {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-        FOREIGN KEY (user_id) REFERENCES users(id),
-        FOREIGN KEY (santier_id) REFERENCES Santiere(id),
+        FOREIGN KEY (user_id) REFERENCES S00_Utilizatori(id),
+        FOREIGN KEY (santier_id) REFERENCES S01_Santiere(id),
 
         UNIQUE KEY unique_user_santier (user_id, santier_id)
       );
     `;
   await pool.execute(atribuireActivitate);
-  console.log("atribuire_activitate table created or already exists.");
+  console.log("S01_Atribuire_Activitate table created or already exists.");
 
   const rezerveLucrari = `
-  CREATE TABLE IF NOT EXISTS Rezerve_Lucrari (
+  CREATE TABLE IF NOT EXISTS S08_Rezerve_Lucrari (
     id INT AUTO_INCREMENT PRIMARY KEY,
     santier_id INT NOT NULL,
 
@@ -743,8 +762,8 @@ async function initializeDB(pool) {
 
     CONSTRAINT fk_rezerve_lucrari_santier
       FOREIGN KEY (santier_id)
-      REFERENCES Santiere(id)         -- change to \`santiere\` if your real table is lowercase
-      ON DELETE CASCADE
+      REFERENCES S01_Santiere(id)         -- change to \`S01_Santiere\` if your real table is prefixed
+      ON DELETE RESTRICT
       ON UPDATE CASCADE,
 
     UNIQUE KEY uq_lucrare_per_santier (santier_id, name),
@@ -753,10 +772,10 @@ async function initializeDB(pool) {
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 `;
   await pool.execute(rezerveLucrari);
-  console.log("rezerve_lucrari table created or already exists.");
+  console.log("S08_Rezerve_Lucrari table created or already exists.");
 
   const rezervePlans = `
-    CREATE TABLE IF NOT EXISTS Rezerve_Plans (
+    CREATE TABLE IF NOT EXISTS S08_Rezerve_Plans (
       id INT AUTO_INCREMENT PRIMARY KEY,
       lucrare_id INT NOT NULL,
 
@@ -794,7 +813,7 @@ async function initializeDB(pool) {
 
       CONSTRAINT fk_rezerve_plans_lucrare
         FOREIGN KEY (lucrare_id)
-        REFERENCES Rezerve_Lucrari(id)
+        REFERENCES S08_Rezerve_Lucrari(id)
         ON DELETE CASCADE
         ON UPDATE CASCADE,
 
@@ -810,7 +829,7 @@ async function initializeDB(pool) {
     `;
 
   await pool.execute(rezervePlans);
-  console.log("Rezerve_Plans table created or already exists with pattern support.");
+  console.log("S08_Rezerve_Plans table created or already exists with pattern support.");
 
   const rezerve_patterns = `
         CREATE TABLE IF NOT EXISTS S09_Rezerve_Patterns (
@@ -821,7 +840,7 @@ async function initializeDB(pool) {
         created_by   INT,
         created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (santier_id) REFERENCES Santiere(id) ON DELETE CASCADE
+        FOREIGN KEY (santier_id) REFERENCES S01_Santiere(id) ON DELETE CASCADE
       );
     `;
   await pool.execute(rezerve_patterns);
@@ -847,7 +866,7 @@ async function initializeDB(pool) {
 
 
   const rezervePins = `
-    CREATE TABLE IF NOT EXISTS Rezerve_Pins (
+    CREATE TABLE IF NOT EXISTS S09_Rezerve_Pins (
       id INT AUTO_INCREMENT PRIMARY KEY,
       plan_id INT NOT NULL,
       user_id INT NULL,                 -- creator of the pin
@@ -875,13 +894,13 @@ async function initializeDB(pool) {
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
       CONSTRAINT fk_rezerve_pins_plan FOREIGN KEY (plan_id)
-        REFERENCES Rezerve_Plans(id) ON DELETE CASCADE,
+        REFERENCES S08_Rezerve_Plans(id) ON DELETE CASCADE,
 
       CONSTRAINT fk_rezerve_pins_creator FOREIGN KEY (user_id)
-        REFERENCES Users(id) ON DELETE SET NULL,
+        REFERENCES S00_Utilizatori(id) ON DELETE SET NULL,
 
       CONSTRAINT fk_rezerve_pins_assigned FOREIGN KEY (assigned_user_id)
-        REFERENCES Users(id) ON DELETE SET NULL,
+        REFERENCES S00_Utilizatori(id) ON DELETE SET NULL,
 
       UNIQUE KEY uq_pin_code_per_plan (plan_id, code),
       INDEX idx_plan (plan_id),
@@ -893,10 +912,10 @@ async function initializeDB(pool) {
     );
   `;
   await pool.execute(rezervePins);
-  console.log("Rezerve_Pins table created or already exists.");
+  console.log("S09_Rezerve_Pins table created or already exists.");
 
   const comments_photo = `
-    CREATE TABLE IF NOT EXISTS Rezerve_PinComments (
+    CREATE TABLE IF NOT EXISTS S09_Rezerve_Pin_Comments (
       id           INT PRIMARY KEY AUTO_INCREMENT,
       pin_id       INT NOT NULL,
       user_id      INT NOT NULL,
@@ -915,26 +934,26 @@ async function initializeDB(pool) {
 
       INDEX idx_pin_created (pin_id, created_at DESC),
 
-      CONSTRAINT fk_comment_pin  FOREIGN KEY (pin_id)  REFERENCES Rezerve_Pins(id),
-      CONSTRAINT fk_comment_user FOREIGN KEY (user_id) REFERENCES users(id)
+      CONSTRAINT fk_comment_pin  FOREIGN KEY (pin_id)  REFERENCES S09_Rezerve_Pins(id),
+      CONSTRAINT fk_comment_user FOREIGN KEY (user_id) REFERENCES S00_Utilizatori(id)
     );
   `;
   await pool.execute(comments_photo);
-  console.log("Rezerve_PinComments table created or already exists.");
+  console.log("S09_Rezerve_Pin_Comments table created or already exists.");
 
   const rezervePinsSeen = `
-        CREATE TABLE IF NOT EXISTS Rezerve_PinSeen (
+        CREATE TABLE IF NOT EXISTS S09_Rezerve_Pin_Seen (
           user_id INT NOT NULL,
           pin_id  INT NOT NULL,
           last_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
           PRIMARY KEY (user_id, pin_id),
           KEY idx_pin (pin_id),
-          CONSTRAINT fk_seen_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-          CONSTRAINT fk_seen_pin  FOREIGN KEY (pin_id)  REFERENCES Rezerve_Pins(id) ON DELETE CASCADE
+          CONSTRAINT fk_seen_user FOREIGN KEY (user_id) REFERENCES S00_Utilizatori(id) ON DELETE CASCADE,
+          CONSTRAINT fk_seen_pin  FOREIGN KEY (pin_id)  REFERENCES S09_Rezerve_Pins(id) ON DELETE CASCADE
         );
   `;
   await pool.execute(rezervePinsSeen);
-  console.log("Rezerve_PinSeen table created or already exists.");
+  console.log("S09_Rezerve_Pin_Seen table created or already exists.");
 
   //Sarcini
   //
@@ -1023,7 +1042,7 @@ async function initializeDB(pool) {
   console.log("07_Sarcina_Reteta table created or already exists.");
 
 
-  await insertInitialAdminUser(pool);
+  // await insertInitialAdminUser(pool);
   console.log("All tables checked/created successfully.");
 }
 
@@ -1035,7 +1054,7 @@ async function insertInitialAdminUser(pool) {
     const role = "ofertant";
 
     const [existingAdmins] = await pool.execute(
-      "SELECT * FROM users WHERE role = ?",
+      "SELECT * FROM S00_Utilizatori WHERE role = ?",
       [role]
     );
 
@@ -1046,7 +1065,7 @@ async function insertInitialAdminUser(pool) {
 
     const hashedPassword = await bcrypt.hash(plainPassword, 10);
     const insertQuery = `
-      INSERT INTO users (email, name, password, role, photo_url)
+      INSERT INTO S00_Utilizatori (email, name, password, role, photo_url)
       VALUES (?, ?, ?, ?, ?)
     `;
     await pool.execute(insertQuery, [

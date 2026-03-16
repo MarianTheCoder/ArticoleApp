@@ -20,6 +20,18 @@ export const useFilialeByCompany = (companyId, search = "") => {
     });
 };
 
+export const useFiliala = (id) => {
+    return useQuery({
+        queryKey: ["filiale", Number(id)],
+        queryFn: async () => {
+            const { data } = await api.get(`/CRM/Filiale/getFiliala/${id}`);
+            return data;
+        },
+        enabled: !!id, // Only run if id is provided
+        placeholderData: (previousData) => previousData, // Păstrează datele vechi ca să nu dea flash
+    });
+}
+
 export const useFilialeSelect = (companyId) => {
     return useQuery({
         queryKey: ['filiale', 'select', companyId],

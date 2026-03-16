@@ -2,17 +2,28 @@ import api from '@/api/axiosAPI';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 // --- FETCH ---
-export const useSantiereByCompany = (companyId, search = "") => {
+export const useSantiereByCompany = (companyId, search = "", filialaId = null) => {
     return useQuery({
-        queryKey: ['santiere', companyId ? 'company' : "all", companyId, search],
+        queryKey: ['santiere', companyId ? 'company' : "all", companyId, search, filialaId],
         queryFn: async () => {
-
             const url = companyId
                 ? `/CRM/Santiere/getSantiereForCompanies/${companyId}` // Get specific
                 : `/CRM/Santiere/getAllSantiere`;
             const res = await api.get(url, {
-                params: { q: search }
+                params: { q: search, filiala_id: filialaId }
             });
+            return res.data;
+        },
+        placeholderData: (previousData) => previousData, // Păstrează datele vechi ca să nu dea flash
+    });
+};
+
+// --- FETCH ---
+export const useSantier = (santierId) => {
+    return useQuery({
+        queryKey: ['santiere', santierId],
+        queryFn: async () => {
+            const res = await api.get(`/CRM/Santiere/getSantier/${santierId}`);
             return res.data;
         },
         placeholderData: (previousData) => previousData, // Păstrează datele vechi ca să nu dea flash

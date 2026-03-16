@@ -50,7 +50,7 @@ async function getAllUsers(userIds = null) {
     if (!global.db) throw new Error('global.db is not initialized');
     let sql = `
     SELECT id, name
-      FROM users
+      FROM S00_Utilizatori
      WHERE role != 'beneficiar'
      /*USER_FILTER*/
      ORDER BY name ASC

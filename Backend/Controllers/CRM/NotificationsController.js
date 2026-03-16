@@ -136,7 +136,7 @@ const getHistoryForContacts = async (req, res) => {
                 u.name AS author_name,
                 u.photo_url AS author_photo
             FROM S11_Istoric h
-            LEFT JOIN users u ON h.utilizator_id = u.id
+            LEFT JOIN S00_Utilizatori u ON h.utilizator_id = u.id
             WHERE 
                 h.tip_entitate = 'contact' 
                 AND h.entitate_id = ?
@@ -187,30 +187,87 @@ const getHistoryForCompany = async (req, res) => {
         const companyId = req.params.id;
         if (!companyId) return res.status(400).json({ message: "Invalid Company ID" });
 
-        // STRATEGY: Root Snapshot using new columns (radacina_tip / radacina_id)
-        const query = `
-            SELECT 
-                h.id,
-                h.actiune,
-                h.titlu,
-                h.mesaj,
-                h.severitate,
-                h.tip_entitate,      -- Needed for icons (santier vs contact)
-                h.detalii,
-                DATE_FORMAT(h.created_at, '%Y-%m-%dT%H:%i:%sZ') as created_at,
-                u.name AS author_name,
-                u.photo_url AS author_photo
-            FROM S11_Istoric h
-            LEFT JOIN users u ON h.utilizator_id = u.id
-            WHERE 
-                (h.tip_entitate = 'companie' AND h.entitate_id = ?) 
-                OR 
-                (h.radacina_tip = 'companie' AND h.radacina_id = ?)
-            ORDER BY h.created_at DESC
-            LIMIT 100
-        `;
+        const filialaId = req.query.filialaId || null;
+        const santierId = req.query.santierId || null;
 
-        const [rows] = await global.db.execute(query, [companyId, companyId]);
+        let query;
+        let params;
+
+        if (santierId) {
+            // --- SANTIER SCOPE ---
+            // 1. History directly on the santier
+            // 2. History of contacts that belong to this santier
+            query = `
+                SELECT 
+                    h.id, h.actiune, h.titlu, h.mesaj, h.severitate,
+                    h.tip_entitate, h.detalii,
+                    DATE_FORMAT(h.created_at, '%Y-%m-%dT%H:%i:%sZ') as created_at,
+                    u.name AS author_name,
+                    u.photo_url AS author_photo
+                FROM S11_Istoric h
+                LEFT JOIN S00_Utilizatori u ON h.utilizator_id = u.id
+                WHERE
+                    (h.tip_entitate = 'santier' AND h.entitate_id = ?)
+                    OR
+                    (h.tip_entitate = 'contact' AND h.entitate_id IN (
+                        SELECT id FROM S10_Contacte WHERE santier_id = ?
+                    ))
+                ORDER BY h.created_at DESC
+                LIMIT 100
+            `;
+            params = [santierId, santierId];
+
+        } else if (filialaId) {
+            // --- FILIALA SCOPE ---
+            // 1. History directly on the filiala
+            // 2. History of santiere that belong to this filiala
+            // 3. History of contacts that belong to this filiala
+            query = `
+                SELECT 
+                    h.id, h.actiune, h.titlu, h.mesaj, h.severitate,
+                    h.tip_entitate, h.detalii,
+                    DATE_FORMAT(h.created_at, '%Y-%m-%dT%H:%i:%sZ') as created_at,
+                    u.name AS author_name,
+                    u.photo_url AS author_photo
+                FROM S11_Istoric h
+                LEFT JOIN S00_Utilizatori u ON h.utilizator_id = u.id
+                WHERE
+                    (h.tip_entitate = 'filiala' AND h.entitate_id = ?)
+                    OR
+                    (h.tip_entitate = 'santier' AND h.entitate_id IN (
+                        SELECT id FROM S01_Santiere WHERE filiala_id = ?
+                    ))
+                    OR
+                    (h.tip_entitate = 'contact' AND h.entitate_id IN (
+                        SELECT id FROM S10_Contacte WHERE filiala_id = ?
+                    ))
+                ORDER BY h.created_at DESC
+                LIMIT 100
+            `;
+            params = [filialaId, filialaId, filialaId];
+
+        } else {
+            // --- COMPANY SCOPE (unchanged) ---
+            query = `
+                SELECT 
+                    h.id, h.actiune, h.titlu, h.mesaj, h.severitate,
+                    h.tip_entitate, h.detalii,
+                    DATE_FORMAT(h.created_at, '%Y-%m-%dT%H:%i:%sZ') as created_at,
+                    u.name AS author_name,
+                    u.photo_url AS author_photo
+                FROM S11_Istoric h
+                LEFT JOIN S00_Utilizatori u ON h.utilizator_id = u.id
+                WHERE 
+                    (h.tip_entitate = 'companie' AND h.entitate_id = ?) 
+                    OR 
+                    (h.radacina_tip = 'companie' AND h.radacina_id = ?)
+                ORDER BY h.created_at DESC
+                LIMIT 100
+            `;
+            params = [companyId, companyId];
+        }
+
+        const [rows] = await global.db.execute(query, params);
 
         const formattedHistory = rows.map(row => {
             let parsedDetails = row.detalii;
@@ -220,18 +277,13 @@ const getHistoryForCompany = async (req, res) => {
 
             return {
                 id: row.id,
-
-                // Frontend Logic Mapping
                 action: row.actiune,
-                entity: row.tip_entitate, // 'contact', 'santier', etc.
+                entity: row.tip_entitate,
                 content: parsedDetails,
                 date: row.created_at,
-
-                // New Rich Data
                 title: row.titlu,
                 message: row.mesaj,
                 severity: row.severitate,
-
                 author: {
                     name: row.author_name || "Sistem",
                     photo: row.author_photo

@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect, useCallback } from 'react';
 import api from '../api/axiosAPI';
 import { jwtDecode } from "jwt-decode";
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 export const AuthContext = createContext();
 
@@ -10,8 +11,14 @@ export const AuthProvider = ({ children }) => {
 
     // 1. Minimal State
     const [token, setToken] = useState(localStorage.getItem('token') || null);
-    const [user, setUser] = useState({ id: null, role: null, name: null });
-    const [color, setColor] = useState("");
+    const [refreshTrigger, setRefreshTrigger] = useState(0); // Trigger-ul nou
+
+    const [user, setUser] = useState({
+        id: null,
+        name: null,
+        company_id: null,
+        permissions: null
+    });
     const [loading, setLoading] = useState(true);
 
     // 2. Centralized Helper: Handles Decoding & Setting State
@@ -21,32 +28,21 @@ export const AuthProvider = ({ children }) => {
             clearSession();
             return;
         }
-
         try {
             const decoded = jwtDecode(rawToken);
-
             // Set User
             setUser({
                 id: decoded.id,
-                role: decoded.role,
-                name: decoded.user || decoded.sub, // Fallback if 'user' key varies
+                name: decoded.user,
+                company_id: decoded.company_id,
+                permissions: decoded.permissions || null,
             });
-
-            // Set Color
-            const roleColors = {
-                'angajat': 'text-emerald-500',
-                'ofertant': 'text-blue-600',
-                'beneficiar': 'text-amber-500' // Default fallback
-            };
-            setColor(roleColors[decoded.role] || 'text-amber-500');
 
             // Set Token
             setToken(rawToken);
             localStorage.setItem('token', rawToken);
-            if (decoded.photo) localStorage.setItem('photoUser', decoded.photo);
-
         } catch (err) {
-            console.error("Token decode failed", err);
+            toast.error("Eroare la procesarea token-ului. Te rugăm să te loghezi din nou.");
             clearSession();
         }
     }, []);
@@ -54,29 +50,33 @@ export const AuthProvider = ({ children }) => {
     // 3. Helper: Clear Session
     const clearSession = useCallback(() => {
         localStorage.removeItem('token');
-        localStorage.removeItem('photoUser');
         setToken(null);
-        setUser({ id: null, role: null, name: null });
-        setColor("");
+        setUser({ id: null, company_id: null, name: null, permissions: null });
     }, []);
 
     // 4. On Mount: Check Validity
     useEffect(() => {
         const initAuth = async () => {
+            // console.log("Inițializăm autentificarea...");
             const storedToken = localStorage.getItem('token');
             if (!storedToken) {
                 setLoading(false);
                 return;
             }
-
             try {
                 // Verify with backend that token is still valid (not banned/expired)
-                await api.get('/auth/checkToken');
-                // If success, load data into state
-                console.log("Token valid");
-                handleUserSession(storedToken);
+                const res = await api.get('/auth/checkToken');
+                if (res.data.token) {
+                    handleUserSession(res.data.token);
+                    if (refreshTrigger > 0) {
+                        toast.success("Informațiile despre token au fost actualizate.");
+                    }
+                } else {
+                    // Dacă backend-ul nu dă token nou, îl folosim pe cel vechi (deja stocat)
+                    handleUserSession(storedToken);
+                }
             } catch (err) {
-                console.log('Token check failed:', err);
+                toast.error('Token check failed: ' + (err.response?.data?.message || err.message));
                 clearSession();
             } finally {
                 setLoading(false);
@@ -84,23 +84,24 @@ export const AuthProvider = ({ children }) => {
         };
 
         initAuth();
-    }, [handleUserSession, clearSession]);
+    }, [handleUserSession, clearSession, refreshTrigger]);
+
+    const triggerRefresh = () => {
+        setRefreshTrigger(prev => prev + 1);
+    };
 
     // 5. Login Action
     const login = async (email, password, roleIndex) => {
-        const roles = ["angajat", "beneficiar", "ofertant"]; // Map index to string
         try {
             const response = await api.post(`/auth/login`, {
                 email,
                 password,
-                role: roles[roleIndex],
             });
 
             const newToken = response.data.token;
             handleUserSession(newToken); // Re-use our centralized helper
             return { success: true };
         } catch (err) {
-            console.error('Login failed:', err);
             return { success: false, error: err.response?.data?.message || err.message };
         }
     };
@@ -116,11 +117,9 @@ export const AuthProvider = ({ children }) => {
             token,
             user,
             loading,
-            color,
             login,
             logout,
-            // Removed getters/setters that shouldn't be exposed
-            // Removed santiere/beneficiari (Move these to a DataContext or specialized hook)
+            triggerRefresh,
         }}>
             {children}
         </AuthContext.Provider>

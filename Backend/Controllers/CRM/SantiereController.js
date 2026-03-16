@@ -6,51 +6,15 @@ const { logHistoryAndNotify } = require("../../utils/HistoryService"); // Assume
 const getSantiereByCompany = async (req, res) => {
     let conn;
     try {
-        const companie_id = Number(req.params.id); // Assuming route is /api/companies/:companyId/santiere
-
+        const companie_id = Number(req.params.id);
+        const { filiala_id, q } = req.query;
         if (!companie_id) {
             return res.status(400).json({ message: "ID-ul companiei este invalid." });
         }
-
         conn = await global.db.getConnection();
-        const [rows] = await conn.execute(
-            `SELECT 
-                s.*, 
-                DATE_FORMAT(s.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at,
-                DATE_FORMAT(s.updated_at, '%Y-%m-%dT%H:%i:%sZ') AS updated_at,
-                
-                u1.name as created_by_name, 
-                u1.photo_url AS created_by_photo_url,
-                u2.name as updated_by_name,
-                u2.photo_url AS updated_by_photo_url,
 
-                f.nume_filiala AS filiala_nume
-
-             FROM S01_Santiere s
-             LEFT JOIN users u1 ON s.created_by_user_id = u1.id
-             LEFT JOIN users u2 ON s.updated_by_user_id = u2.id
-             LEFT JOIN S10_Filiale f ON s.filiala_id = f.id
-             WHERE s.companie_id = ?
-             ORDER BY s.updated_at DESC`,
-            [companie_id]
-        );
-        // await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate delay for testing
-        return res.status(200).json({ santiere: rows });
-    } catch (err) {
-        console.error("getSantiereByCompany error:", err);
-        return res.status(500).json({ message: "Eroare la preluarea șantierelor." });
-    } finally {
-        if (conn) conn.release();
-    }
-};
-
-const getAllSantiere = async (req, res) => {
-    let conn;
-    try {
-
-        conn = await global.db.getConnection();
-        const [rows] = await conn.execute(
-            `SELECT 
+        let sql = `
+            SELECT 
                 s.*, 
                 DATE_FORMAT(s.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at,
                 DATE_FORMAT(s.updated_at, '%Y-%m-%dT%H:%i:%sZ') AS updated_at,
@@ -61,16 +25,132 @@ const getAllSantiere = async (req, res) => {
                 u2.photo_url AS updated_by_photo_url,
 
                 f.nume_filiala AS filiala_nume,
-                c.nume_companie AS companie_nume
+                c.tara AS limba
 
              FROM S01_Santiere s
-             LEFT JOIN users u1 ON s.created_by_user_id = u1.id
-             LEFT JOIN users u2 ON s.updated_by_user_id = u2.id
+             LEFT JOIN S00_Utilizatori u1 ON s.created_by_user_id = u1.id
+             LEFT JOIN S00_Utilizatori u2 ON s.updated_by_user_id = u2.id
              LEFT JOIN S10_Filiale f ON s.filiala_id = f.id
              LEFT JOIN S10_Companii c ON s.companie_id = c.id
-             ORDER BY s.updated_at DESC`,
-        );
-        // await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate delay for testing
+             WHERE s.companie_id = ?
+        `;
+
+        const params = [companie_id];
+
+        if (filiala_id) {
+            sql += ` AND s.filiala_id = ?`;
+            params.push(filiala_id);
+        }
+        if (q) {
+            sql += ` AND s.nume LIKE ?`;
+            params.push(`%${q}%`);
+        }
+
+        sql += ` ORDER BY s.updated_at DESC`;
+
+        const [rows] = await conn.execute(sql, params);
+        return res.status(200).json({ santiere: rows });
+    } catch (err) {
+        console.error("getSantiereByCompany error:", err);
+        return res.status(500).json({ message: "Eroare la preluarea șantierelor." });
+    } finally {
+        if (conn) conn.release();
+    }
+};
+
+const getSantier = async (req, res) => {
+    let conn;
+    try {
+        const santier_id = Number(req.params.id);
+
+        if (!santier_id) {
+            return res.status(400).json({ message: "ID-ul șantierului este invalid." });
+        }
+        conn = await global.db.getConnection();
+
+        let sql = `
+            SELECT 
+                s.*, 
+                DATE_FORMAT(s.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at,
+                DATE_FORMAT(s.updated_at, '%Y-%m-%dT%H:%i:%sZ') AS updated_at,
+                
+                u1.name as created_by_name, 
+                u1.photo_url AS created_by_photo_url,
+                u2.name as updated_by_name,
+                u2.photo_url AS updated_by_photo_url,
+
+                f.nume_filiala AS filiala_nume,
+                c.tara AS limba
+
+             FROM S01_Santiere s
+             LEFT JOIN S00_Utilizatori u1 ON s.created_by_user_id = u1.id
+             LEFT JOIN S00_Utilizatori u2 ON s.updated_by_user_id = u2.id
+             LEFT JOIN S10_Filiale f ON s.filiala_id = f.id
+             LEFT JOIN S10_Companii c ON s.companie_id = c.id
+             WHERE s.id = ?
+        `;
+
+        const params = [santier_id];
+
+        const [rows] = await conn.execute(sql, params);
+        return res.status(200).json({ santier: rows[0] });
+    } catch (err) {
+        console.error("getSantier error:", err);
+        return res.status(500).json({ message: "Eroare la preluarea șantierului." });
+    } finally {
+        if (conn) conn.release();
+    }
+}
+
+const getAllSantiere = async (req, res) => {
+    let conn;
+    const { q } = req.query;
+
+    try {
+        conn = await global.db.getConnection();
+
+        let sqlQuery = `
+            SELECT 
+                s.*, 
+                DATE_FORMAT(s.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at,
+                DATE_FORMAT(s.updated_at, '%Y-%m-%dT%H:%i:%sZ') AS updated_at,
+                
+                u1.name as created_by_name, 
+                u1.photo_url AS created_by_photo_url,
+                u2.name as updated_by_name,
+                u2.photo_url AS updated_by_photo_url,
+
+                f.nume_filiala AS filiala_nume,
+                c.nume_companie AS companie_nume,
+                c.tara AS limba
+
+             FROM S01_Santiere s
+             LEFT JOIN S00_Utilizatori u1 ON s.created_by_user_id = u1.id
+             LEFT JOIN S00_Utilizatori u2 ON s.updated_by_user_id = u2.id
+             LEFT JOIN S10_Filiale f ON s.filiala_id = f.id
+             LEFT JOIN S10_Companii c ON s.companie_id = c.id
+        `;
+
+        const queryParams = [];
+
+        // If 'q' exists, append the WHERE clause and add the search term to parameters
+        if (q) {
+            sqlQuery += ` 
+                WHERE s.nume LIKE ? 
+                   OR c.nume_companie LIKE ? 
+                   OR f.nume_filiala LIKE ?
+                   OR s.adresa LIKE ?
+            `;
+            const searchTerm = `%${q}%`;
+            // Push the search term for every '?' in the WHERE clause
+            queryParams.push(searchTerm, searchTerm, searchTerm, searchTerm);
+        }
+
+        sqlQuery += ` ORDER BY s.updated_at DESC`;
+
+        // Execute using the dynamically built query and parameters
+        const [rows] = await conn.execute(sqlQuery, queryParams);
+
         return res.status(200).json({ santiere: rows });
     } catch (err) {
         console.error("getAllSantiere error:", err);
@@ -296,6 +376,14 @@ const editSantier = async (req, res) => {
             [newData.updated_by_user_id, newData.companie_id]
         );
 
+        //5. Daca devine inactiv, setam atribuirle pe null
+        if (newData.activ == false || newData.activ == 0) {
+            await conn.execute(
+                `DELETE FROM S01_Atribuire_Activitate WHERE santier_id = ?`,
+                [id]
+            );
+        }
+
         // --- HISTORY ---
         logHistoryAndNotify(global.db, {
             // Display Info
@@ -457,5 +545,6 @@ module.exports = {
     deleteSantier,
     editSantier,
     postSantier,
-    getSantiereForContacte
+    getSantiereForContacte,
+    getSantier
 };

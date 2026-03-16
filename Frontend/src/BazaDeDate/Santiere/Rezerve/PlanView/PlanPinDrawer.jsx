@@ -6,6 +6,15 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCamera } from "@fortawesome/free-solid-svg-icons";
 import photoAPI from "../../../../api/photoAPI.jsx";
 import { useRef } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { faXmark } from "@fortawesome/free-solid-svg-icons"; // Used for the close button
+import { Button } from "@/components/ui/button";
 
 export default function PlanPinDrawer({
     open,
@@ -22,9 +31,6 @@ export default function PlanPinDrawer({
 }) {
     const { idSantier } = useParams();
 
-    const [assignees, setAssignees] = useState([]);
-    const [loadingAssignees, setLoadingAssignees] = useState(false);
-
     // --- editing-specific photo state ---
     // URLs of existing photos on the server (only used in edit mode)
     const [existingPhotos, setExistingPhotos] = useState([]); // array<string URL>
@@ -33,33 +39,6 @@ export default function PlanPinDrawer({
     // newly added local files (both modes)
     const [localPhotos, setLocalPhotos] = useState([]); // array<File>
 
-    const loadAssignees = useCallback(async () => {
-        if (!idSantier) {
-            setAssignees([]);
-            return;
-        }
-        try {
-            setLoadingAssignees(true);
-            const { data } = await api.get("/users/getAtribuiri");
-            const allUsers = Array.isArray(data?.users) ? data.users : [];
-            const allAssignments = Array.isArray(data?.assignments) ? data.assignments : [];
-            const assignedIds = new Set(
-                allAssignments.filter(a => Number(a.santier_id) === Number(idSantier)).map(a => a.user_id)
-            );
-            const assignedUsers = allUsers
-                .filter(u => assignedIds.has(u.id))
-                .filter(u => u.role !== "beneficiar")
-                .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-            setAssignees(assignedUsers);
-        } catch (e) {
-            console.warn("loadAssignees error:", e?.message);
-            setAssignees([]);
-        } finally {
-            setLoadingAssignees(false);
-        }
-    }, [idSantier]);
-
-    useEffect(() => { loadAssignees(); }, [loadAssignees]);
 
     const statusColor = {
         new: "#8B5CF6",
@@ -198,7 +177,6 @@ export default function PlanPinDrawer({
         };
 
         if (editingPin) {
-            // call edit callback with diffs
             saveEditingPin?.({
                 ...payload,
                 photosNew: localPhotos,         // Files to upload
@@ -247,7 +225,7 @@ export default function PlanPinDrawer({
             {/* Backdrop */}
             <div
                 className={[
-                    "absolute inset-0 bg-black/30  transition-opacity duration-300",
+                    "absolute inset-0 bg-black/40 transition-opacity duration-300",
                     open ? "opacity-100 pointer-events-auto" : "opacity-0",
                 ].join(" ")}
                 onClick={onCancel}
@@ -257,304 +235,250 @@ export default function PlanPinDrawer({
             {/* Drawer */}
             <div
                 className={[
-                    "absolute right-0 top-0 bottom-0 h-full",
-                    "transition-transform duration-300 ease-out",
-                    open ? "translate-x-0" : "translate-x-full",
-                    "pointer-events-none",
+                    "absolute right-0 top-0 bottom-0 h-full flex flex-col",
+                    "transition-transform duration-300 bg-card border-l border-input ease-out shadow-2xl",
+                    open ? "translate-x-0 pointer-events-auto" : "translate-x-full pointer-events-none",
                 ].join(" ")}
-                style={{ width: 460, maxWidth: "90vw" }}
+                style={{ width: "36rem", maxWidth: "90vw" }}
             >
-                <div
-                    className={[
-                        "h-full bg-white text-black flex flex-col shadow-2xl border-l border-black/10",
-                        "rounded-l-2xl overflow-hidden",
-                        open ? "pointer-events-auto" : "pointer-events-none",
-                    ].join(" ")}
-                >
-                    {/* Header */}
-                    <div className="px-4 py-3 border-b border-black/10 bg-gradient-to-r from-slate-100 to-slate-50 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <button
-                                className="text-white bg-red-600 hover:bg-red-700 text-2xl rounded-xl w-10 h-10 grid place-items-center shadow-sm"
-                                onClick={onCancel}
-                                aria-label="Închide"
-                                title="Închide"
-                            >
-                                ✕
-                            </button>
-                        </div>
+                {/* Header */}
+                <div className="px-5 py-4 border-b border-border bg-muted/10 flex items-center justify-between">
+                    <Button
+                        variant="destructive"
+                        size="icon"
+                        className="rounded-xl h-10 w-10 shadow-sm shrink-0"
+                        onClick={onCancel}
+                        aria-label="Închide"
+                        title="Închide"
+                    >
+                        <FontAwesomeIcon icon={faXmark} className="text-lg" />
+                    </Button>
 
-                        <div className="flex-1 flex justify-center">
-                            <h3 className="text-lg font-semibold tracking-tight">
-                                {editingPin ? "Editează Pin" : "Adaugă Pin"}
-                            </h3>
-                        </div>
-
-                        <div className="w-10" />
+                    <div className="flex-1 flex justify-center text-foreground">
+                        <h3 className="text-lg font-bold tracking-tight">
+                            {editingPin ? "Editează Pin" : "Adaugă Pin"}
+                        </h3>
                     </div>
 
-                    {/* Content */}
-                    <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+                    <div className="w-10 shrink-0" />
+                </div>
+
+                {/* Content */}
+                <ScrollArea className="flex-1">
+                    <div className="px-5 py-5 space-y-6">
                         {/* Photos */}
                         <section className="block text-base">
-                            <div className="flex items-center justify-between mb-1">
-                                <span className="font-semibold flex items-center gap-2">
-                                    <FontAwesomeIcon icon={faCamera} className="text-slate-700" />
+                            <div className="flex items-center justify-between mb-2">
+                                <Label className="text-base font-semibold flex items-center gap-2 text-foreground">
+                                    <FontAwesomeIcon icon={faCamera} className="text-muted-foreground" />
                                     Fotografii
-                                </span>
-                                <span className="text-xs text-gray-500">
+                                </Label>
+                                <span className="text-sm font-semibold text-muted-foreground">
                                     {existingPhotos.length + localPhotos.length}/{maxPhotos}
                                 </span>
                             </div>
 
                             <div
-                                className={`
-                                        flex gap-4 py-2 flex-col sm:flex-row sm:items-center justify-between
-                                    `}
+                                onClick={() => {
+                                    if (canAddMore && fileInputRef.current) {
+                                        fileInputRef.current.click();
+                                    }
+                                }}
+                                onDragOver={handleDragOver}
+                                onDragLeave={handleDragLeave}
+                                onDrop={handleDropFiles}
+                                className={[
+                                    "w-full rounded-xl border-2 border-dashed px-3 py-4 transition-all flex items-center justify-center",
+                                    canAddMore
+                                        ? "border-input bg-background hover:bg-muted/50 cursor-pointer"
+                                        : "border-input bg-muted cursor-not-allowed opacity-60",
+                                    isDragOver && canAddMore ? "border-primary bg-primary/5" : "",
+                                ].join(" ")}
                             >
-                                <div
-                                    onClick={() => {
-                                        if (canAddMore && fileInputRef.current) {
-                                            fileInputRef.current.click();
-                                        }
-                                    }}
-                                    onDragOver={handleDragOver}
-                                    onDragLeave={handleDragLeave}
-                                    onDrop={handleDropFiles}
-                                    className={[
-                                        "w-full rounded-2xl border-2 border-dashed px-3 py-3 transition",
-                                        "flex items-center justify-center",
-                                        canAddMore
-                                            ? "border-slate-400 bg-slate-50/60 hover:bg-slate-100 cursor-pointer"
-                                            : "border-slate-300 bg-slate-100 cursor-not-allowed opacity-60",
-                                        isDragOver && canAddMore ? "border-blue-500 bg-blue-50/60" : "",
-                                    ].join(" ")}
-                                >
-                                    <input
-                                        ref={fileInputRef}
-                                        type="file"
-                                        accept="image/*"
-                                        multiple
-                                        hidden
-                                        onChange={handlePickFiles}
-                                        disabled={!canAddMore}
-                                    />
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    multiple
+                                    hidden
+                                    onChange={handlePickFiles}
+                                    disabled={!canAddMore}
+                                />
 
-                                    <div className="inline-flex items-center gap-2">
-                                        <FontAwesomeIcon icon={faCamera} className="text-slate-700" />
-
-                                        <span className="hidden sm:inline text-sm font-medium">
-                                            Click sau trage aici fotografiile
-                                        </span>
-
-                                        <span className="sm:hidden text-sm font-medium">
-                                            Adaugă fotografii
-                                        </span>
-                                    </div>
+                                <div className="inline-flex items-center gap-2 text-foreground">
+                                    <FontAwesomeIcon icon={faCamera} />
+                                    <span className="text-sm font-medium">
+                                        {canAddMore ? "Click sau trage aici fotografiile" : "Limită fotografii atinsă"}
+                                    </span>
                                 </div>
                             </div>
 
                             {(existingPhotos.length > 0 || localPhotos.length > 0) && (
-                                <div className="mt-2 grid grid-cols-3 gap-2">
+                                <div className="mt-3 grid grid-cols-3 gap-3">
                                     {/* Existing photos (server) */}
                                     {existingPhotos.map((src, idx) => (
-                                        <div
-                                            key={`ex-${idx}`}
-                                            className="relative"
-                                        >
-                                            <div
-
-                                                className="relative group rounded-xl overflow-hidden border border-black/60 bg-slate-50"
-                                            >
-                                                <img
-                                                    src={src.url}
-                                                    alt={`existing-${idx}`}
-                                                    className="w-full h-28 object-cover"
-                                                />
+                                        <div key={`ex-${idx}`} className="relative group">
+                                            <div className="relative rounded-xl overflow-hidden border border-input bg-muted shadow-sm">
+                                                <img src={src.url} alt={`existing-${idx}`} className="w-full h-28 object-cover" />
                                             </div>
-                                            <button
-                                                type="button"
-                                                className="absolute -top-2 -right-2 bg-red-600 text-white w-6 h-6 rounded-full text-xs shadow-md opacity-90 group-hover:opacity-100"
+                                            <Button
+                                                variant="destructive"
+                                                size="icon"
+                                                className="absolute -top-2 -right-2 w-7 h-7 rounded-full text-sm shadow-md z-10 opacity-90 group-hover:opacity-100 transition-opacity"
                                                 onClick={() => removeExistingAt(idx)}
                                                 title="Șterge"
                                             >
-                                                ✕
-                                            </button>
+                                                <FontAwesomeIcon icon={faXmark} />
+                                            </Button>
                                         </div>
                                     ))}
                                     {/* Newly added local files */}
                                     {localObjectUrls.map((src, idx) => (
-                                        <div
-                                            key={`new-${idx}`}
-                                            className="relative"
-                                        >
-                                            <div
-                                                className="relative group rounded-xl overflow-hidden border border-black/60 bg-slate-50"
-                                            >
-                                                <img
-                                                    src={src}
-                                                    alt={`preview-${idx}`}
-                                                    className="w-full h-28 object-cover"
-                                                />
+                                        <div key={`new-${idx}`} className="relative group">
+                                            <div className="relative rounded-xl overflow-hidden border border-input bg-muted shadow-sm">
+                                                <img src={src} alt={`preview-${idx}`} className="w-full h-28 object-cover" />
                                             </div>
-                                            <button
-                                                type="button"
-                                                className="absolute -top-2 -right-2 bg-red-600 text-white w-6 h-6 rounded-full text-xs shadow-md opacity-90 group-hover:opacity-100"
+                                            <Button
+                                                variant="destructive"
+                                                size="icon"
+                                                className="absolute -top-2 -right-2 w-7 h-7 rounded-full text-sm shadow-md z-10 opacity-90 group-hover:opacity-100 transition-opacity"
                                                 onClick={() => removeLocalAt(idx)}
                                                 title="Șterge"
                                             >
-                                                ✕
-                                            </button>
+                                                <FontAwesomeIcon icon={faXmark} />
+                                            </Button>
                                         </div>
                                     ))}
                                 </div>
                             )}
                         </section>
 
-                        <hr className="border-dashed border-black/10" />
+                        <Separator className="border-dashed" />
 
                         {/* Titlu */}
-                        <section className="space-y-1">
-                            <label className="block text-base">
-                                <span className="font-semibold">Titlu</span>
-                                <input
-                                    className="mt-1 w-full border border-black rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/70 focus:border-blue-500"
-                                    value={values.title}
-                                    onChange={(e) => setValues(v => ({ ...v, title: e.target.value }))}
-                                    placeholder="Ex: Ancorare balustradă"
-                                />
-                            </label>
+                        <section className="space-y-2 text-foreground">
+                            <Label className="text-base font-semibold">Titlu</Label>
+                            <Input
+                                value={values.title}
+                                onChange={(e) => setValues(v => ({ ...v, title: e.target.value }))}
+                                placeholder="Ex: Ancorare balustradă"
+                                className="h-10"
+                            />
                         </section>
 
                         {/* Reper */}
-                        <section className="space-y-1">
-                            <label className="block text-base">
-                                <span className="font-semibold">Reper</span>
-                                <input
-                                    className="mt-1 w-full border border-black rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/70 focus:border-blue-500"
-                                    value={values.reper}
-                                    onChange={(e) => setValues(v => ({ ...v, reper: e.target.value }))}
-                                    placeholder="Ex: Ax B-3, etaj 2"
-                                />
-                            </label>
+                        <section className="space-y-2 text-foreground">
+                            <Label className="text-base font-semibold">Reper</Label>
+                            <Input
+                                value={values.reper}
+                                onChange={(e) => setValues(v => ({ ...v, reper: e.target.value }))}
+                                placeholder="Ex: Ax B-3, etaj 2"
+                                className="h-10"
+                            />
                         </section>
 
                         {/* Descriere */}
-                        <section className="space-y-1">
-                            <label className="block text-base">
-                                <span className="font-semibold">Descriere</span>
-                                <textarea
-                                    className="mt-1 w-full border border-black rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/70 focus:border-blue-500"
-                                    rows={4}
-                                    value={values.description}
-                                    onChange={(e) => setValues(v => ({ ...v, description: e.target.value }))}
-                                    placeholder="Detalii suplimentare, instrucțiuni, observații..."
-                                />
-                            </label>
+                        <section className="space-y-2 text-foreground">
+                            <Label className="text-base font-semibold">Descriere</Label>
+                            <Textarea
+                                rows={4}
+                                value={values.description}
+                                onChange={(e) => setValues(v => ({ ...v, description: e.target.value }))}
+                                placeholder="Detalii suplimentare, instrucțiuni, observații..."
+                                className="resize-none"
+                            />
                         </section>
 
-                        <hr className="border-dashed border-gray-500" />
+                        <Separator className="border-dashed" />
 
                         {/* Status / Prioritate */}
-                        <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <section className="grid grid-cols-1 sm:grid-cols-2 text-foreground gap-4">
                             {/* Status */}
-                            <label className="block text-base">
-                                <span className="font-semibold">Status</span>
-                                <select
-                                    style={{ color: statusColor[values.status], backgroundColor: "white" }}
-                                    className="mt-1 w-full border border-black rounded-lg px-3 py-2 font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/70 focus:border-blue-500"
+                            <div className="space-y-2">
+                                <Label className="text-base font-semibold">Status</Label>
+                                <Select
                                     value={values.status}
-                                    onChange={(e) => setValues(v => ({ ...v, status: e.target.value }))}
+                                    onValueChange={(val) => setValues(v => ({ ...v, status: val }))}
                                 >
-                                    <option value="new">Nou</option>
-                                    <option value="in_progress">În lucru</option>
-                                    <option value="blocked">Blocat</option>
-                                    <option value="done">Finalizat</option>
-                                    <option value="cancelled">Anulat</option>
-                                </select>
-                            </label>
+                                    <SelectTrigger className="h-10 font-semibold" style={{ color: statusColor ? statusColor[values.status] : undefined }}>
+                                        <SelectValue placeholder="Selectează status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="new">Nou</SelectItem>
+                                        <SelectItem value="in_progress">În lucru</SelectItem>
+                                        <SelectItem value="blocked">Blocat</SelectItem>
+                                        <SelectItem value="done">Finalizat</SelectItem>
+                                        <SelectItem value="checked">Validat</SelectItem>
+                                        <SelectItem value="cancelled">Anulat</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
 
                             {/* Prioritate */}
-                            <label className="block text-base">
-                                <span className="font-semibold">Prioritate</span>
-                                <select
-                                    className="mt-1 w-full border outline-none border-black rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/70 focus:border-blue-500"
+                            <div className="space-y-2">
+                                <Label className="text-base text-foreground font-semibold">Prioritate</Label>
+                                <Select
                                     value={values.priority}
-                                    onChange={(e) => setValues(v => ({ ...v, priority: e.target.value }))}
+                                    onValueChange={(val) => setValues(v => ({ ...v, priority: val }))}
                                 >
-                                    <option value="low">Mică</option>
-                                    <option value="medium">Medie</option>
-                                    <option value="high">Mare</option>
-                                    <option value="critical">Critică</option>
-                                </select>
-                            </label>
-                        </section>
-
-                        {/* Atribuire */}
-                        <section className="space-y-1">
-                            <label className="block text-base">
-                                <span className="font-semibold">Atribuire</span>
-                                <select
-                                    className="mt-1 w-full border outline-none border-black rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/70 focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
-                                    value={values.assigned_user_id}
-                                    onChange={(e) => setValues(v => ({ ...v, assigned_user_id: e.target.value }))}
-                                    disabled={loadingAssignees}
-                                >
-                                    <option value="">Neatribuit</option>
-                                    {assignees.map(u => (
-                                        <option key={u.id} value={u.id}>{u.name}</option>
-                                    ))}
-                                </select>
-                                {loadingAssignees && (
-                                    <div className="text-xs text-gray-500 mt-1">Se încarcă utilizatorii…</div>
-                                )}
-                            </label>
+                                    <SelectTrigger className="h-10">
+                                        <SelectValue placeholder="Selectează prioritate" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="low">Mică</SelectItem>
+                                        <SelectItem value="medium">Medie</SelectItem>
+                                        <SelectItem value="high">Mare</SelectItem>
+                                        <SelectItem value="critical">Critică</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </section>
 
                         {/* Termen */}
-                        <section className="space-y-1">
-                            <label className="block text-base">
-                                <span className="font-semibold">Termen</span>
-                                <input
-                                    type="date"
-                                    className="mt-1 w-full border border-black rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/70 focus:border-blue-500"
-                                    value={values.due_date}
-                                    onChange={(e) => setValues(v => ({ ...v, due_date: e.target.value }))}
-                                />
-                            </label>
+                        <section className="space-y-2 text-foreground">
+                            <Label className="text-base font-semibold">Termen</Label>
+                            <Input
+                                type="date"
+                                value={values.due_date}
+                                onChange={(e) => setValues(v => ({ ...v, due_date: e.target.value }))}
+                                className="h-10"
+                            />
                         </section>
 
                         {/* Keep pin after save */}
                         {!editingPin && (
-                            <section className="pt-1">
-                                <label className="gap-2 flex items-center text-base">
-                                    <input
-                                        type="checkbox"
-                                        className="w-5 h-5 accent-blue-600"
+                            <section className="pt-2 text-foreground">
+                                <div className="flex items-center gap-3">
+                                    <Checkbox
+                                        id="remain-pin-checkbox"
                                         checked={remainPinState}
-                                        onChange={(e) => setRemainPinState(e.target.checked)}
+                                        onCheckedChange={(checked) => setRemainPinState(checked)}
+                                        className="h-5 w-5"
                                     />
-                                    <span className="font-semibold">Menține pinul după salvare</span>
-                                </label>
+                                    <Label htmlFor="remain-pin-checkbox" className="text-base font-semibold cursor-pointer">
+                                        Menține pinul după salvare
+                                    </Label>
+                                </div>
                             </section>
                         )}
                     </div>
+                </ScrollArea>
 
-                    {/* Actions */}
-                    <div className="px-4 py-3 border-t border-black/10 bg-slate-50 flex gap-2 justify-end">
-                        <button
-                            className="rounded-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 text-sm font-semibold shadow-sm"
-                            onClick={onCancel}
-                        >
-                            Anulează
-                        </button>
-                        <button
-                            className="rounded-full bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 text-sm font-semibold shadow-sm"
-                            onClick={save}
-                        >
-                            {editingPin ? "Salvează modificările" : "Salvează"}
-                        </button>
-                    </div>
+                {/* Actions */}
+                <div className="px-5 py-4 border-t border-border bg-muted/10 flex gap-3 justify-end">
+                    <Button
+                        variant="destructive"
+                        className="rounded-full px-6"
+                        onClick={onCancel}
+                    >
+                        Anulează
+                    </Button>
+                    <Button
+                        className="rounded-full bg-blue-600 hover:bg-blue-700 text-white px-8"
+                        onClick={save}
+                    >
+                        {editingPin ? "Salvează modificările" : "Salvează"}
+                    </Button>
                 </div>
             </div>
         </div>

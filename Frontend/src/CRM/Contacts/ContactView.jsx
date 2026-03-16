@@ -36,21 +36,23 @@ import {
     faArrowRight,
     faImage,
     faCircleInfo,
-    faCity
+    faCity,
+    faHelmetSafety
 } from '@fortawesome/free-solid-svg-icons';
 import { faLinkedin } from '@fortawesome/free-brands-svg-icons';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useContactHistory } from '@/hooks/useContacts';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 export default function ContactView({ open, setOpen }) {
     const contact = open;
-    const { companyId } = useParams();
 
     // Fetch History Data
     const { data: historyData } = useContactHistory(contact?.id);
 
     if (!contact) return null;
+
+    const navigate = useNavigate();
 
     // --- HELPERS ---
     const safeText = (v) => (v && String(v).trim() ? String(v).trim() : "");
@@ -225,10 +227,10 @@ export default function ContactView({ open, setOpen }) {
                             {/* ... (Existing Tab 1 Content - Unchanged) ... */}
                             <Card className="border-border shadow-sm">
                                 <CardContent className="p-4 flex flex-col items-center text-center relative">
-                                    <div className="h-20 w-20 mb-2 rounded-full border-4 border-muted shadow-sm relative">
-                                        <Avatar className="h-full w-full">
+                                    <div className="h-20 w-20 mb-2 rounded-lg border-4 border-border shadow-sm relative">
+                                        <Avatar className="h-full rounded-none w-full">
                                             <AvatarImage src={contact.logo_url ? `${photoApi}/${contact.logo_url}` : null} className="object-cover" />
-                                            <AvatarFallback className="text-xl font-bold bg-muted text-foreground">
+                                            <AvatarFallback className="text-xl font-bold bg-muted rounded-none text-foreground">
                                                 {contact.prenume?.[0]}{contact.nume?.[0]}
                                             </AvatarFallback>
                                         </Avatar>
@@ -255,29 +257,12 @@ export default function ContactView({ open, setOpen }) {
                                     </p>
 
                                     <div className="flex w-full gap-2">
-                                        {contact.nume_santier ?
-                                            (
-                                                <Button
-                                                    variant="outline"
-                                                    className="text-base flex-1 font-medium p-5 border-border bg-background hover:bg-primary hover:text-primary-foreground hover:border-primary  transition-colors"
-                                                // onClick={(e) => handleRowClick(e, santier)}
-                                                >
-                                                    <FontAwesomeIcon icon={faMapLocationDot} className="" />
-                                                    <span>{contact.nume_santier}</span>
-                                                </Button>
-                                            ) :
-                                            (
-                                                <Button variant="outline" className="flex-1 justify-center text-base font-medium p-5 text-foreground border-border gap-2 hover:bg-muted">
-                                                    <FontAwesomeIcon icon={faMapLocationDot} className="text-muted-foreground" />
-                                                    <span className='italic text-muted-foreground'>Neasociat</span>
-                                                </Button>
-                                            )}
                                         {contact.nume_filiala ?
                                             (
                                                 <Button
                                                     variant="outline"
                                                     className="text-base flex-1 font-medium p-5 border-border bg-background hover:bg-primary hover:text-primary-foreground hover:border-primary  transition-colors"
-                                                // onClick={(e) => handleRowClick(e, filiala)}
+                                                    onClick={(e) => navigate(`/CRM/Filiale/View/${contact.companie_id}/${contact.filiala_id}`)}
                                                 >
                                                     <FontAwesomeIcon icon={faBuilding} className="" />
                                                     <span>{contact.nume_filiala}</span>
@@ -289,6 +274,24 @@ export default function ContactView({ open, setOpen }) {
                                                     <span className='italic text-muted-foreground'>Neasociat</span>
                                                 </Button>
                                             )}
+                                        {contact.nume_santier ?
+                                            (
+                                                <Button
+                                                    variant="outline"
+                                                    className="text-base flex-1 font-medium p-5 border-border bg-background hover:bg-primary hover:text-primary-foreground hover:border-primary  transition-colors"
+                                                    onClick={(e) => navigate(`/Santiere/${contact.tara_companie}/${contact.companie_id}/${contact.santier_id}`)}
+                                                >
+                                                    <FontAwesomeIcon icon={faHelmetSafety} className="" />
+                                                    <span>{contact.nume_santier}</span>
+                                                </Button>
+                                            ) :
+                                            (
+                                                <Button variant="outline" className="flex-1 justify-center text-base font-medium p-5 text-foreground border-border gap-2 hover:bg-muted">
+                                                    <FontAwesomeIcon icon={faHelmetSafety} className="text-muted-foreground" />
+                                                    <span className='italic text-muted-foreground'>Neasociat</span>
+                                                </Button>
+                                            )}
+
                                     </div>
                                 </CardContent>
                             </Card>
@@ -377,10 +380,10 @@ export default function ContactView({ open, setOpen }) {
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="p-4 space-y-4">
-                                    <div className="flex gap-3 items-center">
-                                        <Avatar className="h-9 w-9 border border-border">
+                                    <div className="flex gap-3 items-start">
+                                        <Avatar className="h-10 w-10 rounded-lg border border-border">
                                             <AvatarImage src={contact.updated_by_photo_url ? `${photoApi}/${contact.updated_by_photo_url}` : null} />
-                                            <AvatarFallback className="bg-muted text-base font-medium"><FontAwesomeIcon icon={faUser} /></AvatarFallback>
+                                            <AvatarFallback className="bg-muted text-base font-medium rounded-lg"><FontAwesomeIcon icon={faUser} /></AvatarFallback>
                                         </Avatar>
                                         <div className="flex flex-col">
                                             <span className="text-base font-bold text-muted-foreground uppercase">Ultima actualizare</span>
@@ -394,10 +397,10 @@ export default function ContactView({ open, setOpen }) {
                                         </div>
                                     </div>
                                     <Separator className="opacity-40" />
-                                    <div className="flex gap-3 items-center opacity-80">
-                                        <Avatar className="h-7 w-7 border border-border">
+                                    <div className="flex gap-3 items-start opacity-80">
+                                        <Avatar className="h-8 w-8 rounded-lg border border-border">
                                             <AvatarImage src={contact.created_by_photo_url ? `${photoApi}/${contact.created_by_photo_url}` : null} />
-                                            <AvatarFallback className="bg-muted text-sm font-medium"><FontAwesomeIcon icon={faUser} /></AvatarFallback>
+                                            <AvatarFallback className="bg-muted text-sm font-medium rounded-lg"><FontAwesomeIcon icon={faUser} /></AvatarFallback>
                                         </Avatar>
                                         <div className="flex flex-col">
                                             <span className="text-base font-bold text-muted-foreground uppercase">Creat inițial</span>
@@ -442,9 +445,9 @@ export default function ContactView({ open, setOpen }) {
                                                             {/* --- TOP ROW: Avatar + Header Info --- */}
                                                             <div className="flex items-center gap-3">
                                                                 {/* Avatar */}
-                                                                <Avatar className="h-12 w-12 border border-border z-10 shrink-0 bg-background">
+                                                                <Avatar className="h-12 w-12 border rounded-lg border-border z-10 shrink-0 bg-background">
                                                                     <AvatarImage src={item.author?.photo ? `${photoApi}/${item.author.photo}` : null} />
-                                                                    <AvatarFallback className="bg-muted text-[12px] text-muted-foreground">
+                                                                    <AvatarFallback className="bg-muted text-sm rounded-lg text-muted-foreground">
                                                                         <FontAwesomeIcon icon={faUser} />
                                                                     </AvatarFallback>
                                                                 </Avatar>

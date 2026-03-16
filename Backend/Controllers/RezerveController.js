@@ -7,20 +7,78 @@ const sharp = require('sharp');
 
 const lucrariGET = async (req, res) => {
     try {
-        const { santier_id } = req.query;
+        const { santier_id, user_id } = req.query; // accept user_id
         if (!santier_id) {
             return res.status(400).json({ error: "Missing santier_id" });
         }
 
-        const [rows] = await global.db.execute(
+        // 1. Fetch all lucrări for the given santier
+        const [lucrari] = await global.db.execute(
             `SELECT id, santier_id, name, description, created_at, updated_at, is_3d, asset_path
-       FROM Rezerve_Lucrari 
-       WHERE santier_id = ? 
-       ORDER BY created_at DESC`,
+             FROM S08_Rezerve_Lucrari 
+             WHERE santier_id = ? 
+             ORDER BY created_at DESC`,
             [santier_id]
         );
 
-        res.json({ lucrari: rows });
+        if (lucrari.length === 0) {
+            return res.json({ lucrari: [] });
+        }
+
+        const lucrareIds = lucrari.map(l => l.id);
+        const placeholders = lucrareIds.map(() => '?').join(',');
+
+        // 2. Fetch all plans for these lucrări
+        const [plans] = await global.db.execute(
+            `SELECT 
+                id, lucrare_id, title, scale_label, dpi,
+                width_px, height_px, meters_per_px,
+                pdf_path, image_path, thumb_path, image_low_path, image_mid_path,
+                created_at, updated_at, tiles_base_url, tiles_max_zoom, tile_size, tiles_layout, tiles_version
+             FROM S08_Rezerve_Plans
+             WHERE lucrare_id IN (${placeholders})
+             ORDER BY created_at DESC`,
+            lucrareIds
+        );
+        // await new Promise(resolve => setTimeout(resolve, 2000)); // simulate loading delay for testing
+        // 3. If user_id is provided, fetch unseen counts for all plans
+        let unseenCounts = {};
+        if (user_id && plans.length > 0) {
+            const planIds = plans.map(p => p.id);
+            const [rows] = await global.db.query(
+                `
+                SELECT p.plan_id, SUM(CASE WHEN p.updated_at > COALESCE(s.last_seen_at, '1970-01-01') THEN 1 ELSE 0 END) AS unseen
+                FROM S09_Rezerve_Pins p
+                LEFT JOIN S09_Rezerve_Pin_Seen s ON s.pin_id = p.id AND s.user_id = ?
+                WHERE p.plan_id IN (?)
+                GROUP BY p.plan_id
+                `,
+                [user_id, planIds]
+            );
+            for (const r of rows) unseenCounts[r.plan_id] = Number(r.unseen || 0);
+            // ensure every plan has an unseen count (0 if none)
+            for (const pid of planIds) {
+                if (!(pid in unseenCounts)) unseenCounts[pid] = 0;
+            }
+        }
+
+        // 4. Group plans by lucrare_id and attach unseen counts
+        const plansByLucrare = plans.reduce((acc, plan) => {
+            const planWithUnseen = {
+                ...plan,
+                unseen: unseenCounts[plan.id] || 0
+            };
+            if (!acc[plan.lucrare_id]) acc[plan.lucrare_id] = [];
+            acc[plan.lucrare_id].push(planWithUnseen);
+            return acc;
+        }, {});
+
+        // 5. Attach plans to each lucrare
+        lucrari.forEach(lucrare => {
+            lucrare.plans = plansByLucrare[lucrare.id] || [];
+        });
+
+        res.json({ lucrari });
     } catch (err) {
         console.log("GET lucrari error:", err);
         res.status(500).json({ error: "Database error" });
@@ -32,25 +90,19 @@ const lucrariPOST = async (req, res) => {
     try {
         const { santier_id, name, description } = req.body;
         if (!santier_id || !name) {
-            return res.status(400).json({ error: "santier_id and name required" });
+            return res.status(400).json({ error: "ID-ul șantierului și al lucrării sunt obligatorii" });
         }
 
         const [result] = await global.db.execute(
-            `INSERT INTO Rezerve_Lucrari (santier_id, name, description) 
+            `INSERT INTO S08_Rezerve_Lucrari (santier_id, name, description) 
        VALUES (?, ?, ?)`,
             [santier_id, name, description || null]
         );
 
-        const [row] = await global.db.execute(
-            `SELECT id, santier_id, name, description, created_at, updated_at 
-       FROM Rezerve_Lucrari WHERE id = ?`,
-            [result.insertId]
-        );
-
-        res.status(201).json({ lucrare: row[0] });
+        res.status(201).json({ ok: true });
     } catch (err) {
         console.log("POST lucrare error:", err);
-        res.status(500).json({ error: "Database error" });
+        res.status(500).json({ error: "Server error" });
     }
 };
 
@@ -60,30 +112,24 @@ const lucrariPUT = async (req, res) => {
         const { name, description } = req.body;
 
         if (!name?.trim()) {
-            return res.status(400).json({ error: "Name is required" });
+            return res.status(400).json({ error: "Numele lucrării este obligatoriu" });
         }
 
         const [result] = await global.db.execute(
-            `UPDATE Rezerve_Lucrari 
+            `UPDATE S08_Rezerve_Lucrari 
        SET name = ?, description = ?, updated_at = CURRENT_TIMESTAMP 
        WHERE id = ?`,
             [name.trim(), description || null, id]
         );
 
         if (result.affectedRows === 0) {
-            return res.status(404).json({ error: "Lucrare not found" });
+            return res.status(404).json({ error: "Lucrare nu a fost găsită" });
         }
 
-        const [rows] = await global.db.execute(
-            `SELECT id, santier_id, name, description, created_at, updated_at 
-       FROM Rezerve_Lucrari WHERE id = ?`,
-            [id]
-        );
-
-        res.json({ lucrare: rows[0] });
+        res.json({ ok: true });
     } catch (err) {
         console.log("PUT lucrare error:", err);
-        res.status(500).json({ error: "Database error" });
+        res.status(500).json({ error: "Server error" });
     }
 };
 
@@ -115,7 +161,7 @@ const lucrariDELETE = async (req, res) => {
         // 1) Collect file paths BEFORE DB deletion
         const [plans] = await conn.execute(
             `SELECT pdf_path, image_path, thumb_path
-       FROM Rezerve_Plans
+       FROM S08_Rezerve_Plans
        WHERE lucrare_id = ?`,
             [id]
         );
@@ -131,11 +177,11 @@ const lucrariDELETE = async (req, res) => {
 
         // 2) Delete lucrare row (plans rows should be ON DELETE CASCADE)
         const [result] = await conn.execute(
-            `DELETE FROM Rezerve_Lucrari WHERE id = ?`,
+            `DELETE FROM S08_Rezerve_Lucrari WHERE id = ?`,
             [id]
         );
         if (result.affectedRows === 0) {
-            return res.status(404).json({ error: "Lucrare not found" });
+            return res.status(404).json({ error: "Lucrarea nu a fost găsită" });
         }
 
         // 3) Best-effort delete files
@@ -151,10 +197,10 @@ const lucrariDELETE = async (req, res) => {
             await removeIfExists(lucrareDirAbs);
         }
 
-        res.json({ success: true, message: "Lucrare deleted (DB) and files cleaned." });
+        res.json({ success: true, message: "Lucrarea a fost ștearsă cu succes" });
     } catch (err) {
         console.log("DELETE lucrare error:", err);
-        res.status(500).json({ error: "Database or FS error" });
+        res.status(500).json({ error: "Eroare la ștergerea lucrării" });
     }
 };
 
@@ -164,7 +210,7 @@ const plansGET = async (req, res) => {
     try {
         const { lucrare_id } = req.query;
         if (!lucrare_id) {
-            return res.status(400).json({ error: "Missing lucrare_id" });
+            return res.status(400).json({ error: "Lipa ID lucrare" });
         }
 
         const [rows] = await global.db.execute(
@@ -173,7 +219,7 @@ const plansGET = async (req, res) => {
          width_px, height_px, meters_per_px,
          pdf_path, image_path, thumb_path, image_low_path, image_mid_path,
          created_at, updated_at, tiles_base_url, tiles_max_zoom, tile_size, tiles_layout, tiles_version
-       FROM Rezerve_Plans
+       FROM S08_Rezerve_Plans
        WHERE lucrare_id = ?
        ORDER BY created_at DESC`,
             [lucrare_id]
@@ -193,21 +239,21 @@ const plansDELETE = async (req, res) => {
         // 1) Fetch paths (so we can clean files after deletion)
         const [rows] = await global.db.execute(
             `SELECT pdf_path, image_path, thumb_path 
-                FROM Rezerve_Plans 
+                FROM S08_Rezerve_Plans 
                 WHERE id = ?`,
             [id]
         );
-        if (!rows.length) return res.status(404).json({ error: "Plan not found" });
+        if (!rows.length) return res.status(404).json({ error: "Planul nu a fost găsit" });
 
         const { pdf_path, image_path, thumb_path } = rows[0];
 
         // 2) Delete plan row (pins/titles will cascade if FK set that way)
         const [result] = await global.db.execute(
-            `DELETE FROM Rezerve_Plans WHERE id = ?`,
+            `DELETE FROM S08_Rezerve_Plans WHERE id = ?`,
             [id]
         );
         if (result.affectedRows === 0) {
-            return res.status(404).json({ error: "Plan not found" });
+            return res.status(404).json({ error: "Planul nu a fost găsit" });
         }
 
         // 3) Files: pdf/png/thumb
@@ -226,10 +272,10 @@ const plansDELETE = async (req, res) => {
             await removeIfExists(absFromPublic(tilesDirPublic));
         }
 
-        res.json({ success: true, message: "Plan deleted. Files, tiles, and related rows cleaned (via cascade)." });
+        res.json({ success: true, message: "Planul a fost șters. Fișierele, plăcile și rândurile asociate au fost curățate (prin cascade)." });
     } catch (err) {
         console.log("DELETE plan error:", err);
-        res.status(500).json({ error: "Database or FS error" });
+        res.status(500).json({ error: "Eroare la ștergerea planului" });
     }
 };
 
@@ -266,10 +312,10 @@ const pinsGET = async (req, res) => {
                         p.photo2_path,
                         p.photo3_path,
                         (p.updated_at > COALESCE(s.last_seen_at, '1970-01-01')) AS is_unseen
-                    FROM Rezerve_Pins p
-                    LEFT JOIN users u ON u.id = p.user_id
-                    LEFT JOIN users a ON a.id = p.assigned_user_id
-                    LEFT JOIN Rezerve_PinSeen s ON s.pin_id = p.id AND s.user_id = ?
+                    FROM S09_Rezerve_Pins p
+                    LEFT JOIN S00_Utilizatori u ON u.id = p.user_id
+                    LEFT JOIN S00_Utilizatori a ON a.id = p.assigned_user_id
+                    LEFT JOIN S09_Rezerve_Pin_Seen s ON s.pin_id = p.id AND s.user_id = ?
                     WHERE p.plan_id = ?
                     ORDER BY p.created_at ASC`,
                 [userId, planId]
@@ -297,9 +343,9 @@ const pinsGET = async (req, res) => {
                         p.photo1_path   AS photo1_path,
                         p.photo2_path   AS photo2_path,
                         p.photo3_path   AS photo3_path
-                    FROM Rezerve_Pins p
-                    LEFT JOIN users u ON u.id = p.user_id
-                    LEFT JOIN users a ON a.id = p.assigned_user_id
+                    FROM S09_Rezerve_Pins p
+                    LEFT JOIN S00_Utilizatori u ON u.id = p.user_id
+                    LEFT JOIN S00_Utilizatori a ON a.id = p.assigned_user_id
                     WHERE p.plan_id = ?
                     ORDER BY p.created_at ASC`,
                 [plan_id]
@@ -320,10 +366,10 @@ const slugify = (s = '') =>
 
 async function getSantierLucrareByPlanId(planId) {
     const [rows] = await global.db.execute(`
-    SELECT S.name AS santier_name, RL.name AS lucrare_name
-    FROM Rezerve_Plans RP
-    JOIN Rezerve_Lucrari RL ON RL.id = RP.lucrare_id
-    JOIN Santiere S       ON S.id  = RL.santier_id
+    SELECT S.nume AS santier_name, RL.name AS lucrare_name
+    FROM S08_Rezerve_Plans RP
+    JOIN S08_Rezerve_Lucrari RL ON RL.id = RP.lucrare_id
+    JOIN S01_Santiere S       ON S.id  = RL.santier_id
     WHERE RP.id = ? LIMIT 1
   `, [planId]);
     return rows?.[0] || { santier_name: 'santier', lucrare_name: 'lucrare' };
@@ -364,14 +410,14 @@ const pinsPOST = async (req, res) => {
         // 1) Get next sequential code for this plan
         const [[{ nextCode }]] = await global.db.execute(
             `SELECT COALESCE(MAX(CAST(code AS UNSIGNED)), 0) + 1 AS nextCode
-       FROM Rezerve_Pins WHERE plan_id = ?`,
+       FROM S09_Rezerve_Pins WHERE plan_id = ?`,
             [plan_id]
         );
         const codeStr = String(nextCode);
 
         // 2) Insert pin (no photos yet)
         const [result] = await global.db.execute(
-            `INSERT INTO Rezerve_Pins 
+            `INSERT INTO S09_Rezerve_Pins 
                 (user_id, plan_id, code, title, description, reper,
                 x_pct, y_pct, status, priority,
                 assigned_user_id, due_date,
@@ -426,7 +472,7 @@ const pinsPOST = async (req, res) => {
 
             // Update the pin with photo paths
             await global.db.execute(
-                `UPDATE Rezerve_Pins
+                `UPDATE S09_Rezerve_Pins
            SET photo1_path = ?, photo2_path = ?, photo3_path = ?, updated_at = CURRENT_TIMESTAMP
          WHERE id = ?`,
                 [photo1, photo2, photo3, pinId]
@@ -434,7 +480,7 @@ const pinsPOST = async (req, res) => {
         }
 
         await global.db.execute(
-            `INSERT INTO Rezerve_PinSeen (user_id, pin_id, last_seen_at)
+            `INSERT INTO S09_Rezerve_Pin_Seen (user_id, pin_id, last_seen_at)
                 VALUES (?, ?, CURRENT_TIMESTAMP)
                 ON DUPLICATE KEY UPDATE last_seen_at = CURRENT_TIMESTAMP`,
             [user_id, pinId]
@@ -452,15 +498,15 @@ const pinsPOST = async (req, res) => {
                 DATE_FORMAT(p.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at,
                 u.name AS user_name,
                 a.name AS assigned_user_name,
-                s.name AS santier_name,
+                s.nume AS santier_name,
                 rl.name AS lucrare_name,
                 pl.title AS plan_title        
-            FROM Rezerve_Pins p
-            LEFT JOIN Rezerve_Plans pl ON pl.id = p.plan_id
-            LEFT JOIN Rezerve_Lucrari rl ON rl.id = pl.lucrare_id
-            LEFT JOIN Santiere s ON s.id = rl.santier_id
-            LEFT JOIN users u ON u.id = p.user_id
-            LEFT JOIN users a ON a.id = p.assigned_user_id
+            FROM S09_Rezerve_Pins p
+            LEFT JOIN S08_Rezerve_Plans pl ON pl.id = p.plan_id
+            LEFT JOIN S08_Rezerve_Lucrari rl ON rl.id = pl.lucrare_id
+            LEFT JOIN S01_Santiere s ON s.id = rl.santier_id
+            LEFT JOIN S00_Utilizatori u ON u.id = p.user_id
+            LEFT JOIN S00_Utilizatori a ON a.id = p.assigned_user_id
             WHERE p.id = ?`,
             [pinId]
         );
@@ -471,8 +517,8 @@ const pinsPOST = async (req, res) => {
         // 5.1 — află santierul din plan
         const [[sInfo]] = await global.db.execute(
             `SELECT RL.santier_id
-                FROM Rezerve_Plans P
-                JOIN Rezerve_Lucrari RL ON RL.id = P.lucrare_id
+                FROM S08_Rezerve_Plans P
+                JOIN S08_Rezerve_Lucrari RL ON RL.id = P.lucrare_id
             WHERE P.id = ?`,
             [plan_id]
         );
@@ -543,7 +589,7 @@ const comentariiPOST = async (req, res) => {
 
         // Load pin (for current status + folder info)
         const [[pin]] = await global.db.execute(
-            `SELECT id, plan_id, code, status FROM Rezerve_Pins WHERE id = ? LIMIT 1`,
+            `SELECT id, plan_id, code, status FROM S09_Rezerve_Pins WHERE id = ? LIMIT 1`,
             [pin_id]
         );
         if (!pin) return res.status(404).json({ error: "Pin not found" });
@@ -554,7 +600,7 @@ const comentariiPOST = async (req, res) => {
 
         // Insert comment first (no photos yet)
         const [insertRes] = await global.db.execute(
-            `INSERT INTO Rezerve_PinComments
+            `INSERT INTO S09_Rezerve_Pin_Comments
          (pin_id, user_id, body_text, status_from, status_to, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
             [pin_id, user_id, body_text || null, status_from, status_to_final]
@@ -582,7 +628,7 @@ const comentariiPOST = async (req, res) => {
             }
             [photo1, photo2, photo3] = saved;
             await global.db.execute(
-                `UPDATE Rezerve_PinComments
+                `UPDATE S09_Rezerve_Pin_Comments
            SET photo1_path = ?, photo2_path = ?, photo3_path = ?, updated_at = CURRENT_TIMESTAMP
          WHERE id = ?`,
                 [photo1 || null, photo2 || null, photo3 || null, commentId]
@@ -592,18 +638,18 @@ const comentariiPOST = async (req, res) => {
         // Update pin status if changed
         if (willChange) {
             await global.db.execute(
-                `UPDATE Rezerve_Pins SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+                `UPDATE S09_Rezerve_Pins SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
                 [status_to, pin_id]
             );
         }
         else {
             await global.db.execute(
-                `UPDATE Rezerve_Pins SET  updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+                `UPDATE S09_Rezerve_Pins SET  updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
                 [pin_id]
             );
         }
         await global.db.execute(
-            `INSERT INTO Rezerve_PinSeen (user_id, pin_id, last_seen_at)
+            `INSERT INTO S09_Rezerve_Pin_Seen (user_id, pin_id, last_seen_at)
                 VALUES (?, ?, CURRENT_TIMESTAMP)
                 ON DUPLICATE KEY UPDATE last_seen_at = CURRENT_TIMESTAMP`,
             [user_id, pin_id]
@@ -622,8 +668,8 @@ const comentariiPOST = async (req, res) => {
                 c.photo2_path,
                 c.photo3_path,
                 DATE_FORMAT(c.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at
-            FROM Rezerve_PinComments c
-            LEFT JOIN users u ON u.id = c.user_id
+            FROM S09_Rezerve_Pin_Comments c
+            LEFT JOIN S00_Utilizatori u ON u.id = c.user_id
             WHERE c.id = ?`,
             [commentId]
         );
@@ -634,7 +680,7 @@ const comentariiPOST = async (req, res) => {
         const [[pinNow]] = await global.db.execute(
             `SELECT id, status,            
             DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%sZ') AS updated_at
-            FROM Rezerve_Pins WHERE id = ?`,
+            FROM S09_Rezerve_Pins WHERE id = ?`,
             [pin_id]
         );
 
@@ -643,12 +689,12 @@ const comentariiPOST = async (req, res) => {
             // 1) Află santier/lucrare/plan pentru acest pin
             const [[ctx]] = await global.db.execute(
                 `SELECT RL.santier_id,
-                        S.name  AS santier_name,
+                        S.nume  AS santier_name,
                         RL.name AS lucrare_name,
                         PL.title AS plan_title
-                FROM Rezerve_Plans PL
-                JOIN Rezerve_Lucrari RL ON RL.id = PL.lucrare_id
-                LEFT JOIN Santiere S     ON S.id = RL.santier_id
+                FROM S08_Rezerve_Plans PL
+                JOIN S08_Rezerve_Lucrari RL ON RL.id = PL.lucrare_id
+                LEFT JOIN S01_Santiere S ON S.id = RL.santier_id
                 WHERE PL.id = ?`,
                 [pin.plan_id] // folosim "pin" încărcat la început (are plan_id, code, status)
             );
@@ -732,9 +778,10 @@ const comentariiGET = async (req, res) => {
           c.photo1_path,
           c.photo2_path,
           c.photo3_path,
-          DATE_FORMAT(c.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at
-       FROM Rezerve_PinComments c
-       LEFT JOIN users u ON u.id = c.user_id
+          DATE_FORMAT(c.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at,
+          DATE_FORMAT(c.updated_at, '%Y-%m-%dT%H:%i:%sZ') AS updated_at
+       FROM S09_Rezerve_Pin_Comments c
+       LEFT JOIN S00_Utilizatori u ON u.id = c.user_id
        WHERE c.pin_id = ?
        ORDER BY c.created_at DESC`,
             [pin_id]
@@ -777,8 +824,8 @@ const exportPDF = async (req, res) => {
             `SELECT 
           RP.id, RP.title, RP.width_px, RP.height_px,
           RP.image_path, RL.name AS folder
-       FROM Rezerve_Plans RP
-       LEFT JOIN Rezerve_Lucrari RL ON RL.id = RP.lucrare_id
+       FROM S08_Rezerve_Plans RP
+       LEFT JOIN S08_Rezerve_Lucrari RL ON RL.id = RP.lucrare_id
        WHERE RP.id = ?
        LIMIT 1`,
             [plan_id]
@@ -786,10 +833,10 @@ const exportPDF = async (req, res) => {
         if (!planRow) return res.status(404).json({ error: "Plan not found" });
 
         const [[santier]] = await conn.execute(
-            `SELECT S.name AS santier_name, S.id AS santier_id
-        FROM Rezerve_Plans RP
-        JOIN Rezerve_Lucrari RL ON RL.id = RP.lucrare_id
-        JOIN Santiere S ON S.id = RL.santier_id
+            `SELECT S.nume AS santier_name, S.id AS santier_id
+        FROM S08_Rezerve_Plans RP
+        JOIN S08_Rezerve_Lucrari RL ON RL.id = RP.lucrare_id
+        JOIN S01_Santiere S ON S.id = RL.santier_id
         WHERE RP.id = ?
         LIMIT 1`,
             [plan_id]
@@ -834,9 +881,9 @@ const exportPDF = async (req, res) => {
           p.status, p.priority,
           p.created_at, p.updated_at,
           p.photo1_path, p.photo2_path, p.photo3_path
-       FROM Rezerve_Pins p
-       LEFT JOIN users u ON u.id = p.user_id
-       LEFT JOIN users a ON a.id = p.assigned_user_id
+       FROM S09_Rezerve_Pins p
+       LEFT JOIN S00_Utilizatori u ON u.id = p.user_id
+       LEFT JOIN S00_Utilizatori a ON a.id = p.assigned_user_id
        WHERE p.plan_id = ?
        ${pinsWhere}
        ORDER BY CAST(p.code AS UNSIGNED) ASC, p.id ASC`,
@@ -855,8 +902,8 @@ const exportPDF = async (req, res) => {
           c.body_text, c.status_from, c.status_to,
           c.created_at, c.updated_at,
           c.photo1_path, c.photo2_path, c.photo3_path
-       FROM Rezerve_PinComments c
-       LEFT JOIN users u ON u.id = c.user_id
+       FROM S09_Rezerve_Pin_Comments c
+       LEFT JOIN S00_Utilizatori u ON u.id = c.user_id
        WHERE c.pin_id IN (${pinIdsOnly.map(() => "?").join(",")})
        ORDER BY c.created_at ASC, c.id ASC`,
             pinIdsOnly
@@ -923,8 +970,8 @@ const unseenPinsCountGET = async (req, res) => {
         const [rows] = await global.db.query(
             `
             SELECT p.plan_id, SUM(CASE WHEN p.updated_at > COALESCE(s.last_seen_at, '1970-01-01') THEN 1 ELSE 0 END) AS unseen
-            FROM Rezerve_Pins p
-            LEFT JOIN Rezerve_PinSeen s
+            FROM S09_Rezerve_Pins p
+            LEFT JOIN S09_Rezerve_Pin_Seen s
                     ON s.pin_id = p.id AND s.user_id = ?
             WHERE p.plan_id IN (?)
             GROUP BY p.plan_id
@@ -951,9 +998,9 @@ async function markPlanSeen(req, res) {
 
     await global.db.query(
         `
-    INSERT INTO Rezerve_PinSeen (user_id, pin_id, last_seen_at)
+    INSERT INTO S09_Rezerve_Pin_Seen (user_id, pin_id, last_seen_at)
         SELECT ?, p.id, NOW()
-        FROM Rezerve_Pins p
+        FROM S09_Rezerve_Pins p
         WHERE p.plan_id = ?
         ON DUPLICATE KEY UPDATE last_seen_at = GREATEST(VALUES(last_seen_at), last_seen_at)
     `,
@@ -973,7 +1020,7 @@ const markPlanSeenIndividual = async (req, res) => {
     try {
         await global.db.query(
             `
-            INSERT INTO Rezerve_PinSeen (user_id, pin_id, last_seen_at)
+            INSERT INTO S09_Rezerve_Pin_Seen (user_id, pin_id, last_seen_at)
             VALUES (?, ?, NOW())
             ON DUPLICATE KEY UPDATE last_seen_at = GREATEST(VALUES(last_seen_at), last_seen_at)
             `,
@@ -1005,8 +1052,8 @@ const saveZonesPOST = async (req, res) => {
         // 1) Get plan dims & santier
         const [plans] = await conn.query(
             `SELECT rp.id, rp.lucrare_id, rl.santier_id as santier_id, rp.width_px as width_px, rp.height_px as height_px
-       FROM Rezerve_Plans rp
-       JOIN Rezerve_Lucrari rl ON rl.id = rp.lucrare_id
+       FROM S08_Rezerve_Plans rp
+       JOIN S08_Rezerve_Lucrari rl ON rl.id = rp.lucrare_id
        WHERE rp.id = ? LIMIT 1`,
             [plan_id]
         );
@@ -1066,7 +1113,7 @@ const saveZonesPOST = async (req, res) => {
 
         // 4) Link pattern to this plan (so plan "uses" the saved pattern)
         await conn.query(
-            `UPDATE Rezerve_Plans SET pattern_id = ? WHERE id = ?`,
+            `UPDATE S08_Rezerve_Plans SET pattern_id = ? WHERE id = ?`,
             [patternId, plan_id]
         );
 
@@ -1093,23 +1140,23 @@ const plansPUT = async (req, res) => {
         const { name } = req.body;
 
         if (!name?.trim()) {
-            return res.status(400).json({ error: "Name is required" });
+            return res.status(400).json({ error: "Numele planului este obligatoriu" });
         }
 
         const [result] = await global.db.execute(
-            `UPDATE Rezerve_Plans
+            `UPDATE S08_Rezerve_Plans
        SET title = ?, updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
             [name.trim(), id]
         );
 
         if (result.affectedRows === 0) {
-            return res.status(404).json({ error: "Plan not found" });
+            return res.status(404).json({ error: "Planul nu a fost găsit" });
         }
         res.json({ plan: { id, title: name.trim() } });
     } catch (err) {
         console.log("PUT plan error:", err);
-        res.status(500).json({ error: "Database error" });
+        res.status(500).json({ error: "Eroare la actualizarea planului" });
     }
 }
 
@@ -1140,7 +1187,7 @@ const pinsEditPOST = async (req, res) => {
         // 1) Load existing
         const [rows0] = await global.db.execute(
             `SELECT id, plan_id, code, photo1_path, photo2_path, photo3_path
-       FROM Rezerve_Pins WHERE id = ?`,
+       FROM S09_Rezerve_Pins WHERE id = ?`,
             [pin_id]
         );
         if (!rows0.length) return res.status(404).json({ error: "Pin not found" });
@@ -1236,7 +1283,7 @@ const pinsEditPOST = async (req, res) => {
         fields.push("updated_at = CURRENT_TIMESTAMP");
 
         params.push(pin_id);
-        await global.db.execute(`UPDATE Rezerve_Pins SET ${fields.join(", ")} WHERE id = ?`, params);
+        await global.db.execute(`UPDATE S09_Rezerve_Pins SET ${fields.join(", ")} WHERE id = ?`, params);
 
         // 7) Return updated pin
         const [rows] = await global.db.execute(
@@ -1250,21 +1297,21 @@ const pinsEditPOST = async (req, res) => {
          DATE_FORMAT(p.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at,
          u.name AS user_name,
          a.name AS assigned_user_name,
-         s.name AS santier_name,
+         s.nume AS santier_name,
          rl.name AS lucrare_name,
          pl.title AS plan_title
-       FROM Rezerve_Pins p
-       LEFT JOIN Rezerve_Plans pl ON pl.id = p.plan_id
-       LEFT JOIN Rezerve_Lucrari rl ON rl.id = pl.lucrare_id
-       LEFT JOIN Santiere s ON s.id = rl.santier_id
-       LEFT JOIN users u ON u.id = p.user_id
-       LEFT JOIN users a ON a.id = p.assigned_user_id
+       FROM S09_Rezerve_Pins p
+       LEFT JOIN S08_Rezerve_Plans pl ON pl.id = p.plan_id
+       LEFT JOIN S08_Rezerve_Lucrari rl ON rl.id = pl.lucrare_id
+       LEFT JOIN S01_Santiere s ON s.id = rl.santier_id
+       LEFT JOIN S00_Utilizatori u ON u.id = p.user_id
+       LEFT JOIN S00_Utilizatori a ON a.id = p.assigned_user_id
        WHERE p.id = ?`,
             [pin_id]
         );
 
         await global.db.execute(
-            `INSERT INTO Rezerve_PinSeen (user_id, pin_id, last_seen_at)
+            `INSERT INTO S09_Rezerve_Pin_Seen (user_id, pin_id, last_seen_at)
                 VALUES (?, ?, CURRENT_TIMESTAMP)
                 ON DUPLICATE KEY UPDATE last_seen_at = CURRENT_TIMESTAMP`,
             [user_id, pin_id]
@@ -1296,13 +1343,13 @@ const deletePin = async (req, res) => {
         // 1) Collect photo paths up-front (pin + all its comments)
         //    Use the pool (global.db) for these pre-transaction reads.
         const [[pinRow]] = await global.db.execute(
-            `SELECT id, photo1_path, photo2_path, photo3_path FROM Rezerve_Pins WHERE id = ? LIMIT 1`,
+            `SELECT id, photo1_path, photo2_path, photo3_path FROM S09_Rezerve_Pins WHERE id = ? LIMIT 1`,
             [pinId]
         );
         if (!pinRow) return res.status(404).json({ error: 'Pin not found' });
 
         const [commentRows] = await global.db.execute(
-            `SELECT photo1_path, photo2_path, photo3_path FROM Rezerve_PinComments WHERE pin_id = ?`,
+            `SELECT photo1_path, photo2_path, photo3_path FROM S09_Rezerve_Pin_Comments WHERE pin_id = ?`,
             [pinId]
         );
 
@@ -1324,19 +1371,19 @@ const deletePin = async (req, res) => {
 
         // 3) Delete comments FIRST
         await conn.execute(
-            `DELETE FROM Rezerve_PinComments WHERE pin_id = ?`,
+            `DELETE FROM S09_Rezerve_Pin_Comments WHERE pin_id = ?`,
             [pinId]
         );
 
         // 4) Delete pin seen
         await conn.execute(
-            `DELETE FROM Rezerve_PinSeen WHERE pin_id = ?`,
+            `DELETE FROM S09_Rezerve_Pin_Seen WHERE pin_id = ?`,
             [pinId]
         );
 
         // 5) Delete the pin
         const [delPinRes] = await conn.execute(
-            `DELETE FROM Rezerve_Pins WHERE id = ?`,
+            `DELETE FROM S09_Rezerve_Pins WHERE id = ?`,
             [pinId]
         );
         if (!delPinRes.affectedRows) {
@@ -1408,14 +1455,14 @@ const comentariiEDIT = async (req, res) => {
               c.photo1_path, c.photo2_path, c.photo3_path,
               DATE_FORMAT(c.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at,
               DATE_FORMAT(c.updated_at, '%Y-%m-%dT%H:%i:%sZ') AS updated_at
-         FROM Rezerve_PinComments c
+         FROM S09_Rezerve_Pin_Comments c
         WHERE c.id = ? LIMIT 1`,
             [comment_id]
         );
         if (!comment) return res.status(404).json({ error: "Comment not found" });
 
         const [[pin]] = await global.db.execute(
-            `SELECT id, plan_id, code, status FROM Rezerve_Pins WHERE id = ? LIMIT 1`,
+            `SELECT id, plan_id, code, status FROM S09_Rezerve_Pins WHERE id = ? LIMIT 1`,
             [comment.pin_id]
         );
         if (!pin) return res.status(404).json({ error: "Pin not found" });
@@ -1483,7 +1530,7 @@ const comentariiEDIT = async (req, res) => {
 
         // 4) Update the comment (text + photos; no status change)
         await global.db.execute(
-            `UPDATE Rezerve_PinComments
+            `UPDATE S09_Rezerve_Pin_Comments
           SET body_text = ?,
               photo1_path = ?, photo2_path = ?, photo3_path = ?,
               updated_at = CURRENT_TIMESTAMP
@@ -1493,12 +1540,12 @@ const comentariiEDIT = async (req, res) => {
 
         // 5) Touch pin.updated_at & PinSeen
         await global.db.execute(
-            `UPDATE Rezerve_Pins SET updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+            `UPDATE S09_Rezerve_Pins SET updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
             [pin.id]
         );
         if (user_id) {
             await global.db.execute(
-                `INSERT INTO Rezerve_PinSeen (user_id, pin_id, last_seen_at)
+                `INSERT INTO S09_Rezerve_Pin_Seen (user_id, pin_id, last_seen_at)
               VALUES (?, ?, CURRENT_TIMESTAMP)
          ON DUPLICATE KEY UPDATE last_seen_at = CURRENT_TIMESTAMP`,
                 [user_id, pin.id]
@@ -1512,8 +1559,8 @@ const comentariiEDIT = async (req, res) => {
           c.body_text, c.photo1_path, c.photo2_path, c.photo3_path,
           DATE_FORMAT(c.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at,
           DATE_FORMAT(c.updated_at, '%Y-%m-%dT%H:%i:%sZ') AS updated_at
-        FROM Rezerve_PinComments c
-        LEFT JOIN users u ON u.id = c.user_id
+        FROM S09_Rezerve_Pin_Comments c
+        LEFT JOIN S00_Utilizatori u ON u.id = c.user_id
        WHERE c.id = ?`,
             [comment_id]
         );
@@ -1523,7 +1570,7 @@ const comentariiEDIT = async (req, res) => {
         const [[pinNow]] = await global.db.execute(
             `SELECT id, status,
               DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%sZ') AS updated_at
-         FROM Rezerve_Pins
+         FROM S09_Rezerve_Pins
         WHERE id = ?`,
             [pin.id]
         );
@@ -1562,8 +1609,8 @@ const zonesGET = async (req, res) => {
                  rp.id,
                  rp.pattern_id,          -- poate fi NULL
                  rl.santier_id
-             FROM Rezerve_Plans rp
-             JOIN Rezerve_Lucrari rl ON rl.id = rp.lucrare_id
+             FROM S08_Rezerve_Plans rp
+             JOIN S08_Rezerve_Lucrari rl ON rl.id = rp.lucrare_id
              WHERE rp.id = ?
              LIMIT 1`,
             [planId]
@@ -1629,8 +1676,8 @@ const specificZoneGET = async (req, res) => {
                  rp.id,
                  rp.pattern_id,
                  rl.santier_id
-             FROM Rezerve_Plans rp
-             JOIN Rezerve_Lucrari rl ON rl.id = rp.lucrare_id
+             FROM S08_Rezerve_Plans rp
+             JOIN S08_Rezerve_Lucrari rl ON rl.id = rp.lucrare_id
              WHERE rp.id = ?
              LIMIT 1`,
             [planId]

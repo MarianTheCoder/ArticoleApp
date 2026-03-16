@@ -198,9 +198,9 @@ export default function CompanyView() {
 
                             {/* --- OWNER SECTION (NOU) --- */}
                             <div className="w-full rounded-lg p-3  border border-border flex items-center gap-3 text-left">
-                                <Avatar className="h-10 w-10 border border-background shadow-sm">
+                                <Avatar className="h-10 w-10 border rounded-lg border-background shadow-sm">
                                     <AvatarImage src={c?.responsabil_logo_url ? photoApi + "/" + c.responsabil_logo_url : null} />
-                                    <AvatarFallback className="bg-muted font-bold">
+                                    <AvatarFallback className="bg-muted rounded-lg font-bold">
                                         <FontAwesomeIcon icon={faUserTie} />
                                     </AvatarFallback>
                                 </Avatar>
@@ -339,10 +339,10 @@ export default function CompanyView() {
                         <CardContent className="p-5 space-y-5">
 
                             {/* UPDATED BY */}
-                            <div className="flex gap-3 items-center">
-                                <Avatar className="h-9 w-9 border">
+                            <div className="flex gap-3 items-start">
+                                <Avatar className="h-10 w-10 rounded-lg border">
                                     <AvatarImage src={c?.updated_by_photo_url ? photoApi + "/" + c.updated_by_photo_url : null} />
-                                    <AvatarFallback className="bg-muted text-base font-medium"><FontAwesomeIcon icon={faUser} /></AvatarFallback>
+                                    <AvatarFallback className="bg-muted rounded-lg text-base font-medium"><FontAwesomeIcon icon={faUser} /></AvatarFallback>
                                 </Avatar>
                                 <div className="flex flex-col">
                                     <span className="text-sm font-bold text-muted-foreground uppercase">Ultima actualizare</span>
@@ -359,10 +359,10 @@ export default function CompanyView() {
                             <Separator className="opacity-40" />
 
                             {/* CREATED BY */}
-                            <div className="flex gap-3 items-center opacity-80">
-                                <Avatar className="h-7 w-7 border">
+                            <div className="flex gap-3 items-start opacity-80">
+                                <Avatar className="h-8 w-8 rounded-lg border">
                                     <AvatarImage src={c?.created_by_photo_url ? photoApi + "/" + c.created_by_photo_url : null} />
-                                    <AvatarFallback className="bg-muted text-base font-medium"><FontAwesomeIcon icon={faUser} /></AvatarFallback>
+                                    <AvatarFallback className="bg-muted rounded-lg text-base font-medium"><FontAwesomeIcon icon={faUser} /></AvatarFallback>
                                 </Avatar>
                                 <div className="flex flex-col">
                                     <span className="text-sm font-bold text-muted-foreground uppercase">Creat inițial</span>
@@ -385,7 +385,7 @@ export default function CompanyView() {
                     <Tabs defaultValue="activitati" className="h-full w-full flex flex-col gap-4">
                         <TabsList className="bg-card px-6 py-4 rounded-lg justify-start h-auto  w-full">
                             <div className="border-b  w-full flex gap-6">
-                                {["istoric", "activitati", "contacte", "santiere", "filiale", "fișiere"].map((tab) => (
+                                {["istoric", "activitati", , "filiale", "santiere", "contacte", "fișiere"].map((tab) => (
                                     <TabsTrigger
                                         key={tab}
                                         value={tab}
@@ -404,17 +404,15 @@ export default function CompanyView() {
 
                             <TabsContent value="activitati" className="h-full m-0 w-full">
                             </TabsContent>
-
-                            <TabsContent value="contacte" className="h-full m-0 relative  w-full">
-                                <ContactsMainCompany companyId={c?.id || null} companyLimba={c?.tara || null} />
+                            <TabsContent value="filiale" className="h-full m-0 w-full">
+                                <FilialeMainCompany companyId={c?.id || null} />
                             </TabsContent>
 
                             <TabsContent value="santiere" className="h-full m-0 w-full">
                                 <SantiereMainCompany companyId={c?.id || null} />
                             </TabsContent>
-
-                            <TabsContent value="filiale" className="h-full m-0 w-full">
-                                <FilialeMainCompany companyId={c?.id || null} />
+                            <TabsContent value="contacte" className="h-full m-0 relative  w-full">
+                                <ContactsMainCompany companyId={c?.id || null} companyLimba={c?.tara || null} />
                             </TabsContent>
 
                             <TabsContent value="files" className="h-full m-0 w-full">

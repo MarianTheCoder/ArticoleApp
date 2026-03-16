@@ -11,6 +11,7 @@ const {
   GetTransportDef,
   GetSpecificTransport,
 } = require("../Controllers/TransportController");
+const { authenticateToken } = require("../Middleware/authMiddleware");
 
 const router = express.Router();
 
@@ -21,15 +22,15 @@ router.get("/FetchTransportDef", GetTransportDef);
 router.get("/FetchTransportLight", GetTransportLight);
 
 //post
-router.post("/SetTransportDef", AddTransportDef);
-router.post("/SetTransport", AddTransport);
+router.post("/SetTransportDef", authenticateToken("transport", "c"), AddTransportDef);
+router.post("/SetTransport", authenticateToken("transport", "c"), AddTransport);
 
 //delete
-router.delete("/DeleteTransportDef/:id", DeleteTransportDef);
-router.delete("/DeleteTransport/:id", DeleteTransport);
+router.delete("/DeleteTransportDef/:id", authenticateToken("transport", "s"), DeleteTransportDef);
+router.delete("/DeleteTransport/:id", authenticateToken("transport", "s"), DeleteTransport);
 
 //edit
-router.put("/EditTransport", EditTransport);
-router.put("/EditTransportDef", EditTransportDef);
+router.put("/EditTransport", authenticateToken("transport", "e"), EditTransport);
+router.put("/EditTransportDef", authenticateToken("transport", "e"), EditTransportDef);
 
 module.exports = router;
