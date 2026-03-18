@@ -1,9 +1,22 @@
 {
   "compilerOptions": {
     "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"]
-    }
+    "paths": { "@/*": ["./src/*"] },
+    "module": "ESNext",
+    "target": "ESNext",
+    "jsx": "react",
+    "checkJs": false,
+    "skipLibCheck": true,
+    "maxNodeModuleJsDepth": 0 // <--- ADD THIS. It stops VS Code from indexing inside node_modules
   },
-    "exclude": ["node_modules", "dist"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    ".next",
+    "out",
+    "coverage",
+    "**/*.spec.js",
+    "**/*.test.js"
+  ]
 }
