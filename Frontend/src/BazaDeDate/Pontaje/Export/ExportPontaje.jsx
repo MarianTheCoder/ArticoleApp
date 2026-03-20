@@ -5,6 +5,7 @@ import { parseISO, format, getISOWeek, startOfMonth, endOfMonth, eachDayOfInterv
 import { logo2 } from "../../Santiere/base64Items.jsx";
 import { toast } from "sonner";
 import photoAPI from "@/api/photoAPI.jsx";
+import ExportRapoarte from "./ExportRapoarte.jsx";
 
 pdfMake.vfs = customVfsModule.default;
 pdfMake.fonts = {
@@ -28,7 +29,7 @@ async function imageUrlToBase64(url) {
   });
 }
 
-export default async function ExportPontaje({ selectedUserIds, dates, selectedCompany }) {
+export default async function ExportPontaje({ selectedUserIds, dates, selectedCompany, includeRapoarte }) {
   try {
     // 1) Fetch
     const { data } = await api.post("/users/exportPontaje", {
@@ -36,7 +37,6 @@ export default async function ExportPontaje({ selectedUserIds, dates, selectedCo
       dates,
       company_id: selectedCompany,
     });
-
     // Convert company logo to base64
     const logoBase64 = data?.companie?.logo_url ? await imageUrlToBase64(`${photoAPI}/${data.companie.logo_url}`) : logo2; // fallback to hardcoded logo
 
@@ -83,6 +83,12 @@ export default async function ExportPontaje({ selectedUserIds, dates, selectedCo
     // Keep only sites that actually have time this exportbasePrefOrder
     const visibleSites = (sites || []).filter((s) => (grandTotalsByCodeRounded.get(s.code) || 0) > 0);
 
+    visibleSites.push({
+      code: "N",
+      name: "Nepontat",
+      color_hex: "#FAA0A0", // Variabila ta COLOR_NO_PONTAJ
+    });
+
     // Colors + preferred order now based on visible sites only
     const codeColor = new Map(visibleSites.map((s) => [s.code, s.color_hex || null]));
     const prefOrder = visibleSites.map((s) => s.code);
@@ -109,7 +115,7 @@ export default async function ExportPontaje({ selectedUserIds, dates, selectedCo
       ...Array(LEFT_SPAN - 1).fill(""),
       { text: String(grandTotalDays), style: "tdBoldCenter", margin: [0, 4, 0, 0] },
       ...visibleSites.map((s) => ({
-        text: String(grandDaysByCode.get(siteCodeFromName(s.name)) || 0),
+        text: String(grandDaysByCode.get(s.code) || 0), // <-- Folosim s.code
         style: "tdCenter",
       })),
     ];
@@ -120,7 +126,7 @@ export default async function ExportPontaje({ selectedUserIds, dates, selectedCo
       ...Array(LEFT_SPAN - 1).fill(""),
       { text: fmtHHMM(grandTotalMinutes), style: "tdBoldCenter", margin: [0, 4, 0, 0] },
       ...visibleSites.map((s) => ({
-        text: fmtHHMM(grandTotalsByCodeRounded.get(siteCodeFromName(s.name)) || 0),
+        text: s.code === "N" ? "—" : fmtHHMM(grandTotalsByCodeRounded.get(s.code) || 0),
         style: "tdCenter",
       })),
     ];
@@ -133,7 +139,7 @@ export default async function ExportPontaje({ selectedUserIds, dates, selectedCo
       10, // NR. CRT.
       50, // NUME
       ...dayKeys.map(() => 10), // zile
-      16, // TOTAL
+      18, // TOTAL
       ...visibleSites.map(() => 16), // only the sites that have time
     ];
 
@@ -172,6 +178,8 @@ export default async function ExportPontaje({ selectedUserIds, dates, selectedCo
     users.forEach((u, idx) => {
       const agg = aggByUser[idx];
 
+      const { sessionsByDay } = agg; // ← destructure it
+
       // rândul 1 (codurile dominante pe zi) + TOTAL + DIN CARE (rowSpan)
       const rowTop = [
         { text: String(idx + 1), style: "tdCenter", border: [true, true, true, false] },
@@ -208,9 +216,9 @@ export default async function ExportPontaje({ selectedUserIds, dates, selectedCo
             bold: true,
           };
         }),
-        { text: fmtHHMM(agg.totalMinutesRounded), style: "tdBoldCenter", border: [true, true, true, false], margin: [0, 4, 0, 0] },
+        "", // TOTAL (rowSpan)
         ...prefOrder.map((c) => ({
-          text: fmtHHMM(agg.totalsByCodeRounded.get(c) || 0), // ✅ nou
+          text: String(agg.totalsDaysByCode.get(c) || 0),
           style: "tdCenter",
           fontSize: 4,
           margin: [0, 4, 0, 0],
@@ -224,11 +232,22 @@ export default async function ExportPontaje({ selectedUserIds, dates, selectedCo
         ...dayKeys.map((d) => {
           const day = agg.perDay.get(d);
           const txt = day?.hasSessions ? (day.allCompleted ? fmtHHMM(day.minutesRounded) : "0") : "0";
-          return { text: txt, style: "tdCenter", color: day?.hasPA ? COLOR_INCOMPLETE : undefined };
+
+          // Check sessions for this day
+          const daySessions = sessionsByDay?.get(d) ?? []; // ← need access to sessionsByDay
+          const hasEdited = daySessions.some((s) => s.edited == 1);
+
+          return {
+            text: txt,
+            style: "tdCenter",
+            color: day?.hasPA ? COLOR_INCOMPLETE : undefined,
+            fillColor: hasEdited ? "#FEF08A" : undefined, // yellow if edited
+          };
         }),
-        "", // TOTAL filler
+        // avem totalul pe randul 2 cum e corect si il scoatem de pe celalat rand
+        { text: fmtHHMM(agg.totalMinutesRounded), style: "tdBoldCenter", border: [true, true, true, true], margin: [0, 4, 0, 0] },
         ...prefOrder.map((c) => ({
-          text: String(agg.totalsDaysByCode.get(c) || 0),
+          text: fmtHHMM(agg.totalsByCodeRounded.get(c) || 0), // ✅ nou
           style: "tdCenter",
           fontSize: 4,
           margin: [0, 4, 0, 0],
@@ -312,7 +331,10 @@ export default async function ExportPontaje({ selectedUserIds, dates, selectedCo
     };
 
     const dd = {
-      pageSize: "A4",
+      pageSize: {
+        width: 1024,
+        height: 595,
+      },
       dontBreakRows: true,
       pageOrientation: "landscape",
       pageMargins: [16, 12, 16, 35],
@@ -415,7 +437,7 @@ export default async function ExportPontaje({ selectedUserIds, dates, selectedCo
                         hLineWidth: () => 0,
                       },
                     },
-                    { text: `Pontaje-${curMonth}-${curYear}`, style: "title", alignment: "center", margin: [0, 0, 0, 5] },
+                    { text: `Pontaje-${curMonth}-${curYear}`, style: "title", alignment: "center", margin: [0, 10, 0, 5] },
                   ],
                 },
                 // RIGHT: legend
@@ -579,6 +601,14 @@ export default async function ExportPontaje({ selectedUserIds, dates, selectedCo
     const fileName = `pontaje_${first || ""}_${last || ""}.pdf`;
     const pdf = pdfMake.createPdf(dd);
     pdf.download(fileName);
+    if (includeRapoarte) {
+      await ExportRapoarte({
+        users,
+        dates,
+        logoBase64,
+        companyName,
+      });
+    }
     toast.success("Pontajele au fost generate cu succes și sunt în curs de descărcare.");
   } catch (err) {
     console.log("ExportPontaje error:", err);
@@ -602,7 +632,7 @@ function roMonth(mIndex0) {
   return months[mIndex0] || "";
 }
 
-const roundToTenthHourMins = (mins) => Math.round((mins || 0) / 6) * 6;
+const roundToTenthHourMins = (mins) => Math.round(mins || 0);
 
 function makeMonthSummaryTableFromMonth(anyDateStr, hoursPerDay = 10) {
   if (!anyDateStr) return { text: "" };
@@ -813,6 +843,14 @@ function buildUserAgg(user, dayKeys, codeOrder) {
     const sessions = sessionsByDay.get(d) || [];
     day.hasSessions = sessions.length > 0;
 
+    if (!day.hasSessions) {
+      const wknd = isWeekend(d);
+      if (wknd !== 0 && wknd !== 6) {
+        // Nu e nici sâmbătă, nici duminică
+        totalsDaysByCode.set("N", (totalsDaysByCode.get("N") || 0) + 1);
+      }
+    }
+
     const hasActive = sessions.some((s) => !s.end_time && s.status === "active");
     day.hasPA = sessions.some((s) => s.status === "cancelled");
     day.allCompleted = day.hasSessions && !hasActive;
@@ -852,7 +890,7 @@ function buildUserAgg(user, dayKeys, codeOrder) {
       }
 
       // —— DISTRIBUȚIA rotunjirii pe coduri (Largest Remainder Method), în UNITĂȚI DE 6 MIN ——
-      const UNIT = 6;
+      const UNIT = 1;
       const targetUnits = Math.round(day.minutesRounded / UNIT); // întreg
       const rawTotal = day.minutes; // minute brute în zi
       if (rawTotal > 0 && targetUnits >= 0) {
@@ -890,17 +928,15 @@ function buildUserAgg(user, dayKeys, codeOrder) {
     }
   }
 
-  return { perDay, totalsByCode, totalsByCodeRounded, totalMinutes, totalMinutesRounded, totalsDaysByCode };
+  return { perDay, totalsByCode, totalsByCodeRounded, sessionsByDay, totalMinutes, totalMinutesRounded, totalsDaysByCode };
 }
 
 // 16:30  -> 16,5
-function fmtHHMM(mins, precision = 1) {
+// 16:30 -> 16,50
+function fmtHHMM(mins, precision = 2) {
   const val = (mins || 0) / 60;
-  let s = val.toFixed(precision); // e.g. "17.50"
-  s = s.replace(/\.?0+$/, ""); // -> "17.5"
-  s = s.replace(".", ","); // -> "17,5"
-  if (s.endsWith(",")) s = s.slice(0, -1); // "17," -> "17"
-  return s;
+  // .toFixed(2) guarantees exactly 2 decimals, replace dot with comma for RO
+  return val.toFixed(precision).replace(".", ",");
 }
 
 function dayNumber(yyyyMMdd) {

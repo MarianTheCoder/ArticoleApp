@@ -48,6 +48,9 @@ const upload = multer({ storage });
 router.get("/navbarData/:userId", authenticateToken(), getNavbarData);
 //push notifications
 router.post("/savePushToken", saveToken);
+//datele pentru meniu de cont
+router.get("/contData/:id", getContData);
+router.get("/sumarOre", getSumarOre);
 
 //
 //////////// Templates
@@ -74,31 +77,21 @@ router.post("/saveAtribuiri", authenticateToken("conturi", "v"), saveAtribuiri);
 router.post("/getWorkSessionsForDates", authenticateToken("pontaje", "v"), getWorkSessionsForDates);
 router.post("/saveWorkSessions", authenticateToken("pontaje", "c"), savePontaj);
 
-//pdf exports for pontaje
+//
+////////Pontaje Telefon
+router.get("/santiere_asignate/:userId", santiereAsignate);
+router.get("/getActiveSession/:userId", getActiveSession);
+router.get("/getSession/:userId/:date", getSessions);
+router.post("/endWorkSession", authenticateToken(), endWork);
+router.post("/startWorkSession", authenticateToken(), startWork);
+router.post("/switchWorkSession", switchWorkSession);
+router.post("/saveWorkLocation", saveWorkLocation);
+
+//
+//////// PDF Exports
 router.post("/exportPontaje", authenticateToken("pontaje", "v"), exportPontaje);
 // router.post("/exportPontajeSantiere", authenticateToken("pontaje", "v"), exportPontajeSantiere);
 
-//
-//terminam sesiunea de lucru
-router.post("/endWorkSession", endWork);
-//incepem sesiunea de lucru
-router.post("/startWorkSession", startWork);
-// veriicam daca exista sesiune de lucru activa pentru un user
-router.get("/getSession/:userId/:date", getSessions);
-
-//luam sesiunea activa pentru user pentru a-l pune in dropdown
-router.get("/getActiveSession/:userId", getActiveSession);
-//userul schimba sesiunea de lucru intr-o zi
-router.post("/switchWorkSession", switchWorkSession);
-//postam locatii din 2 in 2 ore
-router.post("/saveWorkLocation", saveWorkLocation);
-
 //atribuiri activitate
-
-router.get("/santiere_asignate/:userId", santiereAsignate);
-
-//datele pentru meniu de cont
-router.get("/contData/:id", getContData);
-router.get("/sumarOre", getSumarOre);
 
 module.exports = router;

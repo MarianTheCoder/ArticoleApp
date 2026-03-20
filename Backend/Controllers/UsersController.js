@@ -417,7 +417,7 @@ const startWork = async (req, res) => {
   if (!user_id || !santier_id) return res.status(400).json({ error: "user_id and santier_id are required" });
 
   try {
-    const [existing] = await global.db.execute('SELECT 1 FROM sesiuni_de_lucru WHERE user_id = ? AND status = "active" LIMIT 1', [user_id]);
+    const [existing] = await global.db.execute('SELECT 1 FROM S06_Sesiuni_De_Lucru WHERE user_id = ? AND status = "active" LIMIT 1', [user_id]);
     if (existing.length) {
       return res.status(409).json({ error: "You already have an active session" });
     }
@@ -426,7 +426,7 @@ const startWork = async (req, res) => {
 
     // Use UTC explicitly
     const [result] = await global.db.execute(
-      `INSERT INTO sesiuni_de_lucru (user_id, santier_id, start_time, start_lat, start_lng, status)
+      `INSERT INTO S06_Sesiuni_De_Lucru (user_id, santier_id, start_time, start_lat, start_lng, status)
        VALUES (?, ?, ?, ?, ?, 'active')`,
       [user_id, santier_id, snapNow, start_lat ?? null, start_lng ?? null],
     );
@@ -443,7 +443,7 @@ const endWork = async (req, res) => {
   if (!user_id) return res.status(400).json({ error: "user_id is required" });
 
   try {
-    const [rows] = await global.db.execute('SELECT id FROM sesiuni_de_lucru WHERE user_id = ? AND status = "active" ORDER BY start_time DESC LIMIT 1', [user_id]);
+    const [rows] = await global.db.execute('SELECT id FROM S06_Sesiuni_De_Lucru WHERE user_id = ? AND status = "active" ORDER BY start_time DESC LIMIT 1', [user_id]);
     if (rows.length === 0) return res.status(404).json({ error: "No active session found" });
 
     const sessionId = rows[0].id;
@@ -459,7 +459,7 @@ const endWork = async (req, res) => {
 
     // 2) UPDATE cu DATETIME-ul UTC snapat
     await global.db.execute(
-      `UPDATE sesiuni_de_lucru SET 
+      `UPDATE S06_Sesiuni_De_Lucru SET 
           end_time = ?, 
           end_lat  = ?, 
           end_lng  = ?, 
@@ -504,8 +504,8 @@ const getSessions = async (req, res) => {
             DATE_FORMAT(sl.start_time, '%Y-%m-%dT%H:%i:%sZ') AS start_time,
             DATE_FORMAT(sl.end_time,   '%Y-%m-%dT%H:%i:%sZ') AS end_time,
             sl.start_lat, sl.start_lng, sl.end_lat, sl.end_lng, sl.session_date, sl.status, sl.note, sl.edited, sl.created_at, sl.updated_at, 
-            s.culoare_hex
-      FROM sesiuni_de_lucru sl
+            s.culoare_hex as color_hex
+      FROM S06_Sesiuni_De_Lucru sl
       LEFT JOIN S01_Santiere s ON s.id = sl.santier_id
       WHERE sl.user_id = ?
         AND sl.start_time >= ?
@@ -820,7 +820,7 @@ const santiereAsignate = async (req, res) => {
   try {
     const [rows] = await global.db.query(
       `
-            SELECT s.id, s.nume, s.culoare_hex
+            SELECT s.id, s.nume as name, s.culoare_hex as color_hex
             FROM S01_Atribuire_Activitate a
             JOIN S01_Santiere s ON s.id = a.santier_id
             WHERE a.user_id = ?
@@ -851,7 +851,7 @@ const getActiveSession = async (req, res) => {
             DATE_FORMAT(start_time, '%Y-%m-%dT%H:%i:%sZ') AS start_time,
             DATE_FORMAT(end_time,   '%Y-%m-%dT%H:%i:%sZ') AS end_time,
             start_lat, start_lng, end_lat, end_lng, session_date, status, note, edited, created_at, updated_at
-       FROM sesiuni_de_lucru
+       FROM S06_Sesiuni_De_Lucru
       WHERE user_id = ?
         AND end_time IS NULL
         AND status = 'active'
@@ -889,7 +889,7 @@ const switchWorkSession = async (req, res) => {
     // Lock the latest active session (if any)
     const [activeRows] = await conn.query(
       `SELECT id
-         FROM sesiuni_de_lucru
+         FROM S06_Sesiuni_De_Lucru
         WHERE user_id = ? AND status = 'active' AND end_time IS NULL
         ORDER BY start_time DESC
         LIMIT 1
@@ -905,7 +905,7 @@ const switchWorkSession = async (req, res) => {
 
       // End the active session at NOW()
       await conn.query(
-        `UPDATE sesiuni_de_lucru
+        `UPDATE S06_Sesiuni_De_Lucru
             SET end_time = ?,
                 end_lat  = COALESCE(?, end_lat),
                 end_lng  = COALESCE(?, end_lng),
@@ -917,7 +917,7 @@ const switchWorkSession = async (req, res) => {
 
     // Start the new session with start_time = switchTs
     const [ins] = await conn.query(
-      `INSERT INTO sesiuni_de_lucru
+      `INSERT INTO S06_Sesiuni_De_Lucru
          (user_id, santier_id, start_time, start_lat, start_lng, status)
        VALUES
          (?, ?, ?, ?, ?, 'active')`,
@@ -929,7 +929,7 @@ const switchWorkSession = async (req, res) => {
              DATE_FORMAT(start_time, '%Y-%m-%dT%H:%i:%sZ') AS start_time,
              DATE_FORMAT(end_time,   '%Y-%m-%dT%H:%i:%sZ') AS end_time,
              status
-         FROM sesiuni_de_lucru
+         FROM S06_Sesiuni_De_Lucru
         WHERE id = ?`,
       [ins.insertId],
     );
@@ -973,7 +973,7 @@ const saveWorkLocation = async (req, res) => {
     // 1) Find active, open session
     const [sessRows] = await global.db.execute(
       `SELECT id
-         FROM sesiuni_de_lucru
+         FROM S06_Sesiuni_De_Lucru
         WHERE user_id = ?
           AND status = 'active'
           AND end_time IS NULL
@@ -1004,7 +1004,7 @@ const saveWorkLocation = async (req, res) => {
     const MIN_GAP_SEC = 40 * 60; // <-- adjust gap here
     const [lastRows] = await global.db.execute(
       `SELECT recorded_at
-         FROM sesiuni_locatii
+         FROM S06_Sesiuni_Locatii
         WHERE sesiune_id = ?
         ORDER BY recorded_at DESC
         LIMIT 1`,
@@ -1023,7 +1023,7 @@ const saveWorkLocation = async (req, res) => {
 
     // 4) Insert
     const [ins] = await global.db.execute(
-      `INSERT INTO sesiuni_locatii
+      `INSERT INTO S06_Sesiuni_Locatii
          (sesiune_id, lat, lng, recorded_at)
        VALUES (?, ?, ?, ?)`,
       [sesiuneId, latNum, lngNum, recordedAtSql],
@@ -1072,14 +1072,14 @@ const exportPontaje = async (req, res) => {
     }
 
     const [santiere_all] = await global.db.query(
-      `SELECT id, nume, culoare_hex
+      `SELECT id, nume as name, culoare_hex as color_hex
          FROM S01_Santiere
         ORDER BY nume ASC`,
     );
 
     const santiere_map = {};
     for (const s of santiere_all) {
-      santiere_map[s.id] = { id: s.id, name: s.nume, color_hex: s.culoare_hex };
+      santiere_map[s.id] = { id: s.id, name: s.name, color_hex: s.color_hex };
     }
 
     // 2) Sesiunile DOAR pentru datele cerute (folosești session_date din DB)
@@ -1114,6 +1114,8 @@ const exportPontaje = async (req, res) => {
 
         start_time: r.start_time, // UTC ISO (Z)
         end_time: r.end_time, // UTC ISO (Z)
+
+        edited: r.edited,
 
         santier_id: r.santier_id,
         santier_name: r.santier_name,
@@ -1178,7 +1180,7 @@ const exportPontajeSantiere = async (req, res) => {
     const [assignments] = await global.db.query(
       `SELECT a.user_id, a.santier_id,
               u.name, u.photo_url, u.email
-         FROM atribuire_activitate a
+         FROM S01_Atribuire_Activitate a
          JOIN S00_Utilizatori u ON u.id = a.user_id
         WHERE a.santier_id IN (?)
        `,
@@ -1193,7 +1195,7 @@ const exportPontajeSantiere = async (req, res) => {
           DATE_FORMAT(sl.end_time,   '%Y-%m-%dT%H:%i:%sZ') AS end_time,
           sl.status, sl.edited,
           DATE_FORMAT(sl.session_date, '%Y-%m-%d') AS session_date
-        FROM sesiuni_de_lucru sl
+        FROM S06_Sesiuni_De_Lucru sl
        WHERE sl.session_date IN (?)
          AND sl.santier_id   IN (?)
        ORDER BY sl.santier_id, sl.session_date, sl.user_id, sl.start_time`,
@@ -1330,18 +1332,14 @@ const getContData = async (req, res) => {
   try {
     const [rows] = await global.db.execute(
       `SELECT 
-          u.id, u.name, u.email, u.photo_url, u.telefon_prefix, u.telephone,
-          f.id AS firma_id, f.name AS firma, f.color_hex AS firma_color,
-          s.id AS specializare_id, s.nume AS specializare, s.culoare_hex AS specializare_color,
-          d.id AS departament_id, d.name AS departament, d.color_hex AS departament_color
+          u.id, u.name, u.email, u.photo_url, u.telephone, u.specializare, u.telephone_1,
+          s.nume as companie_interna, s.culoare_hex as companie_interna_color
         FROM S00_Utilizatori u
-        LEFT JOIN Meta_Users f ON f.id = u.firma_id AND f.type = 'firma'
-        LEFT JOIN Meta_Users s ON s.id = u.specializare_id AND s.type = 'specializare'
-        LEFT JOIN Meta_Users d ON d.id = u.departament_id AND d.type = 'departament'
+        LEFT JOIN S00_Companii_Interne s ON s.id = u.companie_interna_id
         WHERE u.id = ?`,
       [id],
     );
-
+    console.log("getContData rows:", rows);
     if (rows.length === 0) {
       return res.status(404).json({ error: "User not found" });
     }
@@ -1398,7 +1396,7 @@ const getSumarOre = async (req, res) => {
           END
         ) AS sessions_count
 
-      FROM sesiuni_de_lucru sl
+      FROM S06_Sesiuni_De_Lucru sl
       LEFT JOIN S01_Santiere s ON s.id = sl.santier_id
       WHERE sl.user_id = ?
         AND sl.session_date >= ? AND sl.session_date < ?

@@ -338,7 +338,7 @@ export default function UtilizatoriList({ conturi = [], visibleColumns = {}, han
                         <div className="mt-3 flex items-center border-t border-border gap-3 pt-3">
                           <Avatar className="h-10 rounded-lg w-10 border border-border">
                             <AvatarImage src={cont.created_by_photo_url ? `${photoApi}/${cont.created_by_photo_url}` : null} />
-                            <AvatarFallback className="text-sm bg-muted text-muted-foreground">
+                            <AvatarFallback className="text-sm bg-muted rounded-lg text-muted-foreground">
                               <FontAwesomeIcon icon={faUserTie} />
                             </AvatarFallback>
                           </Avatar>

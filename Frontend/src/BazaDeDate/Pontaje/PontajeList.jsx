@@ -68,7 +68,7 @@ const virtuosoComponents = {
         <ContextMenuTrigger asChild disabled={exportSelectMode}>
           <TableRow
             {...props}
-            className={`selectedRow cursor-pointer transition-colors border-b h-[4.5rem] md:h-20 xl:h-24 ${
+            className={`selectedRow cursor-pointer transition-colors border-b h-12 md:h-[3.5rem] xl:h-16 ${
               exportSelectMode && isExportSelected
                 ? "bg-primary/15 hover:bg-primary/20"
                 : exportSelectMode
@@ -299,8 +299,8 @@ export default function PontajeList({
           {showCol("poza") && (
             <TableCell className="whitespace-nowrap px-2" onClick={handleClick}>
               <div className="flex items-center justify-center">
-                <Avatar className="border rounded-lg h-16 w-16 md:h-[4.5rem] md:w-[4.5rem] xl:h-20 xl:w-20 border-border">
-                  <AvatarImage src={user.photo_url ? `${photoApi}/${user.photo_url}` : null} alt={user.name} />
+                <Avatar className="border  rounded-lg  h-10 w-10 xl:w-[3.5rem] xl:h-[3.5rem] lg:h-12 lg:w-12 border-border">
+                  <AvatarImage className="object-cover" src={user.photo_url ? `${photoApi}/${user.photo_url}` : null} alt={user.name} />
                   <AvatarFallback className="font-bold rounded-lg text-foreground bg-muted text-base">{user.name?.[0]?.toUpperCase()}</AvatarFallback>
                 </Avatar>
               </div>

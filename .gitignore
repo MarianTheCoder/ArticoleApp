@@ -26,6 +26,10 @@ Thumbs.db
 .vscode/
 .idea/
 
+# --- Backups ---
+*.backups
+backups/
+
 # --- Logs ---
 *.log
 

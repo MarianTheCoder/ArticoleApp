@@ -1,7 +1,6 @@
 const bcrypt = require("bcryptjs");
 
 async function initializeDB(pool) {
-
   const createCompaniesTable = `
     CREATE TABLE IF NOT EXISTS S00_Companii_Interne (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -32,7 +31,7 @@ async function initializeDB(pool) {
   const createUsersTable = `
   CREATE TABLE IF NOT EXISTS S00_Utilizatori (
       id INT AUTO_INCREMENT PRIMARY KEY,
-      companie_interna_id INT NOT NULL,
+      companie_interna_id INT DEFAULT NULL,
       email VARCHAR(100) NOT NULL UNIQUE,
       password VARCHAR(255) NOT NULL,
       name VARCHAR(50) NOT NULL,
@@ -383,8 +382,6 @@ async function initializeDB(pool) {
   await pool.execute(createReteteUtilajeTableQuery);
   console.log("Retete_Utilaje table created or already exists.");
 
-
-
   //
   //
   //
@@ -446,8 +443,6 @@ async function initializeDB(pool) {
   await pool.execute(createSantierReteteTable);
   console.log("Santier_retete table created or already exists.");
 
-
-
   // Santier_retete_manopera
   //
   //
@@ -497,7 +492,6 @@ async function initializeDB(pool) {
   `;
   await pool.execute(createSantierReteteManopera);
   console.log("Santier_retete_manopera table created or already exists.");
-
 
   // Santier_retete_materiale
   //
@@ -616,8 +610,6 @@ async function initializeDB(pool) {
   `;
   await pool.execute(createSantierReteteUtilaje);
   console.log("Santier_retete_utilaje table created or already exists.");
-
-
 
   // Santier_retete_transport
   //
@@ -864,7 +856,6 @@ async function initializeDB(pool) {
   await pool.execute(rezerve_pattern_zones);
   console.log("Rezerve_Pattern_Zones table created or already exists.");
 
-
   const rezervePins = `
     CREATE TABLE IF NOT EXISTS S09_Rezerve_Pins (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -1041,7 +1032,6 @@ async function initializeDB(pool) {
   await pool.execute(sarciniReteta);
   console.log("07_Sarcina_Reteta table created or already exists.");
 
-
   // await insertInitialAdminUser(pool);
   console.log("All tables checked/created successfully.");
 }
@@ -1051,12 +1041,8 @@ async function insertInitialAdminUser(pool) {
     const email = "admin@btbtrust.com";
     const name = "admin";
     const plainPassword = "admin";
-    const role = "ofertant";
 
-    const [existingAdmins] = await pool.execute(
-      "SELECT * FROM S00_Utilizatori WHERE role = ?",
-      [role]
-    );
+    const [existingAdmins] = await pool.execute("SELECT * FROM S00_Utilizatori WHERE role = ?", [role]);
 
     if (existingAdmins.length > 0) {
       console.log("Admin user already exists.");
@@ -1065,16 +1051,10 @@ async function insertInitialAdminUser(pool) {
 
     const hashedPassword = await bcrypt.hash(plainPassword, 10);
     const insertQuery = `
-      INSERT INTO S00_Utilizatori (email, name, password, role, photo_url)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO S00_Utilizatori (email, name, password, photo_url)
+      VALUES (?, ?, ?, ?)
     `;
-    await pool.execute(insertQuery, [
-      email,
-      name,
-      hashedPassword,
-      role,
-      "uploads/Angajati/no-user-image-square.jpg",
-    ]);
+    await pool.execute(insertQuery, [email, name, hashedPassword, "uploads/Angajati/no-user-image-square.jpg"]);
 
     console.log("Admin user inserted successfully.");
   } catch (err) {

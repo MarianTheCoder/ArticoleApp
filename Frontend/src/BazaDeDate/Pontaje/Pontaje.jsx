@@ -156,6 +156,8 @@ export default function Pontaje() {
   const handleCalendarSetDates = useCallback((dates) => {
     setSelectedUser(null);
     setSelectedDates(dates);
+    setExportSelectedIds(new Set());
+    setExportSelectMode(false);
   }, []);
 
   // Reseteaza calendarul si userul

@@ -43,7 +43,6 @@ export const useAtribuiri = (selectedDates) => {
     queryKey: ["pontaje", selectedDates, "atribuiri"],
     queryFn: async () => {
       const res = await api.get("/users/getAtribuiri");
-      console.log("atribuiri response:", res.data);
       return res.data;
     },
     placeholderData: (previousData) => previousData, // Prevents flashing when searching

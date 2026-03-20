@@ -9,6 +9,7 @@ import ExportPontaje from "./ExportPontaje";
 import ExportPontajeExcel from "./ExportPontajeExcel";
 import { AuthContext } from "@/context/TokenContext";
 import { useCompaniiInterne } from "@/hooks/useCompaniiInterne";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 const EMPTY_ARRAY = [];
@@ -26,6 +27,7 @@ export default function PontajeExportMenu({
 
   const [selectedCompany, setSelectedCompany] = useState("all");
   const [exportFormat, setExportFormat] = useState(null); // "pdf" | "excel" | null
+  const [includeRapoarte, setIncludeRapoarte] = useState(false);
 
   const companies = useMemo(() => {
     if (!user?.permissions?.firme) return [];
@@ -69,9 +71,9 @@ export default function PontajeExportMenu({
     if (selectedIds.size === 0) return;
     const dates = selectedDates;
     if (exportFormat === "pdf") {
-      ExportPontaje({ selectedUserIds: selectedIds, dates, selectedCompany });
+      ExportPontaje({ selectedUserIds: selectedIds, dates, selectedCompany, includeRapoarte });
     } else {
-      ExportPontajeExcel({ selectedUserIds: selectedIds, dates, selectedCompany });
+      ExportPontajeExcel({ selectedUserIds: selectedIds, dates, selectedCompany, includeRapoarte });
     }
     cancelSelectMode();
   };
@@ -80,9 +82,9 @@ export default function PontajeExportMenu({
     const ids = new Set(usersForCompany.map((u) => u.id));
     const dates = selectedDates;
     if (fmt === "pdf") {
-      ExportPontaje({ selectedUserIds: ids, dates, selectedCompany });
+      ExportPontaje({ selectedUserIds: ids, dates, selectedCompany, includeRapoarte });
     } else {
-      ExportPontajeExcel({ selectedUserIds: ids, dates });
+      ExportPontajeExcel({ selectedUserIds: ids, dates, selectedCompany, includeRapoarte });
     }
   };
 
@@ -95,7 +97,7 @@ export default function PontajeExportMenu({
           Anulează
         </Button>
 
-        <Button variant="outline" size="sm" className="h-9 gap-2" onClick={toggleAll}>
+        <Button variant="outline" size="sm" className="h-9 text-foreground gap-2" onClick={toggleAll}>
           <FontAwesomeIcon icon={faCheckDouble} />
           {allSelected ? "Deselectează toți" : "Selectează toți"}
         </Button>
@@ -145,6 +147,17 @@ export default function PontajeExportMenu({
 
         <DropdownMenuSeparator />
 
+        {/* Include rapoarte */}
+        <div
+          className="px-1 py-2 select-none  hover:bg-accent hover:text-accent-foreground rounded-lg flex items-center"
+          onClick={() => setIncludeRapoarte((prev) => !prev)}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <Checkbox className="w-5 h-5" checked={includeRapoarte} />
+          <span className="ml-2 text-sm">Include și rapoartele</span>
+        </div>
+
+        <DropdownMenuSeparator />
         {/* Export all */}
         <DropdownMenuLabel className="text-xs text-muted-foreground uppercase tracking-wide pb-1">Toată lumea ({usersForCompany.length})</DropdownMenuLabel>
 
