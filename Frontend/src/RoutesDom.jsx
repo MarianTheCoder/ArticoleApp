@@ -51,191 +51,36 @@ export default function RoutesDom() {
 
   return (
     <div className=" grid h-screen text-white  w-full relative grid-cols-1">
+      {/* prettier-ignore */}
       <Routes>
         <Route element={<AppLayout />}>
-          <Route
-            path=""
-            element={
-              <ProtectedRoute>
-                <LandingPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="CRM"
-            element={
-              <ProtectedRoute
-                module="companii"
-                friendlyName="a accesa Dashboard"
-              >
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="CRM/Companii"
-            element={
-              <ProtectedRoute
-                module="companii"
-                friendlyName="a accesa Companiile"
-              >
-                <CompaniesMainPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="CRM/Companii/View/:companyId"
-            element={
-              <ProtectedRoute
-                module="companii"
-                friendlyName="a accesa detaliile companiei"
-              >
-                <CompanyView />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="" element={<ProtectedRoute><LandingPage /></ProtectedRoute>} />
+          
+          {/* CRM Routes */}
+          <Route path="CRM" element={<ProtectedRoute module="companii" friendlyName="a accesa Dashboard"><Dashboard /></ProtectedRoute>} />
+          <Route path="CRM/Companii" element={<ProtectedRoute module="companii" friendlyName="a accesa Companiile"><CompaniesMainPage /></ProtectedRoute>} />
+          <Route path="CRM/Companii/View/:companyId" element={<ProtectedRoute module="companii" friendlyName="a accesa detaliile companiei"><CompanyView /></ProtectedRoute>} />
+          <Route path="CRM/Filiale" element={<ProtectedRoute module="filiale" friendlyName="a accesa Filialele"><FilialaMainPage /></ProtectedRoute>} />
+          <Route path="CRM/Filiale/View/:companyId/:filialaId" element={<ProtectedRoute module="filiale" friendlyName="a accesa detaliile filialei"><FilialaView /></ProtectedRoute>} />
+          <Route path="CRM/Santiere" element={<ProtectedRoute module="santiere" friendlyName="a accesa Șantierele"><SantiereMainPage /></ProtectedRoute>} />
+          <Route path="CRM/Contacte" element={<ProtectedRoute module="contacte" friendlyName="a accesa Contactele"><ContactsMainPage /></ProtectedRoute>} />
+          
+          {/* Project / Site Details */}
+          <Route path="Santiere/:limbaUser/:idCompanie/:idSantier" element={<ProtectedRoute module="santiere" friendlyName="a accesa detaliile șantierului"><SantiereRoutes /></ProtectedRoute>} />
 
-          <Route
-            path="CRM/Filiale"
-            element={
-              <ProtectedRoute
-                module="filiale"
-                friendlyName="a accesa Filialele"
-              >
-                <FilialaMainPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="CRM/Filiale/View/:companyId/:filialaId"
-            element={
-              <ProtectedRoute
-                module="filiale"
-                friendlyName="a accesa detaliile filialei"
-              >
-                <FilialaView />
-              </ProtectedRoute>
-            }
-          />
+          {/* Database / Articles */}
+          <Route path="addArticles" element={<ProtectedRoute module="retete" friendlyName="a accesa articole"><RetetaForm /></ProtectedRoute>} />
+          <Route path="addManopere" element={<ProtectedRoute module="manopere" friendlyName="a accesa manopere"><DatabaseMainCategories dateType={1} /></ProtectedRoute>} />
+          <Route path="addMateriale" element={<ProtectedRoute module="materiale" friendlyName="a accesa materiale"><DatabaseMainCategories dateType={2} /></ProtectedRoute>} />
+          <Route path="addTransport" element={<ProtectedRoute module="transport" friendlyName="a accesa transport"><DatabaseMainCategories dateType={3} /></ProtectedRoute>} />
+          <Route path="addUtilaje" element={<ProtectedRoute module="utilaje" friendlyName="a accesa utilaje"><DatabaseMainCategories dateType={4} /></ProtectedRoute>} />
 
-          <Route
-            path="CRM/Santiere"
-            element={
-              <ProtectedRoute
-                module="santiere"
-                friendlyName="a accesa Șantierele"
-              >
-                <SantiereMainPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="Santiere/:limbaUser/:idCompanie/:idSantier"
-            element={
-              <ProtectedRoute
-                module="santiere"
-                friendlyName="a accesa detaliile șantierului"
-              >
-                <SantiereRoutes />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="CRM/Contacte"
-            element={
-              <ProtectedRoute
-                module="contacte"
-                friendlyName="a accesa Contactele"
-              >
-                <ContactsMainPage />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="addArticles"
-            element={
-              <ProtectedRoute module="retete" friendlyName="a accesa articole">
-                <RetetaForm />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="addManopere"
-            element={
-              <ProtectedRoute
-                module="manopere"
-                friendlyName="a accesa manopere"
-              >
-                <DatabaseMainCategories dateType={1} />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="addMateriale"
-            element={
-              <ProtectedRoute
-                module="materiale"
-                friendlyName="a accesa materiale"
-              >
-                <DatabaseMainCategories dateType={2} />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="addTransport"
-            element={
-              <ProtectedRoute
-                module="transport"
-                friendlyName="a accesa transport"
-              >
-                <DatabaseMainCategories dateType={3} />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="addUtilaje"
-            element={
-              <ProtectedRoute module="utilaje" friendlyName="a accesa utilaje">
-                <DatabaseMainCategories dateType={4} />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="Pontaje"
-            element={
-              <ProtectedRoute module="pontaje" friendlyName="a accesa Pontaje">
-                <Pontaje />
-              </ProtectedRoute>
-            }
-          />
-          {/* <Route path="AtribuiriActivitate" element={<ProtectedRoute module="pontaje" friendlyName="a accesa Atribuiri Activitate"><AtribuiriActivitate /></ProtectedRoute>} /> */}
-
-          <Route
-            path="ManageConturi"
-            element={
-              <ProtectedRoute
-                module="conturi"
-                friendlyName="a gestiona conturile"
-              >
-                <UtilizatoriMainPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="Companii-interne"
-            element={
-              <ProtectedRoute
-                module="conturi"
-                friendlyName="a accesa Companiile Interne"
-              >
-                <CompaniiInterneMainPage />
-              </ProtectedRoute>
-            }
-          />
+          {/* Admin & Pontaj */}
+          <Route path="Pontaje" element={<ProtectedRoute module="pontaje" friendlyName="a accesa Pontaje"><Pontaje /></ProtectedRoute>} />
+          <Route path="ManageConturi" element={<ProtectedRoute module="conturi" friendlyName="a gestiona conturile"><UtilizatoriMainPage /></ProtectedRoute>} />
+          <Route path="Companii-interne" element={<ProtectedRoute module="conturi" friendlyName="a accesa Companiile Interne"><CompaniiInterneMainPage /></ProtectedRoute>} />
         </Route>
+        
         <Route path="*" element={<NoPage />} />
       </Routes>
     </div>

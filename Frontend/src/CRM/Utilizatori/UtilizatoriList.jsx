@@ -392,7 +392,7 @@ export default function UtilizatoriList({ conturi = [], visibleColumns = {}, han
               <TableCell className="  whitespace-nowrap">
                 <div className="flex items-center justify-center gap-4">
                   <Avatar className=" border rounded-lg  h-16 w-16 md:h-20 md:w-20 xl:h-24 xl:w-24  border-border">
-                    <AvatarImage src={cont.photo_url ? `${photoApi}/${cont.photo_url}` : null} alt={cont.name} />
+                    <AvatarImage src={cont.photo_url ? `${photoApi}/${cont.photo_url}` : null} className="object-cover" alt={cont.name} />
                     <AvatarFallback className="font-bold rounded-lg text-foreground bg-muted text-base">{cont.name?.[0]?.toUpperCase()}</AvatarFallback>
                   </Avatar>
                 </div>

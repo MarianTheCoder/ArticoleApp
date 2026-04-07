@@ -11,11 +11,12 @@ const login = async (req, res) => {
   try {
     // Corecție SQL: Numele tabelei urmat de alias
     const selectQuery = `
-            SELECT u.*, c.nume AS companie_nume, c.culoare_hex
-            FROM S00_Utilizatori u
-            LEFT JOIN S00_Companii_Interne c ON u.companie_interna_id = c.id
-            WHERE u.email = ?
-        `;
+          SELECT u.*, c.nume AS companie_nume, c.culoare_hex, p.json_permisiuni as template_perms
+          FROM S00_Utilizatori u
+          LEFT JOIN S00_Companii_Interne c ON u.companie_interna_id = c.id
+          LEFT JOIN S00_Permisiuni_Predefinite p ON u.permissions_template_id = p.id
+          WHERE u.email = ?
+      `;
     const [rows] = await global.db.execute(selectQuery, [email.trim()]);
 
     if (rows.length === 0) {
@@ -41,21 +42,24 @@ const login = async (req, res) => {
       companies: [user.companie_interna_id],
     };
 
-    let permsRaw = user.permissions;
-    if (typeof permsRaw === "string") {
-      try {
-        permsRaw = JSON.parse(permsRaw);
-      } catch (e) {
-        permsRaw = null;
-      }
-    }
+    // Prioritate: Template > Direct Perms > Default
+    let finalPerms = user.template_perms
+      ? typeof user.template_perms === "string"
+        ? JSON.parse(user.template_perms)
+        : user.template_perms
+      : user.permissions
+        ? typeof user.permissions === "string"
+          ? JSON.parse(user.permissions)
+          : user.permissions
+        : defaultPerms;
 
     const tokenPayload = {
       id: user.id,
       user: user.name,
       company_id: user.companie_interna_id,
-      permissions: permsRaw || defaultPerms,
+      permissions: { ...defaultPerms, ...finalPerms },
     };
+    // Combini default-ul cu ce ai găsit în DB
 
     const token = jwt.sign(tokenPayload, process.env.JWT_SECRET);
 

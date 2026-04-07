@@ -1,6 +1,5 @@
-
 async function InitializeDBforCRM(pool) {
-    const creatCompaniesTable = `
+  const creatCompaniesTable = `
         CREATE TABLE IF NOT EXISTS S10_Companii (
         id                        INT AUTO_INCREMENT PRIMARY KEY,
 
@@ -46,11 +45,11 @@ async function InitializeDBforCRM(pool) {
         UNIQUE KEY uq_companii_nume_tara_oras (nume_companie, tara, oras)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `;
-    await pool.execute(creatCompaniesTable);
-    console.log("Table S10_Companii created or already exists.");
+  await pool.execute(creatCompaniesTable);
+  console.log("Table S10_Companii created or already exists.");
 
-    // --- 2. FILIALE (NEW TABLE) ---
-    const createFilialeTable = `
+  // --- 2. FILIALE (NEW TABLE) ---
+  const createFilialeTable = `
         CREATE TABLE IF NOT EXISTS S10_Filiale (
         id                      INT AUTO_INCREMENT PRIMARY KEY,
         
@@ -87,11 +86,10 @@ async function InitializeDBforCRM(pool) {
         INDEX idx_filiale_companie (companie_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `;
-    await pool.execute(createFilialeTable);
-    console.log("Table S10_Filiale created or already exists.");
+  await pool.execute(createFilialeTable);
+  console.log("Table S10_Filiale created or already exists.");
 
-
-    const createSantiereTableQuery = `
+  const createSantiereTableQuery = `
         CREATE TABLE IF NOT EXISTS S01_Santiere (
         id INT AUTO_INCREMENT PRIMARY KEY,
         
@@ -130,10 +128,10 @@ async function InitializeDBforCRM(pool) {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `;
 
-    await pool.execute(createSantiereTableQuery);
-    console.log("S01_Santiere table created or already exists.");
+  await pool.execute(createSantiereTableQuery);
+  console.log("S01_Santiere table created or already exists.");
 
-    const createContactsTable = `
+  const createContactsTable = `
         CREATE TABLE IF NOT EXISTS S10_Contacte (
         id                        INT AUTO_INCREMENT PRIMARY KEY,
 
@@ -183,12 +181,11 @@ async function InitializeDBforCRM(pool) {
         UNIQUE KEY uq_contacte_companie_email (companie_id, email)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `;
-    await pool.execute(createContactsTable);
-    console.log("Table S10_Contacte created or already exists.");
+  await pool.execute(createContactsTable);
+  console.log("Table S10_Contacte created or already exists.");
 
-
-    // 1. TABEL ISTORIC (S11_Istoric)
-    const createHistoryTable = `
+  // 1. TABEL ISTORIC (S11_Istoric)
+  const createHistoryTable = `
             CREATE TABLE IF NOT EXISTS S11_Istoric (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 
@@ -221,11 +218,11 @@ async function InitializeDBforCRM(pool) {
                 INDEX idx_istoric_utilizator (utilizator_id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
             `;
-    await pool.execute(createHistoryTable);
-    console.log("Tabela S11_Istoric creată.");
+  await pool.execute(createHistoryTable);
+  console.log("Tabela S11_Istoric creată.");
 
-    // 2. TABEL NOTIFICĂRI (S11_Notificari)
-    const createNotificationsTable = `
+  // 2. TABEL NOTIFICĂRI (S11_Notificari)
+  const createNotificationsTable = `
             CREATE TABLE IF NOT EXISTS S11_Notificari (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 
@@ -253,10 +250,69 @@ async function InitializeDBforCRM(pool) {
                 INDEX idx_notificari_utilizator_necitite (utilizator_id, citit_la, created_at)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
             `;
-    await pool.execute(createNotificationsTable);
-    console.log("Tabela S11_Notificari creată.");
+  await pool.execute(createNotificationsTable);
+  console.log("Tabela S11_Notificari creată.");
 
+  // 1. TABEL ACTIVITĂȚI (S11_Activitati)
+  const createActivitatiTable = `
+            CREATE TABLE IF NOT EXISTS S11_Activitati (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                
+                -- Contextul activității (unde a fost adăugată)
+                companie_id INT NOT NULL,
+                filiala_id INT NULL,
+                santier_id INT NULL,
+                contact_id INT NULL,
+                
+                -- Conținut
+                mesaj TEXT NOT NULL,
+                
+                -- Autor și Timestamp
+                created_by_user_id INT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
+                edited_by_user_id INT NULL,
+                edited_at TIMESTAMP NULL,
+
+                -- Indecși pentru o filtrare rapidă în meniul din stânga
+                INDEX idx_activitati_companie (companie_id),
+                INDEX idx_activitati_filtrari (filiala_id, santier_id, contact_id),
+                INDEX idx_activitati_ordonare (created_at DESC)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            `;
+  await pool.execute(createActivitatiTable);
+  console.log("Tabela S11_Activitati creată.");
+
+  // 2. TABEL COMENTARII ACTIVITĂȚI (S11_Activitati_Comentarii)
+  const createComentariiTable = `
+            CREATE TABLE IF NOT EXISTS S11_Activitati_Comentarii (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                
+                -- Legătura cu activitatea părinte
+                activitate_id INT NOT NULL,
+                
+                -- Conținut
+                mesaj TEXT NOT NULL,
+                
+                -- Autor și Timestamp
+                created_by_user_id INT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+                edited_by_user_id INT NULL,
+                edited_at TIMESTAMP NULL,
+
+                -- Cheie străină care șterge automat comentariile dacă activitatea e ștearsă
+                CONSTRAINT fk_comentarii_activitati 
+                    FOREIGN KEY (activitate_id) 
+                    REFERENCES S11_Activitati(id) 
+                    ON DELETE CASCADE,
+
+                -- Index pentru încărcarea rapidă a comentariilor când dai click pe "Săgeată în jos"
+                INDEX idx_comentarii_activitate_id (activitate_id, created_at ASC)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            `;
+  await pool.execute(createComentariiTable);
+  console.log("Tabela S11_Activitati_Comentarii creată.");
 }
 
 module.exports = InitializeDBforCRM;

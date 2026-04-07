@@ -67,51 +67,69 @@ function getElbowColors(baseColor) {
   return res;
 }
 
-const ElbowShape = React.memo(function ElbowShape({ elbow }) {
-  console.log("Rendering ElbowShape", elbow);
-  const width = elbow.width;
-  if (!width) return null;
+const ElbowShape = React.memo(
+  function ElbowShape({ elbow, isSelected }) {
+    // console.log("Render ElbowShape", elbow.id);
+    const width = elbow.width;
+    if (!width) return null;
+    const baseColor = elbow.color || "#008000";
+    const { outerColor, innerColor } = getElbowColors(baseColor);
+    // console.log(elbow);
+    const edgeWidth = Math.max(1.5, width / 8);
+    const borderWidth = edgeWidth;
 
-  const baseColor = elbow.color || "#008000";
-  const { outerColor, innerColor } = getElbowColors(baseColor);
+    const { outlineTop, outlineBottom } = elbow;
+    if (!outlineTop || !outlineBottom) return null;
 
-  const edgeWidth = Math.max(1.5, width / 8);
-  const borderWidth = edgeWidth;
+    const buildPath = (ctx, shape) => {
+      ctx.beginPath();
 
-  const { outlineTop, outlineBottom } = elbow;
-  if (!outlineTop || !outlineBottom) return null;
+      // top 0 -> n
+      ctx.moveTo(outlineTop[0].x, outlineTop[0].y);
+      for (let i = 1; i < outlineTop.length; i++) {
+        const p = outlineTop[i];
+        ctx.lineTo(p.x, p.y);
+      }
 
-  const buildPath = (ctx, shape) => {
-    ctx.beginPath();
+      // bottom n -> 0
+      for (let i = outlineBottom.length - 1; i >= 0; i--) {
+        const p = outlineBottom[i];
+        ctx.lineTo(p.x, p.y);
+      }
 
-    // top 0 -> n
-    ctx.moveTo(outlineTop[0].x, outlineTop[0].y);
-    for (let i = 1; i < outlineTop.length; i++) {
-      const p = outlineTop[i];
-      ctx.lineTo(p.x, p.y);
-    }
+      ctx.closePath();
+      ctx.fillStrokeShape(shape);
+    };
 
-    // bottom n -> 0
-    for (let i = outlineBottom.length - 1; i >= 0; i--) {
-      const p = outlineBottom[i];
-      ctx.lineTo(p.x, p.y);
-    }
+    const key = elbow.id != null ? `elbow-${elbow.id}` : `elbow-${idx}`;
 
-    ctx.closePath();
-    ctx.fillStrokeShape(shape);
-  };
+    return (
+      <Shape
+        key={key}
+        sceneFunc={buildPath}
+        shadowColor={isSelected ? "#fbbf24" : "transparent"} // Auriu când e selectat
+        shadowBlur={isSelected ? 15 : 0}
+        shadowOpacity={isSelected ? 1 : 0}
+        shadowForStrokeEnabled={true}
+        fill={innerColor}
+        stroke={outerColor}
+        strokeWidth={borderWidth}
+        listening={false}
+      />
+    );
+  },
+  (prev, next) => {
+    // Only re-render if the elbow's geometry or color changes
+    return prev.elbow === next.elbow && prev.elbow.width === next.elbow.width && prev.elbow.color === next.elbow.color && prev.isSelected === next.isSelected;
+  },
+);
 
-  const key = elbow.id != null ? `elbow-${elbow.id}` : `elbow-${idx}`;
-
-  return <Shape key={key} sceneFunc={buildPath} fill={innerColor} stroke={outerColor} strokeWidth={borderWidth} listening={false} />;
-});
-
-export default function Elbows({ elbows }) {
+export default function Elbows({ elbows, selectedItemId }) {
   if (!elbows || !elbows.length) return null;
   return (
     <>
       {elbows.map((elbow, idx) => (
-        <ElbowShape key={elbow.id ?? `elbow-${idx}`} elbow={elbow} />
+        <ElbowShape key={elbow.id ?? `elbow-${idx}`} elbow={elbow} isSelected={elbow.id == selectedItemId} />
       ))}
     </>
   );

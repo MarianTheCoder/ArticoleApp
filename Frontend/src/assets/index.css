@@ -1,65 +1,58 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-
-
 /* 1. Light (Weight 300) */
 @font-face {
-  font-family: 'MyCustomFont';
-  src: url('./fonts/Avenir-Light.ttf') format('truetype');
+  font-family: "MyCustomFont";
+  src: url("./fonts/Avenir-Light.ttf") format("truetype");
   font-weight: 300;
   font-style: normal;
 }
 
 /* 2. Regular (Weight 400) */
 @font-face {
-  font-family: 'MyCustomFont';
-  src: url('./fonts/Avenir-Regular.ttf') format('truetype');
+  font-family: "MyCustomFont";
+  src: url("./fonts/Avenir-Regular.ttf") format("truetype");
   font-weight: 400;
   font-style: normal;
 }
 
 /* 3. Heavy (Weight 900) */
 @font-face {
-  font-family: 'MyCustomFont';
-  src: url('./fonts/Avenir-Medium.ttf') format('truetype');
+  font-family: "MyCustomFont";
+  src: url("./fonts/Avenir-Medium.ttf") format("truetype");
   font-weight: 500;
   font-style: normal;
 }
 
 /* 3. Heavy (Weight 900) */
 @font-face {
-  font-family: 'MyCustomFont';
-  src: url('./fonts/Avenir-Bold.ttf') format('truetype');
+  font-family: "MyCustomFont";
+  src: url("./fonts/Avenir-Bold.ttf") format("truetype");
   font-weight: 600;
   font-style: normal;
 }
 
 /* 3. Heavy (Weight 900) */
 @font-face {
-  font-family: 'MyCustomFont';
-  src: url('./fonts/Avenir-ExtraBold.ttf') format('truetype');
+  font-family: "MyCustomFont";
+  src: url("./fonts/Avenir-ExtraBold.ttf") format("truetype");
   font-weight: 700;
   font-style: normal;
 }
 
-
-
-:root
-{
-  font-family: 'MyCustomFont', sans-serif;
+:root {
+  font-family: "MyCustomFont", sans-serif;
   font-size: clamp(12px, 0.6vw, 15px);
-    --clr: #000043;
+  --clr: #000043;
 }
 
-body
-{
-    min-height: 100vh;
-    background-color: var(--clr);
+body {
+  min-height: 100vh;
+  background-color: var(--clr);
 }
-
 
 :root {
   --mainBG: 0 0% 100% / 10%;
@@ -128,71 +121,72 @@ body
 }
 
 .blue {
-  --mainBG: 210 70% 100% / 10%;
+  --mainBG: 210 40% 10% / 80%; /* Fundal foarte închis cu ușoară transparență */
   --radius: 0.65rem;
 
-  /* deep blue backgrounds */
-  --background: 210 60% 85%;
-  --foreground: 210 80% 8%;
+  /* Deep Dark Blue backgrounds */
+  --background: 210 45% 7%; /* Aproape negru-albăstrui */
+  --foreground: 210 20% 98%; /* Text aproape alb */
 
-  --card: 210 65% 92%;
-  --card-foreground: 210 80% 8%;
+  --card: 215 50% 11%; /* Carduri ușor mai deschise decât fundalul */
+  --card-foreground: 210 20% 98%;
 
-  --popover: 210 65% 92%;
-  --popover-foreground: 210 80% 8%;
+  --popover: 210 40% 12%;
+  --popover-foreground: 210 20% 98%;
 
-  /* primary steel blue - max saturation */
-  --primary: 207 65% 52%;
+  /* Nextcloud Blue - albastru vibrant pentru acțiuni principale */
+  --primary: 210 80% 50%;
   --primary-foreground: 0 0% 100%;
 
-  /* intense secondary blues */
-  --secondary: 207 60% 65%;
-  --secondary-foreground: 210 80% 12%;
+  /* Muted secondary blues */
+  --secondary: 210 30% 20%;
+  --secondary-foreground: 210 20% 98%;
 
-  --muted: 210 60% 75%;
-  --muted-foreground: 210 60% 25%;
+  --muted: 210 30% 18%;
+  --muted-foreground: 210 15% 70%;
 
-  --accent: 207 65% 68%;
-  --accent-foreground: 210 80% 12%;
+  --accent: 210 60% 25%;
+  --accent-foreground: 210 20% 98%;
 
-  /* destructive - vibrant coral */
-  --destructive: 0 85% 62%;
+  /* Destructive - roșu temperat pentru dark mode */
+  --destructive: 0 70% 50%;
   --destructive-foreground: 0 0% 100%;
 
-  /* borders - bold blue */
-  --border: 207 55% 55%;
-  --input: 207 55% 55%;
+  /* Borders & Inputs - contrast scăzut pentru a nu "sări" în ochi */
+  --border: 210 30% 20%;
+  --input: 210 30% 20%;
 
-  /* ring - glowing blue */
-  --ring: 207 70% 50%;
+  /* Ring - glow albastru */
+  --ring: 210 80% 50%;
 
-  /* chart colors: deep steel blue gradient */
-  --chart-1: 207 70% 70%;
-  --chart-2: 207 70% 60%;
-  --chart-3: 207 70% 50%;
-  --chart-4: 207 75% 42%;
-  --chart-5: 207 80% 34%;
+  /* Charts - gradient de albastru rece */
+  --chart-1: 210 80% 55%;
+  --chart-2: 200 70% 45%;
+  --chart-3: 215 60% 35%;
+  --chart-4: 220 50% 30%;
+  --chart-5: 225 40% 25%;
 
-  /* sidebar - full blue */
-  --sidebar: 210 65% 88%;
-  --sidebar-foreground: 210 80% 8%;
+  /* Sidebar - Dark Blue (stil Nextcloud Sidebar) */
+  --sidebar: 210 45% 9%;
+  --sidebar-foreground: 210 20% 95%;
 
-  --sidebar-primary: 207 65% 52%;
+  --sidebar-primary: 210 80% 50%;
   --sidebar-primary-foreground: 0 0% 100%;
 
-  --sidebar-accent: 207 60% 75%;
-  --sidebar-accent-foreground: 210 80% 12%;
+  --sidebar-accent: 210 40% 18%;
+  --sidebar-accent-foreground: 210 20% 98%;
 
-  --sidebar-border: 207 55% 60%;
-  --sidebar-ring: 207 65% 55%;
+  --sidebar-border: 210 30% 16%;
+  --sidebar-ring: 210 80% 50%;
 
-  /* priority colors - vibrant */
-  --medium: 42 95% 55%;
-  --low: 150 75% 45%;
-  --high: 0 88% 62%;
+  /* Priority colors - saturate pentru contrast pe fundal închis */
+  --medium: 38 90% 50%;
+  --low: 150 60% 45%;
+  --high: 0 80% 55%;
 
-  --hover-green: 155 70% 55%;
-  --active-green: 155 70% 70%;
+  /* Green accents (pentru butoanele tale specifice) */
+  --hover-green: 155 60% 35%;
+  --active-green: 155 65% 45%;
 }
 
 .dark {
@@ -211,7 +205,7 @@ body
   --accent: 240 4% 15.9%;
   --accent-foreground: 180 0% 98%;
   --destructive: 10 90% 63%;
-  --destructive-foreground:  210 40% 98%;
+  --destructive-foreground: 210 40% 98%;
   --border: 0 0% 100% / 15%;
   --input: 0 0% 100% / 35%;
   --ring: 225.3 84% 36%;
@@ -235,10 +229,6 @@ body
   --active-green: 142 65% 25%;
 }
 
-
-
-
-
 @layer base {
   * {
     @apply border-border;
@@ -251,13 +241,15 @@ body
 /* Scrollbar (track transparent, thumb changes by theme) */
 
 /* Firefox */
-html, body {
+html,
+body {
   scrollbar-width: thin;
   scrollbar-color: #6c6c6c transparent; /* light: black thumb */
 }
 
 /* Dark mode: white thumb */
-.dark html, .dark body {
+.dark html,
+.dark body {
   scrollbar-color: #6c6c6c transparent;
 }
 

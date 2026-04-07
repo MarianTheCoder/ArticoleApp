@@ -4,72 +4,76 @@ const fs = require("fs").promises; // Folosim fs.promises pentru async/await
 
 // Helper simplu pentru extensie (dacă nu îl ai deja importat)
 const guessExt = (mime) => {
-    switch (mime) {
-        case "image/jpeg": return "jpg";
-        case "image/png": return "png";
-        case "image/webp": return "webp";
-        default: return "bin";
-    }
+  switch (mime) {
+    case "image/jpeg":
+      return "jpg";
+    case "image/png":
+      return "png";
+    case "image/webp":
+      return "webp";
+    default:
+      return "bin";
+  }
 };
 
 // Helper pentru slugify (opțional, pentru folder name curat)
 const slugify = (text) => {
-    return text
-        .toString()
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "");
+  return text
+    .toString()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 };
 
 const postContact = async (req, res) => {
-    let conn;
-    let savedAbsPath = null;
-    try {
-        // Validare de bază
-        const companie_id = Number(req.body.companie_id);
-        const nume = (req.body.nume || "").trim();
-        const prenume = (req.body.prenume || "").trim();
+  let conn;
+  let savedAbsPath = null;
+  try {
+    // Validare de bază
+    const companie_id = Number(req.body.companie_id);
+    const nume = (req.body.nume || "").trim();
+    const prenume = (req.body.prenume || "").trim();
 
-        if (!companie_id || !nume || !prenume) {
-            return res.status(400).json({ message: "Compania, Numele și Prenumele sunt obligatorii." });
-        }
-        // Construire payload
-        const payload = {
-            logo_url: null,
-            companie_id,
-            filiala_id: req.body.filiala_id ? req.body.filiala_id : null,
-            santier_id: req.body.santier_id ? req.body.santier_id : null,
+    if (!companie_id || !nume || !prenume) {
+      return res.status(400).json({ message: "Compania, Numele și Prenumele sunt obligatorii." });
+    }
+    // Construire payload
+    const payload = {
+      logo_url: null,
+      companie_id,
+      filiala_id: req.body.filiala_id ? req.body.filiala_id : null,
+      santier_id: req.body.santier_id ? req.body.santier_id : null,
 
-            prenume,
-            nume,
-            functie: (req.body.functie || "").trim(),
-            categorie_rol: (req.body.categorie_rol || "").trim(),
+      prenume,
+      nume,
+      functie: (req.body.functie || "").trim(),
+      categorie_rol: (req.body.categorie_rol || "").trim(),
 
-            email: (req.body.email || "").trim() || null,
-            telefon: (req.body.telefon || "").trim() || null,
-            linkedin_url: (req.body.linkedin_url || "").trim() || null,
+      email: (req.body.email || "").trim() || null,
+      telefon: (req.body.telefon || "").trim() || null,
+      linkedin_url: (req.body.linkedin_url || "").trim() || null,
 
-            putere_decizie: Number(req.body.putere_decizie || 1),
-            nivel_influenta: Number(req.body.nivel_influenta || 1),
+      putere_decizie: Number(req.body.putere_decizie || 1),
+      nivel_influenta: Number(req.body.nivel_influenta || 1),
 
-            canal_preferat: (req.body.canal_preferat || "Email").trim(),
-            limba: (req.body.limba || "RO").trim(),
+      canal_preferat: (req.body.canal_preferat || "Email").trim(),
+      limba: (req.body.limba || "RO").trim(),
 
-            activ: req.body.activ !== undefined ? (req.body.activ == 'true' || req.body.activ == 1) : 1,
-            note: (req.body.note || "").trim() || null,
+      activ: req.body.activ !== undefined ? req.body.activ == "true" || req.body.activ == 1 : 1,
+      note: (req.body.note || "").trim() || null,
 
-            // Preluăm user_id din body (cum ai cerut) sau req.user dacă există middleware
-            created_by_user_id: req.body.created_by_user_id ? Number(req.body.created_by_user_id) : (req.user?.id || null),
-            updated_by_user_id: req.body.updated_by_user_id ? Number(req.body.updated_by_user_id) : (req.user?.id || null),
-        };
-        conn = await global.db.getConnection();
-        await conn.beginTransaction();
+      // Preluăm user_id din body (cum ai cerut) sau req.user dacă există middleware
+      created_by_user_id: req.body.created_by_user_id ? Number(req.body.created_by_user_id) : req.user?.id || null,
+      updated_by_user_id: req.body.updated_by_user_id ? Number(req.body.updated_by_user_id) : req.user?.id || null,
+    };
+    conn = await global.db.getConnection();
+    await conn.beginTransaction();
 
-        // 1) INSERT
-        const [ins] = await conn.execute(
-            `INSERT INTO S10_Contacte
+    // 1) INSERT
+    const [ins] = await conn.execute(
+      `INSERT INTO S10_Contacte
             (logo_url, companie_id, filiala_id, santier_id,
              prenume, nume, functie, categorie_rol,
              email, telefon, linkedin_url,
@@ -83,135 +87,138 @@ const postContact = async (req, res) => {
              ?, ?, ?, ?,
              ?, ?, ?, ?,
              CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-            [
-                payload.companie_id,
-                payload.filiala_id,
-                payload.santier_id,
+      [
+        payload.companie_id,
+        payload.filiala_id,
+        payload.santier_id,
 
-                payload.prenume,
-                payload.nume,
-                payload.functie,
-                payload.categorie_rol,
+        payload.prenume,
+        payload.nume,
+        payload.functie,
+        payload.categorie_rol,
 
-                payload.email,
-                payload.telefon,
-                payload.linkedin_url,
+        payload.email,
+        payload.telefon,
+        payload.linkedin_url,
 
-                payload.putere_decizie,
-                payload.nivel_influenta,
-                payload.canal_preferat,
-                payload.limba,
+        payload.putere_decizie,
+        payload.nivel_influenta,
+        payload.canal_preferat,
+        payload.limba,
 
-                payload.activ,
-                payload.note,
-                payload.created_by_user_id,
-                payload.updated_by_user_id
-            ]
-        );
+        payload.activ,
+        payload.note,
+        payload.created_by_user_id,
+        payload.updated_by_user_id,
+      ],
+    );
 
-        const contactId = ins.insertId;
-        const [santier] = await conn.execute(
-            `SELECT c.nume_companie
+    const contactId = ins.insertId;
+    const [santier] = await conn.execute(
+      `SELECT c.nume_companie
                  FROM S10_Companii c
                  WHERE c.id = ?`,
-            [payload.companie_id]
-        );
-        // 2) Update Logo (Dacă există fișier)
-        if (req.file) {
-            try {
+      [payload.companie_id],
+    );
+    // 2) Update Logo (Dacă există fișier)
+    if (req.file) {
+      try {
+        if (santier.length === 0) {
+          throw new Error("Compania asociată nu a fost găsită.");
+        }
+        // Folder: uploads/CRM/Contacte/nume-prenume-id
+        const companieNume = slugify(santier[0].nume_companie);
+        const folderName = slugify(`${payload.nume}-${payload.prenume}-${contactId}`);
+        const baseDir = path.join(__dirname, "..", "..", "uploads", "CRM", "Companii", companieNume, "Contacte", folderName);
 
-                if (santier.length === 0) {
-                    throw new Error("Compania asociată nu a fost găsită.");
-                }
-                // Folder: uploads/CRM/Contacte/nume-prenume-id
-                const companieNume = slugify(santier[0].nume_companie);
-                const folderName = slugify(`${payload.nume}-${payload.prenume}-${contactId}`);
-                const baseDir = path.join(__dirname, "..", "..", "uploads", "CRM", "Companii", companieNume, "Contacte", folderName);
+        await fs.mkdir(baseDir, { recursive: true });
 
-                await fs.mkdir(baseDir, { recursive: true });
+        const ext = guessExt(req.file.mimetype);
+        const ts = Date.now();
+        const fileName = `foto_${ts}.${ext}`;
 
-                const ext = guessExt(req.file.mimetype);
-                const ts = Date.now();
-                const fileName = `foto_${ts}.${ext}`;
+        savedAbsPath = path.join(baseDir, fileName);
+        await fs.writeFile(savedAbsPath, req.file.buffer);
 
-                savedAbsPath = path.join(baseDir, fileName);
-                await fs.writeFile(savedAbsPath, req.file.buffer);
+        const logo_url = `uploads/CRM/Companii/${companieNume}/Contacte/${folderName}/${fileName}`;
 
-                const logo_url = `uploads/CRM/Companii/${companieNume}/Contacte/${folderName}/${fileName}`;
-
-                await conn.execute(
-                    `UPDATE S10_Contacte
+        await conn.execute(
+          `UPDATE S10_Contacte
                  SET logo_url = ?, updated_at = CURRENT_TIMESTAMP
                  WHERE id = ?`,
-                    [logo_url, contactId]
-                );
-            } catch (err) {
-                console.log("Error saving logo file:", err);
-            }
-        }
-        // 3. UPDATE COMPANY (Set last updated by)
-        await conn.execute(
-            `UPDATE S10_Companii 
+          [logo_url, contactId],
+        );
+      } catch (err) {
+        console.log("Error saving logo file:", err);
+      }
+    }
+    // 3. UPDATE COMPANY (Set last updated by)
+    await conn.execute(
+      `UPDATE S10_Companii 
              SET updated_at = CURRENT_TIMESTAMP, updated_by_user_id = ? 
              WHERE id = ?`,
-            [payload.updated_by_user_id, payload.companie_id]
-        );
+      [payload.updated_by_user_id, payload.companie_id],
+    );
 
-        logHistoryAndNotify(global.db, {
-            // 1. Display
-            titlu: "Adăugare Contact",
-            mesaj: `Contactul ${prenume} ${nume} a fost adăugat pentru compania ${santier[0].nume_companie}.`,
-            severitate: "medium",
+    logHistoryAndNotify(global.db, {
+      // 1. Display
+      titlu: "Adăugare Contact",
+      mesaj: `Contactul ${prenume} ${nume} a fost adăugat pentru compania ${santier[0].nume_companie}.`,
+      severitate: "medium",
 
-            // 2. Technical
-            actiune: "Adăugare",
-            utilizator_id: payload.created_by_user_id,
+      // 2. Technical
+      actiune: "Adăugare",
+      utilizator_id: payload.created_by_user_id,
 
-            // 3. Hierarchy
-            tip_entitate: "contact",
-            entitate_id: contactId,
-            radacina_tip: "companie",
-            radacina_id: payload.companie_id,
+      // 3. Hierarchy
+      tip_entitate: "contact",
+      entitate_id: contactId,
+      radacina_tip: "companie",
+      radacina_id: payload.companie_id,
 
-            // 5. Notify
-            notify_users: [payload.created_by_user_id] // or filtered admin list
-        }).then(() => {
-        }).catch(err => {
-            console.log("History logging failed:", err);
-        });
+      // 5. Notify
+      notify_users: [payload.created_by_user_id], // or filtered admin list
+    })
+      .then(() => {})
+      .catch((err) => {
+        console.log("History logging failed:", err);
+      });
 
+    await conn.commit();
+    return res.status(201).json({ ok: true, message: "Contact adăugat cu succes.", contactId });
+  } catch (err) {
+    // Rollback DB + Ștergere fișier dacă a crăpat ceva
+    try {
+      if (conn) await conn.rollback();
+    } catch (_) {}
+    try {
+      if (savedAbsPath) await fs.unlink(savedAbsPath);
+    } catch (_) {}
 
+    console.log("postContact error:", err);
 
-        await conn.commit();
-        return res.status(201).json({ ok: true, message: "Contact adăugat cu succes.", contactId });
-
-    } catch (err) {
-        // Rollback DB + Ștergere fișier dacă a crăpat ceva
-        try { if (conn) await conn.rollback(); } catch (_) { }
-        try { if (savedAbsPath) await fs.unlink(savedAbsPath); } catch (_) { }
-
-        console.log("postContact error:", err);
-
-        if (err && (err.code === "ER_DUP_ENTRY" || err.errno === 1062)) {
-            return res.status(409).json({ message: "Acest email există deja în companie." });
-        }
-
-        return res.status(500).json({ message: "Eroare server la salvarea contactului." });
-    } finally {
-        try { if (conn) conn.release(); } catch (_) { }
+    if (err && (err.code === "ER_DUP_ENTRY" || err.errno === 1062)) {
+      return res.status(409).json({ message: "Acest email există deja în companie." });
     }
+
+    return res.status(500).json({ message: "Eroare server la salvarea contactului." });
+  } finally {
+    try {
+      if (conn) conn.release();
+    } catch (_) {}
+  }
 };
 
 const getContactsByCompany = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { q, filiala_id, santier_id } = req.query; // ← add filiala_id and santier_id
+  try {
+    const { id } = req.params;
+    const { q, filiala_id, santier_id } = req.query; // ← add filiala_id and santier_id
 
-        if (!id) {
-            return res.status(400).json({ message: "ID-ul companiei este obligatoriu." });
-        }
+    if (!id) {
+      return res.status(400).json({ message: "ID-ul companiei este obligatoriu." });
+    }
 
-        let sql = `
+    let sql = `
             SELECT 
                 c.*,
                 DATE_FORMAT(c.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at,
@@ -238,127 +245,132 @@ const getContactsByCompany = async (req, res) => {
             WHERE c.companie_id = ?
         `;
 
-        const params = [id];
+    const params = [id];
 
-        // ← Filter by filiala if provided
-        if (filiala_id) {
-            sql += ` AND c.filiala_id = ?`;
-            params.push(filiala_id);
-        }
-        if (santier_id) {
-            sql += ` AND c.santier_id = ?`;
-            params.push(santier_id);
-        }
-
-
-        if (q) {
-            sql += ` AND (c.nume LIKE ? OR c.prenume LIKE ? OR c.email LIKE ?)`;
-            params.push(`%${q}%`, `%${q}%`, `%${q}%`);
-        }
-
-        // ← ORDER BY must always be last
-        sql += ` ORDER BY c.updated_at DESC`;
-
-        const [rows] = await global.db.execute(sql, params);
-
-        const sanitizedRows = rows.map(r => ({
-            ...r,
-            is_responsible: !!r.is_responsible
-        }));
-
-        return res.status(200).json({
-            contacts: sanitizedRows,
-            total: rows.length
-        });
-
-    } catch (err) {
-        console.log("getContactsByCompany error:", err);
-        return res.status(500).json({ message: "Eroare server." });
+    // ← Filter by filiala if provided
+    if (filiala_id) {
+      sql += ` AND c.filiala_id = ?`;
+      params.push(filiala_id);
     }
+    if (santier_id) {
+      sql += ` AND c.santier_id = ?`;
+      params.push(santier_id);
+    }
+
+    if (q) {
+      sql += ` AND (c.nume LIKE ? OR c.prenume LIKE ? OR c.email LIKE ?)`;
+      params.push(`%${q}%`, `%${q}%`, `%${q}%`);
+    }
+
+    // ← ORDER BY must always be last
+    sql += ` ORDER BY c.updated_at DESC`;
+
+    const [rows] = await global.db.execute(sql, params);
+
+    const sanitizedRows = rows.map((r) => ({
+      ...r,
+      is_responsible: !!r.is_responsible,
+    }));
+
+    return res.status(200).json({
+      contacts: sanitizedRows,
+      total: rows.length,
+    });
+  } catch (err) {
+    console.log("getContactsByCompany error:", err);
+    return res.status(500).json({ message: "Eroare server." });
+  }
 };
 
-
 const editContact = async (req, res) => {
-    let conn;
-    let savedAbsPath = null;
-    try {
-        const { id } = req.params;
-        const companie_id = Number(req.body.companie_id);
-        const nume = (req.body.nume || "").trim();
-        const prenume = (req.body.prenume || "").trim();
+  let conn;
+  let savedAbsPath = null;
+  try {
+    const { id } = req.params;
+    const companie_id = Number(req.body.companie_id);
+    const nume = (req.body.nume || "").trim();
+    const prenume = (req.body.prenume || "").trim();
 
-        if (!id || !companie_id || !nume || !prenume) {
-            return res.status(400).json({ message: "ID-ul, Compania, Numele și Prenumele sunt obligatorii." });
-        }
+    if (!id || !companie_id || !nume || !prenume) {
+      return res.status(400).json({ message: "ID-ul, Compania, Numele și Prenumele sunt obligatorii." });
+    }
 
-        conn = await global.db.getConnection();
-        await conn.beginTransaction();
+    conn = await global.db.getConnection();
+    await conn.beginTransaction();
 
-        // 1. GET OLD DATA (FULL) for History Diff
-        const [existingRows] = await conn.execute(
-            `SELECT c.*, comp.nume_companie
+    // 1. GET OLD DATA (FULL) for History Diff
+    const [existingRows] = await conn.execute(
+      `SELECT c.*, comp.nume_companie
              FROM S10_Contacte c
              JOIN S10_Companii comp ON c.companie_id = comp.id
              WHERE c.id = ?`,
-            [id]
-        );
+      [id],
+    );
 
-        if (existingRows.length === 0) {
-            await conn.rollback();
-            return res.status(404).json({ message: "Contactul nu a fost găsit." });
+    if (existingRows.length === 0) {
+      await conn.rollback();
+      return res.status(404).json({ message: "Contactul nu a fost găsit." });
+    }
+
+    const oldContact = existingRows[0]; // This is 'oldData'
+
+    // 2. Handle Photo logic
+    let newLogoUrl = oldContact.logo_url;
+    const shouldDelete = req.body.delete_logo === "true" || req.body.delete_logo === true;
+
+    if (req.file) {
+      if (oldContact.logo_url) {
+        const oldPath = path.join(__dirname, "..", "..", oldContact.logo_url);
+        try {
+          await fs.unlink(oldPath);
+        } catch (e) {
+          console.log("Warn: Could not delete old photo", e.message);
         }
+      }
+      const companieNume = slugify(oldContact.nume_companie);
+      const folderName = slugify(`${nume}-${prenume}-${id}`);
+      const baseDir = path.join(__dirname, "..", "..", "uploads", "CRM", "Companii", companieNume, "Contacte", folderName);
+      await fs.mkdir(baseDir, { recursive: true });
+      const ext = guessExt(req.file.mimetype);
+      const fileName = `foto_${Date.now()}.${ext}`;
+      savedAbsPath = path.join(baseDir, fileName);
+      await fs.writeFile(savedAbsPath, req.file.buffer);
+      newLogoUrl = `uploads/CRM/Companii/${companieNume}/Contacte/${folderName}/${fileName}`;
+    } else if (shouldDelete && oldContact.logo_url) {
+      const oldPath = path.join(__dirname, "..", "..", oldContact.logo_url);
+      try {
+        await fs.unlink(oldPath);
+      } catch (e) {
+        console.log("Warn: Could not delete old photo", e.message);
+      }
+      newLogoUrl = null;
+    }
 
-        const oldContact = existingRows[0]; // This is 'oldData'
+    // 3. Prepare New Data Object (Clean types for History Diff)
+    const newData = {
+      companie_id: companie_id,
+      filiala_id: req.body.filiala_id ? req.body.filiala_id : null,
+      santier_id: req.body.santier_id ? req.body.santier_id : null,
+      prenume: prenume,
+      nume: nume,
+      functie: (req.body.functie || "").trim(),
+      categorie_rol: (req.body.categorie_rol || "").trim(),
+      email: (req.body.email || "").trim() || null,
+      telefon: (req.body.telefon || "").trim() || null,
+      linkedin_url: (req.body.linkedin_url || "").trim() || null,
+      putere_decizie: Number(req.body.putere_decizie || 1),
+      nivel_influenta: Number(req.body.nivel_influenta || 1),
+      canal_preferat: (req.body.canal_preferat || "Email").trim(),
+      limba: (req.body.limba || "RO").trim(),
+      activ: req.body.activ !== undefined ? req.body.activ == "true" || req.body.activ == 1 : 1,
+      note: (req.body.note || "").trim() || null,
+      logo_url: newLogoUrl,
+      updated_by_user_id: req.body.updated_by_user_id ? Number(req.body.updated_by_user_id) : req.user?.id || null,
+    };
 
-        // 2. Handle Photo logic
-        let newLogoUrl = oldContact.logo_url;
-        const shouldDelete = req.body.delete_logo === "true" || req.body.delete_logo === true;
-
-        if (req.file) {
-            if (oldContact.logo_url) {
-                const oldPath = path.join(__dirname, "..", "..", oldContact.logo_url);
-                try { await fs.unlink(oldPath); } catch (e) { console.log("Warn: Could not delete old photo", e.message); }
-            }
-            const companieNume = slugify(oldContact.nume_companie);
-            const folderName = slugify(`${nume}-${prenume}-${id}`);
-            const baseDir = path.join(__dirname, "..", "..", "uploads", "CRM", "Companii", companieNume, "Contacte", folderName);
-            await fs.mkdir(baseDir, { recursive: true });
-            const ext = guessExt(req.file.mimetype);
-            const fileName = `foto_${Date.now()}.${ext}`;
-            savedAbsPath = path.join(baseDir, fileName);
-            await fs.writeFile(savedAbsPath, req.file.buffer);
-            newLogoUrl = `uploads/CRM/Companii/${companieNume}/Contacte/${folderName}/${fileName}`;
-        } else if (shouldDelete && oldContact.logo_url) {
-            const oldPath = path.join(__dirname, "..", "..", oldContact.logo_url);
-            try { await fs.unlink(oldPath); } catch (e) { console.log("Warn: Could not delete old photo", e.message); }
-            newLogoUrl = null;
-        }
-
-        // 3. Prepare New Data Object (Clean types for History Diff)
-        const newData = {
-            companie_id: companie_id,
-            filiala_id: req.body.filiala_id ? req.body.filiala_id : null,
-            santier_id: req.body.santier_id ? req.body.santier_id : null,
-            prenume: prenume,
-            nume: nume,
-            functie: (req.body.functie || "").trim(),
-            categorie_rol: (req.body.categorie_rol || "").trim(),
-            email: (req.body.email || "").trim() || null,
-            telefon: (req.body.telefon || "").trim() || null,
-            linkedin_url: (req.body.linkedin_url || "").trim() || null,
-            putere_decizie: Number(req.body.putere_decizie || 1),
-            nivel_influenta: Number(req.body.nivel_influenta || 1),
-            canal_preferat: (req.body.canal_preferat || "Email").trim(),
-            limba: (req.body.limba || "RO").trim(),
-            activ: req.body.activ !== undefined ? (req.body.activ == 'true' || req.body.activ == 1) : 1,
-            note: (req.body.note || "").trim() || null,
-            logo_url: newLogoUrl,
-            updated_by_user_id: req.body.updated_by_user_id ? Number(req.body.updated_by_user_id) : (req.user?.id || null)
-        };
-
-        // 4. Update SQL
-        await conn.execute(
-            `UPDATE S10_Contacte SET
+    // 4. Update SQL
+    await conn.execute(
+      `UPDATE S10_Contacte SET
                 companie_id = ?, filiala_id = ?, santier_id = ?,
                 prenume = ?, nume = ?, functie = ?, categorie_rol = ?,
                 email = ?, telefon = ?, linkedin_url = ?,
@@ -366,297 +378,293 @@ const editContact = async (req, res) => {
                 activ = ?, note = ?, logo_url = ?,
                 updated_by_user_id = ?, updated_at = CURRENT_TIMESTAMP
              WHERE id = ?`,
-            [
-                newData.companie_id, newData.filiala_id, newData.santier_id,
-                newData.prenume, newData.nume, newData.functie, newData.categorie_rol,
-                newData.email, newData.telefon, newData.linkedin_url,
-                newData.putere_decizie, newData.nivel_influenta, newData.canal_preferat, newData.limba,
-                newData.activ, newData.note, newData.logo_url,
-                newData.updated_by_user_id,
-                id
-            ]
-        );
+      [
+        newData.companie_id,
+        newData.filiala_id,
+        newData.santier_id,
+        newData.prenume,
+        newData.nume,
+        newData.functie,
+        newData.categorie_rol,
+        newData.email,
+        newData.telefon,
+        newData.linkedin_url,
+        newData.putere_decizie,
+        newData.nivel_influenta,
+        newData.canal_preferat,
+        newData.limba,
+        newData.activ,
+        newData.note,
+        newData.logo_url,
+        newData.updated_by_user_id,
+        id,
+      ],
+    );
 
-        await conn.execute(
-            `UPDATE S10_Companii SET updated_at = CURRENT_TIMESTAMP, updated_by_user_id = ? WHERE id = ?`,
-            [newData.updated_by_user_id, newData.companie_id]
-        );
+    await conn.execute(`UPDATE S10_Companii SET updated_at = CURRENT_TIMESTAMP, updated_by_user_id = ? WHERE id = ?`, [newData.updated_by_user_id, newData.companie_id]);
 
-        // --- HISTORY ---
-        logHistoryAndNotify(global.db, {
-            titlu: "Actualizare Contact",
-            mesaj: `Contactul ${oldContact.prenume} ${oldContact.nume} din compania ${oldContact.nume_companie} a fost actualizat.`,
-            severitate: "medium",
+    // --- HISTORY ---
+    logHistoryAndNotify(global.db, {
+      titlu: "Actualizare Contact",
+      mesaj: `Contactul ${oldContact.prenume} ${oldContact.nume} din compania ${oldContact.nume_companie} a fost actualizat.`,
+      severitate: "medium",
 
-            actiune: "Editare",
-            utilizator_id: newData.updated_by_user_id,
+      actiune: "Editare",
+      utilizator_id: newData.updated_by_user_id,
 
-            tip_entitate: "contact",
-            entitate_id: id,
-            radacina_tip: "companie",
-            radacina_id: oldContact.companie_id, // Use old ID to ensure link integrity
+      tip_entitate: "contact",
+      entitate_id: id,
+      radacina_tip: "companie",
+      radacina_id: oldContact.companie_id, // Use old ID to ensure link integrity
 
-            oldData: oldContact,
-            newData: newData,
-            notify_users: [newData.updated_by_user_id]
-        }).catch(err => {
-            console.log("History logging failed:", err);
-        });
+      oldData: oldContact,
+      newData: newData,
+      notify_users: [newData.updated_by_user_id],
+    }).catch((err) => {
+      console.log("History logging failed:", err);
+    });
 
-        await conn.commit();
-        return res.status(200).json({ ok: true, message: "Contact actualizat." });
-
-    } catch (err) {
-        try { if (conn) await conn.rollback(); } catch (_) { }
-        if (savedAbsPath) { try { await fs.unlink(savedAbsPath); } catch (_) { } }
-
-        console.log("editContact error:", err);
-        if (err && (err.code === "ER_DUP_ENTRY" || err.errno === 1062)) {
-            return res.status(409).json({ message: "Acest email există deja (duplicat)." });
-        }
-        return res.status(500).json({ message: "Eroare server la actualizare." });
-    } finally {
-        try { if (conn) conn.release(); } catch (_) { }
+    await conn.commit();
+    return res.status(200).json({ ok: true, message: "Contact actualizat." });
+  } catch (err) {
+    try {
+      if (conn) await conn.rollback();
+    } catch (_) {}
+    if (savedAbsPath) {
+      try {
+        await fs.unlink(savedAbsPath);
+      } catch (_) {}
     }
+
+    console.log("editContact error:", err);
+    if (err && (err.code === "ER_DUP_ENTRY" || err.errno === 1062)) {
+      return res.status(409).json({ message: "Acest email există deja (duplicat)." });
+    }
+    return res.status(500).json({ message: "Eroare server la actualizare." });
+  } finally {
+    try {
+      if (conn) conn.release();
+    } catch (_) {}
+  }
 };
 
 const changeOwner = async (req, res) => {
-    let conn;
-    try {
-        const contactId = req.body.contactId;
-        const companyId = req.body.companyId;
-        const userId = req.body.user_id ? Number(req.body.user_id) : (req.user?.id || null);
+  let conn;
+  try {
+    const contactId = req.body.contactId;
+    const companyId = req.body.companyId;
+    const userId = req.body.user_id ? Number(req.body.user_id) : req.user?.id || null;
 
-        if (!contactId || !companyId || !userId) {
-            return res.status(400).json({ message: "Date incomplete." });
-        }
+    if (!contactId || !companyId || !userId) {
+      return res.status(400).json({ message: "Date incomplete." });
+    }
 
-        conn = await global.db.getConnection();
-        await conn.beginTransaction();
+    conn = await global.db.getConnection();
+    await conn.beginTransaction();
 
-        // --- STEP 1: FETCH NAMES (Contact & Company) ---
-        // We need the contact name for the notification
-        const [contactRows] = await conn.execute(
-            "SELECT nume, prenume FROM S10_Contacte WHERE id = ?",
-            [contactId]
-        );
-        const contactName = contactRows.length > 0
-            ? `${contactRows[0].prenume} ${contactRows[0].nume}`
-            : "Necunoscut";
+    // --- STEP 1: FETCH NAMES (Contact & Company) ---
+    // We need the contact name for the notification
+    const [contactRows] = await conn.execute("SELECT nume, prenume FROM S10_Contacte WHERE id = ?", [contactId]);
+    const contactName = contactRows.length > 0 ? `${contactRows[0].prenume} ${contactRows[0].nume}` : "Necunoscut";
 
-        // --- STEP 2: UPDATE CONTACT ---
-        await conn.execute(
-            `UPDATE S10_Contacte SET updated_by_user_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-            [userId, contactId]
-        );
+    // --- STEP 2: UPDATE CONTACT ---
+    await conn.execute(`UPDATE S10_Contacte SET updated_by_user_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [userId, contactId]);
 
-        // --- STEP 3: UPDATE COMPANY ---
-        await conn.execute(
-            `UPDATE S10_Companii 
+    // --- STEP 3: UPDATE COMPANY ---
+    await conn.execute(
+      `UPDATE S10_Companii 
              SET utilizator_responsabil_id = ?, updated_by_user_id = ?, updated_at = CURRENT_TIMESTAMP
              WHERE id = ?`,
-            [contactId, userId, companyId]
-        );
+      [contactId, userId, companyId],
+    );
 
-        const [companyRows] = await conn.execute(
-            `SELECT nume_companie FROM S10_Companii WHERE id = ?`,
-            [companyId]
-        );
+    const [companyRows] = await conn.execute(`SELECT nume_companie FROM S10_Companii WHERE id = ?`, [companyId]);
 
-        // --- STEP 4: HISTORY (Custom Action String) ---
-        // Message will look like: "Gheorghita a setat responsabil pe Ion Popescu la Compania X"
-        logHistoryAndNotify(global.db, {
-            titlu: "Responsabil Setat",
-            mesaj: `${contactName} a fost setat ca responsabil al companiei ${companyRows[0]?.nume_companie || 'Necunoscută'}.`,
-            severitate: "low",
+    // --- STEP 4: HISTORY (Custom Action String) ---
+    // Message will look like: "Gheorghita a setat responsabil pe Ion Popescu la Compania X"
+    logHistoryAndNotify(global.db, {
+      titlu: "Responsabil Setat",
+      mesaj: `${contactName} a fost setat ca responsabil al companiei ${companyRows[0]?.nume_companie || "Necunoscută"}.`,
+      severitate: "low",
 
-            actiune: "Setare", // It's technically an edit on the company
-            utilizator_id: userId,
+      actiune: "Setare", // It's technically an edit on the company
+      utilizator_id: userId,
 
-            tip_entitate: "companie", // Log this on the COMPANY timeline
-            entitate_id: companyId,
-            radacina_tip: "companie",
-            radacina_id: companyId,
-            notify_users: [userId]
-        }).catch(err => {
-            console.log("History logging failed:", err);
-        });
+      tip_entitate: "companie", // Log this on the COMPANY timeline
+      entitate_id: companyId,
+      radacina_tip: "companie",
+      radacina_id: companyId,
+      notify_users: [userId],
+    }).catch((err) => {
+      console.log("History logging failed:", err);
+    });
 
-        await conn.commit();
-        return res.status(200).json({ ok: true, message: "Owner updated successfully." });
-
-    } catch (err) {
-        try { if (conn) await conn.rollback(); } catch (_) { }
-        console.error("changeOwner error:", err);
-        return res.status(500).json({ message: "Eroare server." });
-    } finally {
-        try { if (conn) conn.release(); } catch (_) { }
-    }
+    await conn.commit();
+    return res.status(200).json({ ok: true, message: "Owner updated successfully." });
+  } catch (err) {
+    try {
+      if (conn) await conn.rollback();
+    } catch (_) {}
+    console.error("changeOwner error:", err);
+    return res.status(500).json({ message: "Eroare server." });
+  } finally {
+    try {
+      if (conn) conn.release();
+    } catch (_) {}
+  }
 };
 
 const removeOwner = async (req, res) => {
-    let conn;
-    try {
-        const companyId = req.body.companyId;
-        const contactId = req.body.contactId; // The ID being removed
-        const userId = req.body.user_id ? Number(req.body.user_id) : (req.user?.id || null);
+  let conn;
+  try {
+    const companyId = req.body.companyId;
+    const contactId = req.body.contactId; // The ID being removed
+    const userId = req.body.user_id ? Number(req.body.user_id) : req.user?.id || null;
 
-        if (!companyId || !contactId || !userId) {
-            return res.status(400).json({ message: "Date incomplete." });
-        }
+    if (!companyId || !contactId || !userId) {
+      return res.status(400).json({ message: "Date incomplete." });
+    }
 
-        conn = await global.db.getConnection();
-        await conn.beginTransaction();
+    conn = await global.db.getConnection();
+    await conn.beginTransaction();
 
-        // --- STEP 1: FETCH NAME ---
-        const [contactRows] = await conn.execute(
-            "SELECT nume, prenume FROM S10_Contacte WHERE id = ?",
-            [contactId]
-        );
-        const contactName = contactRows.length > 0
-            ? `${contactRows[0].prenume} ${contactRows[0].nume}`
-            : "Necunoscut";
+    // --- STEP 1: FETCH NAME ---
+    const [contactRows] = await conn.execute("SELECT nume, prenume FROM S10_Contacte WHERE id = ?", [contactId]);
+    const contactName = contactRows.length > 0 ? `${contactRows[0].prenume} ${contactRows[0].nume}` : "Necunoscut";
 
-        // --- STEP 2: REMOVE FROM COMPANY ---
-        await conn.execute(
-            `UPDATE S10_Companii 
+    // --- STEP 2: REMOVE FROM COMPANY ---
+    await conn.execute(
+      `UPDATE S10_Companii 
              SET utilizator_responsabil_id = NULL, updated_by_user_id = ?, updated_at = CURRENT_TIMESTAMP
              WHERE id = ?`,
-            [userId, companyId]
-        );
+      [userId, companyId],
+    );
 
-        // --- STEP 3: TOUCH CONTACT ---
-        await conn.execute(
-            `UPDATE S10_Contacte SET updated_by_user_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-            [userId, contactId]
-        );
+    // --- STEP 3: TOUCH CONTACT ---
+    await conn.execute(`UPDATE S10_Contacte SET updated_by_user_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [userId, contactId]);
 
-        const [companyRows] = await conn.execute(
-            `SELECT nume_companie FROM S10_Companii WHERE id = ?`,
-            [companyId]
-        );
-        // --- STEP 4: HISTORY ---
-        // --- NEW HISTORY LOG ---
-        logHistoryAndNotify(global.db, {
-            titlu: "Responsabil Eliminat",
-            mesaj: `${contactName} a fost eliminat din rolul de responsabil din compania ${companyRows[0]?.nume_companie || 'Necunoscută'}.`,
-            severitate: "medium", // Orange alert
+    const [companyRows] = await conn.execute(`SELECT nume_companie FROM S10_Companii WHERE id = ?`, [companyId]);
+    // --- STEP 4: HISTORY ---
+    // --- NEW HISTORY LOG ---
+    logHistoryAndNotify(global.db, {
+      titlu: "Responsabil Eliminat",
+      mesaj: `${contactName} a fost eliminat din rolul de responsabil din compania ${companyRows[0]?.nume_companie || "Necunoscută"}.`,
+      severitate: "medium", // Orange alert
 
-            actiune: "Stergere",
-            utilizator_id: userId,
+      actiune: "Stergere",
+      utilizator_id: userId,
 
-            tip_entitate: "companie",
-            entitate_id: companyId,
-            radacina_tip: "companie",
-            radacina_id: companyId,
+      tip_entitate: "companie",
+      entitate_id: companyId,
+      radacina_tip: "companie",
+      radacina_id: companyId,
 
-            notify_users: [userId]
-        }).catch(err => {
-            console.log("History logging failed:", err);
-        });
-        await conn.commit();
-        return res.status(200).json({ ok: true, message: "Responsabil șters cu succes." });
-
-    } catch (err) {
-        try { if (conn) await conn.rollback(); } catch (_) { }
-        console.error("removeOwner error:", err);
-        return res.status(500).json({ message: "Eroare server." });
-    } finally {
-        try { if (conn) conn.release(); } catch (_) { }
-    }
+      notify_users: [userId],
+    }).catch((err) => {
+      console.log("History logging failed:", err);
+    });
+    await conn.commit();
+    return res.status(200).json({ ok: true, message: "Responsabil șters cu succes." });
+  } catch (err) {
+    try {
+      if (conn) await conn.rollback();
+    } catch (_) {}
+    console.error("removeOwner error:", err);
+    return res.status(500).json({ message: "Eroare server." });
+  } finally {
+    try {
+      if (conn) conn.release();
+    } catch (_) {}
+  }
 };
 
 const deleteContact = async (req, res) => {
-    let conn;
-    try {
-        const { id } = req.params;
-        const userId = req.user?.id || null; // Capture who is deleting
+  let conn;
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id || null; // Capture who is deleting
 
-        if (!id) return res.status(400).json({ message: "ID-ul contactului lipsește." });
+    if (!id) return res.status(400).json({ message: "ID-ul contactului lipsește." });
 
-        conn = await global.db.getConnection();
-        await conn.beginTransaction();
+    conn = await global.db.getConnection();
+    await conn.beginTransaction();
 
-        // 1. GET FULL DATA BEFORE DELETE (for History)
-        const [rows] = await conn.execute(
-            "SELECT * FROM S10_Contacte WHERE id = ?",
-            [id]
-        );
+    // 1. GET FULL DATA BEFORE DELETE (for History)
+    const [rows] = await conn.execute("SELECT * FROM S10_Contacte WHERE id = ?", [id]);
 
-        if (rows.length === 0) {
-            await conn.rollback();
-            return res.status(404).json({ message: "Contactul nu a fost găsit." });
-        }
-        const contact = rows[0];
+    if (rows.length === 0) {
+      await conn.rollback();
+      return res.status(404).json({ message: "Contactul nu a fost găsit." });
+    }
+    const contact = rows[0];
 
-        // 2. UNLINK RESPONSIBILITY 
-        await conn.execute(
-            `UPDATE S10_Companii 
+    // 2. UNLINK RESPONSIBILITY
+    await conn.execute(
+      `UPDATE S10_Companii 
              SET utilizator_responsabil_id = NULL, updated_at = CURRENT_TIMESTAMP 
              WHERE id = ? AND utilizator_responsabil_id = ?`,
-            [contact.companie_id, id]
-        );
+      [contact.companie_id, id],
+    );
 
-        const [companyRows] = await conn.execute(
-            `SELECT nume_companie FROM S10_Companii WHERE id = ?`,
-            [contact.companie_id]
-        );
+    const [companyRows] = await conn.execute(`SELECT nume_companie FROM S10_Companii WHERE id = ?`, [contact.companie_id]);
 
-        // --- NEW HISTORY LOG (Log BEFORE delete) ---
-        logHistoryAndNotify(global.db, {
-            titlu: "Ștergere Contact",
-            mesaj: `Contactul ${contact.prenume} ${contact.nume} a fost șters din compania ${companyRows[0]?.nume_companie || 'Necunoscută'}.`,
-            severitate: "high", // Red alert
+    // --- NEW HISTORY LOG (Log BEFORE delete) ---
+    logHistoryAndNotify(global.db, {
+      titlu: "Ștergere Contact",
+      mesaj: `Contactul ${contact.prenume} ${contact.nume} a fost șters din compania ${companyRows[0]?.nume_companie || "Necunoscută"}.`,
+      severitate: "high", // Red alert
 
-            actiune: "Ștergere",
-            utilizator_id: userId,
+      actiune: "Ștergere",
+      utilizator_id: userId,
 
-            tip_entitate: "contact",
-            entitate_id: id,
-            radacina_tip: "companie",
-            radacina_id: contact.companie_id,
+      tip_entitate: "contact",
+      entitate_id: id,
+      radacina_tip: "companie",
+      radacina_id: contact.companie_id,
 
-            oldData: contact, // Stores the deleted data for reference
-            notify_users: [userId]
-        }).catch(err => {
-            console.log("History logging failed:", err);
-        });
+      oldData: contact, // Stores the deleted data for reference
+      notify_users: [userId],
+    }).catch((err) => {
+      console.log("History logging failed:", err);
+    });
 
-        // 3. DELETE
-        await conn.execute("DELETE FROM S10_Contacte WHERE id = ?", [id]);
+    // 3. DELETE
+    await conn.execute("DELETE FROM S10_Contacte WHERE id = ?", [id]);
 
-        await conn.commit();
+    await conn.commit();
 
-        // 4. FILE CLEANUP
-        if (contact.logo_url) {
-            try {
-                const relativePath = contact.logo_url.startsWith('/') ? contact.logo_url.substring(1) : contact.logo_url;
-                const fullFilePath = path.join(__dirname, "..", "..", relativePath);
-                const contactFolderPath = path.dirname(fullFilePath);
-                if (contactFolderPath.includes("Contacte")) {
-                    await fs.rm(contactFolderPath, { recursive: true, force: true });
-                }
-            } catch (err) {
-                console.error("Warning: Failed to delete contact files:", err.message);
-            }
+    // 4. FILE CLEANUP
+    if (contact.logo_url) {
+      try {
+        const relativePath = contact.logo_url.startsWith("/") ? contact.logo_url.substring(1) : contact.logo_url;
+        const fullFilePath = path.join(__dirname, "..", "..", relativePath);
+        const contactFolderPath = path.dirname(fullFilePath);
+        if (contactFolderPath.includes("Contacte")) {
+          await fs.rm(contactFolderPath, { recursive: true, force: true });
         }
-
-        return res.status(200).json({ message: "Contactul a fost șters cu succes." });
-
-    } catch (err) {
-        console.log("deleteContact error:", err);
-        if (conn) try { await conn.rollback(); } catch (_) { }
-        return res.status(500).json({ message: "Eroare server la ștergerea contactului." });
-    } finally {
-        if (conn) conn.release();
+      } catch (err) {
+        console.error("Warning: Failed to delete contact files:", err.message);
+      }
     }
+
+    return res.status(200).json({ message: "Contactul a fost șters cu succes." });
+  } catch (err) {
+    console.log("deleteContact error:", err);
+    if (conn)
+      try {
+        await conn.rollback();
+      } catch (_) {}
+    return res.status(500).json({ message: "Eroare server la ștergerea contactului." });
+  } finally {
+    if (conn) conn.release();
+  }
 };
 
 const getAllContacts = async (req, res) => {
-    try {
-        const { q } = req.query;   // Termenul de căutare
+  try {
+    const { q } = req.query; // Termenul de căutare
 
-        let sql = `
+    let sql = `
             SELECT 
                 c.*,
                 -- Formatare date
@@ -689,31 +697,53 @@ const getAllContacts = async (req, res) => {
 
         `;
 
-        const params = [];
+    const params = [];
 
-        // if (q) {
-        //     sql += ` WHERE (c.nume LIKE ? OR c.prenume LIKE ? OR c.email LIKE ?)`;
-        //     params.push(`%${q}%`, `%${q}%`, `%${q}%`);
-        // }
+    // if (q) {
+    //     sql += ` WHERE (c.nume LIKE ? OR c.prenume LIKE ? OR c.email LIKE ?)`;
+    //     params.push(`%${q}%`, `%${q}%`, `%${q}%`);
+    // }
 
-        const [rows] = await global.db.execute(sql, params);
+    const [rows] = await global.db.execute(sql, params);
 
-        // Transformăm 1/0 în true/false pentru frontend (opțional, dar curat)
-        const sanitizedRows = rows.map(r => ({
-            ...r,
-            is_responsible: !!r.is_responsible // Cast la boolean
-        }));
+    // Transformăm 1/0 în true/false pentru frontend (opțional, dar curat)
+    const sanitizedRows = rows.map((r) => ({
+      ...r,
+      is_responsible: !!r.is_responsible, // Cast la boolean
+    }));
 
-        return res.status(200).json({
-            contacts: sanitizedRows,
-            total: rows.length
-        });
+    return res.status(200).json({
+      contacts: sanitizedRows,
+      total: rows.length,
+    });
+  } catch (err) {
+    console.log("getAllContacts error:", err);
+    return res.status(500).json({ message: "Eroare server." });
+  }
+};
 
-    } catch (err) {
-        console.log("getAllContacts error:", err);
-        return res.status(500).json({ message: "Eroare server." });
-    }
+const getContactsByCompanyLimited = async (req, res) => {
+  const { id } = req.params; // Aici ID-ul este COMPANIE_ID
 
-}
+  if (!id) return res.status(400).json({ message: "ID-ul companiei este necesar." });
 
-module.exports = { postContact, getContactsByCompany, editContact, changeOwner, removeOwner, getAllContacts, deleteContact };
+  let conn;
+  try {
+    conn = await global.db.getConnection();
+    // Optimizare: Nu ai nevoie de JOIN cu Companii doar ca să filtrezi după companie_id
+    const [rows] = await conn.execute(
+      `SELECT id, nume, prenume, functie, santier_id, logo_url, filiala_id, companie_id 
+             FROM S10_Contacte 
+             WHERE companie_id = ?`,
+      [id],
+    );
+    return res.status(200).json(rows);
+  } catch (err) {
+    console.log("getContactsByCompanyLimited error:", err);
+    return res.status(500).json({ message: "Eroare server." });
+  } finally {
+    if (conn) conn.release();
+  }
+};
+
+module.exports = { postContact, getContactsByCompany, editContact, changeOwner, removeOwner, getAllContacts, deleteContact, getContactsByCompanyLimited };
