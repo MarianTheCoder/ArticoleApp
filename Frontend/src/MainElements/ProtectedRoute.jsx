@@ -8,12 +8,12 @@ const ProtectedRoute = ({ children, module, action = "v", friendlyName = "aceast
   const { user, loading } = useContext(AuthContext);
 
   const { limbaUser } = useParams();
-  console.log(user);
   // Verificăm permisiunile
   const hasAccess = () => {
     if (!user || !user.id) return false;
     if (user.permissions?.superAdmin) return true;
     if (!module) return true;
+    // limbra e pentru santierem, daca ai doar RO , nu poti intra pe santier FR
     if (limbaUser && !user.permissions?.limbi.includes(limbaUser)) return false; // Verificare limbă dacă e cazul
 
     const moduleActions = user.permissions?.permisiuni?.[module] || "";

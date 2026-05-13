@@ -148,7 +148,7 @@ export default function CompaniesMainPage() {
   return (
     <div className="h-full w-full flex  justify-center overflow-hidden items-center">
       <div className="w-[95%] h-[95%] flex flex-col p-4  gap-4 overflow-hidden  bg-background relative rounded-lg">
-        <div className="w-full bg-card grid grid-cols-[auto_1fr] rounded-lg px-8 p-4">
+        <div className="w-full bg-card border grid grid-cols-[auto_1fr] rounded-lg px-8 p-4">
           <CompaniesAddDialog
             open={open}
             setOpen={setOpen}
@@ -174,7 +174,7 @@ export default function CompaniesMainPage() {
           </div>
         </div>
         {companiesList.length > 0 ? (
-          <div className={`p-5  h-full w-full bg-card rounded-lg overflow-hidden relative`}>
+          <div className={`p-5  h-full w-full border bg-card rounded-lg overflow-hidden relative`}>
             <CompaniesList companies={companiesList} searchName={searchNameDebounced} />
           </div>
         ) : (

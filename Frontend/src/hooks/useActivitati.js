@@ -13,7 +13,7 @@ export const useActivitati = ({ companyId, filialaId = null, santierId = null, c
       return data;
     },
     // Nu face request dacă nu avem ID de companie
-    placeholderData: (previousData) => previousData,
+    enabled: !!companyId,
   });
 };
 
@@ -25,8 +25,9 @@ export const useAddActivitate = () => {
       console.log("Submitting Activitate with data:", formData);
       return api.post("/CRM/Companies/postActivitate", formData);
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ["activitati"] });
+
       queryClient.invalidateQueries({ queryKey: ["companies"] });
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
       queryClient.invalidateQueries({ queryKey: ["santiere"] });
@@ -34,6 +35,42 @@ export const useAddActivitate = () => {
     },
   });
 };
+
+export const useEditActivitate = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (formData) => {
+      console.log("Submitting Edit Activitate with data:", formData);
+      return api.put("/CRM/Companies/editActivitate", formData);
+    },
+    onSuccess: (res) => {
+      const updated = res.data.fullActivitate;
+
+      // Update the item in place across all activitati cache entries
+      queryClient.setQueriesData({ queryKey: ["activitati"] }, (old) => {
+        if (!old) return old;
+        return old.map((a) => {
+          if (Number(a.id) === Number(updated.id)) {
+            return {
+              ...a,
+              ...updated,
+              // FORȚĂM suprascrierea listei vechi ca să nu rămână blocat pe "mentions" din obiectul anterior
+              mentiuni: updated.mentiuni || updated.mentions || [],
+            };
+          }
+          return a;
+        });
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["companies"] });
+      queryClient.invalidateQueries({ queryKey: ["contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["santiere"] });
+      queryClient.invalidateQueries({ queryKey: ["filiale"] });
+    },
+  });
+};
+
+/// COMMENTS
 
 // 3. GET Activitati Comments
 export const useActivitateComments = (activityId) => {
@@ -44,8 +81,7 @@ export const useActivitateComments = (activityId) => {
       const { data } = await api.get(`/CRM/Companies/getActivitatiCommentsByCompany/${activityId}`);
       return data;
     },
-    // Nu face request dacă nu avem ID de activitate
-    placeholderData: (previousData) => previousData,
+    enabled: !!activityId,
   });
 };
 
@@ -56,8 +92,78 @@ export const useAddActivitateComment = () => {
     mutationFn: (formData) => {
       return api.post("/CRM/Companies/postActivitateComment", formData);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["activitatiComments"] });
+    onSuccess: (response, variables) => {
+      const newComm = response.data.fullComment;
+      const updatedSeveritate = response.data.updatedSeveritate; // Preluăm severitatea
+      const actId = variables.activitate_id;
+
+      // 1. Adăugăm comentariul în lista lui specifică
+      queryClient.setQueryData(["activitatiComments", actId], (old) => {
+        return old ? [...old, newComm] : [newComm];
+      });
+
+      // 2. Incrementăm numărul de comentarii ȘI actualizăm severitatea activității părinte!
+      queryClient.setQueriesData({ queryKey: ["activitati"] }, (old) => {
+        if (!old) return old;
+        return old.map((a) => {
+          if (Number(a.id) === Number(actId)) {
+            return {
+              ...a,
+              comments_count: (Number(a.comments_count) || 0) + 1,
+              severitate: updatedSeveritate || a.severitate, // Actualizăm starea UI
+            };
+          }
+          return a;
+        });
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["santiere"] });
+      queryClient.invalidateQueries({ queryKey: ["filiale"] });
+      queryClient.invalidateQueries({ queryKey: ["companies"] });
+    },
+  });
+};
+
+export const useEditActivitateComment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (formData) => {
+      return api.put("/CRM/Companies/editActivitateComment", formData);
+    },
+    onSuccess: (res, variables) => {
+      const updated = res.data.fullComment;
+      const updatedSeveritate = res.data.updatedSeveritate; // Preluăm severitatea modificată
+      const actId = variables.activitate_id;
+
+      // 1. Actualizăm comentariul editat în lista lui
+      queryClient.setQueryData(["activitatiComments", actId], (old) => {
+        if (!old) return old;
+        return old.map((c) => {
+          if (Number(c.id) === Number(updated.id)) {
+            return {
+              ...c,
+              ...updated,
+              // FORȚĂM SUPRASCRIEREA și la comentarii ca să preia "mentiuni" curat din backend
+              mentiuni: updated.mentiuni || [],
+            };
+          }
+          return c;
+        });
+      });
+
+      // 2. Actualizăm instant severitatea activității părinte
+      queryClient.setQueriesData({ queryKey: ["activitati"] }, (old) => {
+        if (!old) return old;
+        return old.map((a) => {
+          // Dacă e activitatea curentă și backend-ul ne-a trimis o severitate nouă, o suprascriem
+          if (a.id === actId && updatedSeveritate) {
+            return { ...a, severitate: updatedSeveritate };
+          }
+          return a;
+        });
+      });
+
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
       queryClient.invalidateQueries({ queryKey: ["santiere"] });
       queryClient.invalidateQueries({ queryKey: ["filiale"] });

@@ -1,16 +1,14 @@
 import React, { useContext } from "react";
 import { Routes, Route, useLocation, Outlet } from "react-router-dom";
+import { useEffect } from "react";
+import { useLoading } from "./context/LoadingContext";
 import Navbar from "./MainElements/Navbar";
 import ProtectedRoute from "./MainElements/ProtectedRoute";
 // import NavbarDefaultHome from './MainElements/NavbarDefaultHome';
-import DatabaseMainCategories from "./BazaDeDate/DatabaseMainCategories";
-import RetetaForm from "./BazaDeDate/Retete/RetetaForm";
 import { AuthContext } from "./context/TokenContext";
-import SantiereRoutes from "./BazaDeDate/Santiere/SantiereRoutes";
-import { useEffect } from "react";
+import SantiereRoutes from "./Database/Santiere/SantiereRoutes";
 import NoPage from "./MainElements/NoPage";
-import Pontaje from "./BazaDeDate/Pontaje/Pontaje";
-import AtribuiriActivitate from "./BazaDeDate/Pontaje/Deprecated/AtribuiriActivitate";
+import Pontaje from "./Database/Pontaje/Pontaje";
 import Dashboard from "./CRM/Dashboard";
 import CompaniesMainPage from "./CRM/Companies/CompaniesMainPage";
 import CompanyView from "./CRM/Companies/CompanyView";
@@ -19,10 +17,11 @@ import FilialeMainCompany from "./CRM/Filiale/FilialeMainCompany";
 import FilialaMainPage from "./CRM/Filiale/FilialaMainPage";
 import SantiereMainPage from "./CRM/Santiere/SantiereMainPage";
 import ContactsMainPage from "./CRM/Contacts/ContactsMainPage";
-import { useLoading } from "./context/LoadingContext";
 import UtilizatoriMainPage from "./CRM/Utilizatori/UtilizatoriMainPage";
 import CompaniiInterneMainPage from "./CRM/Companii Interne/CompaniiInterneMainPage";
 import LandingPage from "./MainPages/LandingPage";
+import CatalogMainPage from "./Database/Catalog/CatalogMainPage";
+import ReteteMainPage from "./Database/Retete/ReteteMainPage";
 
 function AppLayout() {
   // This layout only renders when a valid child route matches.
@@ -69,12 +68,12 @@ export default function RoutesDom() {
           <Route path="Santiere/:limbaUser/:idCompanie/:idSantier" element={<ProtectedRoute module="santiere" friendlyName="a accesa detaliile șantierului"><SantiereRoutes /></ProtectedRoute>} />
 
           {/* Database / Articles */}
-          <Route path="addArticles" element={<ProtectedRoute module="retete" friendlyName="a accesa articole"><RetetaForm /></ProtectedRoute>} />
-          <Route path="addManopere" element={<ProtectedRoute module="manopere" friendlyName="a accesa manopere"><DatabaseMainCategories dateType={1} /></ProtectedRoute>} />
-          <Route path="addMateriale" element={<ProtectedRoute module="materiale" friendlyName="a accesa materiale"><DatabaseMainCategories dateType={2} /></ProtectedRoute>} />
-          <Route path="addTransport" element={<ProtectedRoute module="transport" friendlyName="a accesa transport"><DatabaseMainCategories dateType={3} /></ProtectedRoute>} />
-          <Route path="addUtilaje" element={<ProtectedRoute module="utilaje" friendlyName="a accesa utilaje"><DatabaseMainCategories dateType={4} /></ProtectedRoute>} />
-
+          <Route path="addArticles" element={<ProtectedRoute module="retete" friendlyName="a accesa articole"><ReteteMainPage /></ProtectedRoute>} />
+          {/* DATABASE / ARTICLES - MAGIA SE ÎNTÂMPLĂ AICI */}
+          <Route path="addManopere" element={<ProtectedRoute module="manopere" friendlyName="a accesa manopere"><CatalogMainPage tipResursa="manopera" /></ProtectedRoute>} />
+          <Route path="addMateriale" element={<ProtectedRoute module="materiale" friendlyName="a accesa materiale"><CatalogMainPage tipResursa="material" /></ProtectedRoute>} />
+          <Route path="addUtilaje" element={<ProtectedRoute module="utilaje" friendlyName="a accesa utilaje"><CatalogMainPage tipResursa="utilaj" /></ProtectedRoute>} />
+          <Route path="addTransport" element={<ProtectedRoute module="transport" friendlyName="a accesa transport"><CatalogMainPage tipResursa="transport" /></ProtectedRoute>} />
           {/* Admin & Pontaj */}
           <Route path="Pontaje" element={<ProtectedRoute module="pontaje" friendlyName="a accesa Pontaje"><Pontaje /></ProtectedRoute>} />
           <Route path="ManageConturi" element={<ProtectedRoute module="conturi" friendlyName="a gestiona conturile"><UtilizatoriMainPage /></ProtectedRoute>} />

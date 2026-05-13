@@ -26,6 +26,8 @@ import {
 import photoApi from "@/api/photoAPI";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { TableVirtuoso, Virtuoso } from "react-virtuoso";
+import ImagePreviewTooltip from "@/components/ui/ImagePreviewTooltip";
+import NoImage from "@/assets/no-image-icon.png";
 
 const getContrastColor = (hexColor) => {
   if (!hexColor) return "white";
@@ -91,7 +93,7 @@ const virtuosoComponents = {
     return (
       <ContextMenu>
         <ContextMenuTrigger asChild>
-          <TableRow {...props} className={`cursor-pointer ${opacityClass} hover:bg-muted h-20 md:h-24 xl:h-28 transition-colors border-b`}>
+          <TableRow {...props} className={`cursor-pointer ${opacityClass} hover:bg-muted  transition-colors border-b`}>
             {props.children}
           </TableRow>
         </ContextMenuTrigger>
@@ -171,7 +173,7 @@ export default function UtilizatoriList({ conturi = [], visibleColumns = {}, han
 
   if (isCardView) {
     return (
-      <div ref={containerRef} onScroll={handleScroll} className="w-full h-full overflow-auto p-2">
+      <div ref={containerRef} onScroll={handleScroll} className="w-full  h-full overflow-auto p-2">
         <div
           style={{
             height: `${rowVirtualizer.getTotalSize()}px`,
@@ -389,12 +391,17 @@ export default function UtilizatoriList({ conturi = [], visibleColumns = {}, han
         itemContent={(index, cont) => (
           <>
             {showCol("fotografie") && (
-              <TableCell className="  whitespace-nowrap">
-                <div className="flex items-center justify-center gap-4">
-                  <Avatar className=" border rounded-lg  h-16 w-16 md:h-20 md:w-20 xl:h-24 xl:w-24  border-border">
-                    <AvatarImage src={cont.photo_url ? `${photoApi}/${cont.photo_url}` : null} className="object-cover" alt={cont.name} />
-                    <AvatarFallback className="font-bold rounded-lg text-foreground bg-muted text-base">{cont.name?.[0]?.toUpperCase()}</AvatarFallback>
-                  </Avatar>
+              <TableCell className=" text-center  whitespace-nowrap">
+                <div className="w-full flex justify-center">
+                  <ImagePreviewTooltip
+                    src={cont.photo_url ? `${photoApi}/${cont.photo_url}` : null}
+                    alt={cont.name}
+                    ringColor="ring-primary"
+                    previewMaxHeight="max-h-[20rem]"
+                    previewMaxWidth="max-w-[20rem]"
+                    fallback={<img src={NoImage} alt="No Image" className="h-full w-full object-cover opacity-50" />}
+                    containerClassName="h-16 w-16 rounded-md border border-border bg-muted flex items-center justify-center overflow-hidden shrink-0"
+                  />
                 </div>
               </TableCell>
             )}

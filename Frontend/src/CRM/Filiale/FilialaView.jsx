@@ -37,8 +37,8 @@ import FilialeAddDialog from "./FilialeAddDialog";
 import { toast } from "sonner";
 import ContactsMainCompany from "../Contacts/ContactsMainCompany";
 import SantiereMainCompany from "../Santiere/SantiereMainCompany";
-import CompanyHistory from "../Companies/CompanyHistory";
-import CompanyActivities from "../Companies/CompanyActivities";
+import HistoryTab from "../History/HistoryTab";
+import CompanyActivities from "../Companies/Activity/CompanyActivities";
 
 export default function FilialaView() {
   const { filialaId, companyId } = useParams();
@@ -252,11 +252,11 @@ export default function FilialaView() {
                   <div className="grid grid-cols-2 gap-4 w-full">
                     <div className="flex items-center gap-2 text-sm">
                       <span className="text-muted-foreground">Lat:</span>
-                      <span className="font-mono text-foreground font-medium">{safeText(f?.latitudine)}</span>
+                      <span className=" text-foreground font-medium">{safeText(f?.latitudine)}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <span className="text-muted-foreground">Long:</span>
-                      <span className="font-mono text-foreground font-medium">{safeText(f?.longitudine)}</span>
+                      <span className=" text-foreground font-medium">{safeText(f?.longitudine)}</span>
                     </div>
                   </div>
                 </div>
@@ -325,7 +325,7 @@ export default function FilialaView() {
         {/* --- RIGHT MAIN AREA (4/5) --- */}
         <main className="w-full lg:col-span-4 h-full overflow-hidden">
           <Tabs defaultValue="contacte" className="h-full w-full flex flex-col gap-4">
-            <TabsList className="bg-card px-6 py-4 rounded-lg justify-start h-auto w-full">
+            <TabsList className="bg-card px-6 py-4 rounded-lg border justify-start h-auto w-full">
               <div className="border-b w-full flex gap-6">
                 {["istoric", "activitati", "contacte", "santiere", "fișiere"].map((tab) => (
                   <TabsTrigger
@@ -339,9 +339,9 @@ export default function FilialaView() {
               </div>
             </TabsList>
 
-            <div className="flex-1 bg-card overflow-y-auto h-full rounded-lg">
+            <div className="flex-1 bg-card border overflow-y-auto h-full rounded-lg">
               <TabsContent value="istoric" className="h-full m-0 w-full">
-                <CompanyHistory filialaId={f?.id} companyId={f?.companie_id} />
+                <HistoryTab filialaId={f?.id} companyId={f?.companie_id} />
               </TabsContent>
               <TabsContent value="activitati" className="h-full m-0 w-full">
                 <CompanyActivities companyId={c?.id || null} filialaId={f?.id} />

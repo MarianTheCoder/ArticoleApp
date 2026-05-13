@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import photoApi from "@/api/photoAPI";
-import CompanyActivities from "../Companies/CompanyActivities";
+import CompanyActivities from "../Companies/Activity/CompanyActivities";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -40,12 +40,10 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useContactHistory } from "@/hooks/useContacts";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import ContactActivities from "./ContactActivities";
+import HistoryTab from "../History/HistoryTab";
 
 export default function ContactView({ open, setOpen }) {
   const contact = open;
-
-  // Fetch History Data
-  const { data: historyData } = useContactHistory(contact?.id);
 
   if (!contact) return null;
 
@@ -72,154 +70,6 @@ export default function ContactView({ open, setOpen }) {
 
   const formatField = (field) => {
     return field.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
-  };
-
-  // --- ACTION HELPERS ---
-  const getActionType = (action, title) => {
-    const lowerTit = (title || "").toLowerCase();
-
-    // Prindem comentariul și activitatea
-    if (lowerTit.includes("comentariu")) return "comentariu";
-    if (lowerTit.includes("activitate")) return "activitate";
-
-    const lowerAct = (action || "").toLowerCase();
-    if (lowerAct.includes("edit") || lowerAct.includes("modif")) return "edit";
-    if (lowerAct.includes("delet") || lowerAct.includes("sters") || lowerAct.includes("sterg")) return "delete";
-    if (lowerAct.includes("creat") || lowerAct.includes("adaug") || lowerAct.includes("ad")) return "create";
-    return "unknown";
-  };
-
-  const getActionIcon = (type) => {
-    switch (type) {
-      case "comentariu":
-        return faReply;
-      case "activitate":
-        return faComments;
-      case "edit":
-        return faPenToSquare;
-      case "delete":
-        return faTrash;
-      case "create":
-        return faPlus;
-      default:
-        return faCircleInfo;
-    }
-  };
-
-  const getActionLabel = (type) => {
-    switch (type) {
-      case "comentariu":
-        return "Comentariu la activitate";
-      case "activitate":
-        return "Notă nouă";
-      case "edit":
-        return "Editat";
-      case "delete":
-        return "Șters";
-      case "create":
-        return "Adăugat";
-      default:
-        return "Info";
-    }
-  };
-
-  const getActionBorderColor = (type) => {
-    switch (type) {
-      case "comentariu":
-      case "activitate":
-        return "border-blue-500";
-      case "edit":
-        return "border-medium";
-      case "delete":
-        return "border-high";
-      case "create":
-        return "border-low";
-      default:
-        return "border-primary";
-    }
-  };
-
-  const getActionBadgeStyle = (type) => {
-    switch (type) {
-      case "comentariu":
-      case "activitate":
-        return "text-blue-500 border-blue-500 bg-blue-500/10";
-      case "edit":
-        return "text-medium border-medium bg-transparent";
-      case "delete":
-        return "text-high border-high bg-transparent";
-      case "create":
-        return "text-low border-low bg-transparent";
-      default:
-        return "text-primary border-primary bg-transparent";
-    }
-  };
-
-  // --- CONTENT RENDERER ---
-  const renderHistoryContent = (details) => {
-    if (!details) return null;
-
-    // 1. Single Field
-    if (details.field && details.hasOwnProperty("old") && details.hasOwnProperty("new")) {
-      if (["updated_by_user_id", "created_by_user_id", "id"].includes(details.field)) return null;
-
-      if (details.field.includes("photo") || details.field.includes("logo")) {
-        return (
-          <div className="text-base text-foreground flex items-center gap-2">
-            <FontAwesomeIcon icon={faImage} /> Fotografie actualizată
-          </div>
-        );
-      }
-
-      return (
-        <div className="mt-1 text-base flex flex-wrap items-center gap-2">
-          <span className="font-medium text-foreground">{formatField(details.field)}:</span>
-          <span className="text-muted-foreground line-through decoration-muted-foreground/50">{formatValue(details.old)}</span>
-          <FontAwesomeIcon icon={faArrowRight} className="text-sm text-muted-foreground" />
-          <span className="text-foreground font-medium">{formatValue(details.new)}</span>
-        </div>
-      );
-    }
-
-    // 2. Multiple Fields (Object)
-    if (typeof details === "object") {
-      const visibleEntries = Object.entries(details).filter(([key]) => !["id", "updated_by_user_id", "created_by_user_id", "companie_id"].includes(key));
-
-      if (visibleEntries.length === 0) return null;
-
-      return (
-        <div className="mt-1 flex flex-col gap-1">
-          {visibleEntries.map(([key, value], idx) => {
-            if (key.includes("photo") || key.includes("logo")) {
-              return (
-                <div key={idx} className="text-base text-foreground flex items-center gap-2">
-                  <FontAwesomeIcon icon={faImage} /> Fotografie actualizată
-                </div>
-              );
-            }
-
-            const oldValue = value?.old !== undefined ? value.old : null;
-            const newValue = value?.new !== undefined ? value.new : value;
-            const isDiff = value?.old !== undefined;
-
-            return (
-              <div key={idx} className="text-base flex flex-wrap items-center gap-2">
-                <span className="font-medium text-foreground">{formatField(key)}:</span>
-                {isDiff && (
-                  <>
-                    <span className="text-muted-foreground line-through decoration-muted-foreground/50">{formatValue(oldValue)}</span>
-                    <FontAwesomeIcon icon={faArrowRight} className="text-sm text-muted-foreground" />
-                  </>
-                )}
-                <span className="text-foreground font-medium">{formatValue(newValue)}</span>
-              </div>
-            );
-          })}
-        </div>
-      );
-    }
-
-    return <div className="text-base text-muted-foreground truncate max-w-md">{JSON.stringify(details)}</div>;
   };
 
   return (
@@ -472,87 +322,12 @@ export default function ContactView({ open, setOpen }) {
 
             {/* --- TAB 2: ACTIVITĂȚI --- */}
             <TabsContent value="activități" className="mt-0 h-full">
-              <ContactActivities contact={contact} />
+              <CompanyActivities companyId={contact.companie_id} contactId={contact.id} />
             </TabsContent>
 
+            {/* --- TAB 3: ISTORIC --- */}
             <TabsContent value="istoric" className="mt-0 h-full min-h-0">
-              <Card className="border-border shadow-sm h-full flex flex-col overflow-hidden">
-                <CardHeader className="py-3 px-5 bg-muted/10 border-b shrink-0 z-10">
-                  <CardTitle className="text-base font-bold uppercase text-muted-foreground flex items-center gap-2">
-                    <FontAwesomeIcon icon={faHistory} /> Jurnal Modificări
-                  </CardTitle>
-                </CardHeader>
-
-                <ScrollArea className="flex-1 w-full">
-                  <CardContent className="p-0">
-                    {historyData && historyData.length > 0 ? (
-                      <div className="flex flex-col p-5 gap-6">
-                        {historyData.map((item) => {
-                          const type = getActionType(item.action, item.title);
-                          const borderColor = getActionBorderColor(type);
-
-                          return (
-                            <div key={item.id} className="flex flex-col">
-                              {/* --- TOP ROW: Avatar + Header Info --- */}
-                              <div className="flex items-center gap-3">
-                                {/* Avatar */}
-                                <Avatar className="h-12 w-12 border rounded-lg border-border z-10 shrink-0 bg-background">
-                                  <AvatarImage src={item.author?.photo ? `${photoApi}/${item.author.photo}` : null} />
-                                  <AvatarFallback className="bg-muted text-sm rounded-lg text-muted-foreground">
-                                    <FontAwesomeIcon icon={faUser} />
-                                  </AvatarFallback>
-                                </Avatar>
-
-                                {/* Header Info */}
-                                <div className="flex gap-2 items-center justify-between w-full">
-                                  <div className="flex flex-wrap items-center gap-3 text-base">
-                                    <span className="font-bold text-foreground text-base">{item.author?.name || "Sistem"}</span>
-
-                                    {/* Entity Badge (For Contact View, mostly redundant but requested for structure) */}
-                                    <Badge variant="secondary" className="text-sm font-semibold shadow-sm flex items-center gap-2 py-1 border-foreground/10 px-2">
-                                      <FontAwesomeIcon icon={faUser} className="" />
-                                      Contact
-                                    </Badge>
-
-                                    {/* Action Label */}
-                                    <Badge className={`text-sm font-bold p-1 px-2 flex items-center gap-1 border hover:bg-transparent ${getActionBadgeStyle(type)}`}>
-                                      <FontAwesomeIcon icon={getActionIcon(type)} className="text-sm" />
-                                      {getActionLabel(type)}
-                                    </Badge>
-                                  </div>
-
-                                  {/* Date - Far Right */}
-                                  <span className="text-foreground text-base font-medium tracking-wide">{formatDate(item.date)}</span>
-                                </div>
-                              </div>
-
-                              {/* --- BOTTOM ROW: Content with Borders --- */}
-                              {/* ml-6 aligns with center of 48px avatar */}
-                              <div className={`flex-1 ml-6 border-l-2 border-b-2 rounded-bl-3xl ${borderColor} pl-6 pb-6`}>
-                                {item.title && <div className="text-lg font-bold text-foreground leading-relaxed">{item.title}</div>}
-
-                                {/* Message Body */}
-                                {item.message && <div className="text-base mt-1 text-foreground leading-relaxed">{item.message}</div>}
-
-                                {/* Diff Content (Context) */}
-                                {item.content && <div className="mt-3 pl-3 border-l-2">{renderHistoryContent(item.content)}</div>}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground space-y-3">
-                        <div className="w-12 h-12 rounded-full bg-muted/30 flex items-center justify-center">
-                          <FontAwesomeIcon icon={faHistory} className="text-xl opacity-50" />
-                        </div>
-                        <p className="text-base">Nu există istoric disponibil.</p>
-                      </div>
-                    )}
-                  </CardContent>
-                  <ScrollBar orientation="vertical" />
-                </ScrollArea>
-              </Card>
+              <HistoryTab companyId={contact.companie_id} contactId={contact.id} />
             </TabsContent>
           </div>
         </Tabs>

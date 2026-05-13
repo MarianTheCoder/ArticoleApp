@@ -14,6 +14,8 @@ const {
   getActivitati,
   getActivitatiComments,
   postActivitateComment,
+  editActivitateComment,
+  editActivitate,
 } = require("../../Controllers/CRM/CompaniiController");
 const multer = require("multer");
 const { authenticateToken } = require("../../Middleware/authMiddleware");
@@ -38,9 +40,11 @@ router.delete("/deleteCompanieInterna/:id", authenticateToken("conturi", "s"), d
 
 /// Activități
 router.get("/getActivitati", getActivitati);
-router.post("/postActivitate", authenticateToken("companie", "c"), postActivitate);
+router.post("/postActivitate", authenticateToken("companii", "c"), postActivitate);
+router.put("/editActivitate", authenticateToken("companii", "e"), editActivitate);
 
 router.get("/getActivitatiCommentsByCompany/:activityId", getActivitatiComments);
-router.post("/postActivitateComment", authenticateToken("companie", "c"), postActivitateComment);
+router.post("/postActivitateComment", authenticateToken("companii", "c"), postActivitateComment);
+router.put("/editActivitateComment", authenticateToken("companii", "e"), editActivitateComment);
 
 module.exports = router;

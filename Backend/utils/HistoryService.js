@@ -1,121 +1,243 @@
 // services/HistoryService.js
 
-// Helper simple for JSON diff (kept because it's useful for the 'detalii' column)
-const getChanges = (oldObj, newObj) => {
-    let diff = {};
-    if (!oldObj) return newObj;
-    if (!newObj) return oldObj;
+/*
+  VALORI STANDARD FOLOSITE ÎN APLICAȚIE
 
-    Object.keys(newObj).forEach(key => {
-        const oldVal = oldObj[key];
-        const newVal = newObj[key];
-        if ((oldVal == null || oldVal === '') && (newVal == null || newVal === '')) return;
-        if (oldVal != newVal) {
-            diff[key] = { old: oldVal, new: newVal };
-        }
-    });
-    return diff;
+  actiune_tip:
+    - "adaugare"
+    - "editare"
+    - "stergere"
+    - "mentiune"
+    - "upload"
+    - "schimbare_status"
+    - "info"
+
+  severitate:
+    - "low"
+    - "medium"
+    - "high"
+    - "critical"
+
+  nivel_tip:
+    - "companie"
+    - "filiala"
+    - "santier"
+    - "contact"
+
+  entitate_tip:
+    - "companie"
+    - "filiala"
+    - "santier"
+    - "contact"
+    - "activitate"
+    - "comentariu"
+
+  parinte_tip:
+    - null
+    - "companie"
+    - "filiala"
+    - "santier"
+    - "contact"
+    - "activitate"
+*/
+
+const safeJson = (value, fallback = {}) => {
+  try {
+    return JSON.stringify(value ?? fallback);
+  } catch {
+    return JSON.stringify(fallback);
+  }
 };
 
-const logHistoryAndNotify = async (pool, params) => {
-    const {
-        // 1. INPUTURI DIRECTE PENTRU AFISARE (Romanian Fields)
-        titlu,              // ex: "Actualizare Contact"
-        mesaj,              // ex: "Ion a modificat telefonul..."
-        severitate = 'medium', // 'low', 'medium', 'high'
+const parseIds = (ids = []) => {
+  if (!Array.isArray(ids)) return [];
 
-        // 2. CONTEXT TEHNIC
-        actiune,            // ex: 'edit', 'delete', 'create' (pentru filtrare in DB)
-        utilizator_id,      // Cine face actiunea
+  return [...new Set(ids.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0))];
+};
 
-        // 3. IERARHIA
-        tip_entitate,       // ex: 'contact'
-        entitate_id,        // ex: 55
-        radacina_tip = null,// ex: 'companie'
-        radacina_id = null, // ex: 10
+const getChanges = (oldData = {}, newData = {}) => {
+  const diff = {};
+  const keys = [...new Set([...Object.keys(oldData || {}), ...Object.keys(newData || {})])];
 
-        // 4. DATE PENTRU PAYLOAD (JSON)
-        oldData = null,
-        newData = null,
+  for (const key of keys) {
+    const oldVal = oldData?.[key];
+    const newVal = newData?.[key];
 
-        // 5. DESTINATARI
-        notify_users = []   // Array de ID-uri
-    } = params;
-
-    const connection = await pool.getConnection();
-
-    try {
-        await connection.beginTransaction();
-
-        // --- A. CALCULARE PAYLOAD (DETALII JSON) ---
-        // Folosim logica ta pentru a genera JSON-ul tehnic, in functie de actiune
-        let detalii = null;
-
-        if (oldData && newData) {
-            // 2. Avem AMBELE -> Calculăm diferența (Edit)
-            detalii = getChanges(oldData, newData);
-        } else if (newData) {
-            // 3. Avem doar date NOI -> Le salvăm pe acestea (Create/Add)
-            detalii = newData;
-        } else if (oldData) {
-            // 4. Avem doar date VECHI -> Le salvăm pe acestea (Delete)
-            detalii = oldData;
-        } else {
-            detalii = {};
-        }
-
-        // --- B. INSERT ISTORIC (S11_Istoric) ---
-        // Scriem DIRECT ce am primit in parametri
-        const [res] = await connection.execute(
-            `INSERT INTO S11_Istoric 
-            (utilizator_id, titlu, mesaj, severitate, actiune, tip_entitate, entitate_id, radacina_tip, radacina_id, detalii) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-                utilizator_id,
-                titlu,          // <--- DIRECT
-                mesaj,          // <--- DIRECT
-                severitate,     // <--- DIRECT
-                actiune,        // 'edit', 'delete' etc.
-                tip_entitate,
-                entitate_id,
-                radacina_tip,
-                radacina_id,
-                JSON.stringify(detalii || {})
-            ]
-        );
-        const historyId = res.insertId;
-
-        // --- C. INSERT NOTIFICARI (S11_Notificari) ---
-        if (notify_users.length > 0 && mesaj) {
-
-            const values = notify_users.map(targetUserId => [
-                targetUserId,
-                historyId,
-                mesaj,          // <--- DIRECT
-                actiune,        // <--- DIRECT
-                severitate,     // <--- DIRECT
-                tip_entitate,
-                entitate_id
-            ]);
-
-            await connection.query(
-                `INSERT INTO S11_Notificari 
-                (utilizator_id, istoric_id, mesaj, actiune, severitate, tip_entitate, entitate_id) 
-                VALUES ?`,
-                [values]
-            );
-        }
-
-        await connection.commit();
-        return historyId;
-
-    } catch (err) {
-        await connection.rollback();
-        console.error("Eroare LogHistory:", err);
-        throw err;
-    } finally {
-        connection.release();
+    if ((oldVal === null || oldVal === undefined || oldVal === "") && (newVal === null || newVal === undefined || newVal === "")) {
+      continue;
     }
+
+    if (oldVal != newVal) {
+      diff[key] = {
+        vechi: oldVal ?? null,
+        nou: newVal ?? null,
+      };
+    }
+  }
+
+  return diff;
 };
 
-module.exports = { logHistoryAndNotify };
+const buildDetails = ({ detalii, oldData, newData }) => {
+  if (detalii !== undefined && detalii !== null) return detalii;
+  if (oldData && newData) return getChanges(oldData, newData);
+  if (newData) return newData;
+  if (oldData) return oldData;
+  return {};
+};
+
+const getMentionSnapshots = async (conn, mention_user_ids = []) => {
+  const ids = parseIds(mention_user_ids);
+
+  if (ids.length === 0) return [];
+
+  const [rows] = await conn.query(
+    `
+      SELECT 
+        id,
+        name,
+        photo_url
+      FROM S00_Utilizatori
+      WHERE id IN (?)
+      ORDER BY name ASC
+    `,
+    [ids],
+  );
+
+  return rows.map((user) => ({
+    id: user.id,
+    nume: user.name || "Utilizator",
+    poza: user.photo_url || null,
+  }));
+};
+
+const logHistoryAndNotify = async (conn, params) => {
+  const {
+    utilizator_id,
+
+    companie_id,
+
+    nivel_tip,
+    nivel_id,
+
+    entitate_tip,
+    entitate_id,
+
+    parinte_tip = null,
+    parinte_id = null,
+
+    actiune_tip,
+
+    titlu,
+    mesaj = null,
+    severitate = "medium",
+
+    detalii = null,
+    oldData = null,
+    newData = null,
+
+    mention_user_ids = [],
+
+    notify = false,
+    notify_user_ids = [],
+    notificare_mesaj = null,
+  } = params;
+
+  if (!conn) throw new Error("logHistoryAndNotify: conn lipsește.");
+  if (!utilizator_id) throw new Error("logHistoryAndNotify: utilizator_id lipsește.");
+  if (!companie_id) throw new Error("logHistoryAndNotify: companie_id lipsește.");
+  if (!nivel_tip || !nivel_id) throw new Error("logHistoryAndNotify: nivel_tip / nivel_id lipsesc.");
+  if (!entitate_tip || !entitate_id) throw new Error("logHistoryAndNotify: entitate_tip / entitate_id lipsesc.");
+  if (!actiune_tip) throw new Error("logHistoryAndNotify: actiune_tip lipsește.");
+  if (!titlu) throw new Error("logHistoryAndNotify: titlu lipsește.");
+
+  const finalDetails = buildDetails({ detalii, oldData, newData });
+  const finalMentions = await getMentionSnapshots(conn, mention_user_ids);
+
+  const [historyResult] = await conn.execute(
+    `
+      INSERT INTO S11_Istoric
+      (
+        utilizator_id,
+        companie_id,
+
+        nivel_tip,
+        nivel_id,
+
+        entitate_tip,
+        entitate_id,
+
+        parinte_tip,
+        parinte_id,
+
+        actiune_tip,
+
+        titlu,
+        mesaj,
+        severitate,
+
+        detalii,
+        mentiuni
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+    [
+      Number(utilizator_id),
+      Number(companie_id),
+
+      nivel_tip,
+      Number(nivel_id),
+
+      entitate_tip,
+      Number(entitate_id),
+
+      parinte_tip,
+      parinte_id ? Number(parinte_id) : null,
+
+      actiune_tip,
+
+      titlu,
+      mesaj,
+      severitate,
+
+      safeJson(finalDetails, {}),
+      finalMentions.length > 0 ? safeJson(finalMentions, []) : null,
+    ],
+  );
+
+  const historyId = historyResult.insertId;
+
+  if (notify) {
+    const recipients = parseIds([...mention_user_ids, ...notify_user_ids]);
+
+    if (recipients.length > 0) {
+      const notificationMessage = notificare_mesaj || mesaj || titlu;
+
+      const values = recipients.map((targetUserId) => [targetUserId, historyId, notificationMessage]);
+
+      await conn.query(
+        `
+          INSERT INTO S11_Notificari
+          (
+            utilizator_id,
+            istoric_id,
+            mesaj
+          )
+          VALUES ?
+        `,
+        [values],
+      );
+    }
+  }
+
+  return {
+    historyId,
+    mentiuni: finalMentions,
+  };
+};
+
+module.exports = {
+  logHistoryAndNotify,
+  getChanges,
+  getMentionSnapshots,
+};

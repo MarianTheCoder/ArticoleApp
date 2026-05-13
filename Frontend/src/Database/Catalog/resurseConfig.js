@@ -1,0 +1,72 @@
+import { faPerson, faBoxOpen, faTruck, faTruckFast, faSquareCaretDown, faScrewdriverWrench, faCar } from "@fortawesome/free-solid-svg-icons";
+
+export const resurseConfig = {
+  manopera: {
+    id: "manopera",
+    title: "Manoperă",
+    titlePlural: "Manopere",
+    icon: faPerson,
+    colorClass: "text-indigo-500",
+    bgClass: "bg-indigo-500/15 border-indigo-500/50",
+    normalColor: "indigo-500",
+    lessBg: "bg-indigo-500/10 hover:bg-indigo-500/10",
+    hoverButton: "hover:bg-indigo-600 bg-indigo-500",
+    switchClass: "data-[state=checked]:bg-indigo-500", // Clasa completă pt Switch
+    hasPhoto: false,
+    hasFurnizor: false,
+    hasStatus: false,
+    defaultUnit: "h",
+    unitOptions: ["h"],
+  },
+  material: {
+    id: "material",
+    title: "Material",
+    titlePlural: "Materiale",
+    icon: faScrewdriverWrench,
+    colorClass: "text-amber-600",
+    bgClass: "bg-amber-600/25 border-amber-600/50",
+    normalColor: "amber-600",
+    lessBg: "bg-amber-600/10 hover:bg-amber-600/10",
+    hoverButton: "hover:bg-amber-700 bg-amber-600",
+    switchClass: "data-[state=checked]:bg-amber-600", // Clasa completă pt Switch
+    hasPhoto: true,
+    hasFurnizor: true,
+    hasStatus: false,
+    defaultUnit: "U",
+    unitOptions: ["U", "kg", "m", "m²", "m³", "l", "Set", "Rola", "ens", "j", "t"],
+  },
+  utilaj: {
+    id: "utilaj",
+    title: "Utilaj",
+    titlePlural: "Utilaje",
+    icon: faTruck,
+    colorClass: "text-rose-600",
+    bgClass: "bg-rose-600/25 border-rose-600/50",
+    normalColor: "rose-600",
+    lessBg: "bg-rose-600/10 hover:bg-rose-600/10",
+    hoverButton: "hover:bg-rose-700 bg-rose-600",
+    switchClass: "data-[state=checked]:bg-rose-600", // Clasa completă pt Switch
+    hasPhoto: true,
+    hasFurnizor: true, // Adăugat la cererea ta
+    hasStatus: true,
+    defaultUnit: "U",
+    unitOptions: ["U", "kg", "m", "m²", "m³", "l", "Set", "Rola", "ens", "j", "t"],
+  },
+  transport: {
+    id: "transport",
+    title: "Transport",
+    titlePlural: "Transporturi",
+    icon: faCar,
+    colorClass: "text-emerald-600",
+    bgClass: "bg-emerald-600/25 border-emerald-600/50",
+    normalColor: "emerald-600",
+    lessBg: "bg-emerald-600/10 hover:bg-emerald-600/10",
+    hoverButton: "hover:bg-emerald-700 bg-emerald-600",
+    hasPhoto: false,
+    hasFurnizor: false,
+    hasStatus: false,
+    defaultUnit: "km",
+    unitOptions: ["km", "cursa", "t", "kg", "m³"],
+    switchClass: "data-[state=checked]:bg-emerald-600", // Clasa completă pt Switch
+  },
+};

@@ -38,7 +38,6 @@ export const useContacteSelect = (companyId) => {
     queryKey: ["contacts", "select", "contacte", companyId],
     queryFn: async () => {
       const res = await api.get(`/CRM/Contacts/getContactsByCompanyLimited/${companyId}`);
-      console.log("Contacte pentru select:", res.data);
       return res.data;
     },
     staleTime: 1000 * 60, // 1 minute

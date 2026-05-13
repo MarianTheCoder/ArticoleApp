@@ -1,0 +1,399 @@
+import React, { useContext, useEffect, useState, useRef } from "react";
+import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faUndo, faSave, faCopy, faUpload, faX } from "@fortawesome/free-solid-svg-icons";
+import { toast } from "sonner";
+import { useLoading } from "@/context/LoadingContext";
+import { AuthContext } from "@/context/TokenContext";
+import { useAddCatalogSubDef, useEditCatalogSubDef } from "@/hooks/Database/useCatalog";
+import photoAPI from "@/api/photoAPI";
+import imageCompression from "browser-image-compression";
+
+export default function CatalogSubDefDialog({ config, open, setOpen, mode = "add", initialData = null, definitieId, tipResursa }) {
+  const { show, hide } = useLoading();
+  const { user } = useContext(AuthContext);
+  const { mutateAsync: addSubDef } = useAddCatalogSubDef();
+  const { mutateAsync: editSubDef } = useEditCatalogSubDef();
+
+  const isDuplicateMode = initialData?.isDuplicate === true;
+  const actualMode = isDuplicateMode ? "add" : mode;
+
+  const defaultDraft = {
+    cod_specific: "",
+    descriere: "",
+    descriere_fr: "",
+    cost: "0,000",
+    furnizor: "", // Preluat doar dacă config.hasFurnizor este true
+    status_utilaj: "Nou", // Preluat doar dacă config.hasStatus este true
+  };
+
+  const [draft, setDraft] = useState(defaultDraft);
+
+  // --- STATE-URI DRAG & DROP ---
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [photoDeleted, setPhotoDeleted] = useState(false);
+  const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const initializeData = async () => {
+      if (open) {
+        if (initialData) {
+          setDraft({
+            cod_specific: initialData.cod_specific || "",
+            descriere: initialData.descriere || "",
+            descriere_fr: initialData.descriere_fr || "",
+            cost: initialData.cost?.toString().replace(".", ",") || "0,000",
+            furnizor: config.hasFurnizor ? initialData.detalii_extra?.furnizor || "" : "",
+            status_utilaj: config.hasStatus ? initialData.detalii_extra?.status_utilaj || "Nou" : "Nou",
+          });
+
+          if (config.hasPhoto) {
+            if (isDuplicateMode && initialData.photo_url) {
+              try {
+                const imageUrl = `${photoAPI}/${initialData.photo_url}`;
+                const response = await fetch(imageUrl);
+                const blob = await response.blob();
+                const ext = initialData.photo_url.split(".").pop();
+                const fileName = `duplicate_${Date.now()}.${ext}`;
+                const file = new File([blob], fileName, { type: blob.type });
+
+                if (isMounted) {
+                  setSelectedFile(file);
+                  setPreviewUrl(URL.createObjectURL(file));
+                  setPhotoDeleted(false);
+                }
+              } catch (error) {
+                console.error("Eroare la încărcarea pozei originale:", error);
+                if (isMounted) {
+                  setPreviewUrl(null);
+                  setSelectedFile(null);
+                }
+              }
+            } else if (!isDuplicateMode && initialData.photo_url) {
+              setPreviewUrl(`${photoAPI}/${initialData.photo_url}`);
+              setSelectedFile(null);
+              setPhotoDeleted(false);
+            } else {
+              setPreviewUrl(null);
+              setSelectedFile(null);
+              setPhotoDeleted(false);
+            }
+          }
+        } else {
+          setDraft(defaultDraft);
+          setPreviewUrl(null);
+          setSelectedFile(null);
+          setPhotoDeleted(false);
+        }
+      } else {
+        // Resetăm starea la închiderea dialogului
+        setDraft(defaultDraft);
+        setSelectedFile(null);
+        setPreviewUrl(null);
+        setPhotoDeleted(false);
+      }
+    };
+
+    initializeData();
+    return () => {
+      isMounted = false;
+    };
+  }, [open, mode, initialData, isDuplicateMode, config]);
+
+  const setField = (key, value) => setDraft((prev) => ({ ...prev, [key]: value }));
+
+  // --- HANDLERE DRAG & DROP ---
+  const handleDragOver = (e) => {
+    if (!config.hasPhoto) return;
+    e.preventDefault();
+    setIsDragging(true);
+  };
+  const handleDragLeave = () => {
+    if (!config.hasPhoto) return;
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e) => {
+    if (!config.hasPhoto) return;
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    await handleImageUpload(file);
+  };
+
+  const handleFileChange = async (e) => {
+    if (!config.hasPhoto) return;
+    const file = e.target.files[0];
+    await handleImageUpload(file);
+  };
+
+  const clearFile = (e) => {
+    e.stopPropagation();
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    setPhotoDeleted(true);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (previewUrl?.startsWith("blob:")) {
+      URL.revokeObjectURL(previewUrl);
+    }
+  };
+
+  const handleImageUpload = async (file) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Te rog să încarci o imagine validă.", { position: "top-right" });
+      return;
+    }
+    setIsDragging(false);
+
+    // dacă e deja sub 500KB, o folosim direct
+    if (file.size <= 500 * 1024) {
+      setSelectedFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
+      setPhotoDeleted(false);
+      return;
+    }
+
+    const options = {
+      maxSizeMB: 0.5,
+      maxWidthOrHeight: 1200,
+      useWebWorker: true,
+    };
+    try {
+      show();
+      // comprimăm imaginea
+      const compressedBlob = await imageCompression(file, options);
+      // blob -> File real
+      const properFile = new File([compressedBlob], file.name, {
+        type: file.type,
+      });
+
+      setSelectedFile(properFile);
+      setPreviewUrl(URL.createObjectURL(properFile));
+      setPhotoDeleted(false);
+    } catch (error) {
+      console.log("Eroare la compresia imaginii:", error);
+      toast.error("Nu am putut procesa imaginea.", { position: "top-right" });
+    } finally {
+      hide();
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!draft.cod_specific.trim()) return toast.warning("Codul specific este obligatoriu.", { position: "top-right" });
+
+    const fd = new FormData();
+    fd.append("definitie_id", definitieId);
+    fd.append("cod_specific", draft.cod_specific.trim());
+    fd.append("descriere", draft.descriere.trim());
+    fd.append("descriere_fr", draft.descriere_fr.trim());
+    fd.append("cost", String(parseFloat(draft.cost.replace(",", ".")) || 0));
+    fd.append("user_id", user.id);
+
+    // Construim obiectul detalii_extra doar cu câmpurile necesare
+    const detaliiExtraObj = {};
+    if (config.hasFurnizor) detaliiExtraObj.furnizor = draft.furnizor.trim();
+    if (config.hasStatus) detaliiExtraObj.status_utilaj = draft.status_utilaj;
+
+    if (Object.keys(detaliiExtraObj).length > 0) {
+      fd.append("detalii_extra", JSON.stringify(detaliiExtraObj));
+    }
+
+    if (config.hasPhoto) {
+      if (selectedFile) {
+        fd.append("photo", selectedFile);
+      } else if (photoDeleted) {
+        fd.append("delete_photo", "true");
+      }
+    }
+
+    show();
+    try {
+      if (actualMode === "edit") {
+        await editSubDef({ id: initialData.id, data: fd });
+        toast.success("Varianta a fost actualizată!", { position: "top-right" });
+      } else {
+        await addSubDef(fd);
+        toast.success(isDuplicateMode ? "Varianta a fost dublată cu succes!" : "Varianta a fost adăugată!", { position: "top-right" });
+      }
+      setOpen(false);
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Eroare la salvare.", { position: "top-right" });
+    } finally {
+      hide();
+    }
+  };
+
+  const buttonColorClass = config.colorClass.replace("text-", "bg-");
+  const buttonHoverClass = config.colorClass.replace("text-", "hover:bg-");
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent className="sm:max-w-[70rem] p-0 gap-0 overflow-hidden">
+        <form onSubmit={handleSubmit} className="flex flex-col">
+          <div className="px-6 pt-5 pb-4 bg-muted border-b border-border">
+            <div className="flex items-center gap-4">
+              <div className={`h-14 w-14 rounded-lg flex items-center justify-center shrink-0 ${config.bgClass}`}>
+                <FontAwesomeIcon icon={isDuplicateMode ? faCopy : config.icon} className={`text-2xl ${config.colorClass}`} />
+              </div>
+              <div>
+                <p className={`text-sm font-bold uppercase tracking-widest mb-0.5 ${config.colorClass}`}>Variantă {config.title}</p>
+                <DialogTitle className="text-lg font-bold">{isDuplicateMode ? "Dublează variantă" : actualMode === "edit" ? "Editează variantă" : "Adaugă variantă nouă"}</DialogTitle>
+              </div>
+            </div>
+          </div>
+
+          <div className="px-6 py-4 flex flex-col gap-4">
+            <div className="flex gap-5 items-center">
+              {/* DROPZONE PENTRU POZĂ */}
+              {config.hasPhoto && (
+                <div className="relative">
+                  <div
+                    className={`relative w-24 h-24 shrink-0 border-2 rounded-xl flex items-center justify-center cursor-pointer transition-all overflow-hidden ${
+                      isDragging ? `border-${config.normalColor} scale-105` : "border-border hover:bg-muted/50"
+                    }`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={() => {
+                      fileInputRef.current.value = "";
+                      fileInputRef.current?.click();
+                    }}
+                  >
+                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
+
+                    {previewUrl ? (
+                      <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex flex-col items-center gap-1.5 text-muted-foreground/60">
+                        <FontAwesomeIcon icon={faUpload} className="text-xl" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-center px-2 leading-tight">Drop </span>
+                      </div>
+                    )}
+                  </div>
+                  {previewUrl ? (
+                    <Button type="button" variant="destructive" size="icon" className="absolute -top-2 w-6 h-6 -right-2 rounded-full" onClick={clearFile}>
+                      <FontAwesomeIcon icon={faX} className="text-xs" />
+                    </Button>
+                  ) : null}
+                </div>
+              )}
+
+              {/* INPUTURILE COD / COST / FURNIZOR / STATUS */}
+              <div className={`flex-1 grid grid-cols-3 ${config.id == "utilaj" ? "grid-cols-4" : ""} gap-4 mb-1`}>
+                <div className="flex flex-col gap-1.5">
+                  <Label className="font-semibold text-sm text-foreground">
+                    Cod Specific <span className="text-destructive">*</span>
+                  </Label>
+                  <Input value={draft.cod_specific} onChange={(e) => setField("cod_specific", e.target.value)} maxLength={15} className="h-9" />
+                </div>
+
+                {/* Afișăm Furnizor SAU Status pe baza config-ului */}
+                {config.hasFurnizor && (
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="font-semibold text-sm text-foreground">Furnizor (Opțional)</Label>
+                    <Input value={draft.furnizor} onChange={(e) => setField("furnizor", e.target.value)} placeholder="Ex: Dedeman, Arabesque" className="h-9" />
+                  </div>
+                )}
+
+                {config.hasStatus && (
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="font-semibold text-sm text-foreground">Status {config.title}</Label>
+                    <Select value={draft.status_utilaj} onValueChange={(v) => setField("status_utilaj", v)}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Nou">Nou</SelectItem>
+                        <SelectItem value="Ca nou">Ca nou</SelectItem>
+                        <SelectItem value="Utilizat">Utilizat</SelectItem>
+                        <SelectItem value="Utilizat grav">Uzură avansată</SelectItem>
+                        <SelectItem value="Stricat">Stricat</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-1.5">
+                  <Label className="font-semibold text-sm text-foreground">Cost</Label>
+                  <Input
+                    type="text"
+                    value={draft.cost}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (/^\d{0,7}\,?\d{0,3}$/.test(val)) setField("cost", val);
+                    }}
+                    className="h-9"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* TEXTE RO / FR */}
+            <div className="grid grid-cols-2 gap-4 mt-2">
+              <div className="flex flex-col gap-2 p-4 rounded-lg border bg-muted/20">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="rounded-md p-1 px-2 bg-cyan-500/5 border border-cyan-500 flex items-center justify-center">
+                    <span className="text-sm font-bold text-cyan-600">RO</span>
+                  </div>
+                  <span className="text-base text-foreground">Descriere</span>
+                </div>
+                <Textarea value={draft.descriere} onChange={(e) => setField("descriere", e.target.value)} placeholder="Detalii specifice..." className="resize-none h-48 text-sm" />
+              </div>
+
+              <div className="flex flex-col gap-2 p-4 rounded-lg border bg-muted/20">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="rounded-md p-1 px-2 bg-lime-500/5 border border-lime-500 flex items-center justify-center">
+                    <span className="text-sm font-bold text-lime-600">FR</span>
+                  </div>
+                  <span className="text-base text-foreground">Descriere (FR)</span>
+                </div>
+                <Textarea value={draft.descriere_fr} onChange={(e) => setField("descriere_fr", e.target.value)} placeholder="Détails spécifiques..." className="resize-none h-48 text-sm" />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="px-6 py-4 border-t bg-muted/5 gap-2">
+            <div>
+              {actualMode === "add" && !isDuplicateMode && (
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setDraft(defaultDraft);
+                    setSelectedFile(null);
+                    setPreviewUrl(null);
+                  }}
+                  className="mr-auto text-muted-foreground"
+                >
+                  <FontAwesomeIcon icon={faUndo} className="mr-2" /> Resetează
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <DialogClose asChild>
+                <Button variant="outline" type="button">
+                  Anulează
+                </Button>
+              </DialogClose>
+              <Button type="submit" className={`${buttonColorClass} ${buttonHoverClass} text-white`}>
+                <FontAwesomeIcon icon={isDuplicateMode ? faCopy : faSave} className="mr-2" />
+                {isDuplicateMode ? "Dublează" : actualMode === "edit" ? "Salvează" : "Adaugă"}
+              </Button>
+            </div>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

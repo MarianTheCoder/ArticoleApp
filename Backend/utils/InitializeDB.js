@@ -1,6 +1,138 @@
 const bcrypt = require("bcryptjs");
 
 async function initializeDB(pool) {
+  const creatCompaniesTable = `
+        CREATE TABLE IF NOT EXISTS S10_Companii (
+        id                        INT AUTO_INCREMENT PRIMARY KEY,
+
+        logo_url                  VARCHAR(255) NULL,
+        nume_companie             VARCHAR(255) NOT NULL,
+        grup_companie             VARCHAR(255) NULL,
+        domeniu_unitate_afaceri   VARCHAR(150) NULL,
+        forma_juridica            VARCHAR(80)  NULL,
+
+        tara                      CHAR(2) NOT NULL DEFAULT 'FR',
+        regiune                   VARCHAR(120) NULL,
+        oras                      VARCHAR(120) NULL,
+        adresa                    VARCHAR(255) NULL,
+        cod_postal                VARCHAR(16)  NULL,
+        website                   VARCHAR(255) NULL,
+
+        email                     VARCHAR(255) NULL,
+        telefon                   VARCHAR(50)  NULL,
+
+        nivel_strategic           VARCHAR(20) NOT NULL DEFAULT 'Tinta',
+        status_relatie            VARCHAR(20) NOT NULL DEFAULT 'Prospect',
+        nivel_risc                VARCHAR(20) NOT NULL DEFAULT 'Mediu',
+
+        nda_semnat                BOOLEAN NOT NULL DEFAULT FALSE,
+        scor_conformitate         INT NOT NULL DEFAULT 0,
+        utilizator_responsabil_id INT NULL,
+
+        note                      TEXT NULL,
+
+        created_at                TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        created_by_user_id        INT NULL,
+        updated_at                TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        updated_by_user_id        INT NULL,
+
+        CHECK (scor_conformitate BETWEEN 0 AND 100),
+
+        -- Indexuri
+        INDEX idx_companii_nume (nume_companie),
+        INDEX idx_companii_grup (grup_companie),
+        INDEX idx_companii_responsabil (utilizator_responsabil_id),
+
+        -- Unicitate (nume + tara + oras)
+        UNIQUE KEY uq_companii_nume_tara_oras (nume_companie, tara, oras)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `;
+  await pool.execute(creatCompaniesTable);
+  console.log("Table S10_Companii created or already exists.");
+
+  // --- 2. FILIALE (NEW TABLE) ---
+  const createFilialeTable = `
+        CREATE TABLE IF NOT EXISTS S10_Filiale (
+        id                      INT AUTO_INCREMENT PRIMARY KEY,
+        
+        -- Hierarchy
+        companie_id             INT NOT NULL,
+        
+        -- Details
+        nume_filiala            VARCHAR(255) NOT NULL,
+        tip_unitate             VARCHAR(50) NOT NULL DEFAULT 'Filiale', -- Filiale / Directie
+        
+        tara                    VARCHAR(100) NOT NULL DEFAULT 'Romania',
+        regiune                 VARCHAR(100) NULL,
+        oras                    VARCHAR(100) NULL,
+        
+        longitudine             DECIMAL(10, 7) NULL,
+        latitudine             DECIMAL(10, 7) NULL,
+
+        nivel_decizie           VARCHAR(50) NOT NULL DEFAULT 'Regional', -- Local / Regional / National
+        
+        telefon                 VARCHAR(50) NULL,
+        email                   VARCHAR(255) NULL,
+        note                    TEXT NULL,
+
+        -- Audit
+        created_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_by_user_id      INT NULL,
+        updated_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        updated_by_user_id      INT NULL,
+
+        -- Constraints
+        CONSTRAINT fk_filiale_companie FOREIGN KEY (companie_id) REFERENCES S10_Companii(id) ON DELETE RESTRICT,
+
+        -- Indexes
+        INDEX idx_filiale_companie (companie_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `;
+  await pool.execute(createFilialeTable);
+  console.log("Table S10_Filiale created or already exists.");
+
+  const createSantiereTableQuery = `
+        CREATE TABLE IF NOT EXISTS S01_Santiere (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        
+        -- Identification
+        nume VARCHAR(100) NOT NULL,
+        culoare_hex CHAR(7) NOT NULL DEFAULT '#FFFFFF',
+        
+        -- Hierarchy
+        companie_id INT NOT NULL,
+        filiala_id INT NULL,
+
+        -- Status & Dates
+        activ TINYINT(1) NOT NULL DEFAULT 1, -- cleaner than tinyint
+        notita TEXT NULL,
+        data_inceput DATE NULL,
+        data_sfarsit DATE NULL,
+
+        -- Location (Optimized for Maps)
+        adresa VARCHAR(255) NULL,
+        longitudine DECIMAL(10, 7) NULL, -- Standard GPS precision
+        latitudine DECIMAL(10, 7)  NULL, -- Standard GPS precision
+
+        -- Audit
+        created_by_user_id INT NULL,
+        updated_by_user_id INT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+        -- Constraints
+        CONSTRAINT fk_santiere_companie FOREIGN KEY (companie_id) REFERENCES S10_Companii(id) ON DELETE RESTRICT,
+        CONSTRAINT fk_santiere_filiala FOREIGN KEY (filiala_id) REFERENCES S10_Filiale(id) ON DELETE SET NULL,
+
+        -- Indexes for performance
+        INDEX idx_santiere_companie (companie_id)
+        -- INDEX idx_santiere_filiala (filiala_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `;
+
+  await pool.execute(createSantiereTableQuery);
+  console.log("S01_Santiere table created or already exists.");
+
   const createCompaniesTable = `
     CREATE TABLE IF NOT EXISTS S00_Companii_Interne (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -85,587 +217,397 @@ async function initializeDB(pool) {
   await pool.execute(pushTable);
   console.log("User_Push_Tokens table created or already exists.\n");
 
-  //Tabele Manopera
   //
   //
-  const createManoperaDEFTableQuery = `
-      CREATE TABLE IF NOT EXISTS Manopera_Definition (
+  //
+  //
+  // -------------------------- CATALOG MANOPERA/MATERIALE/TRANSPORT/UTILAJE ---------------------------------------
+
+  const catalogTable = `
+    CREATE TABLE IF NOT EXISTS S02_Catalog_Definitii (
         id INT AUTO_INCREMENT PRIMARY KEY,
         limba VARCHAR(20) NOT NULL DEFAULT 'RO',
-        cod_definitie VARCHAR(100) NOT NULL,   
-        ocupatie TEXT NOT NULL,                       
-        ocupatie_fr TEXT,
+        tip_resursa ENUM('manopera', 'material', 'utilaj', 'transport') NOT NULL,
+        cod_definitie VARCHAR(100) NOT NULL,
+        denumire VARCHAR(255) NOT NULL,
+        denumire_fr VARCHAR(255),
         descriere TEXT,
         descriere_fr TEXT,
-        unitate_masura VARCHAR(20) NOT NULL,
-        cost_unitar DECIMAL(10, 3) NOT NULL DEFAULT 0.000,
-        data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        photo_url VARCHAR(255),
+        unitate_masura VARCHAR(50) NOT NULL,
+        cost DECIMAL(10, 3) NOT NULL DEFAULT 0.000,
+        
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_by_user_id INT,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        updated_by_user_id INT,
 
-        INDEX idx_limba (limba),
-        INDEX idx_cod_definitie (cod_definitie),
-        INDEX idx_ocupatie (ocupatie(100)),
-        INDEX idx_ocupatie_fr (ocupatie_fr(100))
-      );
+        INDEX idx_tip_resursa (tip_resursa),
+        INDEX idx_cod_definitie (cod_definitie)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `;
-  await pool.execute(createManoperaDEFTableQuery);
-  console.log("Manopera_Definition table created or already exists.");
+  await pool.execute(catalogTable);
+  console.log("Catalog_Definitii table created or already exists.");
 
-  const createManoperaTableQuery = `
-    CREATE TABLE IF NOT EXISTS Manopera (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      definitie_id INT NOT NULL,
-      cod_manopera VARCHAR(255) NOT NULL,
-      descriere TEXT,
-      descriere_fr TEXT,
-      cost_unitar DECIMAL(10, 3) NOT NULL DEFAULT 0.000,
-      cantitate DECIMAL(10, 3) NOT NULL DEFAULT 0.000,
-      data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  const catalogSubcategoriiTable = `
+    CREATE TABLE IF NOT EXISTS S02_Catalog_Subcategorii (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        definitie_id INT NOT NULL,
+        cod_specific VARCHAR(255) NOT NULL,
+        descriere TEXT,
+        descriere_fr TEXT,
+        photo_url VARCHAR(255),
+        
+        cost DECIMAL(10, 3) NOT NULL DEFAULT 0.000,
+        detalii_extra JSON, 
+        
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_by_user_id INT,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        updated_by_user_id INT,
 
-      FOREIGN KEY (definitie_id) REFERENCES Manopera_Definition(id),
-      INDEX idx_cod_manopera (cod_manopera),
-      INDEX idx_descriere (descriere(100)),
-      INDEX idx_descriere_fr (descriere_fr(100))
-    );
-  `;
-  await pool.execute(createManoperaTableQuery);
-  console.log("Manopera table created or already exists.\n");
-  //
-  //
-  //
-
-  //Tabele Transport
-  //
-  const createTransportDefinitionTableQuery = `
-    CREATE TABLE IF NOT EXISTS Transport_Definition (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      limba VARCHAR(20) NOT NULL DEFAULT 'RO',
-      cod_definitie VARCHAR(100) NOT NULL,   
-      clasa_transport VARCHAR(255) NOT NULL,
-      transport TEXT NOT NULL,
-      transport_fr TEXT,
-      descriere TEXT,
-      descriere_fr TEXT,
-      unitate_masura VARCHAR(20) NOT NULL,
-      cost_unitar DECIMAL(10, 3) NOT NULL DEFAULT 0.000,
-      data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-      INDEX idx_limba (limba),
-      INDEX idx_cod_definitie (cod_definitie),
-      INDEX idx_clasa_transport (clasa_transport),
-      INDEX idx_transport (transport(100)),
-      INDEX idx_transport_fr (transport_fr(100))
-    );
-  `;
-  await pool.execute(createTransportDefinitionTableQuery);
-  console.log("Transport_Definition table created or already exists.");
-
-  const createTransportTableQuery = `
-    CREATE TABLE IF NOT EXISTS Transport (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      definitie_id INT NOT NULL,
-      cod_transport VARCHAR(255) NOT NULL,
-      descriere TEXT,
-      descriere_fr TEXT,
-      cost_unitar DECIMAL(10, 3) NOT NULL DEFAULT 0.000,
-      data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-      FOREIGN KEY (definitie_id) REFERENCES Transport_Definition(id),
-      INDEX idx_cod_transport (cod_transport),
-      INDEX idx_descriere (descriere(100)),
-      INDEX idx_descriere_fr (descriere_fr(100))
-      );   
-  `;
-  await pool.execute(createTransportTableQuery);
-  console.log("Transport table created or already exists.\n");
-  //
-  //
-  //
-
-  //Tabele Materiale
-  //
-  //
-  const createMaterialeDEFTableQuery = `
-    CREATE TABLE IF NOT EXISTS Materiale_Definition (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      limba VARCHAR(20) NOT NULL DEFAULT 'RO',
-      photoUrl TEXT NOT NULL,
-      clasa_material VARCHAR(255) NOT NULL,
-      cod_definitie VARCHAR(100) NOT NULL,  
-      tip_material VARCHAR(50) NOT NULL, 
-      denumire VARCHAR(255) NOT NULL,               
-      denumire_fr VARCHAR(255),
-      descriere TEXT,
-      descriere_fr TEXT,
-      unitate_masura VARCHAR(50) NOT NULL,
-      cost_unitar DECIMAL(10, 3) NOT NULL DEFAULT 0.000,
-      cost_preferential DECIMAL(10, 3) NOT NULL DEFAULT 0.000,
-      pret_vanzare DECIMAL(10, 3) NOT NULL DEFAULT 0.000,
-
-      data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-      INDEX idx_limba (limba),
-      INDEX idx_denumire (denumire(100)),
-      INDEX idx_denumire_fr (denumire_fr(100)),
-      INDEX idx_cod_definitie (cod_definitie),
-      INDEX idx_descriere (descriere),
-      INDEX idx_descriere_fr (descriere_fr)
-      );
+        FOREIGN KEY (definitie_id) REFERENCES S02_Catalog_Definitii(id) ON DELETE CASCADE,
+        INDEX idx_cod_specific (cod_specific)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `;
-  await pool.execute(createMaterialeDEFTableQuery);
-  console.log("Materiale_Definition table created or already exists.");
+  await pool.execute(catalogSubcategoriiTable);
+  console.log("S02_Catalog_Subcategorii table created or already exists.");
 
-  const createMaterialeTableQuery = `
-    CREATE TABLE IF NOT EXISTS Materiale (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      definitie_id INT NOT NULL,
-      cod_material VARCHAR(255) NOT NULL,
-      furnizor VARCHAR(255) NOT NULL,
-      descriere TEXT,
-      descriere_fr TEXT,
-      photoUrl TEXT NOT NULL,
-      cost_unitar DECIMAL(10, 3) NOT NULL,
-      cost_preferential DECIMAL(10, 3),
-      pret_vanzare DECIMAL(10, 3) NOT NULL,
-      data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  ///
+  //
+  //
+  // -------------------------- RETETE ------------------------------------
 
-      FOREIGN KEY (definitie_id) REFERENCES Materiale_Definition(id),
-      INDEX idx_cod_material (cod_material),
-      INDEX idx_descriere (descriere(100))
-    );
-  `;
-  await pool.execute(createMaterialeTableQuery);
-  console.log("Materiale table created or already exists.\n");
-  //
-  //
-  //
-
-  //Tabele Utilaje
-  //
-  //
-  const createUtilajeDefinitionTableQuery = `
-  CREATE TABLE IF NOT EXISTS Utilaje_Definition (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    limba VARCHAR(20) NOT NULL DEFAULT 'RO',
-    cod_definitie VARCHAR(100) NOT NULL,  
-    clasa_utilaj VARCHAR(255) NOT NULL,
-    utilaj TEXT NOT NULL, 
-    utilaj_fr TEXT,
-    descriere TEXT,
-    descriere_fr TEXT,
-    photoUrl TEXT NOT NULL,
-    unitate_masura VARCHAR(50) NOT NULL,
-    cost_amortizare DECIMAL(10, 3) NOT NULL DEFAULT 0.000,
-    pret_utilaj DECIMAL(10, 3) NOT NULL DEFAULT 0.000,
-
-    data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    INDEX idx_limba (limba),
-    INDEX idx_cod_definitie (cod_definitie),
-    INDEX idx_clasa_utilaj (clasa_utilaj),
-    INDEX idx_utilaj (utilaj(100)),
-    INDEX idx_utilaj_fr (utilaj_fr(100)),
-    INDEX idx_descriere (descriere(100)),
-    INDEX idx_descriere_fr (descriere_fr(100))
-  );
-`;
-  await pool.execute(createUtilajeDefinitionTableQuery);
-  console.log("Utilaje_Definition table created or already exists.");
-
-  const createUtilajeTableQuery = `
-  CREATE TABLE IF NOT EXISTS Utilaje (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    definitie_id INT NOT NULL,
-    cod_utilaj VARCHAR(255) NOT NULL,
-    furnizor VARCHAR(255) NOT NULL,
-    descriere TEXT,
-    descriere_fr TEXT,
-    photoUrl TEXT NOT NULL,
-    status_utilaj VARCHAR(255) NOT NULL,
-    cantitate DECIMAL(10, 3) NOT NULL DEFAULT 0.000,
-    cost_amortizare DECIMAL(10, 3) NOT NULL DEFAULT 0.000,
-    pret_utilaj DECIMAL(10, 3) NOT NULL DEFAULT 0.000,
-    data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    FOREIGN KEY (definitie_id) REFERENCES Utilaje_Definition(id),
-    INDEX idx_cod_utilaj (cod_utilaj),
-    INDEX idx_furnizor (furnizor(100)),
-    INDEX idx_status_utilaj (status_utilaj),
-    INDEX idx_descriere (descriere(100))
-  );
-`;
-  await pool.execute(createUtilajeTableQuery);
-  console.log("Utilaje table created or already exists.\n");
-  //
-  //
-  //
-
-  //
-  //
-  // CREATE RETETE TABLE !!
-  const createReteteTableQuery = `
-    CREATE TABLE IF NOT EXISTS Retete (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      limba VARCHAR(20) NOT NULL DEFAULT 'RO',
-      cod_reteta VARCHAR(255) NOT NULL,
-      clasa_reteta VARCHAR(255) NOT NULL,
-      articol TEXT NOT NULL,
-      articol_fr TEXT,
-      descriere_reteta TEXT,
-      descriere_reteta_fr TEXT,
-      unitate_masura VARCHAR(255) NOT NULL,
-      INDEX idx_cod_reteta (cod_reteta),
-      INDEX idx_clasa_reteta (clasa_reteta),
-      INDEX idx_articol (articol(100)),
-      index idx_articol_fr (articol_fr(100)),
-      INDEX idx_limba (limba),
-      data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-  `;
-  await pool.execute(createReteteTableQuery);
+  const reteteTable = `
+    CREATE TABLE IF NOT EXISTS S02_Retete (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        limba VARCHAR(20) NOT NULL DEFAULT 'RO',
+        cod_reteta VARCHAR(255) NOT NULL,
+        clasa_reteta VARCHAR(255) NOT NULL,
+        denumire VARCHAR(255) NOT NULL,
+        denumire_fr VARCHAR(255),
+        descriere TEXT,
+        descriere_fr TEXT,
+        unitate_masura VARCHAR(50) NOT NULL,
+        
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_by_user_id INT,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        updated_by_user_id INT,
+        
+        INDEX idx_cod_reteta (cod_reteta),
+        INDEX idx_clasa_reteta (clasa_reteta)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `;
+  await pool.execute(reteteTable);
   console.log("Retete table created or already exists.");
 
-  const createReteteManoperaTableQuery = `
-    CREATE TABLE IF NOT EXISTS Retete_manopera (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      reteta_id INT NOT NULL,
-      manopera_definitie_id INT NOT NULL,
-      UNIQUE (reteta_id, manopera_definitie_id),
-      cantitate DECIMAL(10, 3) NOT NULL,
-      FOREIGN KEY (reteta_id) REFERENCES Retete(id),
-      FOREIGN KEY (manopera_definitie_id) REFERENCES Manopera_Definition(id)
-    );
-
-
-  `;
-  await pool.execute(createReteteManoperaTableQuery);
-  console.log("Retete_Manopera table created or already exists.");
-
-  const createReteteTransportTableQuery = `
-    CREATE TABLE IF NOT EXISTS Retete_transport (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      reteta_id INT NOT NULL,
-      transport_definitie_id INT NOT NULL,
-      UNIQUE (reteta_id, transport_definitie_id),
-      cantitate DECIMAL(10, 3) NOT NULL,
-      FOREIGN KEY (reteta_id) REFERENCES Retete(id),
-      FOREIGN KEY (transport_definitie_id) REFERENCES Transport_Definition(id)
-    );
-`;
-  await pool.execute(createReteteTransportTableQuery);
-  console.log("Retete_Transport table created or already exists.");
-
-  const createReteteMaterialeTableQuery = `
-    CREATE TABLE IF NOT EXISTS Retete_materiale (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      reteta_id INT NOT NULL,
-      materiale_definitie_id INT NOT NULL,
-      UNIQUE (reteta_id, materiale_definitie_id),
-      cantitate DECIMAL(10, 3) NOT NULL,
-      FOREIGN KEY (reteta_id) REFERENCES Retete(id),
-      FOREIGN KEY (materiale_definitie_id) REFERENCES Materiale_Definition(id)
-    );
-  `;
-  await pool.execute(createReteteMaterialeTableQuery);
-  console.log("Retete_Materiale table created or already exists.");
-
-  const createReteteUtilajeTableQuery = `
-    CREATE TABLE IF NOT EXISTS Retete_utilaje (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      reteta_id INT NOT NULL,
-      utilaje_definitie_id INT NOT NULL,
-      UNIQUE (reteta_id, utilaje_definitie_id),
-      cantitate DECIMAL(10, 3) NOT NULL,
-      FOREIGN KEY (reteta_id) REFERENCES Retete(id),
-      FOREIGN KEY (utilaje_definitie_id) REFERENCES Utilaje_Definition(id)
-    );
-  `;
-  await pool.execute(createReteteUtilajeTableQuery);
-  console.log("Retete_Utilaje table created or already exists.");
-
-  //
-  //
-  //
-  // CREATE S01_Santiere TABLES
-  // Santier_retete
-  const createOfertaReteteTable = `
-    CREATE TABLE IF NOT EXISTS Oferta (
+  const reteteElementeTable = `
+      CREATE TABLE IF NOT EXISTS S02_Retete_Elemente (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,  
-        santier_id INT NOT NULL,  
+        reteta_id INT NOT NULL,
+        definitie_id INT NOT NULL,
+        cantitate DECIMAL(10, 3) NOT NULL DEFAULT 0.000,
+        
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (santier_id) REFERENCES S01_Santiere(id) 
-    );
-  `;
-  await pool.execute(createOfertaReteteTable);
-  console.log("Santier_Oferta table created or already exists.");
+        created_by_user_id INT,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        updated_by_user_id INT,
+        
+        UNIQUE (reteta_id, definitie_id),
+        FOREIGN KEY (reteta_id) REFERENCES S02_Retete(id) ON DELETE CASCADE,
+        FOREIGN KEY (definitie_id) REFERENCES S02_Catalog_Definitii(id) ON DELETE RESTRICT ON UPDATE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `;
+  await pool.execute(reteteElementeTable);
+  console.log("Retete_Elemente table created or already exists.");
 
-  const createOfertaPartsReteteTable = `
-  CREATE TABLE IF NOT EXISTS Oferta_Parts (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      name VARCHAR(255) NOT NULL,  
-      oferta_id INT NOT NULL,  
-      reper1 Varchar(255) NOT NULL default 'reper1',
-      reper2 Varchar(255) NOT NULL default 'reper2',
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (oferta_id) REFERENCES Oferta(id) 
-  );
+  ///
+  //
+  //
+  // -------------------------- OFERTARE ------------------------------------
+
+  const oferteTable = `
+  CREATE TABLE IF NOT EXISTS S03_Oferte (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    santier_id INT NOT NULL,
+
+    nume VARCHAR(255) NOT NULL,
+    descriere TEXT,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by_user_id INT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by_user_id INT NULL,
+
+    CONSTRAINT fk_oferte_santier
+      FOREIGN KEY (santier_id)
+      REFERENCES S01_Santiere(id)
+      ON DELETE RESTRICT
+      ON UPDATE CASCADE,
+
+    INDEX idx_oferte_santier (santier_id),
+    INDEX idx_oferte_created_at (created_at)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 `;
 
-  await pool.execute(createOfertaPartsReteteTable);
-  console.log("Santier_Oferta_Parts table created or already exists.");
+  await pool.execute(oferteTable);
+  console.log("S03_Oferte table created or already exists.");
 
-  const createSantierReteteTable = `
-  CREATE TABLE IF NOT EXISTS Santier_retete (
+  const oferteLucrariTable = `
+  CREATE TABLE IF NOT EXISTS S03_Oferte_Lucrari (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    oferta_id INT NOT NULL,
+
+    nume VARCHAR(255) NOT NULL,
+    descriere TEXT,
+    coloane_config JSON NULL,
+
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by_user_id INT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by_user_id INT NULL,
+
+    CONSTRAINT fk_oferte_lucrari_oferta
+      FOREIGN KEY (oferta_id)
+      REFERENCES S03_Oferte(id)
+      ON DELETE CASCADE
+      ON UPDATE CASCADE,
+
+    INDEX idx_oferte_lucrari_oferta (oferta_id),
+    INDEX idx_oferte_lucrari_created_at (created_at)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+`;
+
+  await pool.execute(oferteLucrariTable);
+  console.log("S03_Oferte_Lucrari table created or already exists.");
+
+  const oferteReteteTable = `
+  CREATE TABLE IF NOT EXISTS S03_Oferte_Retete (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    lucrare_id INT NOT NULL,
+
+    -- legătură către rețeta originală, doar pentru istoric/debug
+    original_reteta_id INT NULL,
+
     limba VARCHAR(20) NOT NULL DEFAULT 'RO',
-    reper_plan TEXT,
-    detalii_aditionale TEXT,
-    oferta_parts_id INT NOT NULL,
+
     cod_reteta VARCHAR(255) NOT NULL,
     clasa_reteta VARCHAR(255) NOT NULL,
-    articol_client TEXT,
-    articol TEXT NOT NULL,
-    articol_fr TEXT,
-    descriere_reteta TEXT,
-    descriere_reteta_fr TEXT,
-    unitate_masura VARCHAR(255) NOT NULL,
-    cantitate DECIMAL(10,3) NOT NULL,
-    sort_order INT NOT NULL DEFAULT 0,
-    original_reteta_id INT,
-    data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (oferta_parts_id) REFERENCES Oferta_Parts(id),  
 
-    INDEX idx_cod_reteta (cod_reteta),
-    INDEX idx_clasa_reteta (clasa_reteta),
-    INDEX idx_articol (articol(100))
-  );
-  `;
-  await pool.execute(createSantierReteteTable);
-  console.log("Santier_retete table created or already exists.");
-
-  // Santier_retete_manopera
-  //
-  //
-  const createSantierReteteManoperaDef = `
-    CREATE TABLE IF NOT EXISTS Santier_Retete_Manopera_Definition (
-      id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-      limba VARCHAR(20) NOT NULL DEFAULT 'RO',
-      santier_reteta_id INT NOT NULL,
-      cod_definitie VARCHAR(255) NOT NULL,   
-      ocupatie TEXT NOT NULL,
-      ocupatie_fr TEXT,
-      descriere TEXT,
-      descriere_fr TEXT,
-      unitate_masura VARCHAR(20) NOT NULL DEFAULT 'h',
-      cost_unitar DECIMAL(10,3) NOT NULL DEFAULT 0.000,
-      cantitate DECIMAL(10,3) NOT NULL DEFAULT 0.000,
-      original_manoperaDefinition_id INT,
-      data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-      INDEX idx_cod_definitie (cod_definitie),
-      INDEX idx_ocupatie (ocupatie(100)),
-      INDEX idx_limba (limba),
-      FOREIGN KEY (santier_reteta_id) REFERENCES Santier_retete(id)
-    );
-    `;
-  await pool.execute(createSantierReteteManoperaDef);
-  console.log("Santier_retete_manopera_Definition table created or already exists.");
-
-  const createSantierReteteManopera = `
-    CREATE TABLE IF NOT EXISTS Santier_Retete_Manopera (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      definitie_id BIGINT UNSIGNED,
-      cod_manopera VARCHAR(255) NOT NULL,
-      descriere TEXT,
-      descriere_fr TEXT,
-      cost_unitar DECIMAL(10,3) NOT NULL DEFAULT 0.000,
-      original_manopera_id INT,
-      data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-      INDEX idx_cod_manopera (cod_manopera),
-      INDEX idx_descriere (descriere(100)),
-      INDEX idx_descriere_fr (descriere_fr(100)),
-      INDEX idx_definitie (definitie_id),
-
-      FOREIGN KEY (definitie_id) REFERENCES Santier_Retete_Manopera_Definition(id)
-    );
-  `;
-  await pool.execute(createSantierReteteManopera);
-  console.log("Santier_retete_manopera table created or already exists.");
-
-  // Santier_retete_materiale
-  //
-  //
-  const createSantierReteteMaterialeDef = `
-  CREATE TABLE IF NOT EXISTS Santier_Retete_Materiale_Definition (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    santier_reteta_id INT NOT NULL,
-    limba VARCHAR(20) NOT NULL DEFAULT 'RO',
-    photoUrl TEXT NOT NULL,
-    clasa_material VARCHAR(255) NOT NULL,
-    cod_definitie VARCHAR(255) NOT NULL,   
-    tip_material VARCHAR(50) NOT NULL,
     denumire VARCHAR(255) NOT NULL,
-    denumire_fr VARCHAR(255),
-    descriere TEXT,
-    descriere_fr TEXT,
+    denumire_fr VARCHAR(255) NULL,
+
+    descriere TEXT NULL,
+    descriere_fr TEXT NULL,
+
     unitate_masura VARCHAR(50) NOT NULL,
-    cost_unitar DECIMAL(10,3) NOT NULL DEFAULT 0.000,
-    cost_preferential DECIMAL(10,3) NOT NULL DEFAULT 0.000,
-    pret_vanzare DECIMAL(10,3) NOT NULL DEFAULT 0.000,
-    cantitate DECIMAL(10,3) NOT NULL DEFAULT 0.000,
-    original_materialDefinition_id INT,
-    data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-    INDEX idx_cod_definitie (cod_definitie),
-    INDEX idx_denumire (denumire),
-    INDEX idx_tip_material (tip_material),
-    INDEX idx_limba (limba),
-    FOREIGN KEY (santier_reteta_id) REFERENCES Santier_retete(id)
-  );
-  `;
-  await pool.execute(createSantierReteteMaterialeDef);
-  console.log("Santier_retete_materiale_definition table created or already exists.");
+    -- cantitatea rețetei în lucrarea ofertei
+    cantitate_lucrare DECIMAL(10, 3) NOT NULL DEFAULT 0.000,
 
-  const createSantierReteteMateriale = `
-  CREATE TABLE IF NOT EXISTS Santier_Retete_Materiale (
+    -- valorile pentru coloanele dinamice ale lucrării
+    coloane_valori JSON NULL,
+
+    sort_order INT NOT NULL DEFAULT 0,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by_user_id INT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by_user_id INT NULL,
+
+    CONSTRAINT fk_oferte_retete_lucrare
+      FOREIGN KEY (lucrare_id)
+      REFERENCES S03_Oferte_Lucrari(id)
+      ON DELETE CASCADE
+      ON UPDATE CASCADE,
+
+    CONSTRAINT fk_oferte_retete_original
+      FOREIGN KEY (original_reteta_id)
+      REFERENCES S02_Retete(id)
+      ON DELETE SET NULL
+      ON UPDATE CASCADE,
+
+    INDEX idx_oferte_retete_lucrare (lucrare_id),
+    INDEX idx_oferte_retete_original (original_reteta_id),
+    INDEX idx_oferte_retete_sort (lucrare_id, sort_order),
+    INDEX idx_oferte_retete_cod (cod_reteta),
+    INDEX idx_oferte_retete_clasa (clasa_reteta),
+    INDEX idx_oferte_retete_created_at (created_at)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+`;
+
+  await pool.execute(oferteReteteTable);
+  console.log("S03_Oferte_Retete table created or already exists.");
+
+  const oferteCatalogDefinitiiTable = `
+  CREATE TABLE IF NOT EXISTS S03_Oferte_Catalog_Definitii (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    definitie_id BIGINT UNSIGNED,
-    photoUrl TEXT NOT NULL,
-    cod_material VARCHAR(255) NOT NULL,   
-    descriere TEXT,
-    descriere_fr TEXT,
-    cost_unitar DECIMAL(10,3) NOT NULL DEFAULT 0.000,
-    cost_preferential DECIMAL(10,3) NOT NULL DEFAULT 0.000,
-    pret_vanzare DECIMAL(10,3) NOT NULL DEFAULT 0.000,
-    furnizor VARCHAR(255) NOT NULL,
-    original_material_id INT,
-    data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-    INDEX idx_cod (cod_material),
-    INDEX idx_furnizor (furnizor(100)),
-    INDEX idx_descriere (descriere(100)),
-    INDEX idx_descriere_fr (descriere_fr(100)),
-    INDEX idx_definitie (definitie_id),
+    oferta_reteta_id INT NOT NULL,
 
-    FOREIGN KEY (definitie_id) REFERENCES Santier_Retete_Materiale_Definition(id)
-  );
-  `;
-  await pool.execute(createSantierReteteMateriale);
-  console.log("Santier_retete_materiale table created or already exists.");
+    -- legătură către catalogul original
+    original_definitie_id INT NULL,
 
-  // Santier_retete_Utilaje
-  //
-  //
-  const createSantierReteteUtilajeDef = `
-    CREATE TABLE IF NOT EXISTS Santier_Retete_Utilaje_Definition (
-      id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-      limba VARCHAR(20) NOT NULL DEFAULT 'RO',
-      cod_definitie VARCHAR(255) NOT NULL,
-      santier_reteta_id INT NOT NULL,
-      clasa_utilaj VARCHAR(255) NOT NULL,
-      utilaj TEXT NOT NULL,
-      utilaj_fr TEXT,
-      descriere TEXT,
-      descriere_fr TEXT,
-      photoUrl TEXT NOT NULL,
-      unitate_masura VARCHAR(50) NOT NULL,
-      cost_amortizare DECIMAL(10,3) NOT NULL DEFAULT 0.000,
-      pret_utilaj DECIMAL(10,3) NOT NULL DEFAULT 0.000,
-      cantitate DECIMAL(10,3) NOT NULL DEFAULT 0.000,
-      original_utilajDefinition_id INT,
-      data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-      FOREIGN KEY (santier_reteta_id) REFERENCES Santier_retete(id),
-      INDEX idx_utilaj (utilaj(100)),
-      INDEX idx_utilaj_fr (utilaj_fr(100)),
-      INDEX idx_cod_definitie (cod_definitie),
-      INDEX idx_limba (limba),
-      INDEX idx_descriere_utilaj (descriere(100))
-    );
-    `;
-  await pool.execute(createSantierReteteUtilajeDef);
-  console.log("Santier_retete_utilaje_definition table created or already exists.");
-
-  const createSantierReteteUtilaje = `
-  CREATE TABLE IF NOT EXISTS Santier_Retete_Utilaje (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    definitie_id BIGINT UNSIGNED,
-    cod_utilaj VARCHAR(255) NOT NULL,
-    furnizor VARCHAR(255) NOT NULL,
-    descriere TEXT,
-    descriere_fr TEXT,
-    photoUrl TEXT NOT NULL,
-    status_utilaj VARCHAR(255) NOT NULL,
-    cost_amortizare DECIMAL(10,3) NOT NULL DEFAULT 0.000,
-    pret_utilaj DECIMAL(10,3) NOT NULL DEFAULT 0.000,
-    original_utilaj_id INT,
-    data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    FOREIGN KEY (definitie_id) REFERENCES Santier_Retete_Utilaje_Definition(id),
-    INDEX idx_cod_utilaj (cod_utilaj),
-    INDEX idx_furnizor (furnizor(100)),
-    INDEX idx_descriere_utilaj (descriere(100))
-  );
-  `;
-  await pool.execute(createSantierReteteUtilaje);
-  console.log("Santier_retete_utilaje table created or already exists.");
-
-  // Santier_retete_transport
-  //
-  //
-  const createSantierReteteTransportDef = `
-  CREATE TABLE IF NOT EXISTS Santier_Retete_Transport_Definition (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     limba VARCHAR(20) NOT NULL DEFAULT 'RO',
-    santier_reteta_id INT NOT NULL,
-    cod_definitie VARCHAR(255) NOT NULL,
-    clasa_transport VARCHAR(255) NOT NULL,
-    transport TEXT NOT NULL,
-    transport_fr TEXT,
-    descriere TEXT,
-    descriere_fr TEXT,
-    unitate_masura VARCHAR(20) NOT NULL,
-    cost_unitar DECIMAL(10,3) NOT NULL,
-    original_transportDefinition_id INT,
-    cantitate DECIMAL(10,3) NOT NULL,
-    data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    tip_resursa ENUM('manopera', 'material', 'utilaj', 'transport') NOT NULL,
 
-    INDEX idx_cod_transport (cod_definitie),
-    INDEX idx_clasa_transport (clasa_transport),
-    INDEX idx_limba (limba),
-    INDEX idx_transport (transport(100)),
-    INDEX idx_transport_fr (transport_fr(100)),
-    FOREIGN KEY (santier_reteta_id) REFERENCES Santier_retete(id)
-  );
-  `;
-  await pool.execute(createSantierReteteTransportDef);
-  console.log("Santier_retete_transport_definition table created or already exists.");
+    cod_definitie VARCHAR(100) NOT NULL,
+    denumire VARCHAR(255) NOT NULL,
+    denumire_fr VARCHAR(255) NULL,
 
-  const createSantierReteteTransport = `
-  CREATE TABLE IF NOT EXISTS Santier_Retete_Transport (
+    descriere TEXT NULL,
+    descriere_fr TEXT NULL,
+    photo_url VARCHAR(255) NULL,
+
+    unitate_masura VARCHAR(50) NOT NULL,
+    cost DECIMAL(10, 3) NOT NULL DEFAULT 0.000,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by_user_id INT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by_user_id INT NULL,
+
+    CONSTRAINT fk_oferte_catalog_def_oferta_reteta
+      FOREIGN KEY (oferta_reteta_id)
+      REFERENCES S03_Oferte_Retete(id)
+      ON DELETE CASCADE
+      ON UPDATE CASCADE,
+
+    CONSTRAINT fk_oferte_catalog_def_original
+      FOREIGN KEY (original_definitie_id)
+      REFERENCES S02_Catalog_Definitii(id)
+      ON DELETE SET NULL
+      ON UPDATE CASCADE,
+
+    INDEX idx_oferte_catalog_def_oferta_reteta (oferta_reteta_id),
+    INDEX idx_oferte_catalog_def_original (original_definitie_id),
+    INDEX idx_oferte_catalog_def_tip (tip_resursa),
+    INDEX idx_oferte_catalog_def_cod (cod_definitie)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+`;
+
+  await pool.execute(oferteCatalogDefinitiiTable);
+  console.log("S03_Oferte_Catalog_Definitii table created or already exists.");
+
+  const oferteCatalogSubcategoriiTable = `
+  CREATE TABLE IF NOT EXISTS S03_Oferte_Catalog_Subcategorii (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    definitie_id BIGINT UNSIGNED,
-    cod_transport VARCHAR(255) NOT NULL,
-    descriere TEXT,
-    descriere_fr TEXT,
-    cost_unitar DECIMAL(10,3) NOT NULL,
-    original_transport_id INT,
-    data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-    INDEX idx_cod_transport (cod_transport),
-    INDEX idx_descriere (descriere(100)),
-    INDEX idx_descriere_fr (descriere_fr(100)),
-    FOREIGN KEY (definitie_id) REFERENCES Santier_Retete_Transport_Definition(id)
-  );
-  `;
-  await pool.execute(createSantierReteteTransport);
-  console.log("Santier_retete_transport table created or already exists.");
-  //
-  //
-  //
-  //
-  //
+    oferta_definitie_id INT NOT NULL,
+
+    -- legătură către varianta originală
+    original_subcategorie_id INT NULL,
+
+    cod_specific VARCHAR(255) NOT NULL,
+    descriere TEXT NULL,
+    descriere_fr TEXT NULL,
+    photo_url VARCHAR(255) NULL,
+
+    cost DECIMAL(10, 3) NOT NULL DEFAULT 0.000,
+    detalii_extra JSON NULL,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by_user_id INT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by_user_id INT NULL,
+
+    CONSTRAINT fk_oferte_catalog_sub_definitie
+      FOREIGN KEY (oferta_definitie_id)
+      REFERENCES S03_Oferte_Catalog_Definitii(id)
+      ON DELETE CASCADE
+      ON UPDATE CASCADE,
+
+    CONSTRAINT fk_oferte_catalog_sub_original
+      FOREIGN KEY (original_subcategorie_id)
+      REFERENCES S02_Catalog_Subcategorii(id)
+      ON DELETE SET NULL
+      ON UPDATE CASCADE,
+
+    UNIQUE KEY uq_oferte_catalog_sub_def_original (oferta_definitie_id, original_subcategorie_id),
+
+    INDEX idx_oferte_catalog_sub_definitie (oferta_definitie_id),
+    INDEX idx_oferte_catalog_sub_original (original_subcategorie_id),
+    INDEX idx_oferte_catalog_sub_cod (cod_specific)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+`;
+
+  await pool.execute(oferteCatalogSubcategoriiTable);
+  console.log("S03_Oferte_Catalog_Subcategorii table created or already exists.");
+
+  const oferteReteteElementeTable = `
+  CREATE TABLE IF NOT EXISTS S03_Oferte_Retete_Elemente (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    oferta_reteta_id INT NOT NULL,
+
+    -- legătură către elementul original din rețeta globală
+    original_reteta_element_id INT NULL,
+
+    -- legături către catalogul COPIAT al ofertei
+    oferta_definitie_id INT NOT NULL,
+    oferta_subcategorie_id INT NULL,
+
+    -- util pentru trace/debug rapid
+    original_definitie_id INT NULL,
+    original_subcategorie_id INT NULL,
+
+    cantitate_in_reteta DECIMAL(10, 3) NOT NULL DEFAULT 0.000,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by_user_id INT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by_user_id INT NULL,
+
+    CONSTRAINT fk_oferte_retete_elemente_reteta
+      FOREIGN KEY (oferta_reteta_id)
+      REFERENCES S03_Oferte_Retete(id)
+      ON DELETE CASCADE
+      ON UPDATE CASCADE,
+
+    CONSTRAINT fk_oferte_retete_elemente_oferta_def
+      FOREIGN KEY (oferta_definitie_id)
+      REFERENCES S03_Oferte_Catalog_Definitii(id)
+      ON DELETE RESTRICT
+      ON UPDATE CASCADE,
+
+    CONSTRAINT fk_oferte_retete_elemente_oferta_sub
+      FOREIGN KEY (oferta_subcategorie_id)
+      REFERENCES S03_Oferte_Catalog_Subcategorii(id)
+      ON DELETE SET NULL
+      ON UPDATE CASCADE,
+
+    CONSTRAINT fk_oferte_retete_elemente_original_re
+      FOREIGN KEY (original_reteta_element_id)
+      REFERENCES S02_Retete_Elemente(id)
+      ON DELETE SET NULL
+      ON UPDATE CASCADE,
+
+    CONSTRAINT fk_oferte_retete_elemente_original_def
+      FOREIGN KEY (original_definitie_id)
+      REFERENCES S02_Catalog_Definitii(id)
+      ON DELETE SET NULL
+      ON UPDATE CASCADE,
+
+    CONSTRAINT fk_oferte_retete_elemente_original_sub
+      FOREIGN KEY (original_subcategorie_id)
+      REFERENCES S02_Catalog_Subcategorii(id)
+      ON DELETE SET NULL
+      ON UPDATE CASCADE,
+
+    INDEX idx_oferte_retete_elemente_reteta (oferta_reteta_id),
+    INDEX idx_oferte_retete_elemente_oferta_def (oferta_definitie_id),
+    INDEX idx_oferte_retete_elemente_oferta_sub (oferta_subcategorie_id),
+    INDEX idx_oferte_retete_elemente_original_re (original_reteta_element_id),
+    INDEX idx_oferte_retete_elemente_original_def (original_definitie_id),
+    INDEX idx_oferte_retete_elemente_original_sub (original_subcategorie_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+`;
+
+  await pool.execute(oferteReteteElementeTable);
+  console.log("S03_Oferte_Retete_Elemente table created or already exists.");
 
   const sesiuniDeLucru = `
       CREATE TABLE IF NOT EXISTS S06_Sesiuni_De_Lucru (

@@ -79,7 +79,7 @@ body {
   --muted: 240 6% 86%;
   --muted-foreground: 240.1 4.4% 30%;
 
-  --accent: 240 6% 86%;
+  --accent: 240 6% 92%;
   --accent-foreground: 240 10.3% 13.3%;
 
   /* keep your colors (unchanged) */
@@ -87,7 +87,7 @@ body {
   --destructive-foreground: 210 40% 98%;
 
   /* borders/inputs darker to match darker background */
-  --border: 240 6% 76%;
+  --border: 240 6% 65%;
   --input: 240 6% 55%;
 
   /* keep ring (unchanged) */
@@ -153,8 +153,8 @@ body {
   --destructive-foreground: 0 0% 100%;
 
   /* Borders & Inputs - contrast scăzut pentru a nu "sări" în ochi */
-  --border: 210 30% 20%;
-  --input: 210 30% 20%;
+  --border: 210 30% 30%;
+  --input: 210 30% 40%;
 
   /* Ring - glow albastru */
   --ring: 210 80% 50%;
@@ -206,8 +206,8 @@ body {
   --accent-foreground: 180 0% 98%;
   --destructive: 10 90% 63%;
   --destructive-foreground: 210 40% 98%;
-  --border: 0 0% 100% / 15%;
-  --input: 0 0% 100% / 35%;
+  --border: 197 6% 35%;
+  --input: 197 6% 48%;
   --ring: 225.3 84% 36%;
   --chart-1: 222.1 89.9% 73%;
   --chart-2: 223.2 97.9% 58.7%;
@@ -220,7 +220,7 @@ body {
   --sidebar-primary-foreground: 222.2 84% 95.8%;
   --sidebar-accent: 240 4% 15.9%;
   --sidebar-accent-foreground: 180 0% 98%;
-  --sidebar-border: 0 0% 100% / 10%;
+  --sidebar-border: 197 6% 30%;
   --sidebar-ring: 0 0% 39%;
   --medium: 38, 92%, 50%;
   --low: 142, 71%, 45%;
@@ -280,4 +280,27 @@ body::-webkit-scrollbar-thumb {
 .dark html::-webkit-scrollbar-thumb,
 .dark body::-webkit-scrollbar-thumb {
   background-color: #fff;
+}
+
+@layer components {
+  /* Contur sus și jos pe toate celulele rândului la hover */
+  .hover-row-border:hover td {
+    box-shadow:
+      inset 0 1px 0 0 theme("colors.border"),
+      inset 0 -1px 0 0 theme("colors.border");
+  }
+
+  /* Închidem conturul pe partea stângă (prima celulă) */
+  .hover-row-border:hover td:first-child {
+    box-shadow:
+      inset 1px 1px 0 0 theme("colors.border"),
+      inset 0 -1px 0 0 theme("colors.border");
+  }
+
+  /* Închidem conturul pe partea dreaptă (ultima celulă) */
+  .hover-row-border:hover td:last-child {
+    box-shadow:
+      inset 0 1px 0 0 theme("colors.border"),
+      inset -1px -1px 0 0 theme("colors.border");
+  }
 }

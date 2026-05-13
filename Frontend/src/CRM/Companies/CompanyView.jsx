@@ -1,10 +1,9 @@
-import React, { useContext, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import { useCompany, useEditCompany } from "@/hooks/useCompanies";
 import { useLoading } from "@/context/LoadingContext";
 import { AuthContext } from "@/context/TokenContext";
 import photoApi from "@/api/photoAPI";
-
+import { useLocation, useParams } from "react-router-dom";
 // UI Components
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,16 +34,18 @@ import {
 import CompaniesAddDialog from "./CompaniesAddDialog";
 import { toast } from "sonner";
 import ContactsMainCompany from "../Contacts/ContactsMainCompany";
-import CompanyHistory from "./CompanyHistory";
+import HistoryTab from "../History/HistoryTab";
 import SantiereMainCompany from "../Santiere/SantiereMainCompany";
 import FilialeMainCompany from "../Filiale/FilialeMainCompany";
-import CompanyActivities from "./CompanyActivities";
+import CompanyActivities from "./Activity/CompanyActivities";
 
 export default function CompanyView() {
   const { companyId } = useParams();
   const { show, hide } = useLoading();
   // eslint-disable-next-line no-unused-vars
   const { user } = useContext(AuthContext);
+
+  const location = useLocation();
 
   // --- DATA FETCHING ---
   const { mutateAsync: editCompany } = useEditCompany();
@@ -77,6 +78,60 @@ export default function CompanyView() {
     logoFile: null,
     logoPreview: "",
   });
+
+  const [activeTab, setActiveTab] = useState("activitati");
+
+  const [targetFocus, setTargetFocus] = useState({
+    activityId: null,
+    commentId: null,
+    nonce: null,
+  });
+
+  const handleNavigateToActivity = useCallback(({ activityId, commentId = null }) => {
+    if (!activityId) return;
+
+    setActiveTab("activitati");
+
+    setTargetFocus({
+      activityId: Number(activityId),
+      commentId: commentId ? Number(commentId) : null,
+      nonce: Date.now(), // forțează focus chiar dacă dai click pe aceeași intrare de două ori
+    });
+  }, []);
+
+  const clearActivityFocus = useCallback(() => {
+    setTargetFocus({
+      activityId: null,
+      commentId: null,
+      nonce: null,
+    });
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+
+    const tab = params.get("tab");
+    const activityIdRaw = params.get("activityId");
+    const commentIdRaw = params.get("commentId");
+    const focus = params.get("focus");
+
+    const activityId = Number(activityIdRaw);
+    const commentId = Number(commentIdRaw);
+
+    if (tab) {
+      setActiveTab(tab);
+    }
+
+    if (Number.isFinite(activityId) && activityId > 0) {
+      setActiveTab("activitati");
+
+      setTargetFocus({
+        activityId,
+        commentId: Number.isFinite(commentId) && commentId > 0 ? commentId : null,
+        nonce: focus || Date.now(),
+      });
+    }
+  }, [location.search]);
 
   const handleEditClick = () => {
     if (!c) return;
@@ -398,10 +453,10 @@ export default function CompanyView() {
 
         {/* --- RIGHT MAIN AREA (4/5) --- */}
         <main className="w-full lg:col-span-4 h-full overflow-hidden">
-          <Tabs defaultValue="activitati" className="h-full w-full flex flex-col gap-4">
-            <TabsList className="bg-card px-6 py-4 rounded-lg justify-start h-auto  w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full w-full flex flex-col gap-4">
+            <TabsList className="bg-card px-6 py-4 rounded-lg border justify-start h-auto  w-full">
               <div className="border-b  w-full flex gap-6">
-                {["istoric", "activitati", , "filiale", "santiere", "contacte", "fișiere"].map((tab) => (
+                {["istoric", "activitati", "filiale", "santiere", "contacte", "fișiere"].map((tab) => (
                   <TabsTrigger
                     key={tab}
                     value={tab}
@@ -413,13 +468,13 @@ export default function CompanyView() {
               </div>
             </TabsList>
 
-            <div className="flex-1 bg-card overflow-y-auto  h-full  rounded-lg">
+            <div className="flex-1 bg-card border overflow-y-auto  h-full  rounded-lg">
               <TabsContent value="istoric" className="h-full m-0 w-full">
-                <CompanyHistory companyId={c?.id || null} />
+                <HistoryTab companyId={c?.id || null} onNavigateToActivity={handleNavigateToActivity} />
               </TabsContent>
 
               <TabsContent value="activitati" className="h-full m-0 w-full">
-                <CompanyActivities companyId={c?.id || null} />
+                <CompanyActivities companyId={c?.id || null} targetFocus={targetFocus} clearFocus={clearActivityFocus} />
               </TabsContent>
               <TabsContent value="filiale" className="h-full m-0 w-full">
                 <FilialeMainCompany companyId={c?.id || null} />
