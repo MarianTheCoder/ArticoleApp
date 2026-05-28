@@ -1,3 +1,4 @@
+// components/PontajeLeftPanel.jsx
 import React, { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { GoogleMap, Marker } from "@react-google-maps/api";
@@ -37,7 +38,6 @@ const fmtTimeLocal = (d) =>
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
-    // Lăsând timeZone gol, browserul folosește AUTOMAT fusul orar al telefonului/PC-ului
   }).format(d);
 
 const minutesByClock = (startISO, endISO) => {
@@ -61,21 +61,16 @@ const MAP_OPTIONS = {
 };
 
 const MAP_STYLE = { height: "100%", width: "100%", borderRadius: "0.5rem" };
-const MAP_STYLE_ENTRY = {
-  height: "12rem",
-  width: "100%",
-  borderRadius: "0.5rem",
-};
 
 // ─── NoLocation ───────────────────────────────────────────────────────────────
 
 function NoLocation({ text }) {
   return (
-    <div className="w-full h-full flex flex-col items-center bg-muted/30 rounded-lg justify-center p-6 text-muted-foreground">
-      <div className="bg-muted border-destructive/30 border p-4 rounded-full mb-3">
-        <FontAwesomeIcon icon={faThumbTackSlash} className="text-2xl text-destructive" />
+    <div className="w-full h-full flex flex-col items-center bg-muted/30 rounded-lg justify-center p-4 xxxl:p-6 text-muted-foreground">
+      <div className="bg-muted border-destructive/30 border p-3 xxxl:p-4 rounded-full mb-2 xxxl:mb-3">
+        <FontAwesomeIcon icon={faThumbTackSlash} className="text-xl xxxl:text-2xl text-destructive" />
       </div>
-      <p className="text-sm text-center text-destructive font-medium w-fit">{text}</p>
+      <p className="text-xs xxxl:text-sm text-center text-destructive font-medium w-fit">{text}</p>
     </div>
   );
 }
@@ -104,9 +99,9 @@ function SingleDayPanel({ selectedUser }) {
     return (
       <div className="flex items-center justify-center h-full w-full">
         <div className="text-center flex flex-col items-center opacity-60">
-          <FontAwesomeIcon icon={faListUl} className="text-4xl mb-4 text-muted-foreground" />
-          <h3 className="text-lg font-semibold text-foreground">Nicio sesiune pontată</h3>
-          <p className="text-sm text-muted-foreground mt-1 max-w-[200px]">Nu au fost înregistrate sesiuni pentru această zi.</p>
+          <FontAwesomeIcon icon={faListUl} className="text-3xl xxxl:text-4xl mb-3 xxxl:mb-4 text-muted-foreground" />
+          <h3 className="text-base xxxl:text-lg font-semibold text-foreground">Nicio sesiune pontată</h3>
+          <p className="text-xs xxxl:text-sm text-muted-foreground mt-1 max-w-[200px]">Nu au fost înregistrate sesiuni pentru această zi.</p>
         </div>
       </div>
     );
@@ -147,29 +142,29 @@ function SingleDayPanel({ selectedUser }) {
   })();
 
   return (
-    <div className="flex flex-col selectedRow h-full overflow-hidden w-full gap-4">
+    <div className="flex flex-col selectedRow h-full overflow-hidden w-full gap-3 xxxl:gap-4">
       {/* ── Header ── */}
-      <div className="flex flex-wrap items-start justify-between gap-2 h-[4.5rem] pb-4 border-b">
+      <div className="flex flex-wrap items-start justify-between gap-2 h-[4rem] xxxl:h-[4.5rem] pb-3 xxxl:pb-4 border-b">
         {/* Left: title */}
         <div className="flex flex-col gap-1 min-w-0">
           {!isSummary && s ? (
             <>
-              <Badge variant="outline" className="w-fit px-1 py-1 text-sm bg-background shadow-sm whitespace-nowrap">
+              <Badge variant="outline" className="w-fit px-1 py-1 text-xs xxxl:text-sm bg-background shadow-sm whitespace-nowrap">
                 {s.start_time ? fmtTimeLocal(new Date(s.start_time)) : "--"}
                 {" - "}
                 {s.end_time ? fmtTimeLocal(new Date(s.end_time)) : <span className="text-low font-semibold">&nbsp;Activ </span>}
               </Badge>
-              <span className="text-base pl-1 font-semibold text-foreground truncate">{s.santier_name || "Fără șantier"}</span>
+              <span className="text-sm xxxl:text-base pl-1 font-semibold text-foreground truncate">{s.santier_name || "Fără șantier"}</span>
             </>
           ) : (
             <>
-              <span className="text-xl font-bold tracking-tight flex gap-1 text-foreground">
+              <span className="text-lg xxxl:text-xl font-bold tracking-tight flex gap-1 text-foreground">
                 Rezumat Zi
-                {hasAnyEdited && <FontAwesomeIcon icon={faExclamationTriangle} className={`${hasAnyEdited ? "dark:text-medium text-yellow-600" : ""} text-2xl`} />}
-                {hasAnyCancelled && <FontAwesomeIcon icon={faExclamationCircle} className={`${hasAnyCancelled ? "text-destructive" : ""} text-2xl`} />}
+                {hasAnyEdited && <FontAwesomeIcon icon={faExclamationTriangle} className={`${hasAnyEdited ? "dark:text-medium text-yellow-600" : ""} text-xl xxxl:text-2xl`} />}
+                {hasAnyCancelled && <FontAwesomeIcon icon={faExclamationCircle} className={`${hasAnyCancelled ? "text-destructive" : ""} text-xl xxxl:text-2xl`} />}
               </span>
               {isSummary && (
-                <p className="text-sm text-muted-foreground font-medium flex items-center gap-1.5">
+                <p className="text-xs xxxl:text-sm text-muted-foreground font-medium flex items-center gap-1.5">
                   Rating:
                   <Badge variant="secondary" className="px-1.5 py-0 text-xs">
                     {sessions[sessions.length - 1]?.rating || 5} / 5
@@ -187,29 +182,29 @@ function SingleDayPanel({ selectedUser }) {
             size="sm"
             onClick={() => setShowLocations((v) => !v)}
             disabled={locCount === 0}
-            className={`gap-2 h-9 px-3 shadow-sm ${!showLocations ? "text-foreground" : ""}`}
+            className={`gap-2 h-8 xxxl:h-9 px-2.5 xxxl:px-3 text-xs xxxl:text-sm shadow-sm ${!showLocations ? "text-foreground" : ""}`}
           >
             <FontAwesomeIcon icon={showLocations ? faListUl : faMapLocationDot} />
             <span className="hidden sm:inline">{showLocations ? "Detalii" : "Locații"}</span>
           </Button>
 
-          <div className="flex items-center bg-muted/50 h-9 rounded-md px-0.5 border shadow-sm">
+          <div className="flex items-center bg-muted/50 h-8 xxxl:h-9 rounded-md px-0.5 border shadow-sm">
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-foreground rounded-sm hover:bg-background hover:shadow-sm"
+              className="h-7 w-7 xxxl:h-8 xxxl:w-8 text-foreground rounded-sm hover:bg-background hover:shadow-sm"
               onClick={() => setSessionIdx((i) => Math.max(0, i - 1))}
               disabled={sessionIdx === 0}
             >
               <FontAwesomeIcon icon={faChevronLeft} className="text-xs" />
             </Button>
-            <span className="text-sm font-semibold text-foreground tabular-nums select-none px-1  text-center">
+            <span className="text-xs xxxl:text-sm font-semibold text-foreground tabular-nums select-none px-1 text-center">
               {sessionIdx} / {pageCount - 1}
             </span>
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-foreground rounded-sm hover:bg-background hover:shadow-sm"
+              className="h-7 w-7 xxxl:h-8 xxxl:w-8 text-foreground rounded-sm hover:bg-background hover:shadow-sm"
               onClick={() => setSessionIdx((i) => Math.min(pageCount - 1, i + 1))}
               disabled={sessionIdx === pageCount - 1}
             >
@@ -220,13 +215,13 @@ function SingleDayPanel({ selectedUser }) {
       </div>
 
       {/* ── Body ── */}
-      <div className="flex-1 min-h-0 overflow-hidden flex flex-col gap-4">
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col gap-3 xxxl:gap-4">
         {showLocations ? (
-          <div className="flex flex-col h-full gap-3">
+          <div className="flex flex-col h-full gap-2.5 xxxl:gap-3">
             {/* Location picker */}
-            <div className="flex items-center gap-3 ">
+            <div className="flex items-center gap-2 xxxl:gap-3">
               <Select value={String(safeLocIdx)} onValueChange={(v) => setLocIdx(Number(v))} disabled={locCount === 0}>
-                <SelectTrigger className=" flex-1 h-9 focus:ring-0 selectedRow text-foreground ">
+                <SelectTrigger className="flex-1 h-8 xxxl:h-9 focus:ring-0 selectedRow text-foreground text-sm">
                   <SelectValue placeholder="Selectează punct" />
                 </SelectTrigger>
                 <SelectContent>
@@ -237,12 +232,12 @@ function SingleDayPanel({ selectedUser }) {
                   ))}
                 </SelectContent>
               </Select>
-              <Badge variant="secondary" className="whitespace-nowrap h-9 shrink-0">
+              <Badge variant="secondary" className="whitespace-nowrap h-8 xxxl:h-9 shrink-0 text-xs xxxl:text-sm">
                 {locCount} {locCount === 1 ? "punct" : "puncte"}
               </Badge>
             </div>
 
-            <div className="w-full h-[400px] xl:h-full min-h-[300px] rounded-lg overflow-hidden border shadow-sm">
+            <div className="w-full h-[360px] xl:h-full min-h-[260px] xxxl:min-h-[300px] rounded-lg overflow-hidden border shadow-sm">
               {currentPoint ? (
                 <GoogleMap
                   mapContainerStyle={MAP_STYLE}
@@ -268,55 +263,53 @@ function SingleDayPanel({ selectedUser }) {
         ) : (
           <>
             {/* Maps grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 xxxl:gap-4">
               {[
                 { label: "Intrare", has: hasStart, center: startCenter },
                 { label: "Ieșire", has: hasEnd, center: endCenter },
               ].map(({ label, has, center }) => (
-                <div key={label} className="flex flex-col gap-2">
-                  <h2 className="text-sm pl-1 font-bold text-muted-foreground uppercase tracking-widest">{label}</h2>
-                  <div className="w-full rounded-lg overflow-hidden border shadow-sm bg-background">
+                <div key={label} className="flex flex-col gap-1.5 xxxl:gap-2">
+                  <h2 className="text-xs xxxl:text-sm pl-1 font-bold text-muted-foreground uppercase tracking-widest">{label}</h2>
+                  <div className="w-full h-40 xxxl:h-48 rounded-lg overflow-hidden border shadow-sm bg-background">
                     {has ? (
-                      <GoogleMap mapContainerStyle={MAP_STYLE_ENTRY} center={center} zoom={15} options={MAP_OPTIONS}>
+                      <GoogleMap mapContainerStyle={MAP_STYLE} center={center} zoom={15} options={MAP_OPTIONS}>
                         <Marker position={center} />
                       </GoogleMap>
                     ) : (
-                      <div className="h-48">
-                        <NoLocation text={`Nu există locație ${label.toLowerCase()}.`} />
-                      </div>
+                      <NoLocation text={`Nu există locație ${label.toLowerCase()}.`} />
                     )}
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-4 pr-1">
+            <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-3 xxxl:gap-4 pr-1">
               {/* Report */}
-              <div className="flex flex-col gap-2 shrink-0">
-                <h2 className="text-sm pl-1 font-bold text-muted-foreground uppercase tracking-widest">Raport Zi</h2>
-                <div className="bg-muted/30 border rounded-lg p-4 text-sm leading-relaxed text-foreground shadow-inner min-h-28 overflow-y-auto">
+              <div className="flex flex-col gap-1.5 xxxl:gap-2 shrink-0">
+                <h2 className="text-xs xxxl:text-sm pl-1 font-bold text-muted-foreground uppercase tracking-widest">Raport Zi</h2>
+                <div className="bg-muted/30 border rounded-lg p-3 xxxl:p-4 text-xs xxxl:text-sm leading-relaxed text-foreground shadow-inner min-h-24 xxxl:min-h-28 overflow-y-auto">
                   <p className="whitespace-pre-line">{isSummary ? lastNote : s?.note?.trim() || "Nu a fost lăsat un raport pentru această sesiune."}</p>
                 </div>
               </div>
 
               {/* Motiv editare */}
               {hasAnyEdited && (
-                <div className="flex flex-col gap-2 shrink-0">
+                <div className="flex flex-col gap-1.5 xxxl:gap-2 shrink-0">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-sm pl-1 font-bold text-yellow-600 dark:text-medium uppercase tracking-widest">Motiv Pontaj Modificat</h2>
+                    <h2 className="text-xs xxxl:text-sm pl-1 font-bold text-yellow-600 dark:text-medium uppercase tracking-widest">Motiv Pontaj Modificat</h2>
                     {hasAnyEditedDetails?.by && (
                       <div className="flex items-center gap-2">
                         {hasAnyEditedDetails?.photo && (
-                          <Avatar className="w-10 h-10 border rounded-lg">
+                          <Avatar className="w-9 h-9 xxxl:w-10 xxxl:h-10 border rounded-lg">
                             <AvatarImage className="rounded" src={photoAPI + "/" + hasAnyEditedDetails.photo} />
                             <AvatarFallback className="rounded">{hasAnyEditedDetails.by[0]}</AvatarFallback>
                           </Avatar>
                         )}
-                        <span className="text-yellow-600 dark:text-medium">{hasAnyEditedDetails.by}</span>
+                        <span className="text-sm xxxl:text-base text-yellow-600 dark:text-medium">{hasAnyEditedDetails.by}</span>
                       </div>
                     )}
                   </div>
-                  <div className="bg-muted/30 border min-h-20 max-h-32 overflow-y-auto rounded-lg p-4 py-2 text-sm leading-relaxed border-yellow-600 text-yellow-600 dark:text-medium dark:border-medium shadow-inner">
+                  <div className="bg-muted/30 border min-h-16 xxxl:min-h-20 max-h-28 xxxl:max-h-32 overflow-y-auto rounded-lg p-3 xxxl:p-4 py-2 text-xs xxxl:text-sm leading-relaxed border-yellow-600 text-yellow-600 dark:text-medium dark:border-medium shadow-inner">
                     <p className="whitespace-pre-line">{hasAnyEditedDetails?.text || "Nu există un motiv al modificării."}</p>
                   </div>
                 </div>
@@ -361,19 +354,19 @@ function MultiDayPanel({ selectedUser, selectedDates }) {
 
   return (
     <div className="w-full h-full selectedRow flex flex-col overflow-hidden">
-      <div className="mb-4">
-        <h2 className="text-xl text-foreground font-bold tracking-tight">Rezumat Perioadă</h2>
-        <p className="text-sm text-muted-foreground">{selectedDates.length} zile selectate</p>
+      <div className="mb-3 xxxl:mb-4">
+        <h2 className="text-lg xxxl:text-xl text-foreground font-bold tracking-tight">Rezumat Perioadă</h2>
+        <p className="text-xs xxxl:text-sm text-muted-foreground">{selectedDates.length} zile selectate</p>
       </div>
 
-      <Tabs defaultValue="ore" className="h-full w-full flex flex-col gap-4 overflow-hidden">
+      <Tabs defaultValue="ore" className="h-full w-full flex flex-col gap-3 xxxl:gap-4 overflow-hidden">
         <TabsList className="px-0 py-0 rounded-none justify-start h-auto w-full bg-transparent">
-          <div className="border-b w-full flex gap-6">
+          <div className="border-b w-full flex gap-4 xxxl:gap-6">
             {["ore", "rapoarte"].map((tab) => (
               <TabsTrigger
                 key={tab}
                 value={tab}
-                className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 !shadow-none data-[state=active]:border-b-primary data-[state=inactive]:border-t-2 border-t-transparent data-[state=active]:text-foreground rounded-none pb-3 px-1 text-base font-bold text-muted-foreground capitalize transition-all"
+                className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 !shadow-none data-[state=active]:border-b-primary data-[state=inactive]:border-t-2 border-t-transparent data-[state=active]:text-foreground rounded-none pb-2 xxxl:pb-3 px-1 text-sm xxxl:text-base font-bold text-muted-foreground capitalize transition-all"
               >
                 {tab}
               </TabsTrigger>
@@ -385,18 +378,18 @@ function MultiDayPanel({ selectedUser, selectedDates }) {
           <TabsContent value="ore" className="h-full m-0 w-full outline-none">
             {rows.length ? (
               <div className="border rounded-lg overflow-hidden">
-                <table className="w-full text-sm text-left">
+                <table className="w-full text-xs xxxl:text-sm text-left">
                   <thead className="bg-muted/50 border-b">
                     <tr>
-                      <th className="px-4 py-3 font-semibold text-foreground w-2/3">Șantier</th>
-                      <th className="px-4 py-3 font-semibold text-foreground text-center">Ore Totale</th>
+                      <th className="px-3 xxxl:px-4 py-2.5 xxxl:py-3 font-semibold text-foreground w-2/3">Șantier</th>
+                      <th className="px-3 xxxl:px-4 py-2.5 xxxl:py-3 font-semibold text-foreground text-center">Ore Totale</th>
                     </tr>
                   </thead>
                   <tbody className="">
                     {rows.map(([site, { minutes, color }]) => (
-                      <tr key={site} style={{ backgroundColor: color }} className=" transition-color">
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-3">
+                      <tr key={site} style={{ backgroundColor: color }} className="transition-color">
+                        <td className="px-3 xxxl:px-4 py-2.5 xxxl:py-3">
+                          <div className="flex items-center gap-2 xxxl:gap-3">
                             <span
                               className="font-medium"
                               style={{
@@ -408,7 +401,7 @@ function MultiDayPanel({ selectedUser, selectedDates }) {
                           </div>
                         </td>
                         <td
-                          className="px-4 py-3 text-center tracking-wide font-bold tabular-nums"
+                          className="px-3 xxxl:px-4 py-2.5 xxxl:py-3 text-center tracking-wide font-bold tabular-nums"
                           style={{
                             color: getContrastColor(color),
                           }}
@@ -421,8 +414,8 @@ function MultiDayPanel({ selectedUser, selectedDates }) {
                 </table>
               </div>
             ) : (
-              <div className="h-full flex items-center justify-center p-8 border rounded-lg bg-muted/10">
-                <p className="text-muted-foreground text-center font-medium">
+              <div className="h-full flex items-center justify-center p-6 xxxl:p-8 border rounded-lg bg-muted/10">
+                <p className="text-muted-foreground text-center text-sm xxxl:text-base font-medium">
                   Nu există ore pontate în perioada selectată
                   <span className="block text-xs opacity-70 mt-1">(zilele incomplete/active sunt omise)</span>
                 </p>
@@ -432,19 +425,19 @@ function MultiDayPanel({ selectedUser, selectedDates }) {
 
           <TabsContent value="rapoarte" className="h-full m-0 w-full outline-none">
             {rapoarte.length ? (
-              <div className="flex flex-col gap-3 pb-4">
+              <div className="flex flex-col gap-2.5 xxxl:gap-3 pb-3 xxxl:pb-4">
                 {rapoarte.map((r, i) => (
-                  <div key={`${r.date}-${i}`} className="bg-background border rounded-lg p-3 shadow-sm relative overflow-hidden">
-                    <Badge variant="secondary" className="mb-2 ">
+                  <div key={`${r.date}-${i}`} className="bg-background border rounded-lg p-2.5 xxxl:p-3 shadow-sm relative overflow-hidden">
+                    <Badge variant="secondary" className="mb-2 text-xs xxxl:text-sm">
                       {r.date}
                     </Badge>
-                    <p className="text-sm text-foreground whitespace-pre-line leading-relaxed pl-1">{r.note}</p>
+                    <p className="text-xs xxxl:text-sm text-foreground whitespace-pre-line leading-relaxed pl-1">{r.note}</p>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="h-full flex items-center justify-center p-8 border  rounded-lg bg-muted/10">
-                <p className="text-muted-foreground font-medium">Nu există rapoarte în perioada selectată.</p>
+              <div className="h-full flex items-center justify-center p-6 xxxl:p-8 border rounded-lg bg-muted/10">
+                <p className="text-muted-foreground text-sm xxxl:text-base font-medium">Nu există rapoarte în perioada selectată.</p>
               </div>
             )}
           </TabsContent>
@@ -461,18 +454,18 @@ export default function PontajeLeftPanel({ selectedUser, selectedDates }) {
 
   if (!selectedUser) {
     return (
-      <div className="flex items-center bg-card justify-center h-full w-full border rounded-xl shadow-sm p-6">
+      <div className="flex items-center bg-card justify-center h-full w-full border rounded-xl shadow-sm p-4 xxxl:p-6">
         <div className="text-center flex flex-col items-center opacity-60">
-          <FontAwesomeIcon icon={faUserAltSlash} className="text-4xl mb-4 text-muted-foreground" />
-          <h3 className="text-base xl:text-xl font-semibold text-foreground">Niciun utilizator selectat</h3>
-          <p className="text-sm xl:text-base text-muted-foreground mt-1 max-w-[200px]">Selectează un rând din tabel pentru a vedea detaliile pontajelor.</p>
+          <FontAwesomeIcon icon={faUserAltSlash} className="text-3xl xxxl:text-4xl mb-3 xxxl:mb-4 text-muted-foreground" />
+          <h3 className="text-base xxxl:text-xl font-semibold text-foreground">Niciun utilizator selectat</h3>
+          <p className="text-sm xxxl:text-base text-muted-foreground mt-1 max-w-[200px]">Selectează un rând din tabel pentru a vedea detaliile pontajelor.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col w-full h-full bg-card border rounded-xl shadow-sm p-5 overflow-hidden transition-all">
+    <div className="flex flex-col w-full h-full bg-card border rounded-xl shadow-sm p-4 xxxl:p-5 overflow-hidden transition-all">
       {isSingleDay ? <SingleDayPanel selectedUser={selectedUser} /> : <MultiDayPanel selectedUser={selectedUser} selectedDates={selectedDates} />}
     </div>
   );

@@ -150,6 +150,7 @@ export default function FilialaView() {
   if (!isFetching && !f) {
     return <div className="flex h-full items-center justify-center text-muted-foreground text-lg">Filiala nu a fost găsită.</div>;
   }
+
   const companyLogoUrl = c?.logo_url ? `${photoApi}/${c.logo_url}` : null;
 
   // Prepare Location String
@@ -158,32 +159,32 @@ export default function FilialaView() {
 
   return (
     <div className="h-full w-full flex overflow-hidden justify-center items-center">
-      <div className="w-[95%] h-[95%] bg-background p-4 rounded-lg grid grid-cols-1 lg:grid-cols-5 gap-4">
+      <div className="w-[95%] h-[95%] bg-background p-3 xxxl:p-4 rounded-lg grid grid-cols-1 lg:grid-cols-5 gap-3 xxxl:gap-4">
         {/* --- LEFT SIDEBAR (1/5) --- */}
-        <aside className="w-full lg:col-span-1 flex flex-col gap-4 overflow-y-auto">
+        <aside className="w-full lg:col-span-1 flex flex-col gap-3 xxxl:gap-4 overflow-y-auto">
           {/* 1. PARENT COMPANY CARD (UPDATED: Big Arrow Right) */}
           {c && (
-            <Card className="border-border shadow-sm shrink-0 cursor-pointer  transition-colors group" onClick={() => navigate(`/CRM/Companii/View/${c.id}`)} title="Mergi la compania mamă">
-              <CardContent className="p-4 flex items-center gap-4">
+            <Card className="border-border shadow-sm shrink-0 cursor-pointer transition-colors group" onClick={() => navigate(`/CRM/Companii/View/${c.id}`)} title="Mergi la compania mamă">
+              <CardContent className="p-3 xxxl:p-4 flex items-center gap-3 xxxl:gap-4">
                 {/* Logo */}
-                <div className="h-14 w-14 shrink-0 rounded border bg-white flex items-center justify-center overflow-hidden p-1 shadow-sm">
+                <div className="h-12 w-12 xxxl:h-14 xxxl:w-14 shrink-0 rounded border bg-white flex items-center justify-center overflow-hidden p-1 shadow-sm">
                   {companyLogoUrl ? (
                     <img src={companyLogoUrl} alt="Company Logo" className="h-full w-full object-contain" />
                   ) : (
-                    <FontAwesomeIcon icon={faCity} className="text-2xl text-muted-foreground" />
+                    <FontAwesomeIcon icon={faCity} className="text-xl xxxl:text-2xl text-muted-foreground" />
                   )}
                 </div>
 
                 {/* Name */}
                 <div className="flex flex-col overflow-hidden min-w-0">
-                  <span className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Companie Mamă</span>
-                  <span className="text-base font-bold text-foreground truncate leading-tight">{c.nume_companie}</span>
+                  <span className="text-xs xxxl:text-sm font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Companie Mamă</span>
+                  <span className="text-sm xxxl:text-base font-bold text-foreground truncate leading-tight">{c.nume_companie}</span>
                 </div>
 
                 {/* Big Arrow To The Right */}
                 <FontAwesomeIcon
                   icon={faArrowUpRightFromSquare}
-                  className="ml-auto text-xl text-muted-foreground group-hover:text-primary transition-all group-hover:opacity-100 group-hover:scale-110"
+                  className="ml-auto text-lg xxxl:text-xl text-muted-foreground group-hover:text-primary transition-all group-hover:opacity-100 group-hover:scale-110"
                 />
               </CardContent>
             </Card>
@@ -191,22 +192,22 @@ export default function FilialaView() {
 
           {/* 2. FILIALA IDENTITY CARD */}
           <Card className="border-border shadow-sm shrink-0">
-            <CardContent className="p-5 relative flex flex-col items-center text-center">
-              <div className="h-20 w-20 mb-3 rounded-xl border bg-muted/30 flex items-center justify-center overflow-hidden shadow-sm text-primary/80">
-                <FontAwesomeIcon icon={faBuilding} className="text-4xl" />
+            <CardContent className="p-4 xxxl:p-5 relative flex flex-col items-center text-center">
+              <div className="h-16 w-16 xxxl:h-20 xxxl:w-20 mb-2 xxxl:mb-3 rounded-xl border bg-muted/30 flex items-center justify-center overflow-hidden shadow-sm text-primary/80">
+                <FontAwesomeIcon icon={faBuilding} className="text-3xl xxxl:text-4xl" />
               </div>
 
-              <h1 className="text-xl font-bold text-foreground leading-tight mb-1">{safeText(f?.nume_filiala)}</h1>
+              <h1 className="text-lg xxxl:text-xl font-bold text-foreground leading-tight mb-1">{safeText(f?.nume_filiala)}</h1>
 
               {f?.tip_unitate && (
-                <Badge variant="secondary" className="mb-4 text-sm font-semibold uppercase tracking-wide">
+                <Badge variant="secondary" className="mb-3 xxxl:mb-4 text-xs xxxl:text-sm font-semibold uppercase tracking-wide">
                   {f.tip_unitate}
                 </Badge>
               )}
 
               <div className="absolute top-0 p-2 right-0">
                 <Button variant="ghost" disabled={!f} onClick={() => handleEditClick()} size="iconLg" className="text-muted-foreground hover:text-low">
-                  <FontAwesomeIcon icon={faPenToSquare} className="text-lg" />
+                  <FontAwesomeIcon icon={faPenToSquare} className="text-base xxxl:text-lg" />
                 </Button>
               </div>
             </CardContent>
@@ -214,30 +215,30 @@ export default function FilialaView() {
 
           {/* 3. DETAILS CARD */}
           <Card className="border-border shadow-sm">
-            <CardHeader className="py-3 px-5">
-              <CardTitle className="text-base font-bold uppercase text-muted-foreground flex items-center gap-2">
+            <CardHeader className="py-2 xxxl:py-3 px-4 xxxl:px-5">
+              <CardTitle className="text-sm xxxl:text-base font-bold uppercase text-muted-foreground flex items-center gap-2">
                 <FontAwesomeIcon icon={faFileContract} /> Detalii Filială
               </CardTitle>
             </CardHeader>
             <Separator />
-            <CardContent className="p-5 flex flex-col gap-4">
+            <CardContent className="p-4 xxxl:p-5 flex flex-col gap-3 xxxl:gap-4">
               {/* -- LOCATION & CONTACT -- */}
-              <div className="space-y-3">
-                <div className="flex items-start gap-3 text-base">
+              <div className="space-y-2 xxxl:space-y-3">
+                <div className="flex items-start gap-2 xxxl:gap-3 text-sm xxxl:text-base">
                   <div className="w-5 flex justify-center text-muted-foreground mt-0.5">
                     <FontAwesomeIcon icon={faLocationDot} />
                   </div>
                   <span className="text-foreground leading-snug font-medium">{fullLocation}</span>
                 </div>
 
-                <div className="flex items-center gap-3 text-base">
+                <div className="flex items-center gap-2 xxxl:gap-3 text-sm xxxl:text-base">
                   <div className="w-5 flex justify-center text-muted-foreground">
                     <FontAwesomeIcon icon={faEnvelope} />
                   </div>
                   <span className="text-foreground">{safeText(f?.email)}</span>
                 </div>
 
-                <div className="flex items-center gap-3 text-base">
+                <div className="flex items-center gap-2 xxxl:gap-3 text-sm xxxl:text-base">
                   <div className="w-5 flex justify-center text-muted-foreground">
                     <FontAwesomeIcon icon={faPhone} />
                   </div>
@@ -245,18 +246,18 @@ export default function FilialaView() {
                 </div>
 
                 {/* -- COORDINATES (Same Row) -- */}
-                <div className="flex items-center gap-3 text-base">
+                <div className="flex items-center gap-2 xxxl:gap-3 text-sm xxxl:text-base">
                   <div className="w-5 flex justify-center text-muted-foreground">
                     <FontAwesomeIcon icon={faMapPin} />
                   </div>
-                  <div className="grid grid-cols-2 gap-4 w-full">
-                    <div className="flex items-center gap-2 text-sm">
+                  <div className="grid grid-cols-2 gap-3 xxxl:gap-4 w-full">
+                    <div className="flex items-center gap-2 text-xs xxxl:text-sm">
                       <span className="text-muted-foreground">Lat:</span>
-                      <span className=" text-foreground font-medium">{safeText(f?.latitudine)}</span>
+                      <span className="text-foreground font-medium">{safeText(f?.latitudine)}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-sm">
+                    <div className="flex items-center gap-2 text-xs xxxl:text-sm">
                       <span className="text-muted-foreground">Long:</span>
-                      <span className=" text-foreground font-medium">{safeText(f?.longitudine)}</span>
+                      <span className="text-foreground font-medium">{safeText(f?.longitudine)}</span>
                     </div>
                   </div>
                 </div>
@@ -264,7 +265,7 @@ export default function FilialaView() {
 
               {/* -- DECISION LEVEL BADGE -- */}
               <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className={`text-sm font-medium px-2 py-0.5 border ${getDecisionBadgeColor(f?.nivel_decizie)}`}>
+                <Badge variant="outline" className={`text-xs xxxl:text-sm font-medium px-2 py-0.5 border ${getDecisionBadgeColor(f?.nivel_decizie)}`}>
                   Nivel Decizie: {safeText(f?.nivel_decizie)}
                 </Badge>
               </div>
@@ -273,26 +274,26 @@ export default function FilialaView() {
 
           {/* 4. HISTORY / UPDATES CARD */}
           <Card className="border-border shadow-sm shrink-0">
-            <CardHeader className="py-3 px-5">
-              <CardTitle className="text-base font-bold uppercase text-muted-foreground flex items-center gap-2">
+            <CardHeader className="py-2 xxxl:py-3 px-4 xxxl:px-5">
+              <CardTitle className="text-sm xxxl:text-base font-bold uppercase text-muted-foreground flex items-center gap-2">
                 <FontAwesomeIcon icon={faHistory} /> Actualizări
               </CardTitle>
             </CardHeader>
             <Separator />
-            <CardContent className="p-5 space-y-5">
+            <CardContent className="p-4 xxxl:p-5 space-y-4 xxxl:space-y-5">
               {/* UPDATED BY */}
-              <div className="flex gap-3 items-start">
-                <Avatar className="h-10 w-10 border rounded-lg">
+              <div className="flex gap-2 xxxl:gap-3 items-start">
+                <Avatar className="h-9 w-9 xxxl:h-10 xxxl:w-10 border rounded-lg">
                   <AvatarImage src={f?.updated_by_photo_url ? `${photoApi}/${f.updated_by_photo_url}` : null} />
-                  <AvatarFallback className="bg-muted text-sm font-medium rounded-lg">
+                  <AvatarFallback className="bg-muted text-xs xxxl:text-sm font-medium rounded-lg">
                     <FontAwesomeIcon icon={faUser} />
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col">
-                  <span className="text-sm font-bold text-muted-foreground uppercase">Ultima actualizare</span>
-                  <div className="text-sm">
+                  <span className="text-xs xxxl:text-sm font-bold text-muted-foreground uppercase">Ultima actualizare</span>
+                  <div className="text-xs xxxl:text-sm">
                     <span className="font-semibold text-foreground">{f?.updated_by_name || "Sistem"}</span>
-                    <div className="text-muted-foreground text-sm flex items-center gap-1 mt-0.5">
+                    <div className="text-muted-foreground text-xs xxxl:text-sm flex items-center gap-1 mt-0.5">
                       <FontAwesomeIcon icon={faCalendarDays} className="w-2.5" />
                       {formatDate(f?.updated_at)}
                     </div>
@@ -303,18 +304,18 @@ export default function FilialaView() {
               <Separator className="opacity-40" />
 
               {/* CREATED BY */}
-              <div className="flex gap-3 items-start opacity-80">
-                <Avatar className="h-8 w-8 border rounded-lg">
+              <div className="flex gap-2 xxxl:gap-3 items-start opacity-80">
+                <Avatar className="h-10 w-10 xxxl:h-8 xxxl:w-8 border rounded-lg">
                   <AvatarImage src={f?.created_by_photo_url ? `${photoApi}/${f.created_by_photo_url}` : null} />
-                  <AvatarFallback className="bg-muted text-sm font-medium rounded-lg">
+                  <AvatarFallback className="bg-muted text-xs xxxl:text-sm font-medium rounded-lg">
                     <FontAwesomeIcon icon={faUser} />
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col">
-                  <span className="text-sm font-bold text-muted-foreground uppercase">Creat inițial</span>
-                  <div className="text-sm">
+                  <span className="text-xs xxxl:text-sm font-bold text-muted-foreground uppercase">Creat inițial</span>
+                  <div className="text-xs xxxl:text-sm">
                     <span className="font-medium text-foreground">{f?.created_by_name || "Sistem"}</span>
-                    <span className="text-muted-foreground text-sm ml-2">{formatDate(f?.created_at)}</span>
+                    <span className="text-muted-foreground text-xs xxxl:text-sm ml-2">{formatDate(f?.created_at)}</span>
                   </div>
                 </div>
               </div>
@@ -324,14 +325,14 @@ export default function FilialaView() {
 
         {/* --- RIGHT MAIN AREA (4/5) --- */}
         <main className="w-full lg:col-span-4 h-full overflow-hidden">
-          <Tabs defaultValue="contacte" className="h-full w-full flex flex-col gap-4">
-            <TabsList className="bg-card px-6 py-4 rounded-lg border justify-start h-auto w-full">
-              <div className="border-b w-full flex gap-6">
+          <Tabs defaultValue="contacte" className="h-full w-full flex flex-col gap-3 xxxl:gap-4">
+            <TabsList className="bg-card px-4 xxxl:px-6 py-3 xxxl:py-4 rounded-lg border justify-start h-auto w-full">
+              <div className="border-b w-full flex gap-4 xxxl:gap-6">
                 {["istoric", "activitati", "contacte", "santiere", "fișiere"].map((tab) => (
                   <TabsTrigger
                     key={tab}
                     value={tab}
-                    className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 !shadow-none data-[state=active]:border-b-primary data-[state=inactive]:border-t-2 border-t-transparent data-[state=active]:text-foreground rounded-none pb-3 px-1 text-base font-bold text-muted-foreground capitalize transition-all"
+                    className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 !shadow-none data-[state=active]:border-b-primary data-[state=inactive]:border-t-2 border-t-transparent data-[state=active]:text-foreground rounded-none pb-2 xxxl:pb-3 px-1 text-sm xxxl:text-base font-bold text-muted-foreground capitalize transition-all"
                   >
                     {tab}
                   </TabsTrigger>
@@ -354,7 +355,7 @@ export default function FilialaView() {
               </TabsContent>
 
               <TabsContent value="fișiere" className="h-full m-0 w-full">
-                <div className="p-10 text-center text-muted-foreground">Fișiere</div>
+                <div className="p-8 xxxl:p-10 text-center text-muted-foreground">Fișiere</div>
               </TabsContent>
             </div>
           </Tabs>

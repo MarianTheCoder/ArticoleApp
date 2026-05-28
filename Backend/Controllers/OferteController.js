@@ -675,30 +675,45 @@ const getOfertaRetete = async (req, res) => {
     const [retete] = await global.db.execute(
       `
       SELECT
-        id,
-        lucrare_id,
-        original_reteta_id,
+        r.id,
+        r.lucrare_id,
+        r.original_reteta_id,
 
-        limba,
-        cod_reteta,
-        clasa_reteta,
-        denumire,
-        denumire_fr,
-        descriere,
-        descriere_fr,
-        unitate_masura,
+        r.limba,
+        r.cod_reteta,
+        r.clasa_reteta,
+        r.denumire,
+        r.denumire_fr,
+        r.descriere,
+        r.descriere_fr,
+        r.unitate_masura,
 
-        cantitate_lucrare,
-        coloane_valori,
-        sort_order,
+        r.cantitate_lucrare,
+        r.cantitate_lucrare_formula,
 
-        created_at,
-        created_by_user_id,
-        updated_at,
-        updated_by_user_id
-      FROM S03_Oferte_Retete
-      WHERE lucrare_id = ?
-      ORDER BY sort_order ASC, created_at ASC
+        r.coloane_valori,
+        r.sort_order,
+
+        DATE_FORMAT(r.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at,
+        r.created_by_user_id,
+        u_rc.name AS created_by_name,
+        u_rc.photo_url AS created_by_photo_url,
+
+        DATE_FORMAT(r.updated_at, '%Y-%m-%dT%H:%i:%sZ') AS updated_at,
+        r.updated_by_user_id,
+        u_ru.name AS updated_by_name,
+        u_ru.photo_url AS updated_by_photo_url
+
+      FROM S03_Oferte_Retete r
+
+      LEFT JOIN S00_Utilizatori u_rc
+        ON u_rc.id = r.created_by_user_id
+
+      LEFT JOIN S00_Utilizatori u_ru
+        ON u_ru.id = r.updated_by_user_id
+
+      WHERE r.lucrare_id = ?
+      ORDER BY r.sort_order ASC, r.created_at ASC
       `,
       [lucrare_id],
     );
@@ -728,10 +743,15 @@ const getOfertaRetete = async (req, res) => {
         ore.cantitate_in_reteta,
         COALESCE(re.cantitate, re_fallback.cantitate, ore.cantitate_in_reteta) AS cantitate_in_reteta_default,
 
-        ore.created_at,
+        DATE_FORMAT(ore.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at,
         ore.created_by_user_id,
-        ore.updated_at,
+        u_ore_c.name AS created_by_name,
+        u_ore_c.photo_url AS created_by_photo_url,
+
+        DATE_FORMAT(ore.updated_at, '%Y-%m-%dT%H:%i:%sZ') AS updated_at,
         ore.updated_by_user_id,
+        u_ore_u.name AS updated_by_name,
+        u_ore_u.photo_url AS updated_by_photo_url,
 
         -- DEFINIȚIA COPIATĂ ÎN OFERTĂ
         od.id AS oferta_def_id,
@@ -746,10 +766,16 @@ const getOfertaRetete = async (req, res) => {
         od.photo_url,
         od.unitate_masura,
         od.cost AS cost_definitie_snapshot,
-        od.created_at AS oferta_def_created_at,
+
+        DATE_FORMAT(od.created_at, '%Y-%m-%dT%H:%i:%sZ') AS oferta_def_created_at,
         od.created_by_user_id AS oferta_def_created_by_user_id,
-        od.updated_at AS oferta_def_updated_at,
+        u_od_c.name AS oferta_def_created_by_name,
+        u_od_c.photo_url AS oferta_def_created_by_photo_url,
+
+        DATE_FORMAT(od.updated_at, '%Y-%m-%dT%H:%i:%sZ') AS oferta_def_updated_at,
         od.updated_by_user_id AS oferta_def_updated_by_user_id,
+        u_od_u.name AS oferta_def_updated_by_name,
+        u_od_u.photo_url AS oferta_def_updated_by_photo_url,
 
         -- VARIANTA COPIATĂ ÎN OFERTĂ, DACĂ ESTE SELECTATĂ
         os.id AS oferta_sub_id,
@@ -760,10 +786,16 @@ const getOfertaRetete = async (req, res) => {
         os.photo_url AS photo_specific_url,
         os.cost AS cost_subcategorie_snapshot,
         os.detalii_extra,
-        os.created_at AS oferta_sub_created_at,
+
+        DATE_FORMAT(os.created_at, '%Y-%m-%dT%H:%i:%sZ') AS oferta_sub_created_at,
         os.created_by_user_id AS oferta_sub_created_by_user_id,
-        os.updated_at AS oferta_sub_updated_at,
+        u_os_c.name AS oferta_sub_created_by_name,
+        u_os_c.photo_url AS oferta_sub_created_by_photo_url,
+
+        DATE_FORMAT(os.updated_at, '%Y-%m-%dT%H:%i:%sZ') AS oferta_sub_updated_at,
         os.updated_by_user_id AS oferta_sub_updated_by_user_id,
+        u_os_u.name AS oferta_sub_updated_by_name,
+        u_os_u.photo_url AS oferta_sub_updated_by_photo_url,
 
         -- DEFINIȚIA LIVE DIN CATALOGUL ORIGINAL, PENTRU DIALOG
         cd.id AS definitie_live_id,
@@ -777,10 +809,16 @@ const getOfertaRetete = async (req, res) => {
         cd.photo_url AS photo_url_live,
         cd.unitate_masura AS unitate_masura_live,
         cd.cost AS cost_definitie_live,
-        cd.created_at AS created_at_definitie_live,
+
+        DATE_FORMAT(cd.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at_definitie_live,
         cd.created_by_user_id AS created_by_user_id_definitie_live,
-        cd.updated_at AS updated_at_definitie_live,
-        cd.updated_by_user_id AS updated_by_user_id_definitie_live
+        u_cd_c.name AS created_by_name_definitie_live,
+        u_cd_c.photo_url AS created_by_photo_url_definitie_live,
+
+        DATE_FORMAT(cd.updated_at, '%Y-%m-%dT%H:%i:%sZ') AS updated_at_definitie_live,
+        cd.updated_by_user_id AS updated_by_user_id_definitie_live,
+        u_cd_u.name AS updated_by_name_definitie_live,
+        u_cd_u.photo_url AS updated_by_photo_url_definitie_live
 
       FROM S03_Oferte_Retete_Elemente ore
 
@@ -804,6 +842,30 @@ const getOfertaRetete = async (req, res) => {
        AND re_fallback.reteta_id = ort.original_reteta_id
        AND re_fallback.definitie_id = ore.original_definitie_id
 
+      LEFT JOIN S00_Utilizatori u_ore_c
+        ON u_ore_c.id = ore.created_by_user_id
+
+      LEFT JOIN S00_Utilizatori u_ore_u
+        ON u_ore_u.id = ore.updated_by_user_id
+
+      LEFT JOIN S00_Utilizatori u_od_c
+        ON u_od_c.id = od.created_by_user_id
+
+      LEFT JOIN S00_Utilizatori u_od_u
+        ON u_od_u.id = od.updated_by_user_id
+
+      LEFT JOIN S00_Utilizatori u_os_c
+        ON u_os_c.id = os.created_by_user_id
+
+      LEFT JOIN S00_Utilizatori u_os_u
+        ON u_os_u.id = os.updated_by_user_id
+
+      LEFT JOIN S00_Utilizatori u_cd_c
+        ON u_cd_c.id = cd.created_by_user_id
+
+      LEFT JOIN S00_Utilizatori u_cd_u
+        ON u_cd_u.id = cd.updated_by_user_id
+
       WHERE ore.oferta_reteta_id IN (${placeholders})
       ORDER BY ore.id ASC
       `,
@@ -820,22 +882,35 @@ const getOfertaRetete = async (req, res) => {
       const [subcategorii] = await global.db.execute(
         `
         SELECT
-          id,
-          definitie_id,
-          cod_specific,
-          descriere,
-          descriere_fr,
-          photo_url,
-          cost,
-          detalii_extra,
+          s.id,
+          s.definitie_id,
+          s.cod_specific,
+          s.descriere,
+          s.descriere_fr,
+          s.photo_url,
+          s.cost,
+          s.detalii_extra,
 
-          created_at,
-          created_by_user_id,
-          updated_at,
-          updated_by_user_id
-        FROM S02_Catalog_Subcategorii
-        WHERE definitie_id IN (${definitiePlaceholders})
-        ORDER BY cod_specific ASC, id ASC
+          DATE_FORMAT(s.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at,
+          s.created_by_user_id,
+          u_sc.name AS created_by_name,
+          u_sc.photo_url AS created_by_photo_url,
+
+          DATE_FORMAT(s.updated_at, '%Y-%m-%dT%H:%i:%sZ') AS updated_at,
+          s.updated_by_user_id,
+          u_su.name AS updated_by_name,
+          u_su.photo_url AS updated_by_photo_url
+
+        FROM S02_Catalog_Subcategorii s
+
+        LEFT JOIN S00_Utilizatori u_sc
+          ON u_sc.id = s.created_by_user_id
+
+        LEFT JOIN S00_Utilizatori u_su
+          ON u_su.id = s.updated_by_user_id
+
+        WHERE s.definitie_id IN (${definitiePlaceholders})
+        ORDER BY s.cod_specific ASC, s.id ASC
         `,
         definitieIds,
       );
@@ -880,8 +955,13 @@ const getOfertaRetete = async (req, res) => {
 
             created_at: el.created_at_definitie_live,
             created_by_user_id: el.created_by_user_id_definitie_live,
+            created_by_name: el.created_by_name_definitie_live,
+            created_by_photo_url: el.created_by_photo_url_definitie_live,
+
             updated_at: el.updated_at_definitie_live,
             updated_by_user_id: el.updated_by_user_id_definitie_live,
+            updated_by_name: el.updated_by_name_definitie_live,
+            updated_by_photo_url: el.updated_by_photo_url_definitie_live,
           }
         : null;
 
@@ -902,8 +982,13 @@ const getOfertaRetete = async (req, res) => {
 
         created_at: el.oferta_def_created_at,
         created_by_user_id: el.oferta_def_created_by_user_id,
+        created_by_name: el.oferta_def_created_by_name,
+        created_by_photo_url: el.oferta_def_created_by_photo_url,
+
         updated_at: el.oferta_def_updated_at,
         updated_by_user_id: el.oferta_def_updated_by_user_id,
+        updated_by_name: el.oferta_def_updated_by_name,
+        updated_by_photo_url: el.oferta_def_updated_by_photo_url,
       };
 
       const subcategorieOferta = hasVariant
@@ -920,8 +1005,13 @@ const getOfertaRetete = async (req, res) => {
 
             created_at: el.oferta_sub_created_at,
             created_by_user_id: el.oferta_sub_created_by_user_id,
+            created_by_name: el.oferta_sub_created_by_name,
+            created_by_photo_url: el.oferta_sub_created_by_photo_url,
+
             updated_at: el.oferta_sub_updated_at,
             updated_by_user_id: el.oferta_sub_updated_by_user_id,
+            updated_by_name: el.oferta_sub_updated_by_name,
+            updated_by_photo_url: el.oferta_sub_updated_by_photo_url,
           }
         : null;
 
@@ -950,7 +1040,6 @@ const getOfertaRetete = async (req, res) => {
         subcategorie_oferta: subcategorieOferta,
         definitie_live: definitieLive,
 
-        // alias-uri pentru componentele existente
         cost_definitie_actual: definitieLive?.cost ?? null,
         cod_definitie_actual: definitieLive?.cod_definitie ?? null,
         denumire_actual: definitieLive?.denumire ?? null,
@@ -962,8 +1051,13 @@ const getOfertaRetete = async (req, res) => {
 
         created_at_actual: definitieLive?.created_at ?? null,
         created_by_user_id_actual: definitieLive?.created_by_user_id ?? null,
+        created_by_name_actual: definitieLive?.created_by_name ?? null,
+        created_by_photo_url_actual: definitieLive?.created_by_photo_url ?? null,
+
         updated_at_actual: definitieLive?.updated_at ?? null,
         updated_by_user_id_actual: definitieLive?.updated_by_user_id ?? null,
+        updated_by_name_actual: definitieLive?.updated_by_name ?? null,
+        updated_by_photo_url_actual: definitieLive?.updated_by_photo_url ?? null,
 
         subcategorii: subcategoriiByDefinitie[el.original_definitie_id] || [],
       };
@@ -1010,6 +1104,38 @@ const jsonForDb = (value) => {
   return JSON.stringify(value);
 };
 
+const normalizeText = (value) => {
+  return String(value || "")
+    .trim()
+    .toLowerCase();
+};
+
+const getFurnizorFromDetaliiExtra = (detaliiExtra) => {
+  const parsed = parseMaybeJson(detaliiExtra, null);
+
+  if (!parsed) return "";
+
+  if (typeof parsed === "string") {
+    return parsed.trim();
+  }
+
+  if (Array.isArray(parsed)) {
+    const found = parsed.find((item) => {
+      const name = normalizeText(item?.name || item?.nume || item?.label || item?.key);
+
+      return ["furnizor", "furnizori", "supplier", "provider"].includes(name);
+    });
+
+    return String(found?.value || found?.valoare || "").trim();
+  }
+
+  if (typeof parsed === "object") {
+    return String(parsed.furnizor || parsed.furnizor_nume || parsed.supplier || parsed.provider || "").trim();
+  }
+
+  return "";
+};
+
 const editOfertaRetetaElementVariant = async (req, res) => {
   const conn = await global.db.getConnection();
 
@@ -1041,8 +1167,7 @@ const editOfertaRetetaElementVariant = async (req, res) => {
 
     const updatedBy = req.user?.id || updated_by_user_id || null;
 
-    let oldVariantPhotoToDeleteAfterCommit = null;
-    let oldVariantIdToDeleteAfterCommit = null;
+    let photosToDeleteAfterCommit = [];
 
     await conn.beginTransaction();
 
@@ -1082,8 +1207,8 @@ const editOfertaRetetaElementVariant = async (req, res) => {
 
     const element = elementRows[0];
 
-    oldVariantIdToDeleteAfterCommit = element.oferta_subcategorie_id || null;
-    oldVariantPhotoToDeleteAfterCommit = element.oferta_subcategorie_photo_url || null;
+    const oldVariantId = element.oferta_subcategorie_id || null;
+    const oldVariantPhotoUrl = element.oferta_subcategorie_photo_url || null;
 
     const ofertaSnapshotFolder = await getOfertaSnapshotFolder(conn, element.lucrare_id);
 
@@ -1113,10 +1238,50 @@ const editOfertaRetetaElementVariant = async (req, res) => {
 
       const liveSub = subRows[0];
 
+      const [existingSubRows] = await conn.execute(
+        `
+        SELECT
+          id,
+          photo_url
+        FROM S03_Oferte_Catalog_Subcategorii
+        WHERE oferta_definitie_id = ?
+          AND original_subcategorie_id = ?
+        LIMIT 1
+        `,
+        [element.oferta_definitie_id, liveSub.id],
+      );
+
+      const existingOfertaSub = existingSubRows[0] || null;
+
       const copiedVariantPhotoUrl = liveSub.photo_url ? await copyPhotoToOfertaSnapshot(liveSub.photo_url, ofertaSnapshotFolder, "variante") : null;
 
-      const [insertSubResult] = await conn.execute(
-        `
+      let newOfertaSubcategorieId;
+
+      if (existingOfertaSub) {
+        newOfertaSubcategorieId = existingOfertaSub.id;
+
+        await conn.execute(
+          `
+          UPDATE S03_Oferte_Catalog_Subcategorii
+          SET
+            cod_specific = ?,
+            descriere = ?,
+            descriere_fr = ?,
+            photo_url = ?,
+            cost = ?,
+            detalii_extra = ?,
+            updated_by_user_id = ?
+          WHERE id = ?
+          `,
+          [liveSub.cod_specific, liveSub.descriere || null, liveSub.descriere_fr || null, copiedVariantPhotoUrl, cost, jsonForDb(liveSub.detalii_extra), updatedBy, existingOfertaSub.id],
+        );
+
+        if (existingOfertaSub.photo_url && existingOfertaSub.photo_url !== copiedVariantPhotoUrl) {
+          photosToDeleteAfterCommit.push(existingOfertaSub.photo_url);
+        }
+      } else {
+        const [insertSubResult] = await conn.execute(
+          `
           INSERT INTO S03_Oferte_Catalog_Subcategorii (
             oferta_definitie_id,
             original_subcategorie_id,
@@ -1133,23 +1298,24 @@ const editOfertaRetetaElementVariant = async (req, res) => {
           )
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `,
-        [
-          element.oferta_definitie_id,
-          liveSub.id,
+          [
+            element.oferta_definitie_id,
+            liveSub.id,
 
-          liveSub.cod_specific,
-          liveSub.descriere || null,
-          liveSub.descriere_fr || null,
-          copiedVariantPhotoUrl,
-          cost,
-          jsonForDb(liveSub.detalii_extra),
+            liveSub.cod_specific,
+            liveSub.descriere || null,
+            liveSub.descriere_fr || null,
+            copiedVariantPhotoUrl,
+            cost,
+            jsonForDb(liveSub.detalii_extra),
 
-          updatedBy,
-          updatedBy,
-        ],
-      );
+            updatedBy,
+            updatedBy,
+          ],
+        );
 
-      const newOfertaSubcategorieId = insertSubResult.insertId;
+        newOfertaSubcategorieId = insertSubResult.insertId;
+      }
 
       await conn.execute(
         `
@@ -1164,14 +1330,18 @@ const editOfertaRetetaElementVariant = async (req, res) => {
         [newOfertaSubcategorieId, liveSub.id, cantitate, updatedBy, id],
       );
 
-      if (oldVariantIdToDeleteAfterCommit) {
+      if (oldVariantId && Number(oldVariantId) !== Number(newOfertaSubcategorieId)) {
         await conn.execute(
           `
           DELETE FROM S03_Oferte_Catalog_Subcategorii
           WHERE id = ?
           `,
-          [oldVariantIdToDeleteAfterCommit],
+          [oldVariantId],
         );
+
+        if (oldVariantPhotoUrl) {
+          photosToDeleteAfterCommit.push(oldVariantPhotoUrl);
+        }
       }
     } else {
       const [defRows] = await conn.execute(
@@ -1236,6 +1406,10 @@ const editOfertaRetetaElementVariant = async (req, res) => {
         ],
       );
 
+      if (element.oferta_definitie_photo_url && element.oferta_definitie_photo_url !== copiedDefinitionPhotoUrl) {
+        photosToDeleteAfterCommit.push(element.oferta_definitie_photo_url);
+      }
+
       await conn.execute(
         `
         UPDATE S03_Oferte_Retete_Elemente
@@ -1249,21 +1423,25 @@ const editOfertaRetetaElementVariant = async (req, res) => {
         [cantitate, updatedBy, id],
       );
 
-      if (oldVariantIdToDeleteAfterCommit) {
+      if (oldVariantId) {
         await conn.execute(
           `
           DELETE FROM S03_Oferte_Catalog_Subcategorii
           WHERE id = ?
           `,
-          [oldVariantIdToDeleteAfterCommit],
+          [oldVariantId],
         );
+
+        if (oldVariantPhotoUrl) {
+          photosToDeleteAfterCommit.push(oldVariantPhotoUrl);
+        }
       }
     }
 
     await conn.commit();
 
-    if (oldVariantPhotoToDeleteAfterCommit) {
-      await deleteOfertaSnapshotPhoto(oldVariantPhotoToDeleteAfterCommit);
+    for (const photoUrl of photosToDeleteAfterCommit) {
+      await deleteOfertaSnapshotPhoto(photoUrl);
     }
 
     return res.status(200).json({
@@ -1280,6 +1458,1395 @@ const editOfertaRetetaElementVariant = async (req, res) => {
   }
 };
 
+const reorderOfertaRetete = async (req, res) => {
+  const conn = await global.db.getConnection();
+
+  try {
+    const { lucrare_id, ordered_ids, updated_by_user_id } = req.body;
+
+    if (!lucrare_id) {
+      return res.status(400).json({ message: "lucrare_id este obligatoriu." });
+    }
+
+    if (!Array.isArray(ordered_ids) || ordered_ids.length === 0) {
+      return res.status(400).json({ message: "ordered_ids trebuie să fie o listă validă." });
+    }
+
+    const ids = ordered_ids.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0);
+
+    if (ids.length !== ordered_ids.length) {
+      return res.status(400).json({ message: "ordered_ids conține ID-uri invalide." });
+    }
+
+    const uniqueIds = [...new Set(ids)];
+
+    if (uniqueIds.length !== ids.length) {
+      return res.status(400).json({ message: "ordered_ids conține duplicate." });
+    }
+
+    const updatedBy = req.user?.id || updated_by_user_id || null;
+
+    await conn.beginTransaction();
+
+    const [countRows] = await conn.execute(
+      `
+      SELECT COUNT(*) AS total
+      FROM S03_Oferte_Retete
+      WHERE lucrare_id = ?
+      `,
+      [lucrare_id],
+    );
+
+    const totalRetete = Number(countRows?.[0]?.total || 0);
+
+    if (totalRetete !== ids.length) {
+      await conn.rollback();
+      return res.status(400).json({
+        message: "Lista de sortare trebuie să conțină toate rețetele lucrării.",
+      });
+    }
+
+    const placeholders = ids.map(() => "?").join(",");
+
+    const [existingRows] = await conn.execute(
+      `
+      SELECT id
+      FROM S03_Oferte_Retete
+      WHERE lucrare_id = ?
+        AND id IN (${placeholders})
+      `,
+      [lucrare_id, ...ids],
+    );
+
+    if (existingRows.length !== ids.length) {
+      await conn.rollback();
+      return res.status(400).json({
+        message: "Unele rețete nu aparțin acestei lucrări.",
+      });
+    }
+
+    const caseSql = ids.map(() => "WHEN ? THEN ?").join(" ");
+    const caseValues = [];
+
+    ids.forEach((id, index) => {
+      caseValues.push(id, index + 1);
+    });
+
+    await conn.execute(
+      `
+      UPDATE S03_Oferte_Retete
+      SET
+        sort_order = CASE id
+          ${caseSql}
+          ELSE sort_order
+        END,
+        updated_by_user_id = ?
+      WHERE lucrare_id = ?
+        AND id IN (${placeholders})
+      `,
+      [...caseValues, updatedBy, lucrare_id, ...ids],
+    );
+
+    await conn.commit();
+
+    return res.status(200).json({
+      ok: true,
+      ordered_ids: ids,
+      message: "Ordinea rețetelor a fost actualizată.",
+    });
+  } catch (err) {
+    await conn.rollback();
+    console.error("reorderOfertaRetete error:", err);
+    return res.status(500).json({ message: "Eroare la reordonarea rețetelor." });
+  } finally {
+    conn.release();
+  }
+};
+
+const editOfertaReteta = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { cantitate_lucrare, cantitate_lucrare_formula, coloane_valori, updated_by_user_id } = req.body;
+
+    if (!id) {
+      return res.status(400).json({ message: "ID-ul rețetei este obligatoriu." });
+    }
+
+    const cantitateLucrare = Number(cantitate_lucrare);
+
+    if (!Number.isFinite(cantitateLucrare) || cantitateLucrare <= 0) {
+      return res.status(400).json({ message: "Cantitatea trebuie să fie mai mare de 0." });
+    }
+
+    const cantitateLucrareFormula =
+      cantitate_lucrare_formula === null || cantitate_lucrare_formula === undefined || String(cantitate_lucrare_formula).trim() === "" ? null : String(cantitate_lucrare_formula).trim().slice(0, 255);
+
+    const updatedBy = req.user?.id || updated_by_user_id || null;
+
+    const [result] = await global.db.execute(
+      `
+      UPDATE S03_Oferte_Retete
+      SET
+        cantitate_lucrare = ?,
+        cantitate_lucrare_formula = ?,
+        coloane_valori = ?,
+        updated_by_user_id = ?
+      WHERE id = ?
+      `,
+      [cantitateLucrare, cantitateLucrareFormula, parseJsonForDb(coloane_valori), updatedBy, id],
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Rețeta din ofertă nu a fost găsită." });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      id: Number(id),
+      cantitate_lucrare: cantitateLucrare,
+      cantitate_lucrare_formula: cantitateLucrareFormula,
+      message: "Rețeta din ofertă a fost actualizată.",
+    });
+  } catch (err) {
+    console.error("editOfertaReteta error:", err);
+    return res.status(500).json({ message: "Eroare la actualizarea rețetei din ofertă." });
+  }
+};
+
+const deleteOfertaRetete = async (req, res) => {
+  const conn = await global.db.getConnection();
+
+  try {
+    const ids = [...new Set((req.body?.ids || []).map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0))];
+
+    const lucrareId = req.body?.lucrare_id ? Number(req.body.lucrare_id) : null;
+
+    if (ids.length === 0) {
+      return res.status(400).json({ message: "Lista de rețete este obligatorie." });
+    }
+
+    const placeholders = ids.map(() => "?").join(",");
+
+    await conn.beginTransaction();
+
+    const [retetaRows] = await conn.execute(
+      `
+      SELECT
+        id,
+        lucrare_id,
+        cod_reteta,
+        denumire
+      FROM S03_Oferte_Retete
+      WHERE id IN (${placeholders})
+      `,
+      ids,
+    );
+
+    if (retetaRows.length !== ids.length) {
+      await conn.rollback();
+      return res.status(404).json({ message: "Una sau mai multe rețete nu au fost găsite." });
+    }
+
+    if (lucrareId && retetaRows.some((r) => Number(r.lucrare_id) !== lucrareId)) {
+      await conn.rollback();
+      return res.status(400).json({ message: "Unele rețete nu aparțin lucrării selectate." });
+    }
+
+    const affectedLucrareIds = [...new Set(retetaRows.map((r) => Number(r.lucrare_id)).filter(Boolean))];
+
+    const [photoRows] = await conn.execute(
+      `
+      SELECT photo_url
+      FROM S03_Oferte_Catalog_Definitii
+      WHERE oferta_reteta_id IN (${placeholders})
+
+      UNION ALL
+
+      SELECT os.photo_url
+      FROM S03_Oferte_Catalog_Subcategorii os
+      INNER JOIN S03_Oferte_Catalog_Definitii od
+        ON od.id = os.oferta_definitie_id
+      WHERE od.oferta_reteta_id IN (${placeholders})
+      `,
+      [...ids, ...ids],
+    );
+
+    const photosToDelete = [...new Set(photoRows.map((row) => row.photo_url).filter(Boolean))];
+
+    await conn.execute(
+      `
+      DELETE FROM S03_Oferte_Retete_Elemente
+      WHERE oferta_reteta_id IN (${placeholders})
+      `,
+      ids,
+    );
+
+    await conn.execute(
+      `
+      DELETE os
+      FROM S03_Oferte_Catalog_Subcategorii os
+      INNER JOIN S03_Oferte_Catalog_Definitii od
+        ON od.id = os.oferta_definitie_id
+      WHERE od.oferta_reteta_id IN (${placeholders})
+      `,
+      ids,
+    );
+
+    await conn.execute(
+      `
+      DELETE FROM S03_Oferte_Catalog_Definitii
+      WHERE oferta_reteta_id IN (${placeholders})
+      `,
+      ids,
+    );
+
+    const [deleteResult] = await conn.execute(
+      `
+      DELETE FROM S03_Oferte_Retete
+      WHERE id IN (${placeholders})
+      `,
+      ids,
+    );
+
+    if (deleteResult.affectedRows !== ids.length) {
+      await conn.rollback();
+      return res.status(500).json({ message: "Nu toate rețetele au putut fi șterse." });
+    }
+
+    for (const affectedLucrareId of affectedLucrareIds) {
+      const [remainingRows] = await conn.execute(
+        `
+        SELECT id
+        FROM S03_Oferte_Retete
+        WHERE lucrare_id = ?
+        ORDER BY sort_order ASC, created_at ASC
+        `,
+        [affectedLucrareId],
+      );
+
+      for (let i = 0; i < remainingRows.length; i += 1) {
+        await conn.execute(
+          `
+          UPDATE S03_Oferte_Retete
+          SET sort_order = ?
+          WHERE id = ?
+          `,
+          [i + 1, remainingRows[i].id],
+        );
+      }
+    }
+
+    await conn.commit();
+
+    for (const photoUrl of photosToDelete) {
+      await deleteOfertaSnapshotPhoto(photoUrl);
+    }
+
+    return res.status(200).json({
+      ok: true,
+      ids,
+      lucrare_ids: affectedLucrareIds,
+      message: ids.length === 1 ? "Rețeta a fost ștearsă din ofertă." : "Rețetele au fost șterse din ofertă.",
+    });
+  } catch (err) {
+    await conn.rollback();
+    console.error("deleteOfertaRetete error:", err);
+    return res.status(500).json({ message: "Eroare la ștergerea rețetelor din ofertă." });
+  } finally {
+    conn.release();
+  }
+};
+
+const duplicateOfertaRetete = async (req, res) => {
+  const conn = await global.db.getConnection();
+  const copiedPhotoUrls = [];
+
+  const copyTrackedPhoto = async (photoUrl, ofertaSnapshotFolder, typeFolder) => {
+    const copied = await copyPhotoToOfertaSnapshot(photoUrl, ofertaSnapshotFolder, typeFolder);
+
+    if (copied && String(copied).replace(/^\/+/, "").startsWith("uploads/Oferte/")) {
+      copiedPhotoUrls.push(copied);
+    }
+
+    return copied;
+  };
+
+  try {
+    const { lucrare_id, items, created_by_user_id } = req.body;
+
+    if (!lucrare_id) {
+      return res.status(400).json({ message: "lucrare_id este obligatoriu." });
+    }
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: "items trebuie să conțină cel puțin o rețetă." });
+    }
+
+    const duplicateItems = items.map((item) => ({
+      source_oferta_reteta_id: Number(item.source_oferta_reteta_id),
+      cantitate_lucrare: Number(item.cantitate_lucrare),
+      only_definitions: item.only_definitions === true,
+      rewrite_costs: item.rewrite_costs === true,
+      rewrite_quantities: item.rewrite_quantities === true,
+      coloane_valori: item.coloane_valori || [],
+    }));
+
+    const invalidItem = duplicateItems.find(
+      (item) => !Number.isInteger(item.source_oferta_reteta_id) || item.source_oferta_reteta_id <= 0 || !Number.isFinite(item.cantitate_lucrare) || item.cantitate_lucrare <= 0,
+    );
+
+    if (invalidItem) {
+      return res.status(400).json({ message: "Datele pentru dublare nu sunt valide." });
+    }
+
+    const createdBy = req.user?.id || created_by_user_id || null;
+
+    await conn.beginTransaction();
+
+    const [sortRows] = await conn.execute(
+      `
+      SELECT COALESCE(MAX(sort_order), 0) AS max_sort
+      FROM S03_Oferte_Retete
+      WHERE lucrare_id = ?
+      `,
+      [lucrare_id],
+    );
+
+    let nextSort = Number(sortRows?.[0]?.max_sort || 0) + 1;
+
+    const ofertaSnapshotFolder = await getOfertaSnapshotFolder(conn, lucrare_id);
+    const duplicatedIds = [];
+
+    for (const item of duplicateItems) {
+      const [sourceRows] = await conn.execute(
+        `
+        SELECT
+          id,
+          lucrare_id,
+          original_reteta_id,
+
+          limba,
+          cod_reteta,
+          clasa_reteta,
+          denumire,
+          denumire_fr,
+          descriere,
+          descriere_fr,
+          unitate_masura
+        FROM S03_Oferte_Retete
+        WHERE id = ?
+          AND lucrare_id = ?
+        `,
+        [item.source_oferta_reteta_id, lucrare_id],
+      );
+
+      if (sourceRows.length === 0) {
+        await conn.rollback();
+        return res.status(404).json({
+          message: `Rețeta sursă ${item.source_oferta_reteta_id} nu a fost găsită în lucrarea curentă.`,
+        });
+      }
+
+      const sourceReteta = sourceRows[0];
+
+      const [insertReteta] = await conn.execute(
+        `
+        INSERT INTO S03_Oferte_Retete (
+          lucrare_id,
+          original_reteta_id,
+
+          limba,
+          cod_reteta,
+          clasa_reteta,
+          denumire,
+          denumire_fr,
+          descriere,
+          descriere_fr,
+          unitate_masura,
+
+          cantitate_lucrare,
+          coloane_valori,
+          sort_order,
+
+          created_by_user_id
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        [
+          lucrare_id,
+          sourceReteta.original_reteta_id,
+
+          sourceReteta.limba,
+          sourceReteta.cod_reteta,
+          sourceReteta.clasa_reteta,
+          sourceReteta.denumire,
+          sourceReteta.denumire_fr || null,
+          sourceReteta.descriere || null,
+          sourceReteta.descriere_fr || null,
+          sourceReteta.unitate_masura,
+
+          item.cantitate_lucrare,
+          parseJsonForDb(item.coloane_valori),
+          nextSort,
+
+          createdBy,
+        ],
+      );
+
+      nextSort += 1;
+
+      const newOfertaRetetaId = insertReteta.insertId;
+      duplicatedIds.push(newOfertaRetetaId);
+
+      const [sourceElements] = await conn.execute(
+        `
+        SELECT
+          ore.id,
+          ore.original_reteta_element_id,
+
+          ore.oferta_definitie_id,
+          ore.oferta_subcategorie_id,
+
+          ore.original_definitie_id,
+          ore.original_subcategorie_id,
+
+          ore.cantitate_in_reteta,
+          COALESCE(re.cantitate, re_fallback.cantitate, ore.cantitate_in_reteta) AS original_cantitate_in_reteta,
+
+          od.limba AS od_limba,
+          od.tip_resursa AS od_tip_resursa,
+          od.cod_definitie AS od_cod_definitie,
+          od.denumire AS od_denumire,
+          od.denumire_fr AS od_denumire_fr,
+          od.descriere AS od_descriere,
+          od.descriere_fr AS od_descriere_fr,
+          od.photo_url AS od_photo_url,
+          od.unitate_masura AS od_unitate_masura,
+          od.cost AS od_cost,
+
+          os.id AS os_id,
+          os.original_subcategorie_id AS os_original_subcategorie_id,
+          os.cod_specific AS os_cod_specific,
+          os.descriere AS os_descriere,
+          os.descriere_fr AS os_descriere_fr,
+          os.photo_url AS os_photo_url,
+          os.cost AS os_cost,
+          os.detalii_extra AS os_detalii_extra,
+
+          cd.id AS cd_id,
+          cd.limba AS cd_limba,
+          cd.tip_resursa AS cd_tip_resursa,
+          cd.cod_definitie AS cd_cod_definitie,
+          cd.denumire AS cd_denumire,
+          cd.denumire_fr AS cd_denumire_fr,
+          cd.descriere AS cd_descriere,
+          cd.descriere_fr AS cd_descriere_fr,
+          cd.photo_url AS cd_photo_url,
+          cd.unitate_masura AS cd_unitate_masura,
+          cd.cost AS cd_cost
+
+        FROM S03_Oferte_Retete_Elemente ore
+
+        INNER JOIN S03_Oferte_Catalog_Definitii od
+          ON od.id = ore.oferta_definitie_id
+
+        LEFT JOIN S03_Oferte_Catalog_Subcategorii os
+          ON os.id = ore.oferta_subcategorie_id
+
+        LEFT JOIN S02_Catalog_Definitii cd
+          ON cd.id = ore.original_definitie_id
+
+        LEFT JOIN S02_Retete_Elemente re
+          ON re.id = ore.original_reteta_element_id
+
+        LEFT JOIN S02_Retete_Elemente re_fallback
+          ON re.id IS NULL
+         AND re_fallback.reteta_id = ?
+         AND re_fallback.definitie_id = ore.original_definitie_id
+
+        WHERE ore.oferta_reteta_id = ?
+        ORDER BY ore.id ASC
+        `,
+        [sourceReteta.original_reteta_id, sourceReteta.id],
+      );
+
+      for (const el of sourceElements) {
+        const hasVariant = !!el.oferta_subcategorie_id;
+        const forceOriginalDefinition = item.only_definitions && hasVariant && !!el.cd_id;
+
+        const defSnapshot = forceOriginalDefinition
+          ? {
+              limba: el.cd_limba,
+              tip_resursa: el.cd_tip_resursa,
+              cod_definitie: el.cd_cod_definitie,
+              denumire: el.cd_denumire,
+              denumire_fr: el.cd_denumire_fr,
+              descriere: el.cd_descriere,
+              descriere_fr: el.cd_descriere_fr,
+              photo_url: el.cd_photo_url,
+              unitate_masura: el.cd_unitate_masura,
+              cost: el.cd_cost,
+            }
+          : {
+              limba: el.od_limba,
+              tip_resursa: el.od_tip_resursa,
+              cod_definitie: el.od_cod_definitie,
+              denumire: el.od_denumire,
+              denumire_fr: el.od_denumire_fr,
+              descriere: el.od_descriere,
+              descriere_fr: el.od_descriere_fr,
+              photo_url: el.od_photo_url,
+              unitate_masura: el.od_unitate_masura,
+              cost: el.od_cost,
+            };
+        const nextDefCost = item.only_definitions && item.rewrite_costs && el.cd_id ? Number(el.cd_cost || 0) : Number(defSnapshot.cost || 0);
+        const copiedDefinitionPhotoUrl = defSnapshot.photo_url ? await copyTrackedPhoto(defSnapshot.photo_url, ofertaSnapshotFolder, "definitii") : null;
+
+        const [insertDef] = await conn.execute(
+          `
+          INSERT INTO S03_Oferte_Catalog_Definitii (
+            oferta_reteta_id,
+            original_definitie_id,
+
+            limba,
+            tip_resursa,
+            cod_definitie,
+            denumire,
+            denumire_fr,
+            descriere,
+            descriere_fr,
+            photo_url,
+            unitate_masura,
+            cost,
+
+            created_by_user_id
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `,
+          [
+            newOfertaRetetaId,
+            el.original_definitie_id,
+
+            defSnapshot.limba || "RO",
+            defSnapshot.tip_resursa,
+            defSnapshot.cod_definitie,
+            defSnapshot.denumire,
+            defSnapshot.denumire_fr || null,
+            defSnapshot.descriere || null,
+            defSnapshot.descriere_fr || null,
+            copiedDefinitionPhotoUrl,
+            defSnapshot.unitate_masura,
+            nextDefCost,
+
+            createdBy,
+          ],
+        );
+
+        const newOfertaDefinitieId = insertDef.insertId;
+
+        let newOfertaSubcategorieId = null;
+
+        if (!item.only_definitions && hasVariant && el.os_id) {
+          const copiedSubPhotoUrl = el.os_photo_url ? await copyTrackedPhoto(el.os_photo_url, ofertaSnapshotFolder, "variante") : null;
+
+          const [insertSub] = await conn.execute(
+            `
+            INSERT INTO S03_Oferte_Catalog_Subcategorii (
+              oferta_definitie_id,
+              original_subcategorie_id,
+
+              cod_specific,
+              descriere,
+              descriere_fr,
+              photo_url,
+              cost,
+              detalii_extra,
+
+              created_by_user_id
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `,
+            [
+              newOfertaDefinitieId,
+              el.os_original_subcategorie_id || el.original_subcategorie_id || null,
+
+              el.os_cod_specific,
+              el.os_descriere || null,
+              el.os_descriere_fr || null,
+              copiedSubPhotoUrl,
+              el.os_cost || 0,
+              parseJsonForDb(parseMaybeJson(el.os_detalii_extra, null)),
+
+              createdBy,
+            ],
+          );
+
+          newOfertaSubcategorieId = insertSub.insertId;
+        }
+
+        const nextCantitateInReteta = item.only_definitions && item.rewrite_quantities ? Number(el.original_cantitate_in_reteta || el.cantitate_in_reteta || 0) : Number(el.cantitate_in_reteta || 0);
+
+        await conn.execute(
+          `
+          INSERT INTO S03_Oferte_Retete_Elemente (
+            oferta_reteta_id,
+
+            original_reteta_element_id,
+
+            oferta_definitie_id,
+            oferta_subcategorie_id,
+
+            original_definitie_id,
+            original_subcategorie_id,
+
+            cantitate_in_reteta,
+
+            created_by_user_id
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          `,
+          [
+            newOfertaRetetaId,
+
+            el.original_reteta_element_id || null,
+
+            newOfertaDefinitieId,
+            newOfertaSubcategorieId,
+
+            el.original_definitie_id,
+            newOfertaSubcategorieId ? el.original_subcategorie_id || el.os_original_subcategorie_id || null : null,
+
+            nextCantitateInReteta,
+
+            createdBy,
+          ],
+        );
+      }
+    }
+
+    await conn.commit();
+
+    return res.status(201).json({
+      ok: true,
+      ids: duplicatedIds,
+      lucrare_id: Number(lucrare_id),
+      message: duplicatedIds.length === 1 ? "Rețeta a fost dublată." : "Rețetele au fost dublate.",
+    });
+  } catch (err) {
+    await conn.rollback();
+
+    for (const photoUrl of copiedPhotoUrls) {
+      await deleteOfertaSnapshotPhoto(photoUrl);
+    }
+
+    console.error("duplicateOfertaRetete error:", err);
+    return res.status(500).json({ message: "Eroare la dublarea rețetelor din ofertă." });
+  } finally {
+    conn.release();
+  }
+};
+
+const actualizeazaOfertaRetete = async (req, res) => {
+  const conn = await global.db.getConnection();
+  const copiedPhotoUrls = [];
+  const photosToDeleteAfterCommit = [];
+
+  const copyTrackedPhoto = async (photoUrl, ofertaSnapshotFolder, typeFolder) => {
+    const copied = await copyPhotoToOfertaSnapshot(photoUrl, ofertaSnapshotFolder, typeFolder);
+
+    if (copied && String(copied).replace(/^\/+/, "").startsWith("uploads/Oferte/")) {
+      copiedPhotoUrls.push(copied);
+    }
+
+    return copied;
+  };
+
+  try {
+    const { lucrare_id, items, rewrite_costs, rewrite_quantities, updated_by_user_id } = req.body;
+
+    if (!lucrare_id) {
+      return res.status(400).json({ message: "lucrare_id este obligatoriu." });
+    }
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: "items trebuie să conțină cel puțin o rețetă." });
+    }
+
+    const updateItems = items.map((item) => ({
+      oferta_reteta_id: Number(item.oferta_reteta_id),
+      original_reteta_id: item.original_reteta_id ? Number(item.original_reteta_id) : null,
+    }));
+
+    const invalidItem = updateItems.find((item) => !Number.isInteger(item.oferta_reteta_id) || item.oferta_reteta_id <= 0);
+
+    if (invalidItem) {
+      return res.status(400).json({ message: "Datele pentru actualizare nu sunt valide." });
+    }
+
+    const updatedBy = req.user?.id || updated_by_user_id || null;
+    const shouldRewriteCosts = rewrite_costs === true;
+    const shouldRewriteQuantities = rewrite_quantities === true;
+
+    await conn.beginTransaction();
+
+    const ofertaSnapshotFolder = await getOfertaSnapshotFolder(conn, lucrare_id);
+
+    const updatedIds = [];
+    const failedItems = [];
+
+    for (const item of updateItems) {
+      const [ofertaRows] = await conn.execute(
+        `
+        SELECT
+          id,
+          lucrare_id,
+          original_reteta_id,
+          cod_reteta,
+          denumire
+        FROM S03_Oferte_Retete
+        WHERE id = ?
+          AND lucrare_id = ?
+        `,
+        [item.oferta_reteta_id, lucrare_id],
+      );
+
+      if (ofertaRows.length === 0) {
+        failedItems.push({
+          oferta_reteta_id: item.oferta_reteta_id,
+          reason: "OFFER_RECIPE_NOT_FOUND",
+          message: "Rețeta nu a fost găsită în lucrarea curentă.",
+        });
+
+        continue;
+      }
+
+      const ofertaReteta = ofertaRows[0];
+      const originalRetetaId = item.original_reteta_id || ofertaReteta.original_reteta_id;
+
+      if (!originalRetetaId) {
+        failedItems.push({
+          oferta_reteta_id: item.oferta_reteta_id,
+          cod_reteta: ofertaReteta.cod_reteta,
+          denumire: ofertaReteta.denumire,
+          reason: "NO_ORIGINAL_LINK",
+          message: "Rețeta nu are rețetă originală legată.",
+        });
+
+        continue;
+      }
+
+      const [retetaOriginalRows] = await conn.execute(
+        `
+        SELECT
+          id,
+          limba,
+          cod_reteta,
+          clasa_reteta,
+          denumire,
+          denumire_fr,
+          descriere,
+          descriere_fr,
+          unitate_masura
+        FROM S02_Retete
+        WHERE id = ?
+        `,
+        [originalRetetaId],
+      );
+
+      if (retetaOriginalRows.length === 0) {
+        failedItems.push({
+          oferta_reteta_id: item.oferta_reteta_id,
+          original_reteta_id: originalRetetaId,
+          cod_reteta: ofertaReteta.cod_reteta,
+          denumire: ofertaReteta.denumire,
+          reason: "ORIGINAL_NOT_FOUND",
+          message: "Rețeta originală nu mai există.",
+        });
+
+        continue;
+      }
+
+      const retetaOriginala = retetaOriginalRows[0];
+
+      await conn.execute(
+        `
+        UPDATE S03_Oferte_Retete
+        SET
+          limba = ?,
+          cod_reteta = ?,
+          clasa_reteta = ?,
+          denumire = ?,
+          denumire_fr = ?,
+          descriere = ?,
+          descriere_fr = ?,
+          unitate_masura = ?,
+          updated_by_user_id = ?
+        WHERE id = ?
+        `,
+        [
+          retetaOriginala.limba || "RO",
+          retetaOriginala.cod_reteta,
+          retetaOriginala.clasa_reteta,
+          retetaOriginala.denumire,
+          retetaOriginala.denumire_fr || null,
+          retetaOriginala.descriere || null,
+          retetaOriginala.descriere_fr || null,
+          retetaOriginala.unitate_masura,
+          updatedBy,
+          ofertaReteta.id,
+        ],
+      );
+
+      const [elements] = await conn.execute(
+        `
+        SELECT
+          ore.id,
+          ore.original_reteta_element_id,
+          COALESCE(re.id, re_fallback.id) AS original_reteta_element_id_resolved,
+
+          ore.oferta_definitie_id,
+          ore.oferta_subcategorie_id,
+
+          ore.original_definitie_id,
+          ore.original_subcategorie_id,
+
+          ore.cantitate_in_reteta,
+          COALESCE(re.cantitate, re_fallback.cantitate, ore.cantitate_in_reteta) AS original_cantitate_in_reteta,
+
+          od.photo_url AS od_photo_url,
+          od.cost AS od_cost,
+
+          os.id AS os_id,
+          os.original_subcategorie_id AS os_original_subcategorie_id,
+          os.photo_url AS os_photo_url,
+          os.cost AS os_cost,
+
+          cd.id AS cd_id,
+          cd.limba AS cd_limba,
+          cd.tip_resursa AS cd_tip_resursa,
+          cd.cod_definitie AS cd_cod_definitie,
+          cd.denumire AS cd_denumire,
+          cd.denumire_fr AS cd_denumire_fr,
+          cd.descriere AS cd_descriere,
+          cd.descriere_fr AS cd_descriere_fr,
+          cd.photo_url AS cd_photo_url,
+          cd.unitate_masura AS cd_unitate_masura,
+          cd.cost AS cd_cost
+
+        FROM S03_Oferte_Retete_Elemente ore
+
+        INNER JOIN S03_Oferte_Catalog_Definitii od
+          ON od.id = ore.oferta_definitie_id
+
+        LEFT JOIN S03_Oferte_Catalog_Subcategorii os
+          ON os.id = ore.oferta_subcategorie_id
+
+        LEFT JOIN S02_Catalog_Definitii cd
+          ON cd.id = ore.original_definitie_id
+
+        LEFT JOIN S02_Retete_Elemente re
+          ON re.id = ore.original_reteta_element_id
+
+        LEFT JOIN S02_Retete_Elemente re_fallback
+          ON re.id IS NULL
+         AND re_fallback.reteta_id = ?
+         AND re_fallback.definitie_id = ore.original_definitie_id
+
+        WHERE ore.oferta_reteta_id = ?
+        ORDER BY ore.id ASC
+        `,
+        [originalRetetaId, ofertaReteta.id],
+      );
+
+      for (const el of elements) {
+        if (el.cd_id) {
+          const copiedDefinitionPhotoUrl = el.cd_photo_url ? await copyTrackedPhoto(el.cd_photo_url, ofertaSnapshotFolder, "definitii") : null;
+          const nextDefCost = shouldRewriteCosts ? Number(el.cd_cost || 0) : Number(el.od_cost || 0);
+
+          await conn.execute(
+            `
+            UPDATE S03_Oferte_Catalog_Definitii
+            SET
+              limba = ?,
+              tip_resursa = ?,
+              cod_definitie = ?,
+              denumire = ?,
+              denumire_fr = ?,
+              descriere = ?,
+              descriere_fr = ?,
+              photo_url = ?,
+              unitate_masura = ?,
+              cost = ?,
+              updated_by_user_id = ?
+            WHERE id = ?
+            `,
+            [
+              el.cd_limba || "RO",
+              el.cd_tip_resursa,
+              el.cd_cod_definitie,
+              el.cd_denumire,
+              el.cd_denumire_fr || null,
+              el.cd_descriere || null,
+              el.cd_descriere_fr || null,
+              copiedDefinitionPhotoUrl,
+              el.cd_unitate_masura,
+              nextDefCost,
+              updatedBy,
+              el.oferta_definitie_id,
+            ],
+          );
+
+          if (el.od_photo_url && el.od_photo_url !== copiedDefinitionPhotoUrl) {
+            photosToDeleteAfterCommit.push(el.od_photo_url);
+          }
+        }
+
+        if (el.oferta_subcategorie_id) {
+          const originalSubcategorieId = el.original_subcategorie_id || el.os_original_subcategorie_id || null;
+
+          if (originalSubcategorieId) {
+            const [liveSubRows] = await conn.execute(
+              `
+              SELECT
+                id,
+                definitie_id,
+                cod_specific,
+                descriere,
+                descriere_fr,
+                photo_url,
+                cost,
+                detalii_extra
+              FROM S02_Catalog_Subcategorii
+              WHERE id = ?
+                AND definitie_id = ?
+              `,
+              [originalSubcategorieId, el.original_definitie_id],
+            );
+
+            if (liveSubRows.length > 0) {
+              const liveSub = liveSubRows[0];
+              const copiedSubPhotoUrl = liveSub.photo_url ? await copyTrackedPhoto(liveSub.photo_url, ofertaSnapshotFolder, "variante") : null;
+              const nextSubCost = shouldRewriteCosts ? Number(liveSub.cost || 0) : Number(el.os_cost || 0);
+
+              await conn.execute(
+                `
+                UPDATE S03_Oferte_Catalog_Subcategorii
+                SET
+                  cod_specific = ?,
+                  descriere = ?,
+                  descriere_fr = ?,
+                  photo_url = ?,
+                  cost = ?,
+                  detalii_extra = ?,
+                  updated_by_user_id = ?
+                WHERE id = ?
+                `,
+                [liveSub.cod_specific, liveSub.descriere || null, liveSub.descriere_fr || null, copiedSubPhotoUrl, nextSubCost, jsonForDb(liveSub.detalii_extra), updatedBy, el.oferta_subcategorie_id],
+              );
+
+              if (el.os_photo_url && el.os_photo_url !== copiedSubPhotoUrl) {
+                photosToDeleteAfterCommit.push(el.os_photo_url);
+              }
+            }
+          }
+        }
+
+        const nextCantitateInReteta = shouldRewriteQuantities ? Number(el.original_cantitate_in_reteta || el.cantitate_in_reteta || 0) : Number(el.cantitate_in_reteta || 0);
+
+        await conn.execute(
+          `
+          UPDATE S03_Oferte_Retete_Elemente
+          SET
+            original_reteta_element_id = ?,
+            cantitate_in_reteta = ?,
+            updated_by_user_id = ?
+          WHERE id = ?
+          `,
+          [el.original_reteta_element_id_resolved || el.original_reteta_element_id || null, nextCantitateInReteta, updatedBy, el.id],
+        );
+      }
+
+      updatedIds.push(ofertaReteta.id);
+    }
+
+    await conn.commit();
+
+    for (const photoUrl of photosToDeleteAfterCommit) {
+      await deleteOfertaSnapshotPhoto(photoUrl);
+    }
+
+    return res.status(200).json({
+      ok: true,
+      ids: updatedIds,
+      failed: failedItems,
+      updated_count: updatedIds.length,
+      failed_count: failedItems.length,
+      lucrare_id: Number(lucrare_id),
+      message:
+        failedItems.length > 0 ? `${updatedIds.length} rețete actualizate, ${failedItems.length} eșuate.` : updatedIds.length === 1 ? "Rețeta a fost actualizată." : "Rețetele au fost actualizate.",
+    });
+  } catch (err) {
+    await conn.rollback();
+
+    for (const photoUrl of copiedPhotoUrls) {
+      await deleteOfertaSnapshotPhoto(photoUrl);
+    }
+
+    console.error("actualizeazaOfertaRetete error:", err);
+    return res.status(500).json({ message: "Eroare la actualizarea rețetelor din ofertă." });
+  } finally {
+    conn.release();
+  }
+};
+
+const getOfertaReteteFurnizori = async (req, res) => {
+  try {
+    const { lucrare_id, items } = req.body;
+
+    if (!lucrare_id) {
+      return res.status(400).json({ message: "lucrare_id este obligatoriu." });
+    }
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: "items trebuie să conțină cel puțin o rețetă." });
+    }
+
+    const ofertaRetetaIds = [...new Set(items.map((item) => Number(item.oferta_reteta_id)).filter((id) => Number.isInteger(id) && id > 0))];
+
+    if (ofertaRetetaIds.length === 0) {
+      return res.status(400).json({ message: "Lista de rețete este invalidă." });
+    }
+
+    const placeholders = ofertaRetetaIds.map(() => "?").join(",");
+
+    const [rows] = await global.db.execute(
+      `
+      SELECT DISTINCT
+        cd.tip_resursa,
+        s.detalii_extra
+      FROM S03_Oferte_Retete_Elemente ore
+
+      INNER JOIN S03_Oferte_Retete ort
+        ON ort.id = ore.oferta_reteta_id
+
+      INNER JOIN S02_Catalog_Definitii cd
+        ON cd.id = ore.original_definitie_id
+
+      INNER JOIN S02_Catalog_Subcategorii s
+        ON s.definitie_id = cd.id
+
+      WHERE ore.oferta_reteta_id IN (${placeholders})
+        AND ort.lucrare_id = ?
+        AND cd.tip_resursa IN ('material', 'utilaj')
+      `,
+      [...ofertaRetetaIds, lucrare_id],
+    );
+
+    const materialeMap = new Map();
+    const utilajeMap = new Map();
+
+    rows.forEach((row) => {
+      const furnizor = getFurnizorFromDetaliiExtra(row.detalii_extra);
+
+      if (!furnizor) return;
+
+      const key = normalizeText(furnizor);
+      const targetMap = row.tip_resursa === "utilaj" ? utilajeMap : materialeMap;
+
+      if (!targetMap.has(key)) {
+        targetMap.set(key, {
+          value: furnizor,
+          label: furnizor,
+        });
+      }
+    });
+
+    return res.status(200).json({
+      materiale: [...materialeMap.values()].sort((a, b) => a.label.localeCompare(b.label, "ro")),
+      utilaje: [...utilajeMap.values()].sort((a, b) => a.label.localeCompare(b.label, "ro")),
+    });
+  } catch (err) {
+    console.error("getOfertaReteteFurnizori error:", err);
+    return res.status(500).json({ message: "Eroare la încărcarea furnizorilor." });
+  }
+};
+
+const applyOfertaReteteFurnizori = async (req, res) => {
+  const conn = await global.db.getConnection();
+  const copiedPhotoUrls = [];
+  const photosToDeleteAfterCommit = [];
+
+  const copyTrackedPhoto = async (photoUrl, ofertaSnapshotFolder, typeFolder) => {
+    const copied = await copyPhotoToOfertaSnapshot(photoUrl, ofertaSnapshotFolder, typeFolder);
+
+    if (copied && String(copied).replace(/^\/+/, "").startsWith("uploads/Oferte/")) {
+      copiedPhotoUrls.push(copied);
+    }
+
+    return copied;
+  };
+
+  try {
+    const { lucrare_id, items, apply_materiale, apply_utilaje, material_furnizor, utilaj_furnizor, rewrite_costs, rewrite_quantities, updated_by_user_id } = req.body;
+
+    if (!lucrare_id) {
+      return res.status(400).json({ message: "lucrare_id este obligatoriu." });
+    }
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: "items trebuie să conțină cel puțin o rețetă." });
+    }
+
+    const ofertaRetetaIds = [...new Set(items.map((item) => Number(item.oferta_reteta_id)).filter((id) => Number.isInteger(id) && id > 0))];
+
+    if (ofertaRetetaIds.length === 0) {
+      return res.status(400).json({ message: "Lista de rețete este invalidă." });
+    }
+
+    const shouldApplyMateriale = apply_materiale === true && !!material_furnizor;
+    const shouldApplyUtilaje = apply_utilaje === true && !!utilaj_furnizor;
+    const shouldRewriteCosts = rewrite_costs === true;
+    const shouldRewriteQuantities = rewrite_quantities === true;
+
+    if (!shouldApplyMateriale && !shouldApplyUtilaje) {
+      return res.status(400).json({ message: "Selectează cel puțin un furnizor." });
+    }
+
+    const updatedBy = req.user?.id || updated_by_user_id || null;
+    const placeholders = ofertaRetetaIds.map(() => "?").join(",");
+
+    await conn.beginTransaction();
+
+    const ofertaSnapshotFolder = await getOfertaSnapshotFolder(conn, lucrare_id);
+
+    const [elements] = await conn.execute(
+      `
+      SELECT
+        ore.id,
+        ore.oferta_reteta_id,
+        ore.oferta_definitie_id,
+        ore.oferta_subcategorie_id,
+        ore.original_definitie_id,
+        ore.original_reteta_element_id,
+        ore.cantitate_in_reteta,
+        COALESCE(re.cantitate, re_fallback.cantitate, ore.cantitate_in_reteta) AS original_cantitate_in_reteta,
+
+        cd.tip_resursa,
+
+        current_def.cost AS current_def_cost,
+
+        old_sub.cost AS old_sub_cost,
+        old_sub.photo_url AS old_sub_photo_url
+      FROM S03_Oferte_Retete_Elemente ore
+
+      INNER JOIN S03_Oferte_Retete ort
+        ON ort.id = ore.oferta_reteta_id
+
+      INNER JOIN S02_Catalog_Definitii cd
+        ON cd.id = ore.original_definitie_id
+
+      INNER JOIN S03_Oferte_Catalog_Definitii current_def
+        ON current_def.id = ore.oferta_definitie_id
+
+      LEFT JOIN S03_Oferte_Catalog_Subcategorii old_sub
+        ON old_sub.id = ore.oferta_subcategorie_id
+
+      LEFT JOIN S02_Retete_Elemente re
+        ON re.id = ore.original_reteta_element_id
+
+      LEFT JOIN S02_Retete_Elemente re_fallback
+        ON re.id IS NULL
+       AND re_fallback.reteta_id = ort.original_reteta_id
+       AND re_fallback.definitie_id = ore.original_definitie_id
+
+      WHERE ore.oferta_reteta_id IN (${placeholders})
+        AND ort.lucrare_id = ?
+        AND cd.tip_resursa IN ('material', 'utilaj')
+      `,
+      [...ofertaRetetaIds, lucrare_id],
+    );
+
+    const updatedElements = [];
+    const failedItems = [];
+
+    for (const el of elements) {
+      if (el.tip_resursa === "material" && !shouldApplyMateriale) continue;
+      if (el.tip_resursa === "utilaj" && !shouldApplyUtilaje) continue;
+
+      const wantedFurnizor = el.tip_resursa === "utilaj" ? utilaj_furnizor : material_furnizor;
+
+      const [subRows] = await conn.execute(
+        `
+        SELECT
+          id,
+          definitie_id,
+          cod_specific,
+          descriere,
+          descriere_fr,
+          photo_url,
+          cost,
+          detalii_extra
+        FROM S02_Catalog_Subcategorii
+        WHERE definitie_id = ?
+        ORDER BY id ASC
+        `,
+        [el.original_definitie_id],
+      );
+
+      const liveSub = subRows.find((sub) => normalizeText(getFurnizorFromDetaliiExtra(sub.detalii_extra)) === normalizeText(wantedFurnizor));
+
+      if (!liveSub) {
+        failedItems.push({
+          oferta_reteta_id: el.oferta_reteta_id,
+          oferta_reteta_element_id: el.id,
+          original_definitie_id: el.original_definitie_id,
+          tip_resursa: el.tip_resursa,
+          furnizor: wantedFurnizor,
+          reason: "NO_VARIANT_FOR_SUPPLIER",
+          message: "Nu există variantă pentru furnizorul selectat.",
+        });
+
+        continue;
+      }
+
+      const currentCost = el.old_sub_cost !== null && el.old_sub_cost !== undefined ? Number(el.old_sub_cost || 0) : Number(el.current_def_cost || 0);
+
+      const nextSubCost = shouldRewriteCosts ? Number(liveSub.cost || 0) : currentCost;
+
+      const nextCantitateInReteta = shouldRewriteQuantities ? Number(el.original_cantitate_in_reteta || el.cantitate_in_reteta || 0) : Number(el.cantitate_in_reteta || 0);
+
+      const copiedSubPhotoUrl = liveSub.photo_url ? await copyTrackedPhoto(liveSub.photo_url, ofertaSnapshotFolder, "variante") : null;
+
+      const [existingRows] = await conn.execute(
+        `
+        SELECT
+          id,
+          photo_url
+        FROM S03_Oferte_Catalog_Subcategorii
+        WHERE oferta_definitie_id = ?
+          AND original_subcategorie_id = ?
+        LIMIT 1
+        `,
+        [el.oferta_definitie_id, liveSub.id],
+      );
+
+      let ofertaSubcategorieId;
+
+      if (existingRows.length > 0) {
+        const existing = existingRows[0];
+        ofertaSubcategorieId = existing.id;
+
+        await conn.execute(
+          `
+          UPDATE S03_Oferte_Catalog_Subcategorii
+          SET
+            cod_specific = ?,
+            descriere = ?,
+            descriere_fr = ?,
+            photo_url = ?,
+            cost = ?,
+            detalii_extra = ?,
+            updated_by_user_id = ?
+          WHERE id = ?
+          `,
+          [liveSub.cod_specific, liveSub.descriere || null, liveSub.descriere_fr || null, copiedSubPhotoUrl, nextSubCost, jsonForDb(liveSub.detalii_extra), updatedBy, existing.id],
+        );
+
+        if (existing.photo_url && existing.photo_url !== copiedSubPhotoUrl) {
+          photosToDeleteAfterCommit.push(existing.photo_url);
+        }
+      } else {
+        const [insertResult] = await conn.execute(
+          `
+          INSERT INTO S03_Oferte_Catalog_Subcategorii (
+            oferta_definitie_id,
+            original_subcategorie_id,
+
+            cod_specific,
+            descriere,
+            descriere_fr,
+            photo_url,
+            cost,
+            detalii_extra,
+
+            created_by_user_id,
+            updated_by_user_id
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `,
+          [
+            el.oferta_definitie_id,
+            liveSub.id,
+
+            liveSub.cod_specific,
+            liveSub.descriere || null,
+            liveSub.descriere_fr || null,
+            copiedSubPhotoUrl,
+            nextSubCost,
+            jsonForDb(liveSub.detalii_extra),
+
+            updatedBy,
+            updatedBy,
+          ],
+        );
+
+        ofertaSubcategorieId = insertResult.insertId;
+      }
+
+      await conn.execute(
+        `
+        UPDATE S03_Oferte_Retete_Elemente
+        SET
+          oferta_subcategorie_id = ?,
+          original_subcategorie_id = ?,
+          original_reteta_element_id = ?,
+          cantitate_in_reteta = ?,
+          updated_by_user_id = ?
+        WHERE id = ?
+        `,
+        [ofertaSubcategorieId, liveSub.id, el.original_reteta_element_id || null, nextCantitateInReteta, updatedBy, el.id],
+      );
+
+      if (el.oferta_subcategorie_id && Number(el.oferta_subcategorie_id) !== Number(ofertaSubcategorieId) && el.old_sub_photo_url) {
+        photosToDeleteAfterCommit.push(el.old_sub_photo_url);
+      }
+
+      updatedElements.push(el.id);
+    }
+
+    await conn.commit();
+
+    for (const photoUrl of photosToDeleteAfterCommit) {
+      await deleteOfertaSnapshotPhoto(photoUrl);
+    }
+
+    return res.status(200).json({
+      ok: true,
+      ids: updatedElements,
+      failed: failedItems,
+      updated_count: updatedElements.length,
+      failed_count: failedItems.length,
+      lucrare_id: Number(lucrare_id),
+      message:
+        failedItems.length > 0
+          ? `${updatedElements.length} elemente actualizate, ${failedItems.length} eșuate.`
+          : updatedElements.length === 1
+            ? "Furnizorul a fost aplicat."
+            : "Furnizorii au fost aplicați.",
+    });
+  } catch (err) {
+    await conn.rollback();
+
+    for (const photoUrl of copiedPhotoUrls) {
+      await deleteOfertaSnapshotPhoto(photoUrl);
+    }
+
+    console.error("applyOfertaReteteFurnizori error:", err);
+    return res.status(500).json({ message: "Eroare la aplicarea furnizorilor." });
+  } finally {
+    conn.release();
+  }
+};
 module.exports = {
   getOferte,
   addOferta,
@@ -1294,4 +2861,12 @@ module.exports = {
   addOfertaReteta,
   getOfertaRetete,
   editOfertaRetetaElementVariant,
+  reorderOfertaRetete,
+  editOfertaReteta,
+  deleteOfertaRetete,
+  duplicateOfertaRetete,
+  actualizeazaOfertaRetete,
+
+  getOfertaReteteFurnizori,
+  applyOfertaReteteFurnizori,
 };

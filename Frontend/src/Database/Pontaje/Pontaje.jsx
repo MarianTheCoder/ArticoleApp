@@ -140,7 +140,7 @@ export default function Pontaje() {
     poza: true,
     nume: true,
     firma: true,
-    specializare: true,
+    specializare: false,
     santier: true,
     intrare: true,
     iesire: true,
@@ -288,10 +288,10 @@ export default function Pontaje() {
   }, [filterNume]);
   // -------------------------------------------------------
   return (
-    <div className="h-screen w-full flex overflow-hidden  items-center justify-center">
-      <div className="w-[95%] xxl:h-[95%] h-90h overflow-hidden relative bg-background grid  grid-cols-[minmax(38rem,1fr)_3fr] rounded-lg">
+    <div className="h-screen w-full flex overflow-hidden items-center justify-center">
+      <div className="w-[95%] h-90h xxxl:h-[95%] overflow-hidden relative bg-background grid grid-cols-[minmax(30rem,0.85fr)_3fr] xxxl:grid-cols-[minmax(38rem,1fr)_3fr] rounded-lg">
         {/* Left column: calendar + right-panel maps */}
-        <div className="flex flex-col p-6 pr-3 gap-6 overflow-hidden  h-full rounded-lg">
+        <div className="flex flex-col p-4 pr-2 xxxl:p-6 xxxl:pr-3 gap-4 xxxl:gap-6 overflow-hidden h-full rounded-lg">
           <PontajeCalendar selectedDates={selectedDates} setSelectedDates={handleCalendarSetDates} onReset={handleCalendarReset} />
           <PontajeLeftPanel selectedUser={selectedUser} selectedDates={selectedDates} />
           <PontajAddDialog
@@ -315,40 +315,40 @@ export default function Pontaje() {
         </div>
 
         {/* Right column: table USERS */}
-        <div className="flex flex-col gap-4 overflow-hidden p-6 pl-3 b w-full h-full">
-          <div className="flex border bg-card shadow-md w-full p-6 rounded-lg justify-between items-center">
+        <div className="flex flex-col gap-3 xxxl:gap-4 overflow-hidden p-4 pl-2 xxxl:p-6 xxxl:pl-3 b w-full h-full">
+          <div className="flex border bg-card shadow-md w-full p-4 xxxl:p-6 rounded-lg justify-between items-center">
             <div className="flex items-center">
-              <FontAwesomeIcon icon={faClock} className="text-primary text-3xl mr-2" />
-              <h1 className="text-2xl font-bold text-foreground tracking-wide">Pontaje Utilizatori</h1>
+              <FontAwesomeIcon icon={faClock} className="text-primary text-2xl xxxl:text-3xl mr-2" />
+              <h1 className="text-xl xxxl:text-2xl font-bold text-foreground tracking-wide">Pontaje Utilizatori</h1>
             </div>
             <div>
               <div>
-                <Badge variant="outline" className="flex items-center gap-2 px-3 py-1.5 text-base bg-card shadow-sm">
-                  <FontAwesomeIcon icon={faClock} className="text-muted-foreground text-lg" />
-                  <span className=" font-medium text-foreground">Fus orar: {locationInfo.name}</span>
+                <Badge variant="outline" className="flex items-center gap-2 px-2.5 xxxl:px-3 py-1 xxxl:py-1.5 text-sm xxxl:text-base bg-card shadow-sm">
+                  <FontAwesomeIcon icon={faClock} className="text-muted-foreground text-base xxxl:text-lg" />
+                  <span className="font-medium text-foreground">Fus orar: {locationInfo.name}</span>
                   <div className="w-[1px] h-4 bg-border mx-1"></div>
-                  <span className="flex items-center gap-1.5  text-muted-foreground">
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
                     <span className="tabular-nums font-semibold">{utcOffset}</span>
                   </span>
                 </Badge>
               </div>
             </div>
           </div>
-          <div className="h-full flex flex-col overflow-hidden border  bg-card shadow-md rounded-lg gap-4 p-6">
+          <div className="h-full flex flex-col overflow-hidden border bg-card shadow-md rounded-lg gap-3 xxxl:gap-4 p-4 xxxl:p-6">
             {/* filters */}
-            <div className="flex w-full items-center justify-between h-14">
+            <div className="flex w-full items-center justify-between h-12 xxxl:h-14">
               <div className="grid grid-cols-[1fr_auto] w-full h-full items-center">
-                <div className="flex h-full items-center pl-2 gap-2 ">
-                  <FontAwesomeIcon icon={faFilter} className="text-primary text-2xl" />
-                  <h2 className="text-foreground text-xl font-semibold">Filtre</h2>
+                <div className="flex h-full items-center pl-1 xxxl:pl-2 gap-2">
+                  <FontAwesomeIcon icon={faFilter} className="text-primary text-xl xxxl:text-2xl" />
+                  <h2 className="text-foreground text-lg xxxl:text-xl font-semibold">Filtre</h2>
                   <Separator orientation="vertical" className="h-full w-1 rounded-full" />
                   <div className="relative">
-                    <Input placeholder="Caută nume..." value={filterNume} onChange={(e) => setFilterNume(e.target.value)} className="h-9 max-w-52 text-foreground text-sm" />
+                    <Input placeholder="Caută nume..." value={filterNume} onChange={(e) => setFilterNume(e.target.value)} className="h-8 xxxl:h-9 max-w-44 xxxl:max-w-52 text-foreground text-sm" />
                     {filterNume && (
                       <Button
                         variant="ghost"
                         size="sm"
-                        className=" absolute right-1 top-1/2 hover:bg-transparent -translate-y-1/2 px-2 text-muted-foreground"
+                        className="absolute right-1 top-1/2 hover:bg-transparent -translate-y-1/2 px-2 text-muted-foreground"
                         onClick={() => {
                           setFilterNume("");
                         }}
@@ -359,7 +359,7 @@ export default function Pontaje() {
                   </div>
 
                   <Select value={filterFirma} onValueChange={setFilterFirma}>
-                    <SelectTrigger className="h-9 w-40 text-foreground text-sm">
+                    <SelectTrigger className="h-8 xxxl:h-9 w-36 xxxl:w-40 text-foreground text-sm">
                       <SelectValue placeholder="Toate firmele" />
                     </SelectTrigger>
                     <SelectContent>
@@ -373,17 +373,17 @@ export default function Pontaje() {
                   </Select>
                 </div>
                 {/* SOMWEHERE THERE THE DIALOG */}
-                <div className="flex relative h-full items-center gap-4 ">
-                  <Button variant={showInactivi ? "default" : "outline"} onClick={() => setShowInactivi((v) => !v)} className={`gap-2 h-9 ${!showInactivi ? "text-foreground" : ""}`}>
+                <div className="flex relative h-full items-center gap-3 xxxl:gap-4">
+                  <Button variant={showInactivi ? "default" : "outline"} onClick={() => setShowInactivi((v) => !v)} className={`gap-2 h-8 xxxl:h-9 text-sm ${!showInactivi ? "text-foreground" : ""}`}>
                     <FontAwesomeIcon icon={faUserSlash} />
                     Inactivi
-                    {showInactivi && <Badge className="ml-1 bg-background text-foreground text-sm px-1.5 py-0">{data.filter((u) => !u.activ).length}</Badge>}
+                    {showInactivi && <Badge className="ml-1 bg-background text-foreground text-xs xxxl:text-sm px-1.5 py-0">{data.filter((u) => !u.activ).length}</Badge>}
                   </Button>
                   <div className="flex items-center">
                     <Button
                       variant="outline"
                       onClick={() => setHourFormat(false)}
-                      className={`gap-2 h-9 text-sm rounded-r-none ${!hourFormat ? "bg-accent text-accent-foreground font-bold" : "text-muted-foreground font-semibold"}`}
+                      className={`gap-2 h-8 xxxl:h-9 text-xs xxxl:text-sm rounded-r-none ${!hourFormat ? "bg-accent text-accent-foreground font-bold" : "text-muted-foreground font-semibold"}`}
                     >
                       HH:MM
                     </Button>
@@ -391,14 +391,14 @@ export default function Pontaje() {
                     <Button
                       variant="outline"
                       onClick={() => setHourFormat(true)}
-                      className={`gap-2 h-9 text-sm rounded-l-none -ml-px ${hourFormat ? "bg-accent text-accent-foreground font-bold" : "text-muted-foreground font-semibold"}`}
+                      className={`gap-2 h-8 xxxl:h-9 text-xs xxxl:text-sm rounded-l-none -ml-px ${hourFormat ? "bg-accent text-accent-foreground font-bold" : "text-muted-foreground font-semibold"}`}
                     >
                       HH.XX
                     </Button>
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="gap-2 h-9">
+                      <Button variant="outline" className="gap-2 h-8 xxxl:h-9 text-sm">
                         <FontAwesomeIcon className="text-foreground" icon={faColumns} />
                         <span className="hidden text-foreground sm:inline">Coloane</span>
                       </Button>

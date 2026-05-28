@@ -53,13 +53,13 @@ export const PontajeCalendar = memo(({ selectedDates, setSelectedDates, onReset 
                 }
             `}</style>
 
-      <Collapsible open={open} onOpenChange={setOpen} className="pontaje-calendar rounded-xl bg-card shadow-md border  w-full">
+      <Collapsible open={open} onOpenChange={setOpen} className="pontaje-calendar rounded-xl bg-card shadow-md border w-full">
         {/* Trigger / Header */}
         <CollapsibleTrigger asChild>
-          <button className={`flex items-center selectedRow justify-between w-full ${open ? "rounded-t-xl" : "rounded-xl"}  px-5 py-4 hover:bg-accent transition-colors `}>
+          <button className={`flex items-center selectedRow justify-between w-full ${open ? "rounded-t-xl" : "rounded-xl"} px-4 xxxl:px-5 py-3 xxxl:py-4 hover:bg-accent transition-colors`}>
             <div className="flex items-center gap-2">
-              <FontAwesomeIcon icon={faCalendarDays} className="text-primary text-xl" />
-              <span className="text-base font-semibold text-foreground">Calendar - Săptămâna {getWeek(new Date(), { weekStartsOn: 1 })}</span>
+              <FontAwesomeIcon icon={faCalendarDays} className="text-primary text-lg xxxl:text-xl" />
+              <span className="text-sm xxxl:text-base font-semibold text-foreground">Calendar - Săptămâna {getWeek(new Date(), { weekStartsOn: 1 })}</span>
             </div>
             <FontAwesomeIcon icon={faChevronDown} className={`text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
           </button>
@@ -69,7 +69,7 @@ export const PontajeCalendar = memo(({ selectedDates, setSelectedDates, onReset 
         <CollapsibleContent className="overflow-hidden">
           <div className="border-t border-border" />
 
-          <div className="p-4 flex flex-col gap-4">
+          <div className="p-3 xxxl:p-4 flex flex-col gap-3 xxxl:gap-4">
             {/* DayPicker */}
             <div className="flex justify-center select-none w-full">
               <DayPicker
@@ -111,25 +111,25 @@ export const PontajeCalendar = memo(({ selectedDates, setSelectedDates, onReset 
                 }}
                 classNames={{
                   root: "w-full",
-                  months: "flex  flex-col w-full",
-                  month: "space-y-2 w-full",
-                  month_caption: "flex justify-center items-center py-2 relative",
-                  caption_label: "text-base font-semibold text-foreground capitalize",
+                  months: "flex flex-col w-full",
+                  month: "space-y-1.5 xxxl:space-y-2 w-full",
+                  month_caption: "flex justify-center items-center py-1.5 xxxl:py-2 relative",
+                  caption_label: "text-sm xxxl:text-base font-semibold text-foreground capitalize",
                   nav: "flex relative items-center justify-between",
                   button_previous:
-                    "absolute z-50 left-0 top-0 h-10 w-10 flex items-center justify-center rounded-md bg-primary hover:bg-primary/90 text-muted-foreground hover:text-foreground transition-colors",
+                    "absolute z-50 left-0 top-0 h-9 w-9 xxxl:h-10 xxxl:w-10 flex items-center justify-center rounded-md bg-primary hover:bg-primary/90 text-muted-foreground hover:text-foreground transition-colors",
                   button_next:
-                    "absolute z-50 right-0 top-0 h-10 w-10 flex items-center justify-center rounded-md bg-primary hover:bg-primary/90 text-muted-foreground hover:text-foreground transition-colors",
-                  month_grid: "w-full  border-collapse",
-                  weekdays: "flex  w-full",
-                  weekday: "text-muted-foreground flex-1 text-center text-base font-medium py-2",
+                    "absolute z-50 right-0 top-0 h-9 w-9 xxxl:h-10 xxxl:w-10 flex items-center justify-center rounded-md bg-primary hover:bg-primary/90 text-muted-foreground hover:text-foreground transition-colors",
+                  month_grid: "w-full border-collapse",
+                  weekdays: "flex w-full",
+                  weekday: "text-muted-foreground flex-1 text-center text-sm xxxl:text-base font-medium py-1.5 xxxl:py-2",
                   week: "flex w-full mt-1 gap-1",
-                  week_number: "text-sm  text-muted-foreground w-10 flex items-center justify-center",
-                  week_number_header: "w-10",
+                  week_number: "text-xs xxxl:text-sm text-muted-foreground w-8 xxxl:w-10 flex items-center justify-center",
+                  week_number_header: "w-8 xxxl:w-10",
 
-                  day: "flex-1 h-10 flex items-center justify-center",
+                  day: "flex-1 h-9 xxxl:h-10 flex items-center justify-center",
                   day_button: [
-                    "h-10 w-full rounded-md text-base font-normal",
+                    "h-9 xxxl:h-10 w-full rounded-md text-sm xxxl:text-base font-normal",
                     "flex items-center justify-center",
                     "hover:bg-accent hover:text-accent-foreground",
                     "transition-colors cursor-pointer",
@@ -146,21 +146,21 @@ export const PontajeCalendar = memo(({ selectedDates, setSelectedDates, onReset 
             <div className="border-t border-border" />
 
             {/* Footer */}
-            <div className="flex text-base gap-3">
+            <div className="flex text-sm xxxl:text-base gap-2 xxxl:gap-3">
               <Button
                 onClick={() => {
                   setCurrentMonth(new Date());
                   setLastSelectedDate(null);
                   onReset();
                 }}
-                className="flex-1 flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-background px-4 font-medium text-foreground hover:bg-accent transition-colors"
+                className="flex-1 flex h-9 xxxl:h-10 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 xxxl:px-4 font-medium text-foreground hover:bg-accent transition-colors"
               >
                 <FontAwesomeIcon icon={faRotate} />
                 Reset
               </Button>
               <Button
                 onClick={() => setSelectedDates(getAllDatesInMonth(currentMonth))}
-                className="flex-1 flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+                className="flex-1 flex h-9 xxxl:h-10 items-center justify-center gap-2 rounded-md bg-primary px-3 xxxl:px-4 font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
               >
                 <FontAwesomeIcon icon={faCalendar} />
                 Toată Luna

@@ -291,14 +291,14 @@ export default function SidebarRezerve({ onSelectPlan, onSelectLucrare3D, select
   return (
     <div className="h-full w-full flex border rounded-lg flex-col bg-card">
       {/* Header */}
-      <div className="shrink-0 p-4 border-b border-border">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xl font-bold text-foreground">Lucrări</h3>
+      <div className="shrink-0 p-3 xxxl:p-4 border-b border-border">
+        <div className="flex items-center justify-between mb-2 xxxl:mb-3">
+          <h3 className="text-lg xxxl:text-xl font-bold text-foreground">Lucrări</h3>
           <div className="flex items-center gap-2">
             {/* Add 2D Dialog Trigger */}
             <Dialog open={openAddLucrare} onOpenChange={setOpenAddLucrare}>
               <DialogTrigger asChild>
-                <Button size="sm" className="gap-2 items-center">
+                <Button size="sm" className="gap-2 items-center text-xs xxxl:text-sm">
                   <FontAwesomeIcon icon={faPlus} />
                   Lucrare 2D
                 </Button>
@@ -338,7 +338,7 @@ export default function SidebarRezerve({ onSelectPlan, onSelectLucrare3D, select
             {/* Add 3D Dialog Trigger */}
             <Dialog open={openAddLucrare3D} onOpenChange={setOpenAddLucrare3D}>
               <DialogTrigger asChild>
-                <Button size="sm" className="bg-purple-500 hover:bg-purple-600 gap-2">
+                <Button size="sm" className="bg-purple-500 hover:bg-purple-600 gap-2 text-xs xxxl:text-sm">
                   <FontAwesomeIcon icon={faPlus} />
                   3D
                 </Button>
@@ -388,9 +388,9 @@ export default function SidebarRezerve({ onSelectPlan, onSelectLucrare3D, select
       {/* List of lucrari */}
       <div className="flex-1 overflow-y-auto">
         {loadingLucrari ? (
-          <div className="p-4 text-sm text-muted-foreground">Se încarcă…</div>
+          <div className="p-3 xxxl:p-4 text-xs xxxl:text-sm text-muted-foreground">Se încarcă…</div>
         ) : lucrari.length === 0 ? (
-          <div className="p-4 text-sm text-muted-foreground">Nicio lucrare încă.</div>
+          <div className="p-3 xxxl:p-4 text-xs xxxl:text-sm text-muted-foreground">Nicio lucrare încă.</div>
         ) : (
           <div className="">
             {lucrari.map((l) => {
@@ -402,22 +402,22 @@ export default function SidebarRezerve({ onSelectPlan, onSelectLucrare3D, select
                 <div key={l.id} className="border-b border-muted-foreground">
                   {/* Row */}
                   <div
-                    className={`p-4 flex items-center gap-3  cursor-pointer  transition-colors border-l-[6px] ${isSelected ? " border-l-primary" : "hover:bg-accent/50 border-l-muted-foreground"} ${l.is_3d ? "bg-purple-50" : ""}`}
+                    className={`p-3 xxxl:p-4 flex items-center gap-2.5 xxxl:gap-3 cursor-pointer transition-colors border-l-[6px] ${isSelected ? " border-l-primary" : "hover:bg-accent/50 border-l-muted-foreground"} ${l.is_3d ? "bg-purple-50" : ""}`}
                     onClick={() => toggleOpen(l.id)}
                   >
-                    <button className="flex items-center  h-full gap-3 flex-1 text-left min-w-0">
-                      {!l.is_3d && <FontAwesomeIcon icon={isOpen ? faChevronDown : faChevronRight} className="text-muted-foreground shrink-0 text-base" />}
+                    <button className="flex items-center h-full gap-2.5 xxxl:gap-3 flex-1 text-left min-w-0">
+                      {!l.is_3d && <FontAwesomeIcon icon={isOpen ? faChevronDown : faChevronRight} className="text-muted-foreground shrink-0 text-sm xxxl:text-base" />}
                       <div className="min-w-0 flex-1">
-                        <div className="font-semibold text-foreground text-base flex items-center gap-2">
+                        <div className="font-semibold text-foreground text-sm xxxl:text-base flex items-center gap-2">
                           <span className="truncate first-letter:uppercase">{l.name}</span>
                           {l.is_3d ? (
-                            <Badge variant="secondary" className="shrink-0 gap-1">
+                            <Badge variant="secondary" className="shrink-0 gap-1 text-xs xxxl:text-sm">
                               <FontAwesomeIcon icon={faCube} />
                               3D
                             </Badge>
                           ) : null}
                         </div>
-                        {l.description && <div className="text-sm text-muted-foreground truncate mt-1">{l.description}</div>}
+                        {l.description && <div className="text-xs xxxl:text-sm text-muted-foreground truncate mt-1">{l.description}</div>}
                       </div>
                     </button>
 
@@ -458,7 +458,7 @@ export default function SidebarRezerve({ onSelectPlan, onSelectLucrare3D, select
                   {!l.is_3d && isOpen && (
                     <div className="bg-muted/20">
                       {plans.length === 0 ? (
-                        <div className="p-3 text-xs text-muted-foreground">Niciun plan încă.</div>
+                        <div className="p-2.5 xxxl:p-3 text-xs text-muted-foreground">Niciun plan încă.</div>
                       ) : (
                         <div className="">
                           {plans.map((p, idx) => {
@@ -470,14 +470,14 @@ export default function SidebarRezerve({ onSelectPlan, onSelectLucrare3D, select
                                     setSelectedLucrareId(l.id);
                                     onSelectPlan?.(p);
                                   }}
-                                  className={`flex items-center justify-between gap-3 px-4 py-3 bg-card cursor-pointer transition-all  border-l-2
+                                  className={`flex items-center justify-between gap-2.5 xxxl:gap-3 px-3 xxxl:px-4 py-2.5 xxxl:py-3 bg-card cursor-pointer transition-all border-l-2
                                                                         ${selectedPlanSideBar?.id == p.id ? "bg-primary/20  border-primary shadow-sm" : "hover:bg-accent/50 border-muted-foreground"}`}
                                 >
-                                  <div className="flex-1  min-w-0">
-                                    <div className="text-sm font-semibold text-foreground flex items-center gap-2">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-xs xxxl:text-sm font-semibold text-foreground flex items-center gap-2">
                                       <span className="truncate first-letter:uppercase">{p.title}</span>
                                     </div>
-                                    <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2">
+                                    <div className="text-[8px] xxxl:text-xs text-muted-foreground mt-1 flex items-center gap-2">
                                       <span>{p.scale_label}</span>
                                       <span>•</span>
                                       <span>{p.dpi} DPI</span>
@@ -490,7 +490,7 @@ export default function SidebarRezerve({ onSelectPlan, onSelectLucrare3D, select
 
                                   <div className="flex items-center gap-2 shrink-0">
                                     {count > 0 && (
-                                      <Badge variant="destructive" className="font-bold pointer-events-none">
+                                      <Badge variant="destructive" className="font-bold pointer-events-none text-xs xxxl:text-sm">
                                         {count}
                                       </Badge>
                                     )}
@@ -553,10 +553,10 @@ export default function SidebarRezerve({ onSelectPlan, onSelectLucrare3D, select
 
       {/* Upload Plan section (always visible) */}
       <div className="shrink-0 border-t border-border">
-        <div className="p-4 space-y-3">
+        <div className="p-3 xxxl:p-4 space-y-2 xxxl:space-y-3">
           <div className="flex items-center justify-between">
-            <div className="font-semibold text-foreground flex items-center gap-2">
-              <FontAwesomeIcon icon={faFilePdf} className="text-blue-600 text-xl" />
+            <div className="font-semibold text-foreground flex items-center gap-2 text-sm xxxl:text-base">
+              <FontAwesomeIcon icon={faFilePdf} className="text-blue-600 text-lg xxxl:text-xl" />
               <span>Încarcă un plan PDF</span>
             </div>
             <Dialog open={openUploadPlan} onOpenChange={setOpenUploadPlan}>
@@ -564,7 +564,7 @@ export default function SidebarRezerve({ onSelectPlan, onSelectLucrare3D, select
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-9 text-base font-medium border-border text-foreground bg-background hover:bg-primary hover:text-primary-foreground hover:border-primary  transition-colors"
+                  className="h-8 xxxl:h-9 text-sm xxxl:text-base font-medium border-border text-foreground bg-background hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors"
                   disabled={!canUploadPdf}
                 >
                   Încarcă

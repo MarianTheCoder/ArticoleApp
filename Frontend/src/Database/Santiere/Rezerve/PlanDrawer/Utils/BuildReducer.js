@@ -1,7 +1,6 @@
 // buildReducer.js — pure reducer geometry, no curves
 
 // ── geometry for RENDERING ────────────────────────────────────────────────────
-// ── geometry for RENDERING ────────────────────────────────────────────────────
 export function computeReducerGeometry(p0, p1, dIn, dOut, anchor) {
   // <--- ADAUGĂ `anchor` AICI
   const dx = p1.x - p0.x,

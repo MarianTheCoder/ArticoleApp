@@ -407,6 +407,7 @@ async function initializeDB(pool) {
 
     -- cantitatea rețetei în lucrarea ofertei
     cantitate_lucrare DECIMAL(10, 3) NOT NULL DEFAULT 0.000,
+    cantitate_lucrare_formula VARCHAR(511) NULL,
 
     -- valorile pentru coloanele dinamice ale lucrării
     coloane_valori JSON NULL,

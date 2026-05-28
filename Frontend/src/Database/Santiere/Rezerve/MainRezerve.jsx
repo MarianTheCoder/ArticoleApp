@@ -4,7 +4,8 @@ import SidebarRezerve from "./SidebarRezerve";
 import PlanView from "./PlanView/PlanView";
 import Viewer3D from "./3D/Viewer3D";
 import ZoneManagement from "./ZoneManagement";
-import PlanDrawer from "./PlanDrawer/PlanDrawer";
+// import PlanDrawer from "./PlanDrawer/PlanDrawer";
+import PlanDrawer from "@/Database/Drawer/PlanDrawer";
 
 export default function MainRezerve() {
   const [selectedPlan, setSelectedPlan] = useState(null);
@@ -49,7 +50,7 @@ export default function MainRezerve() {
           ) : zoneManagement ? (
             <ZoneManagement plan={selectedPlan} onSelectManagementZone={setZoneManagement} />
           ) : drawingZone ? (
-            <PlanDrawer plan={selectedPlan} onSelectDrawingZone={setDrawingZone} />
+            <PlanDrawer plan={selectedPlan} />
           ) : null
         ) : selected3D ? (
           <Viewer3D plan={selected3D} />

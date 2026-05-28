@@ -82,6 +82,7 @@ const HUDOverlay = React.memo(function HUDOverlay({ measureInfo, cursorPos, hasP
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function PlanDrawer({ plan }) {
+  console.log("Rendering PlanDrawer", { plan });
   const osdRef = useRef(null);
   const viewerRef = useRef(null);
   const containerRef = useRef(null);

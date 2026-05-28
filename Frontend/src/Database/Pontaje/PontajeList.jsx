@@ -50,6 +50,18 @@ const fmtTimeLocal = (d) =>
 // computed once at module load, never changes within the same day
 const todayIso = format(new Date(), "yyyy-MM-dd");
 
+const COL = {
+  poza: "w-[4.5rem] min-w-[4.5rem] max-w-[4.5rem] xxxl:w-[5rem] xxxl:min-w-[5rem] xxxl:max-w-[5rem]",
+  nume: "w-[10.5rem] min-w-[10.5rem] max-w-[10.5rem] xxxl:w-[12rem] xxxl:min-w-[12rem] xxxl:max-w-[12rem]",
+  firma: "w-[9rem] min-w-[9rem] max-w-[9rem] xxxl:w-[10rem] xxxl:min-w-[10rem] xxxl:max-w-[10rem]",
+  santier: "w-[13rem] min-w-[13rem] max-w-[13rem] xxxl:w-[15rem] xxxl:min-w-[15rem] xxxl:max-w-[15rem]",
+  specializare: "w-[9.5rem] min-w-[9.5rem] max-w-[9.5rem] xxxl:w-[11rem] xxxl:min-w-[11rem] xxxl:max-w-[11rem]",
+  intrare: "w-[5.25rem] min-w-[5.25rem] max-w-[5.25rem] xxxl:w-[6rem] xxxl:min-w-[6rem] xxxl:max-w-[6rem]",
+  iesire: "w-[5.25rem] min-w-[5.25rem] max-w-[5.25rem] xxxl:w-[6rem] xxxl:min-w-[6rem] xxxl:max-w-[6rem]",
+  pauza: "w-[5.25rem] min-w-[5.25rem] max-w-[5.25rem] xxxl:w-[6rem] xxxl:min-w-[6rem] xxxl:max-w-[6rem]",
+  totalOre: "w-[7rem] min-w-[7rem] max-w-[7rem] xxxl:w-[8rem] xxxl:min-w-[8rem] xxxl:max-w-[8rem]",
+};
+
 // ─── stable virtuoso components — defined OUTSIDE, never recreated ────────────
 
 const virtuosoComponents = {
@@ -71,7 +83,7 @@ const virtuosoComponents = {
         <ContextMenuTrigger asChild disabled={exportSelectMode}>
           <TableRow
             {...props}
-            className={`selectedRow cursor-pointer transition-colors border-b h-12 md:h-[3.5rem] xl:h-16 ${
+            className={`selectedRow cursor-pointer transition-colors border-b h-12 md:h-[3.25rem] xxxl:h-16 ${
               exportSelectMode && isExportSelected
                 ? "bg-primary/15 hover:bg-primary/20"
                 : exportSelectMode
@@ -87,7 +99,7 @@ const virtuosoComponents = {
           />
         </ContextMenuTrigger>
         <ContextMenuContent>
-          <ContextMenuItem className="gap-3 " disabled={!props.context?.singleDay || !user.activ} onClick={() => props.context?.onEditUser?.(user)}>
+          <ContextMenuItem className="gap-3" disabled={!props.context?.singleDay || !user.activ} onClick={() => props.context?.onEditUser?.(user)}>
             <FontAwesomeIcon icon={faPenToSquare} /> {hasSessions ? "Editează Pontaj" : "Adaugă Pontaj"}
           </ContextMenuItem>
         </ContextMenuContent>
@@ -140,16 +152,16 @@ export default function PontajeList({
   // stable header — only changes when visibleColumns changes
   const fixedHeaderContent = useCallback(
     () => (
-      <TableRow className="hover:bg-transparent border-b bg-muted/25 h-[3.5rem]">
-        {showCol("poza") && <TableHead className="text-center px-2 w-[5rem]">Poză</TableHead>}
-        {showCol("nume") && <TableHead className="text-center px-4 w-[12rem]">Nume</TableHead>}
-        {showCol("firma") && <TableHead className="text-center px-4 w-[10rem]">Firmă</TableHead>}
-        {showCol("santier") && <TableHead className="text-center px-4 w-[15rem]">Șantier</TableHead>}
-        {showCol("specializare") && <TableHead className="text-center px-4 w-[11rem]">Specializare</TableHead>}
-        {showCol("intrare") && <TableHead className="text-center px-4 w-[6rem]">Intrare</TableHead>}
-        {showCol("iesire") && <TableHead className="text-center px-4 w-[6rem]">Ieșire</TableHead>}
-        {showCol("pauza") && <TableHead className="text-center px-4 w-[6rem]">Pauză</TableHead>}
-        {showCol("total_ore") && <TableHead className="text-center px-4 w-[8rem]">Total Ore</TableHead>}
+      <TableRow className="hover:bg-transparent border-b bg-muted/25 h-12 xxxl:h-[3.5rem]">
+        {showCol("poza") && <TableHead className={`text-center px-2 text-xs xxxl:text-sm ${COL.poza}`}>Poză</TableHead>}
+        {showCol("nume") && <TableHead className={`text-center px-3 xxxl:px-4 text-xs xxxl:text-sm ${COL.nume}`}>Nume</TableHead>}
+        {showCol("firma") && <TableHead className={`text-center px-3 xxxl:px-4 text-xs xxxl:text-sm ${COL.firma}`}>Firmă</TableHead>}
+        {showCol("santier") && <TableHead className={`text-center px-3 xxxl:px-4 text-xs xxxl:text-sm ${COL.santier}`}>Șantier</TableHead>}
+        {showCol("specializare") && <TableHead className={`text-center px-3 xxxl:px-4 text-xs xxxl:text-sm ${COL.specializare}`}>Specializare</TableHead>}
+        {showCol("intrare") && <TableHead className={`text-center px-3 xxxl:px-4 text-xs xxxl:text-sm ${COL.intrare}`}>Intrare</TableHead>}
+        {showCol("iesire") && <TableHead className={`text-center px-3 xxxl:px-4 text-xs xxxl:text-sm ${COL.iesire}`}>Ieșire</TableHead>}
+        {showCol("pauza") && <TableHead className={`text-center px-3 xxxl:px-4 text-xs xxxl:text-sm ${COL.pauza}`}>Pauză</TableHead>}
+        {showCol("total_ore") && <TableHead className={`text-center px-3 xxxl:px-4 text-xs xxxl:text-sm ${COL.totalOre}`}>Total Ore</TableHead>}
       </TableRow>
     ),
     [showCol],
@@ -255,9 +267,9 @@ export default function PontajeList({
       if (singleDay) {
         if (anyOpen) {
           statusCell = (
-            <Badge className="relative text-base  p-2 px-4 bg-green-700 hover:bg-green-700 shadow-md  gap-2 overflow-hidden">
+            <Badge className="relative text-sm xxxl:text-base p-1.5 xxxl:p-2 px-3 xxxl:px-4 bg-green-700 hover:bg-green-700 shadow-md gap-2 overflow-hidden">
               {/* Bulina mică Live */}
-              <span className="relative  flex h-2 w-2">
+              <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400"></span>
               </span>
@@ -266,21 +278,23 @@ export default function PontajeList({
           );
         } else if (!hasAnyStart && !hasAnyEnd) {
           statusCell = (
-            <Badge variant="default" className="text-base p-2 px-4">
+            <Badge variant="default" className="text-sm xxxl:text-base p-1.5 xxxl:p-2 px-3 xxxl:px-4">
               Nepontat
             </Badge>
           );
         } else {
           statusCell = (
-            <span className={`font-bold text-lg flex items-center justify-center gap-1.5 ${hasAnyCancelled ? "text-destructive" : hasAnyEdited ? "dark:text-medium text-yellow-600" : ""}`}>
+            <span
+              className={`font-bold text-base xxxl:text-lg flex items-center justify-center gap-1.5 ${hasAnyCancelled ? "text-destructive" : hasAnyEdited ? "dark:text-medium text-yellow-600" : ""}`}
+            >
               {totalHoursDisplay}
-              {hasAnyCancelled && <FontAwesomeIcon icon={faExclamationCircle} className={`${hasAnyCancelled ? "text-destructive" : ""} text-2xl`} />}
-              {hasAnyEdited && <FontAwesomeIcon icon={faExclamationTriangle} className={`${hasAnyEdited ? "dark:text-medium text-yellow-600" : ""} text-2xl`} />}
+              {hasAnyCancelled && <FontAwesomeIcon icon={faExclamationCircle} className={`${hasAnyCancelled ? "text-destructive" : ""} text-xl xxxl:text-2xl`} />}
+              {hasAnyEdited && <FontAwesomeIcon icon={faExclamationTriangle} className={`${hasAnyEdited ? "dark:text-medium text-yellow-600" : ""} text-xl xxxl:text-2xl`} />}
             </span>
           );
         }
       } else {
-        statusCell = totalMinutes > 0 ? <span className="font-bold text-base">{totalHoursDisplay}</span> : <span className="text-muted-foreground text-base">—</span>;
+        statusCell = totalMinutes > 0 ? <span className="font-bold text-sm xxxl:text-base">{totalHoursDisplay}</span> : <span className="text-muted-foreground text-sm xxxl:text-base">—</span>;
       }
       // ── row click ─────────────────────────────────────────────────────────────
       const handleClick = (e) => {
@@ -338,8 +352,8 @@ export default function PontajeList({
       return (
         <>
           {showCol("poza") && (
-            <TableCell className="px-2 w-[5rem] max-w-[5rem]" onClick={handleClick}>
-              <div className="flex justify-center h-[3.5rem] items-center">
+            <TableCell className={`px-2 ${COL.poza}`} onClick={handleClick}>
+              <div className="flex justify-center h-[3.25rem] xxxl:h-[3.5rem] items-center">
                 <ImagePreviewTooltip
                   src={user.photo_url ? `${photoApi}/${user.photo_url}` : null}
                   alt={user.name}
@@ -347,28 +361,28 @@ export default function PontajeList({
                   previewMaxWidth="max-w-[20rem]"
                   ringColor="ring-primary"
                   fallback={<img src={NoImage} alt="No Image" className="h-full w-full object-cover opacity-50" />}
-                  containerClassName="h-14 w-14 rounded-md border border-border bg-muted flex items-center justify-center overflow-hidden shrink-0"
+                  containerClassName="h-12 w-12 xxxl:h-14 xxxl:w-14 rounded-md border border-border bg-muted flex items-center justify-center overflow-hidden shrink-0"
                 />
               </div>
             </TableCell>
           )}
           {showCol("nume") && (
-            <TableCell className="px-4 w-[12rem] max-w-[12rem]" onClick={handleClick}>
+            <TableCell className={`px-3 xxxl:px-4 ${COL.nume}`} onClick={handleClick}>
               <div className="flex items-center justify-center">
-                <OverflowTooltip text={user.name} className="text-base whitespace-pre-wrap text-foreground leading-normal" maxLines={1} />
+                <OverflowTooltip text={user.name} className="text-sm xxxl:text-base whitespace-pre-wrap text-foreground leading-normal" maxLines={1} />
               </div>
             </TableCell>
           )}
 
           {showCol("firma") && (
-            <TableCell className="px-4 text-center w-[10rem] max-w-[10rem]" onClick={handleClick}>
+            <TableCell className={`px-3 xxxl:px-4 text-center ${COL.firma}`} onClick={handleClick}>
               <div className="flex justify-center">
                 <span
                   style={{
                     backgroundColor: user?.firma_color,
                     color: getContrastColor(user?.firma_color),
                   }}
-                  className="text-base px-3 py-2 rounded-lg truncate block w-full"
+                  className="text-sm xxxl:text-base px-2.5 xxxl:px-3 py-1.5 xxxl:py-2 rounded-lg truncate block w-full"
                   title={user.firma}
                 >
                   {user.firma || "—"}
@@ -378,18 +392,18 @@ export default function PontajeList({
           )}
 
           {showCol("santier") && (
-            <TableCell className="px-4 text-center w-[15rem] max-w-[15rem]" onClick={handleClick}>
+            <TableCell className={`px-3 xxxl:px-4 text-center ${COL.santier}`} onClick={handleClick}>
               <div className="flex justify-center w-full">
                 {singleDay && displaySantier ? (
                   <div
-                    className="py-2 px-4 rounded-lg text-black inline-flex items-center gap-2 max-w-full overflow-hidden"
+                    className="py-1.5 xxxl:py-2 px-3 xxxl:px-4 rounded-lg text-black inline-flex items-center gap-2 max-w-full overflow-hidden"
                     style={{
                       backgroundColor: displaySantier.santier_color || displaySantier.color,
                       color: getContrastColor(displaySantier.santier_color || displaySantier.color),
                     }}
                   >
                     {/* Bulina Live aici */}
-                    <OverflowTooltip text={displaySantier.santier_name || displaySantier.name} className="text-base  font-medium whitespace-pre-wrap w-full  leading-normal" maxLines={1} />
+                    <OverflowTooltip text={displaySantier.santier_name || displaySantier.name} className="text-sm xxxl:text-base font-medium whitespace-pre-wrap w-full leading-normal" maxLines={1} />
                   </div>
                 ) : (
                   "—"
@@ -398,31 +412,31 @@ export default function PontajeList({
             </TableCell>
           )}
           {showCol("specializare") && (
-            <TableCell className="px-4 text-center w-[11rem] max-w-[11rem]" onClick={handleClick}>
-              <OverflowTooltip text={user.specializare || "—"} className="text-base whitespace-pre-wrap w-full text-foreground leading-normal" maxLines={1} />
+            <TableCell className={`px-3 xxxl:px-4 text-center ${COL.specializare}`} onClick={handleClick}>
+              <OverflowTooltip text={user.specializare || "—"} className="text-sm xxxl:text-base whitespace-pre-wrap w-full text-foreground leading-normal" maxLines={1} />
             </TableCell>
           )}
 
           {showCol("intrare") && (
-            <TableCell className="whitespace-nowrap px-4 text-lg text-center w-[6rem] max-w-[6rem] font-semibold" onClick={handleClick}>
+            <TableCell className={`whitespace-nowrap px-3 xxxl:px-4 text-base xxxl:text-lg text-center font-semibold ${COL.intrare}`} onClick={handleClick}>
               {singleDay ? intrare : "—"}
             </TableCell>
           )}
           {showCol("iesire") && (
             <TableCell
-              className={`whitespace-nowrap px-4 text-center text-lg font-semibold w-[6rem] max-w-[6rem] ${singleDay && !anyOpen && hasAnyCancelled ? "text-red-600" : ""}`}
+              className={`whitespace-nowrap px-3 xxxl:px-4 text-center text-base xxxl:text-lg font-semibold ${COL.iesire} ${singleDay && !anyOpen && hasAnyCancelled ? "text-red-600" : ""}`}
               onClick={handleClick}
             >
               {singleDay ? iesire : "—"}
             </TableCell>
           )}
           {showCol("pauza") && (
-            <TableCell className="whitespace-nowrap px-4 text-lg text-center w-[6rem] max-w-[6rem] font-semibold" onClick={handleClick}>
+            <TableCell className={`whitespace-nowrap px-3 xxxl:px-4 text-base xxxl:text-lg text-center font-semibold ${COL.pauza}`} onClick={handleClick}>
               {totalMinutesPauza > 0 ? totalHoursPauzaDisplay : "—"}
             </TableCell>
           )}
           {showCol("total_ore") && (
-            <TableCell className="whitespace-nowrap px-4 text-lg text-center w-[6rem] max-w-[6rem] font-semibold" onClick={handleClick}>
+            <TableCell className={`whitespace-nowrap px-3 xxxl:px-4 text-base xxxl:text-lg text-center font-semibold ${COL.totalOre}`} onClick={handleClick}>
               {statusCell}
             </TableCell>
           )}
@@ -434,9 +448,9 @@ export default function PontajeList({
 
   if (filteredData.length === 0) {
     return (
-      <div className="flex flex-col items-center rounded-xl border-2 justify-center h-full gap-4">
-        <FontAwesomeIcon icon={faExclamationCircle} className="text-destructive/80 text-5xl" />
-        <span className="text-muted-foreground text-xl">Nu s-au găsit pontaje</span>
+      <div className="flex flex-col items-center rounded-xl border-2 justify-center h-full gap-3 xxxl:gap-4">
+        <FontAwesomeIcon icon={faExclamationCircle} className="text-destructive/80 text-4xl xxxl:text-5xl" />
+        <span className="text-muted-foreground text-lg xxxl:text-xl">Nu s-au găsit pontaje</span>
       </div>
     );
   }

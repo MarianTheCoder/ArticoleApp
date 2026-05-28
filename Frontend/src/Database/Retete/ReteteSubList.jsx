@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator } from "@/components/ui/context-menu";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faPenToSquare, faTrash, faColumns, faDatabase, faBoxOpen, faCheck, faLanguage, faPenSquare } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faPenToSquare, faTrash, faColumns, faDatabase, faBoxOpen, faCheck, faLanguage, faPenSquare, faFilePen } from "@fortawesome/free-solid-svg-icons";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +23,7 @@ import CatalogSubList from "../Catalog/CatalogSubList";
 import CatalogMainPage from "../Catalog/CatalogMainPage";
 import { useAddRetetaElement, useDeleteRetetaElement, useEditRetetaElement } from "@/hooks/Database/useRetete";
 import { resurseConfig } from "../Catalog/resurseConfig"; // ajustează path-ul dacă fișierul este în alt folder
+import CatalogDefDialog from "../Catalog/CatalogDefDialog";
 
 const buildCatalogParentFromRetetaElement = (el) => ({
   id: el.definitie_id,
@@ -81,7 +82,7 @@ const ResourceMiniHeaderRow = memo(({ config, elements, onAdd, colSpan }) => {
   );
 });
 
-const ResourceRows = memo(({ elements, config, onEdit, onDelete, onOpenSubs, displayLang, visibleColumns, colSpan }) => {
+const ResourceRows = memo(({ elements, config, onEdit, onEditDef, onDelete, onOpenSubs, displayLang, visibleColumns, colSpan }) => {
   const showCol = (key) => visibleColumns[key];
   if (elements.length === 0) {
     return (
@@ -256,15 +257,22 @@ const ResourceRows = memo(({ elements, config, onEdit, onDelete, onOpenSubs, dis
           </TableRow>
         </ContextMenuTrigger>
 
-        <ContextMenuContent className="w-32">
+        <ContextMenuContent className="">
+          <ContextMenuItem className="gap-3" onClick={() => onEditDef(el)}>
+            <FontAwesomeIcon className="text-low" icon={faFilePen} />
+            Editează definiția
+          </ContextMenuItem>
+
           <ContextMenuItem className="gap-3" onClick={() => onEdit(el)}>
-            <FontAwesomeIcon className="text-low" icon={faPenToSquare} /> Editează
+            <FontAwesomeIcon className="text-low" icon={faPenToSquare} />
+            Editează cantitatea
           </ContextMenuItem>
 
           <ContextMenuSeparator />
 
           <ContextMenuItem className="gap-3 text-destructive focus:text-destructive hover:text-destructive" onClick={() => onDelete(el)}>
-            <FontAwesomeIcon icon={faTrash} /> Șterge
+            <FontAwesomeIcon icon={faTrash} />
+            Șterge
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
@@ -272,7 +280,7 @@ const ResourceRows = memo(({ elements, config, onEdit, onDelete, onOpenSubs, dis
   });
 });
 
-const ResourcesTable = memo(({ sections, visibleColumns, displayLang, onEdit, onDelete, onOpenSubs }) => {
+const ResourcesTable = memo(({ sections, visibleColumns, displayLang, onEdit, onEditDef, onDelete, onOpenSubs }) => {
   const showCol = (key) => visibleColumns[key];
   const colSpan = getVisibleColumnCount(visibleColumns);
 
@@ -303,6 +311,7 @@ const ResourcesTable = memo(({ sections, visibleColumns, displayLang, onEdit, on
                 elements={section.elements}
                 config={section.config}
                 onEdit={onEdit}
+                onEditDef={onEditDef}
                 onDelete={onDelete}
                 onOpenSubs={onOpenSubs}
                 displayLang={displayLang}
@@ -320,6 +329,14 @@ const ResourcesTable = memo(({ sections, visibleColumns, displayLang, onEdit, on
 // --- MAIN COMPONENT ---
 export default function ReteteSubList({ open, setOpen, parentItem }) {
   const { show, hide } = useLoading();
+
+  // edit the catalog item
+  const [defDialogOpen, setDefDialogOpen] = useState(false);
+  const [defDialogConfig, setDefDialogConfig] = useState(null);
+  const [defDialogTipResursa, setDefDialogTipResursa] = useState(null);
+  const [defDialogDraft, setDefDialogDraft] = useState(null);
+  //
+  //
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
@@ -449,6 +466,16 @@ export default function ReteteSubList({ open, setOpen, parentItem }) {
   const handleDeleteElement = useCallback((el) => {
     setItemToDelete(el);
     setDeleteDialogOpen(true);
+  }, []);
+
+  const handleEditCatalogDef = useCallback((el) => {
+    const tip = el.tip_resursa;
+    const config = resurseConfig[tip];
+
+    setDefDialogTipResursa(tip);
+    setDefDialogConfig(config);
+    setDefDialogDraft(buildCatalogParentFromRetetaElement(el));
+    setDefDialogOpen(true);
   }, []);
 
   const handleConfirmDelete = useCallback(async () => {
@@ -612,7 +639,15 @@ export default function ReteteSubList({ open, setOpen, parentItem }) {
 
           {/* BODY DIALOG */}
           <div className="p-6 flex-1 min-h-0 rounded-md bg-card">
-            <ResourcesTable sections={sections} visibleColumns={visibleColumns} displayLang={localDisplayLang} onEdit={handleEditElement} onDelete={handleDeleteElement} onOpenSubs={handleOpenSubs} />
+            <ResourcesTable
+              sections={sections}
+              visibleColumns={visibleColumns}
+              displayLang={localDisplayLang}
+              onEdit={handleEditElement}
+              onEditDef={handleEditCatalogDef}
+              onDelete={handleDeleteElement}
+              onOpenSubs={handleOpenSubs}
+            />
           </div>
         </DialogContent>
       </Dialog>
@@ -754,7 +789,10 @@ export default function ReteteSubList({ open, setOpen, parentItem }) {
         onSubmit={handleConfirmDelete}
         useCode={false}
       />
-      {selectedParentConfig && selectedParent && <CatalogSubList config={selectedParentConfig} open={subDialogOpen} setOpen={setSubDialogOpen} parentItem={selectedParent} />}{" "}
+      {selectedParentConfig && selectedParent && <CatalogSubList config={selectedParentConfig} open={subDialogOpen} setOpen={setSubDialogOpen} parentItem={selectedParent} />}
+      {defDialogConfig && defDialogTipResursa && (
+        <CatalogDefDialog config={defDialogConfig} open={defDialogOpen} setOpen={setDefDialogOpen} mode="edit" initialData={defDialogDraft} tipResursa={defDialogTipResursa} />
+      )}
     </>
   );
 }

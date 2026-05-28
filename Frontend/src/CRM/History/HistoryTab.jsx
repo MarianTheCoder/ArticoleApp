@@ -126,12 +126,12 @@ const ENTITY_REGISTRY = {
   activitate: {
     label: "Activitate",
     icon: faComments,
-    className: "border-primary text-primary bg-transparent", // Custom styling for Activity
+    className: "border-primary text-primary bg-transparent",
   },
   comentariu: {
     label: "Comentariu",
     icon: faReply,
-    className: "border-primary text-primary bg-transparent", // Custom styling for Activity
+    className: "border-primary text-primary bg-transparent",
   },
 };
 
@@ -245,8 +245,8 @@ function SeverityIndicator({ severity }) {
   const meta = getSeverityMeta(severity);
 
   return (
-    <div title={`Severitate: ${meta.label}`} className={cn("h-10 w-10 rounded-lg border flex items-center justify-center shrink-0", meta.className)}>
-      <FontAwesomeIcon icon={meta.icon} className="text-base" />
+    <div title={`Severitate: ${meta.label}`} className={cn("h-9 w-9 xxxl:h-10 xxxl:w-10 rounded-lg border flex items-center justify-center shrink-0", meta.className)}>
+      <FontAwesomeIcon icon={meta.icon} className="text-sm xxxl:text-base" />
     </div>
   );
 }
@@ -260,7 +260,7 @@ function HistoryUserAvatar({ photo }) {
       previewMaxHeight="max-h-[18rem]"
       previewMaxWidth="max-w-[18rem]"
       fallback={<img src={NoImage} alt="No Image" className="h-full w-full object-cover opacity-50" />}
-      containerClassName="h-12 w-12 rounded-md border border-border bg-muted flex items-center justify-center overflow-hidden shrink-0"
+      containerClassName="h-10 w-10 xxxl:h-12 xxxl:w-12 rounded-md border border-border bg-muted flex items-center justify-center overflow-hidden shrink-0"
     />
   );
 }
@@ -274,18 +274,17 @@ function MentionUserAvatar({ photo }) {
       previewMaxHeight="max-h-[18rem]"
       previewMaxWidth="max-w-[18rem]"
       fallback={<img src={NoImage} alt="No Image" className="h-full w-full object-cover opacity-50" />}
-      containerClassName="h-7 w-7 rounded-md border border-border bg-muted flex items-center justify-center overflow-hidden shrink-0"
+      containerClassName="h-6 w-6 xxxl:h-7 xxxl:w-7 rounded-md border border-border bg-muted flex items-center justify-center overflow-hidden shrink-0"
     />
   );
 }
 
 function HistoryBadge({ meta }) {
-  // Use specific class if defined in registry, otherwise fallback
   const className = meta.className || "border-foreground text-foreground bg-transparent";
 
   return (
-    <Badge className={cn("text-sm font-bold px-2.5 h-10 flex items-center gap-1.5 border rounded-md hover:bg-transparent", className)}>
-      <FontAwesomeIcon icon={meta.icon} className="text-sm" />
+    <Badge className={cn("text-xs xxxl:text-sm font-bold px-2 xxxl:px-2.5 h-9 xxxl:h-10 flex items-center gap-1.5 border rounded-md hover:bg-transparent", className)}>
+      <FontAwesomeIcon icon={meta.icon} className="text-xs xxxl:text-sm" />
       {meta.label}
     </Badge>
   );
@@ -293,7 +292,7 @@ function HistoryBadge({ meta }) {
 
 function MentionBadge({ mention }) {
   return (
-    <Badge className="text-sm font-semibold flex items-center gap-1.5 h-10 border border-border text-foreground bg-transparent px-2.5 rounded-md hover:bg-transparent shadow-sm">
+    <Badge className="text-xs xxxl:text-sm font-semibold flex items-center gap-1.5 h-9 xxxl:h-10 border border-border text-foreground bg-transparent px-2 xxxl:px-2.5 rounded-md hover:bg-transparent shadow-sm">
       <MentionUserAvatar photo={mention.photo} />@{mention.name}
     </Badge>
   );
@@ -325,28 +324,28 @@ function HistoryDetails({ details }) {
   if (visibleEntries.length === 0) return null;
 
   return (
-    <div className="mt-3">
+    <div className="mt-2 xxxl:mt-3">
       <button
         type="button"
         onClick={(e) => {
           e.stopPropagation();
           setOpen((prev) => !prev);
         }}
-        className="flex items-center gap-2 text-base font-semibold text-muted-foreground hover:text-foreground transition-colors"
+        className="flex items-center gap-2 text-sm xxxl:text-base font-semibold text-muted-foreground hover:text-foreground transition-colors"
       >
-        <FontAwesomeIcon icon={open ? faChevronUp : faChevronDown} className="text-base" />
+        <FontAwesomeIcon icon={open ? faChevronUp : faChevronDown} className="text-sm xxxl:text-base" />
         {open ? "Ascunde detaliile" : `Vezi detalii (${visibleEntries.length})`}
       </button>
 
       {open && (
-        <div className="mt-3 flex flex-col gap-2 border-t pt-3">
+        <div className="mt-2 xxxl:mt-3 flex flex-col gap-2 border-t pt-2 xxxl:pt-3">
           {visibleEntries.map(([key, value], idx) => {
             const loweredKey = String(key).toLowerCase();
 
             if (loweredKey.includes("photo") || loweredKey.includes("poza") || loweredKey.includes("logo")) {
               return (
-                <div key={idx} className="text-base text-foreground flex items-center gap-2">
-                  <FontAwesomeIcon icon={faImage} className="text-base text-muted-foreground" />
+                <div key={idx} className="text-sm xxxl:text-base text-foreground flex items-center gap-2">
+                  <FontAwesomeIcon icon={faImage} className="text-sm xxxl:text-base text-muted-foreground" />
                   <span className="font-semibold">{formatField(key)}:</span>
                   <span>Fotografie actualizată</span>
                 </div>
@@ -359,13 +358,13 @@ function HistoryDetails({ details }) {
             const newValue = hasDiff ? (value.nou ?? value.new ?? null) : value;
 
             return (
-              <div key={idx} className="text-base flex flex-wrap items-center gap-2">
+              <div key={idx} className="text-sm xxxl:text-base flex flex-wrap items-center gap-2">
                 <span className="font-semibold text-foreground">{formatField(key)}:</span>
 
                 {hasDiff && (
                   <>
                     <span className="text-muted-foreground line-through decoration-muted-foreground/60 break-words max-w-full">{formatValue(oldValue)}</span>
-                    <FontAwesomeIcon icon={faArrowRight} className="text-base text-muted-foreground/70" />
+                    <FontAwesomeIcon icon={faArrowRight} className="text-sm xxxl:text-base text-muted-foreground/70" />
                   </>
                 )}
 
@@ -391,7 +390,6 @@ function HistoryItemCard({ rawItem, isContactView = false, onNavigateToActivity 
     const entitateTip = String(item.entitate_tip || "").toLowerCase();
     const parinteTip = String(item.parinte_tip || "").toLowerCase();
 
-    // Istoric direct pe activitate
     if (entitateTip === "activitate") {
       const activityId = toPositiveNumberOrNull(item.entitate_id);
 
@@ -403,7 +401,6 @@ function HistoryItemCard({ rawItem, isContactView = false, onNavigateToActivity 
         : null;
     }
 
-    // Istoric direct pe comentariu
     if (entitateTip === "comentariu") {
       const commentId = toPositiveNumberOrNull(item.entitate_id);
 
@@ -417,7 +414,6 @@ function HistoryItemCard({ rawItem, isContactView = false, onNavigateToActivity 
         : null;
     }
 
-    // Fallback dacă bagi vreodată activitate_id în detalii
     const fallbackActivityId = toPositiveNumberOrNull(details.activitate_id || details.activity_id);
 
     const fallbackCommentId = toPositiveNumberOrNull(details.comentariu_id || details.comment_id);
@@ -478,18 +474,17 @@ function HistoryItemCard({ rawItem, isContactView = false, onNavigateToActivity 
     <div
       onClick={canNavigateToActivity ? handleNavigateClick : undefined}
       className={cn(
-        `rounded-xl border ${canNavigateToActivity ? "cursor-pointer hover:bg-primary/5" : "hover:bg-muted/10"} border-border shadow-sm transition-all hover:shadow-md  p-4`,
+        `rounded-xl border ${canNavigateToActivity ? "cursor-pointer hover:bg-primary/5" : "hover:bg-muted/10"} border-border shadow-sm transition-all hover:shadow-md p-3 xxxl:p-4`,
         getSeveritySurface(item.severity),
       )}
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex flex-col gap-3 min-w-0 flex-1">
-          {/* Top Info: Author & Badges */}
-          <div className="flex items-center gap-3 min-w-0">
+      <div className="flex items-start justify-between gap-3 xxxl:gap-4">
+        <div className="flex flex-col gap-2.5 xxxl:gap-3 min-w-0 flex-1">
+          <div className="flex items-center gap-2.5 xxxl:gap-3 min-w-0">
             <HistoryUserAvatar photo={item.author?.photo} />
 
             <div className="flex flex-wrap items-center gap-2 min-w-0">
-              <span className="font-bold text-foreground text-base">{item.author?.name || "Sistem"}</span>
+              <span className="font-bold text-foreground text-sm xxxl:text-base">{item.author?.name || "Sistem"}</span>
 
               {!isContactView && <HistoryBadge meta={levelMeta} />}
               {showEntityBadge && <HistoryBadge meta={entityMeta} />}
@@ -497,27 +492,24 @@ function HistoryItemCard({ rawItem, isContactView = false, onNavigateToActivity 
             </div>
           </div>
 
-          {/* Main Title & Message */}
-          <div className="pl-[3.75rem]">
-            <div className="text-lg font-bold text-foreground leading-snug">{item.title || <span className="italic text-muted-foreground">Fără titlu.</span>}</div>
-            <div className="text-base mt-1 text-foreground/90 leading-relaxed">{item.message || <span className="italic text-muted-foreground">Fără mesaj.</span>}</div>
+          <div className="pl-[3.25rem] xxxl:pl-[3.75rem]">
+            <div className="text-base xxxl:text-lg font-bold text-foreground leading-snug">{item.title || <span className="italic text-muted-foreground">Fără titlu.</span>}</div>
+            <div className="text-sm xxxl:text-base mt-1 text-foreground/90 leading-relaxed">{item.message || <span className="italic text-muted-foreground">Fără mesaj.</span>}</div>
           </div>
         </div>
 
-        {/* Date & Severity Right */}
-        <div className="flex items-center gap-2 shrink-0 pt-2">
+        <div className="flex items-center gap-2 shrink-0 pt-1 xxxl:pt-2">
           <SeverityIndicator severity={item.severity} />
-          <div className="text-base font-medium text-foreground">{formatDate(item.date)}</div>
+          <div className="text-sm xxxl:text-base font-medium text-foreground">{formatDate(item.date)}</div>
         </div>
       </div>
 
-      {/* Details & Mentions Section */}
-      <div className="pl-[3.75rem]">
+      <div className="pl-[3.25rem] xxxl:pl-[3.75rem]">
         <HistoryDetails details={item.content} />
 
         {item.mentions && item.mentions.length > 0 && (
-          <div className="mt-3 flex items-center gap-3 flex-wrap border-t pt-3">
-            <span className="text-sm font-semibold text-muted-foreground">Mențiuni:</span>
+          <div className="mt-2 xxxl:mt-3 flex items-center gap-2 xxxl:gap-3 flex-wrap border-t pt-2 xxxl:pt-3">
+            <span className="text-xs xxxl:text-sm font-semibold text-muted-foreground">Mențiuni:</span>
             {item.mentions.map((mention) => (
               <MentionBadge key={mention.id} mention={mention} />
             ))}
@@ -533,8 +525,8 @@ export default function HistoryTab({ companyId, filialaId = null, santierId = nu
 
   return (
     <Card className="border-0 shadow-sm h-full flex flex-col overflow-hidden">
-      <CardHeader className="py-3 px-5 bg-muted/10 border-b shrink-0 z-10">
-        <CardTitle className="text-base font-bold uppercase text-muted-foreground flex items-center gap-2">
+      <CardHeader className="py-2 xxxl:py-3 px-4 xxxl:px-5 bg-muted/10 border-b shrink-0 z-10">
+        <CardTitle className="text-sm xxxl:text-base font-bold uppercase text-muted-foreground flex items-center gap-2">
           <FontAwesomeIcon icon={faHistory} />
 
           {contactId ? "Istoric Contact" : santierId ? "Istoric Șantier" : filialaId ? "Istoric Filială" : "Istoric Companie"}
@@ -542,22 +534,22 @@ export default function HistoryTab({ companyId, filialaId = null, santierId = nu
       </CardHeader>
 
       <ScrollArea className="flex-1 w-full">
-        <CardContent className="p-5">
+        <CardContent className="p-4 xxxl:p-5">
           {isLoading ? (
             <SpinnerElement text={2} />
           ) : historyData && historyData.length > 0 ? (
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3 xxxl:gap-4">
               {historyData.map((item) => (
                 <HistoryItemCard key={item.id} rawItem={item} isContactView={!!contactId} onNavigateToActivity={onNavigateToActivity} />
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground space-y-3">
-              <div className="w-12 h-12 rounded-full bg-muted/30 flex items-center justify-center">
-                <FontAwesomeIcon icon={faHistory} className="text-xl opacity-50" />
+            <div className="flex flex-col items-center justify-center py-12 xxxl:py-16 text-muted-foreground space-y-2 xxxl:space-y-3">
+              <div className="w-10 h-10 xxxl:w-12 xxxl:h-12 rounded-full bg-muted/30 flex items-center justify-center">
+                <FontAwesomeIcon icon={faHistory} className="text-lg xxxl:text-xl opacity-50" />
               </div>
 
-              <p className="text-base">Nu există istoric disponibil.</p>
+              <p className="text-sm xxxl:text-base">Nu există istoric disponibil.</p>
             </div>
           )}
         </CardContent>

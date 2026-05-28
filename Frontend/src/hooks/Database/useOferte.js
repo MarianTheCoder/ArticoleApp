@@ -213,11 +213,39 @@ export const useAddOfertaReteta = () => {
   });
 };
 
+export const useEditOfertaReteta = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...data }) => {
+      const response = await api.put(`/Oferte/editOfertaReteta/${id}`, data);
+      return response.data;
+    },
+
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["oferte"] });
+
+      if (variables?.santier_id) {
+        queryClient.invalidateQueries({ queryKey: ["oferte", variables.santier_id] });
+      }
+
+      if (variables?.lucrare_id) {
+        queryClient.invalidateQueries({
+          queryKey: ["oferte", "retete", String(variables.lucrare_id)],
+        });
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["oferte", "retete"] });
+    },
+  });
+};
+
 export const useEditOfertaRetetaElementVariant = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ id, ...data }) => {
+      console.log("Editing oferta reteta element variant with data:", { id, ...data });
       const response = await api.put(`/Oferte/editOfertaRetetaElementVariant/${id}`, data);
       return response.data;
     },
@@ -230,6 +258,129 @@ export const useEditOfertaRetetaElementVariant = () => {
       }
 
       queryClient.invalidateQueries({ queryKey: ["oferte", "retete"] });
+    },
+  });
+};
+
+export const useReorderOfertaRetete = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data) => {
+      const response = await api.put("/Oferte/reorderOfertaRetete", data);
+      return response.data;
+    },
+
+    onSuccess: (_, variables) => {
+      if (variables?.lucrare_id) {
+        queryClient.invalidateQueries({
+          queryKey: ["oferte", "retete", String(variables.lucrare_id)],
+        });
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["oferte", "retete"] });
+      queryClient.invalidateQueries({ queryKey: ["oferte"] });
+    },
+  });
+};
+
+export const useDeleteOfertaReteta = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ ids, ...data }) => {
+      const response = await api.delete("/Oferte/deleteOfertaRetete", {
+        data: {
+          ...data,
+          ids: Array.isArray(ids) ? ids : [ids],
+        },
+      });
+
+      return response.data;
+    },
+
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["oferte"] });
+      queryClient.invalidateQueries({ queryKey: ["oferte", "retete"] });
+    },
+  });
+};
+
+export const useDuplicateOfertaRetete = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload) => {
+      const res = await api.post("/Oferte/duplicateOfertaRetete", payload);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["oferte-retete"]);
+    },
+  });
+};
+
+export const useActualizeazaOfertaRetete = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload) => {
+      const res = await api.put("/Oferte/actualizeazaOfertaRetete", payload);
+      return res.data;
+    },
+
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["oferte"] });
+      queryClient.invalidateQueries({ queryKey: ["oferte", "retete"] });
+
+      if (variables?.lucrare_id) {
+        queryClient.invalidateQueries({
+          queryKey: ["oferte", "retete", String(variables.lucrare_id)],
+        });
+      }
+
+      if (variables?.santier_id) {
+        queryClient.invalidateQueries({
+          queryKey: ["oferte", variables.santier_id],
+        });
+      }
+    },
+  });
+};
+
+export const useGetOfertaReteteFurnizori = () => {
+  return useMutation({
+    mutationFn: async (payload) => {
+      const response = await api.post("/Oferte/getOfertaReteteFurnizori", payload);
+      return response.data;
+    },
+  });
+};
+
+export const useApplyOfertaReteteFurnizori = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload) => {
+      const response = await api.post("/Oferte/applyOfertaReteteFurnizori", payload);
+      return response.data;
+    },
+
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["oferte"] });
+      queryClient.invalidateQueries({ queryKey: ["oferte", "retete"] });
+
+      if (variables?.lucrare_id) {
+        queryClient.invalidateQueries({
+          queryKey: ["oferte", "retete", String(variables.lucrare_id)],
+        });
+      }
+
+      if (variables?.santier_id) {
+        queryClient.invalidateQueries({
+          queryKey: ["oferte", variables.santier_id],
+        });
+      }
     },
   });
 };
