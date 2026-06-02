@@ -1,15 +1,29 @@
 import React, { memo, useCallback, useLayoutEffect, useEffect, useState, useMemo, useRef } from "react";
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCopy, faDollarSign, faLayerGroup, faPenToSquare, faScaleBalanced, faScrewdriverWrench, faTrash, faTruck } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCalculator,
+  faCoins,
+  faCopy,
+  faFolder,
+  faListUl,
+  faPenToSquare,
+  faScrewdriverWrench,
+  faTrash,
+  faTruck,
+  faTriangleExclamation,
+  faFolderOpen,
+  faArrowLeftRotate,
+  faArrowsRotate,
+} from "@fortawesome/free-solid-svg-icons";
 
 import { TableVirtuoso } from "react-virtuoso";
 import OverflowTooltip from "@/components/ui/OverflowTooltip";
 import { toast } from "sonner";
 import OferteRetetaSubList from "./OferteRetetaSubList";
+import OferteElementVariantDialog from "./OferteElementVariantDialog";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipArrow } from "@radix-ui/react-tooltip";
 
 import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
@@ -20,7 +34,6 @@ import photoAPI from "@/api/photoAPI";
 import ImagePreviewTooltip from "@/components/ui/ImagePreviewTooltip";
 import NoImage from "@/assets/no-image-icon.png";
 import OferteDuplicateReteteDialog from "./OferteDuplicateReteteDialog";
-import OferteElementeTooltop from "./components/OferteElementeTooltop";
 
 import {
   toId,
@@ -28,7 +41,6 @@ import {
   normalizeColoaneValori,
   getColoanaValue,
   formatNumber,
-  getRetetaInfoFlags,
   getRetetaCost,
   getRetetaTotalLucrare,
   getElementTotalInLucrare,
@@ -37,81 +49,251 @@ import {
   getRangeIds,
   reorderSelectedBlock,
 } from "./helpers/OferteReteteHelpers";
+
 import OferteQtyFormulaCell from "./components/OferteQtyCell";
 import OferteActualizeazaReteteDialog from "./components/OferteActualizeazaDialog";
 import OferteFurnizoriDialog from "./components/OferteFurnizorDialog";
+import { Separator } from "@/components/ui/separator";
 
-const COL = {
-  limba: "w-[4.5rem] min-w-[4.5rem] max-w-[4.5rem]",
-  elemente: "w-[7rem] min-w-[7rem] max-w-[7rem]",
-  info: "w-[8rem] min-w-[8rem] max-w-[8rem]",
-  cod: "w-[8rem] min-w-[8rem] max-w-[8rem]",
-  clasa: "w-[9rem] min-w-[9rem] max-w-[9rem]",
-  denumire: "w-[12rem] min-w-[12rem] max-w-[12rem] xxxl:w-[18rem] xxxl:min-w-[18rem] xxxl:max-w-[18rem]",
-  descriere: "w-[14rem] min-w-[14rem] max-w-[14rem] xxxl:w-[22rem] xxxl:min-w-[22rem] xxxl:max-w-[22rem]",
-  dynamic: "w-[7rem] min-w-[7rem] max-w-[7rem]",
-  unitate: "w-[5rem] min-w-[5rem] max-w-[5rem]",
-  cost: "w-[7rem] min-w-[7rem] max-w-[7rem]",
-  cantitate: "w-[7rem] min-w-[7rem] max-w-[7rem]",
-  costTotal: "w-[8rem] min-w-[8rem] max-w-[8rem]",
-  creat: "w-[14rem] min-w-[14rem] max-w-[14rem]",
-  actualizat: "w-[14rem] min-w-[14rem] max-w-[14rem]",
+import { resurseConfig } from "@/Database/Catalog/resurseConfig";
+import { useEditOfertaRetetaElementVariant } from "@/hooks/Database/useOferte";
+
+const COLUMN_WIDTHS_STORAGE_KEY = "oferte_retete_column_widths";
+
+const getDefaultColumnWidths = () => ({
+  elemente: 42,
+  poza: 48,
+  info: 40,
+  cod: 112,
+  clasa: 128,
+  denumire: typeof window !== "undefined" && window.innerWidth >= 1980 ? 280 : 190,
+  descriere: typeof window !== "undefined" && window.innerWidth >= 1980 ? 340 : 220,
+  dynamic: 104,
+  unitate: 68,
+  cost: 96,
+  cantitate: 108,
+  costTotal: 112,
+  creat: 180,
+  actualizat: 180,
+});
+
+const MIN_COL_WIDTHS = {
+  elemente: 40,
+  poza: 42,
+  info: 40,
+  cod: 80,
+  clasa: 90,
+  denumire: 110,
+  descriere: 120,
+  dynamic: 80,
+  unitate: 56,
+  cost: 80,
+  cantitate: 88,
+  costTotal: 90,
+  creat: 120,
+  actualizat: 120,
 };
 
-const InfoIcon = ({ icon, label, className }) => {
+const ResizableTableHead = ({ colKey, style, className = "", children, onResizeStart }) => {
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span className={`inline-flex h-8 w-8 items-center justify-center rounded-md border text-sm ${className}`}>
-          <FontAwesomeIcon icon={icon} />
-        </span>
-      </TooltipTrigger>
+    <TableHead style={style} className={`relative select-none ${className}`}>
+      {children}
 
-      <TooltipContent className="whitespace-pre-wrap break-words xxxl:max-w-[20rem] font-normal lg:max-w-[15rem] max-w-[10rem] rounded-md text-sm xl:text-base z-[100] bg-popover border-2 border-border text-popover-foreground shadow-md p-2">
-        <TooltipArrow width={15} height={10} className="fill-border" />
-        {label}
-      </TooltipContent>
-    </Tooltip>
+      <span data-no-row-open onPointerDown={(e) => onResizeStart(e, colKey)} className="absolute right-0 top-0 z-30 h-full w-2 cursor-col-resize touch-none select-none hover:bg-primary/50" />
+    </TableHead>
   );
 };
 
+const isCostDiff = (diff) =>
+  String(diff?.field || "")
+    .toLowerCase()
+    .includes("cost");
+
+const isQuantityDiff = (diff) =>
+  String(diff?.field || "")
+    .toLowerCase()
+    .includes("cantitate") ||
+  String(diff?.scope || "")
+    .toLowerCase()
+    .includes("cantitate");
+
+const getDiffLabels = (syncStatus, predicate) => {
+  const diffs = Array.isArray(syncStatus?.diffs) ? syncStatus.diffs : [];
+
+  return diffs
+    .filter(predicate)
+    .map((diff) => diff?.label || diff?.field)
+    .filter(Boolean);
+};
+
+const getRetetaIssueGroups = (reteta) => {
+  const syncStatus = reteta?.sync_status || null;
+  const costLabels = getDiffLabels(syncStatus, isCostDiff);
+  const qtyLabels = getDiffLabels(syncStatus, isQuantityDiff);
+  const otherLabels = getDiffLabels(syncStatus, (diff) => !isCostDiff(diff) && !isQuantityDiff(diff));
+  const groups = [];
+
+  if (reteta?.has_cost_diff || syncStatus?.has_cost_diff || costLabels.length > 0) {
+    groups.push({
+      icon: faCoins,
+      title: "Cost",
+      items: costLabels.length > 0 ? costLabels : ["Cost modificat față de original."],
+    });
+  }
+
+  if (reteta?.has_qty_diff || syncStatus?.has_qty_diff || qtyLabels.length > 0) {
+    groups.push({
+      icon: faCalculator,
+      title: "Qty",
+      items: qtyLabels.length > 0 ? qtyLabels : ["Cantitate modificată față de rețetă."],
+    });
+  }
+
+  if (reteta?.has_other_diff || syncStatus?.has_other_diff || otherLabels.length > 0) {
+    groups.push({
+      icon: faListUl,
+      title: "Altele",
+      items: otherLabels.length > 0 ? otherLabels : ["Există alte diferențe față de rețeta originală."],
+    });
+  }
+
+  if (groups.length === 0 && syncStatus?.is_outdated) {
+    groups.push({
+      icon: faListUl,
+      title: "Altele",
+      items: ["Rețeta nu este la zi. Deschide rețeta pentru detalii."],
+    });
+  }
+
+  return groups;
+};
+
+const IssueTooltipGroup = memo(function IssueTooltipGroup({ group }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-2 font-black uppercase tracking-wide text-foreground">
+        <FontAwesomeIcon icon={group.icon} className="text-primary" />
+        <span>{group.title}</span>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        {group.items.map((item, index) => (
+          <div key={`${group.title}-${index}`} className="flex items-start gap-2 text-popover-foreground">
+            <span className="text-muted-foreground">-</span>
+            <span className="leading-snug">{item}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});
+
 const RetetaInfoIcons = memo(function RetetaInfoIcons({ reteta }) {
-  const flags = getRetetaInfoFlags(reteta);
+  const isOutdated = reteta?.is_outdated || reteta?.sync_status?.is_outdated;
+  const groups = getRetetaIssueGroups(reteta);
 
-  const hasAny = flags.hasChangedPrice || flags.hasChangedQuantity || flags.hasVariant;
-
-  if (!hasAny) {
-    return <span className="text-sm text-muted-foreground/40 italic">—</span>;
+  if (!isOutdated) {
+    return <span className="text-sm text-muted-foreground/40 italic"></span>;
   }
 
   return (
-    <div className="flex items-center justify-center gap-1">
-      {flags.hasChangedPrice && <InfoIcon icon={faDollarSign} label="Există costuri modificate în elementele rețetei." className="border-emerald-600/50 bg-emerald-600/10 text-emerald-600" />}
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex h-6 w-6 items-center justify-center text-lg leading-none text-red-600">
+          <FontAwesomeIcon icon={faTriangleExclamation} />
+        </span>
+      </TooltipTrigger>
 
-      {flags.hasChangedQuantity && <InfoIcon icon={faScaleBalanced} label="Există cantități modificate în elementele rețetei." className="border-amber-600/50 bg-amber-600/10 text-amber-600" />}
-
-      {flags.hasVariant && <InfoIcon icon={faLayerGroup} label="Există variante selectate în elementele rețetei." className="border-sky-600/50 bg-sky-600/10 text-sky-600" />}
-    </div>
+      <TooltipContent className="w-72 whitespace-normal break-words font-normal rounded-md text-sm z-[100] bg-popover border-2 border-border text-popover-foreground shadow-md p-3">
+        <TooltipArrow width={15} height={10} className="fill-border" />
+        <div className="flex flex-col gap-3">
+          {groups.map((group) => (
+            <IssueTooltipGroup key={group.title} group={group} />
+          ))}
+        </div>
+      </TooltipContent>
+    </Tooltip>
   );
 });
 
-const SummaryBox = memo(function SummaryBox({ label, value, children, strong = false }) {
+const SummaryBox = memo(function SummaryBox({ label, value, children, strong = false, tone = null }) {
+  const toneClass = tone === "manopera" ? "border-emerald-600/50 bg-emerald-600/10" : strong ? "border-primary" : "border-border";
+
+  const valueClass = tone === "manopera" ? "font-black text-emerald-600" : strong ? "font-black text-primary" : "font-extrabold text-foreground";
+
   return (
-    <div className={`min-w-[9rem] rounded-md border bg-card px-3 py-2 flex flex-col justify-center gap-1 ${strong ? "border-primary" : "border-border"}`}>
-      <span className="text-[11px] uppercase tracking-wider font-bold text-muted-foreground">{label}</span>
+    <div className={`min-w-[7rem] xxxl:min-w-[8rem] rounded-md border p-2 flex flex-col justify-center gap-0.5 ${toneClass}`}>
+      <span className="text-sm uppercase tracking-wide font-bold text-muted-foreground">{label}</span>
 
-      {children ? children : <span className={`text-base whitespace-nowrap ${strong ? "font-black text-primary" : "font-extrabold text-foreground"}`}>{formatNumber(value)}</span>}
+      {children ? children : <span className={`text-sm whitespace-nowrap ${valueClass}`}>{formatNumber(value)}</span>}
     </div>
   );
 });
 
-const SortableRetetaRow = (props) => {
-  const index = props["data-index"];
-  const reteta = props.context?.reteteItems?.[index];
+const normalizeAdaosPercentInput = (value) => {
+  const raw = String(value ?? "").replace(",", ".");
 
-  if (!reteta) return <TableRow {...props} />;
+  if (raw === "") return "";
 
+  if (!/^\d{0,4}(\.\d{0,2})?$/.test(raw)) {
+    return null;
+  }
+
+  const numberValue = Number(raw);
+
+  if (!Number.isFinite(numberValue)) {
+    return null;
+  }
+
+  if (numberValue > 1000) {
+    return "1000";
+  }
+
+  return raw;
+};
+
+const getRowItemFromProps = (props) => {
+  return props.context?.displayRows?.[props["data-index"]];
+};
+
+const cleanVirtuosoRowProps = (props) => {
+  const { context, item, ...domProps } = props;
+  return domProps;
+};
+
+const PlainVirtualRow = (props) => {
+  const rowItem = getRowItemFromProps(props);
+  const domProps = cleanVirtuosoRowProps(props);
+
+  if (!rowItem) {
+    return <TableRow {...domProps} />;
+  }
+
+  if (rowItem.type === "element") {
+    return (
+      <TableRow
+        {...domProps}
+        className={`group cursor-pointer h-8 border-0 hover:bg-transparent `}
+        onClick={(e) => {
+          e.stopPropagation();
+          props.context?.handleElementRowClick?.(rowItem.element, rowItem.reteta);
+        }}
+      >
+        {props.children}
+      </TableRow>
+    );
+  }
+
+  return (
+    <TableRow {...domProps} className={`h-8 border-b bg-muted/10`}>
+      {props.children}
+    </TableRow>
+  );
+};
+
+const SortableRecipeVirtualRow = ({ reteta, ...props }) => {
   const id = toId(reteta.id);
+
   const selectedIds = props.context?.selectedIds || [];
   const selected = selectedIds.includes(id);
 
@@ -123,23 +305,28 @@ const SortableRetetaRow = (props) => {
     id,
   });
 
+  const domProps = cleanVirtuosoRowProps(props);
+  const isLastRow = props["data-index"] === props.context?.displayRows?.length - 1;
+
   return (
     <ContextMenu key={reteta.id}>
       <ContextMenuTrigger asChild>
         <TableRow
-          {...props}
+          {...domProps}
           ref={setNodeRef}
           {...attributes}
           {...listeners}
           style={{
-            ...props.style,
+            ...domProps.style,
             transform: CSS.Transform.toString(transform),
             transition,
             opacity: isDragging ? 0.45 : 1,
             zIndex: isDragging ? 50 : undefined,
             position: isDragging ? "relative" : undefined,
           }}
-          className={`cursor-pointer drag-row data-[state=open]:bg-muted h-16 border-b transition-colors group hover:bg-accent hover-row-border ${selected ? "bg-primary/10 hover:bg-primary/15" : ""}`}
+          className={`cursor-pointer hover:bgb drag-row data-[state=open]:bg-muted h-12 border-b oferta-parent-row dark:hover:bg-black group  ${
+            selected ? "!bg-primary/15 hover:!bg-primary/20 dark:!bg-primary/35 dark:hover:!bg-primary/45" : ""
+          }`}
           onMouseDownCapture={(e) => {
             if (e.shiftKey) {
               e.preventDefault();
@@ -161,7 +348,7 @@ const SortableRetetaRow = (props) => {
       <ContextMenuContent className="w-48">
         {isMultiple && (
           <>
-            <div className="px-2">
+            <div className="p-2">
               <p className="text-sm font-black uppercase tracking-wider text-foreground">Selecție multiplă</p>
               <p className="text-sm text-muted-foreground">{contextItems.length} rețete selectate</p>
             </div>
@@ -175,7 +362,7 @@ const SortableRetetaRow = (props) => {
         </ContextMenuItem>
 
         <ContextMenuItem className="gap-3" onClick={() => props.context?.handleActualizeaza(contextItems)}>
-          <FontAwesomeIcon className="text-purple-500" icon={faScrewdriverWrench} />
+          <FontAwesomeIcon className="text-purple-400" icon={faArrowsRotate} />
           Actualizează
         </ContextMenuItem>
 
@@ -202,10 +389,25 @@ const SortableRetetaRow = (props) => {
   );
 };
 
-const componentsOferteRetete = {
-  Table: (props) => <table {...props} className="min-w-full w-full table-fixed caption-bottom text-left border-collapse" />,
+const SortableRetetaRow = (props) => {
+  const rowItem = getRowItemFromProps(props);
 
-  TableHead: React.forwardRef((props, ref) => <TableHeader {...props} ref={ref} className="bg-background sticky top-0 z-20 shadow-sm" />),
+  if (!rowItem) {
+    const domProps = cleanVirtuosoRowProps(props);
+    return <TableRow {...domProps} />;
+  }
+
+  if (rowItem.type !== "reteta") {
+    return <PlainVirtualRow {...props} />;
+  }
+
+  return <SortableRecipeVirtualRow {...props} reteta={rowItem.reteta} />;
+};
+
+const componentsOferteRetete = {
+  Table: (props) => <table {...props} className="min-w-full w-full table-fixed caption-bottom text-left border-collapse text-sm" />,
+
+  TableHead: React.forwardRef((props, ref) => <TableHeader {...props} ref={ref} className="bg-muted sticky top-0 z-20 shadow-sm" />),
 
   TableBody: React.forwardRef((props, ref) => <TableBody {...props} ref={ref} />),
 
@@ -217,6 +419,8 @@ const OferteReteteList = memo(function OferteReteteList({
   selectedLucrare,
   displayLang = "RO",
   visibleColumns,
+  columnResetKey = 0,
+  toggleAllKey = 0,
   onEditReteta,
   onDeleteReteta,
   onReorderRetete,
@@ -230,6 +434,7 @@ const OferteReteteList = memo(function OferteReteteList({
   const scrollPosRef = useRef(0);
   const lastClickedIndexRef = useRef(null);
   const wasDraggingRef = useRef(false);
+  const skipSaveColumnWidthsRef = useRef(false);
 
   const [duplicateOpen, setDuplicateOpen] = useState(false);
   const [duplicateItems, setDuplicateItems] = useState([]);
@@ -240,8 +445,14 @@ const OferteReteteList = memo(function OferteReteteList({
   const [furnizoriOpen, setFurnizoriOpen] = useState(false);
   const [furnizoriItems, setFurnizoriItems] = useState([]);
 
-  const [subDialogOpen, setSubDialogOpen] = useState(false);
-  const [selectedReteta, setSelectedReteta] = useState(null);
+  const [expandedRetetaIds, setExpandedRetetaIds] = useState(new Set());
+
+  const [variantDialogOpen, setVariantDialogOpen] = useState(false);
+  const [selectedElement, setSelectedElement] = useState(null);
+  const [selectedElementConfig, setSelectedElementConfig] = useState(null);
+  const [selectedElementParentReteta, setSelectedElementParentReteta] = useState(null);
+
+  const editElementVariant = useEditOfertaRetetaElementVariant();
 
   const [orderedRetete, setOrderedRetete] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -249,6 +460,126 @@ const OferteReteteList = memo(function OferteReteteList({
 
   const [tvaPercent, setTvaPercent] = useState("0");
   const [extraPercent, setExtraPercent] = useState("0");
+
+  const [columnWidths, setColumnWidths] = useState(() => {
+    const defaults = getDefaultColumnWidths();
+
+    try {
+      const saved = localStorage.getItem(COLUMN_WIDTHS_STORAGE_KEY);
+
+      if (saved) {
+        const savedWidths = JSON.parse(saved);
+
+        if (Number(savedWidths.elemente) === 58) {
+          savedWidths.elemente = defaults.elemente;
+        }
+
+        return {
+          ...defaults,
+          ...savedWidths,
+        };
+      }
+    } catch {}
+
+    return defaults;
+  });
+
+  useEffect(() => {
+    if (skipSaveColumnWidthsRef.current) {
+      skipSaveColumnWidthsRef.current = false;
+      return;
+    }
+
+    try {
+      localStorage.setItem(COLUMN_WIDTHS_STORAGE_KEY, JSON.stringify(columnWidths));
+    } catch {}
+  }, [columnWidths]);
+
+  useEffect(() => {
+    if (!columnResetKey) return;
+
+    skipSaveColumnWidthsRef.current = true;
+    setColumnWidths(getDefaultColumnWidths());
+
+    try {
+      localStorage.removeItem(COLUMN_WIDTHS_STORAGE_KEY);
+    } catch {}
+  }, [columnResetKey]);
+
+  useEffect(() => {
+    if (!toggleAllKey) return;
+
+    setExpandedRetetaIds((prev) => {
+      const allIds = (reteteItems || []).map((item) => toId(item.id)).filter(Boolean);
+      const allExpanded = allIds.length > 0 && allIds.every((id) => prev.has(id));
+
+      return allExpanded ? new Set() : new Set(allIds);
+    });
+  }, [toggleAllKey]);
+
+  const getColumnStyle = useCallback(
+    (key) => {
+      const fallbackKey = String(key || "").startsWith("dynamic_") ? "dynamic" : key;
+      const defaults = getDefaultColumnWidths();
+      const width = columnWidths[key] || defaults[fallbackKey] || 112;
+
+      return {
+        width,
+        minWidth: width,
+        maxWidth: width,
+      };
+    },
+    [columnWidths],
+  );
+
+  const handleColumnResizeStart = useCallback(
+    (e, key) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const fallbackKey = String(key || "").startsWith("dynamic_") ? "dynamic" : key;
+      const defaults = getDefaultColumnWidths();
+      const startX = e.clientX;
+      const startWidth = columnWidths[key] || defaults[fallbackKey] || 112;
+      const minWidth = MIN_COL_WIDTHS[fallbackKey] || 70;
+
+      let frame = null;
+
+      const onMove = (moveEvent) => {
+        const delta = moveEvent.clientX - startX;
+        const nextWidth = Math.max(minWidth, startWidth + delta);
+
+        if (frame) {
+          window.cancelAnimationFrame(frame);
+        }
+
+        frame = window.requestAnimationFrame(() => {
+          setColumnWidths((prev) => ({
+            ...prev,
+            [key]: nextWidth,
+          }));
+        });
+      };
+
+      const onUp = () => {
+        if (frame) {
+          window.cancelAnimationFrame(frame);
+        }
+
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+      };
+
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+    },
+    [columnWidths],
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -271,6 +602,19 @@ const OferteReteteList = memo(function OferteReteteList({
     setSelectedIds((prev) => {
       const validIds = new Set((reteteItems || []).map((item) => toId(item.id)));
       return prev.filter((id) => validIds.has(toId(id)));
+    });
+
+    setExpandedRetetaIds((prev) => {
+      const validIds = new Set((reteteItems || []).map((item) => toId(item.id)));
+      const next = new Set();
+
+      prev.forEach((id) => {
+        if (validIds.has(toId(id))) {
+          next.add(toId(id));
+        }
+      });
+
+      return next;
     });
   }, [reteteItems]);
 
@@ -314,30 +658,39 @@ const OferteReteteList = memo(function OferteReteteList({
       transport: 0,
     };
 
+    let totalManoperaHours = 0;
+
     orderedRetete.forEach((reteta) => {
       const elemente = reteta.elemente || [];
+      const cantitateLucrare = Number(reteta.cantitate_lucrare || 0);
 
       elemente.forEach((el) => {
         if (resourceTotals[el.tip_resursa] === undefined) return;
 
         resourceTotals[el.tip_resursa] += getElementTotalInLucrare(el, reteta);
+
+        if (el.tip_resursa === "manopera") {
+          const cantitateManoperaInReteta = Number(el.cantitate_in_reteta || 0);
+          totalManoperaHours += cantitateManoperaInReteta * cantitateLucrare;
+        }
       });
     });
 
     const subtotal = resourceTotals.manopera + resourceTotals.material + resourceTotals.utilaj + resourceTotals.transport;
 
-    const tvaValue = subtotal * (getPercentNumber(tvaPercent) / 100);
-    const totalDupaTva = subtotal + tvaValue;
+    const extraValue = subtotal * (getPercentNumber(extraPercent) / 100);
+    const totalDupaAdaos = subtotal + extraValue;
 
-    const extraValue = totalDupaTva * (getPercentNumber(extraPercent) / 100);
-    const totalFinal = totalDupaTva + extraValue;
+    const tvaValue = totalDupaAdaos * (getPercentNumber(tvaPercent) / 100);
+    const totalFinal = totalDupaAdaos + tvaValue;
 
     return {
       ...resourceTotals,
+      totalManoperaHours,
       subtotal,
-      tvaValue,
-      totalDupaTva,
       extraValue,
+      totalDupaAdaos,
+      tvaValue,
       totalFinal,
     };
   }, [orderedRetete, tvaPercent, extraPercent]);
@@ -351,7 +704,7 @@ const OferteReteteList = memo(function OferteReteteList({
   }, []);
 
   const handleExtraPercentChange = useCallback((e) => {
-    const next = normalizePercentInput(e.target.value);
+    const next = normalizeAdaosPercentInput(e.target.value);
 
     if (next !== null) {
       setExtraPercent(next);
@@ -397,6 +750,35 @@ const OferteReteteList = memo(function OferteReteteList({
       containerRef.current.scrollTop = scrollPosRef.current;
     }
   }, [orderedRetete]);
+
+  const toggleRetetaExpand = useCallback((reteta) => {
+    const id = toId(reteta?.id);
+
+    if (!id) return;
+
+    setExpandedRetetaIds((prev) => {
+      const next = new Set(prev);
+
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+
+      return next;
+    });
+  }, []);
+
+  const handleElementRowClick = useCallback((element, parentReteta) => {
+    if (!element || !parentReteta) return;
+
+    const config = resurseConfig[element.tip_resursa] || resurseConfig.material;
+
+    setSelectedElement(element);
+    setSelectedElementConfig(config);
+    setSelectedElementParentReteta(parentReteta);
+    setVariantDialogOpen(true);
+  }, []);
 
   const handleRowClick = useCallback(
     (e, reteta) => {
@@ -452,10 +834,9 @@ const OferteReteteList = memo(function OferteReteteList({
         return;
       }
 
-      setSelectedReteta(reteta);
-      setSubDialogOpen(true);
+      toggleRetetaExpand(reteta);
     },
-    [orderedRetete, getRetetaIndex],
+    [orderedRetete, getRetetaIndex, toggleRetetaExpand],
   );
 
   const handleDuplicate = useCallback((items) => {
@@ -477,14 +858,32 @@ const OferteReteteList = memo(function OferteReteteList({
   }, []);
 
   useEffect(() => {
-    if (!selectedReteta?.id) return;
+    if (!variantDialogOpen || !selectedElement?.id || !selectedElementParentReteta?.id) return;
 
-    const fresh = orderedRetete.find((r) => Number(r.id) === Number(selectedReteta.id));
+    const freshParent = orderedRetete.find((r) => Number(r.id) === Number(selectedElementParentReteta.id));
 
-    if (fresh) {
-      setSelectedReteta(fresh);
+    if (!freshParent) return;
+
+    const freshElement = (freshParent.elemente || []).find((el) => Number(el.id) === Number(selectedElement.id));
+
+    setSelectedElementParentReteta(freshParent);
+
+    if (freshElement) {
+      setSelectedElement(freshElement);
     }
-  }, [orderedRetete, selectedReteta?.id]);
+  }, [orderedRetete, selectedElement?.id, selectedElementParentReteta?.id, variantDialogOpen]);
+
+  const handleSaveElementSnapshot = useCallback(
+    async (payload) => {
+      await editElementVariant.mutateAsync({
+        ...payload,
+        lucrare_id: selectedLucrare?.id,
+      });
+
+      toast.success("Elementul a fost actualizat.");
+    },
+    [editElementVariant, selectedLucrare?.id],
+  );
 
   const handleEdit = useCallback(
     (reteta) => {
@@ -628,12 +1027,78 @@ const OferteReteteList = memo(function OferteReteteList({
     [onUpdateRetetaQuantity],
   );
 
+  const displayRows = useMemo(() => {
+    const rows = [];
+
+    orderedRetete.forEach((reteta) => {
+      const retetaId = toId(reteta.id);
+
+      rows.push({
+        id: `reteta-${retetaId}`,
+        type: "reteta",
+        reteta,
+      });
+
+      if (expandedRetetaIds.has(retetaId)) {
+        const elemente = reteta.elemente || [];
+
+        if (elemente.length === 0) {
+          rows.push({
+            id: `empty-${retetaId}`,
+            type: "empty",
+            reteta,
+          });
+
+          return;
+        }
+
+        elemente.forEach((element) => {
+          rows.push({
+            id: `element-${retetaId}-${element.id}`,
+            type: "element",
+            reteta,
+            element,
+          });
+        });
+      }
+    });
+
+    return rows;
+  }, [orderedRetete, expandedRetetaIds]);
+
+  const visibleTableColumnCount = useMemo(() => {
+    let count = 0;
+
+    if (showCol("elemente")) count += 1;
+    if (showCol("poza")) count += 1;
+
+    dynamicColumns.forEach((col) => {
+      if (showCol(`col_${col.id}`)) {
+        count += 1;
+      }
+    });
+
+    ["cod", "clasa", "denumire", "descriere", "unitate", "cost", "cantitate", "costTotal", "creat", "actualizat"].forEach((key) => {
+      if (showCol(key)) {
+        count += 1;
+      }
+    });
+
+    if (showCol("info")) count += 1;
+
+    return count;
+  }, [dynamicColumns, showCol]);
+
   const context = useMemo(() => {
     return {
+      displayRows,
       reteteItems: orderedRetete,
       selectedIds,
+      expandedRetetaIds,
+      toggleRetetaExpand,
       handleRowClick,
       handleRowContextMenu,
+      handleElementRowClick,
       getSelectedRetete,
       handleEdit,
       handleDelete,
@@ -641,75 +1106,245 @@ const OferteReteteList = memo(function OferteReteteList({
       handleFurnizori,
       handleActualizeaza,
     };
-  }, [orderedRetete, selectedIds, handleRowClick, handleRowContextMenu, getSelectedRetete, handleEdit, handleDelete, handleDuplicate, handleFurnizori, handleActualizeaza]);
+  }, [
+    displayRows,
+    orderedRetete,
+    selectedIds,
+    expandedRetetaIds,
+    toggleRetetaExpand,
+    handleRowClick,
+    handleRowContextMenu,
+    handleElementRowClick,
+    getSelectedRetete,
+    handleEdit,
+    handleDelete,
+    handleDuplicate,
+    handleFurnizori,
+    handleActualizeaza,
+  ]);
 
   return (
-    <div className="rounded-md border bg-card w-full h-full overflow-hidden relative flex flex-col">
+    <div className="rounded-md border bg-card w-full h-full overflow-hidden relative flex flex-col text-sm text-foreground">
       <div ref={containerRef} onScroll={handleScroll} className="flex-1 min-h-0 overflow-auto relative">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragCancel={handleDragCancel} onDragEnd={handleDragEnd}>
           <SortableContext items={orderedRetete.map((item) => toId(item.id))} strategy={verticalListSortingStrategy}>
             <TableVirtuoso
               customScrollParent={containerRef.current}
               overscan={10}
-              totalCount={orderedRetete.length}
-              data={orderedRetete}
+              totalCount={displayRows.length}
+              data={displayRows}
               style={{ height: "100%", width: "100%" }}
               components={componentsOferteRetete}
               context={context}
               fixedHeaderContent={() => (
-                <TableRow className="h-10 hover:bg-muted-foreground/25 bg-muted-foreground/25 border-b">
-                  {showCol("limba") && <TableHead className={`text-center px-2 ${COL.limba}`}>Limba</TableHead>}
-                  {showCol("info") && <TableHead className={`text-center px-2 ${COL.info}`}>Info</TableHead>}
-                  {showCol("elemente") && <TableHead className={`text-center px-2 ${COL.elemente}`}>Elemente</TableHead>}
+                <TableRow className="h-9 oferta-table-header-row ">
+                  {showCol("elemente") && (
+                    <ResizableTableHead
+                      colKey="elemente"
+                      style={getColumnStyle("elemente")}
+                      onResizeStart={handleColumnResizeStart}
+                      className="relative h-9 p-1 text-center align-middle text-sm font-bold text-foreground"
+                    >
+                      Tip
+                    </ResizableTableHead>
+                  )}
+
+                  {showCol("poza") && (
+                    <ResizableTableHead
+                      colKey="poza"
+                      style={getColumnStyle("poza")}
+                      onResizeStart={handleColumnResizeStart}
+                      className="relative h-9 p-1 text-center align-middle text-sm font-bold text-foreground"
+                    >
+                      Poza
+                    </ResizableTableHead>
+                  )}
+
                   {dynamicColumns.map((col) =>
                     showCol(`col_${col.id}`) ? (
-                      <TableHead key={col.id} className={`text-center px-2 ${COL.dynamic}`}>
-                        <OverflowTooltip text={col.nume} align="center" className="text-sm font-bold text-center" maxLines={1} />
-                      </TableHead>
+                      <ResizableTableHead
+                        key={col.id}
+                        colKey={`dynamic_${col.id}`}
+                        style={getColumnStyle(`dynamic_${col.id}`)}
+                        onResizeStart={handleColumnResizeStart}
+                        className="relative h-9 p-1 text-center align-middle text-sm font-bold text-foreground"
+                      >
+                        <OverflowTooltip text={col.nume} align="center" className="font-bold text-center text-foreground" maxLines={1} textSize="sm" />
+                      </ResizableTableHead>
                     ) : null,
                   )}
-                  {showCol("cod") && <TableHead className={`text-center px-2 ${COL.cod}`}>Cod</TableHead>}
-                  {showCol("clasa") && <TableHead className={`text-center px-2 ${COL.clasa}`}>Clasa</TableHead>}
-                  {showCol("denumire") && <TableHead className={`px-3 ${COL.denumire}`}>Denumire</TableHead>}
-                  {showCol("descriere") && <TableHead className={`px-3 ${COL.descriere}`}>Descriere</TableHead>}
-                  {showCol("unitate") && <TableHead className={`text-center px-2 ${COL.unitate}`}>U.M.</TableHead>}
-                  {showCol("cost") && <TableHead className={`text-center px-2 ${COL.cost}`}>Cost</TableHead>}
-                  {showCol("cantitate") && <TableHead className={`text-center px-2 ${COL.cantitate}`}>Qty</TableHead>}
-                  {showCol("costTotal") && <TableHead className={`text-center px-2 ${COL.costTotal}`}>Total</TableHead>}
-                  {showCol("creat") && <TableHead className={`text-left px-4 ${COL.creat}`}>Creat</TableHead>}
-                  {showCol("actualizat") && <TableHead className={`text-left px-4 ${COL.actualizat}`}>Actualizat</TableHead>}
+
+                  {showCol("cod") && (
+                    <ResizableTableHead
+                      colKey="cod"
+                      style={getColumnStyle("cod")}
+                      onResizeStart={handleColumnResizeStart}
+                      className="relative h-9 p-1 text-center align-middle text-sm font-bold text-foreground"
+                    >
+                      Cod
+                    </ResizableTableHead>
+                  )}
+
+                  {showCol("clasa") && (
+                    <ResizableTableHead
+                      colKey="clasa"
+                      style={getColumnStyle("clasa")}
+                      onResizeStart={handleColumnResizeStart}
+                      className="relative h-9 p-1 text-center align-middle text-sm font-bold text-foreground"
+                    >
+                      Clasa
+                    </ResizableTableHead>
+                  )}
+
+                  {showCol("denumire") && (
+                    <ResizableTableHead
+                      colKey="denumire"
+                      style={getColumnStyle("denumire")}
+                      onResizeStart={handleColumnResizeStart}
+                      className="relative h-9 p-1 text-left align-middle text-sm font-bold text-foreground"
+                    >
+                      Denumire
+                    </ResizableTableHead>
+                  )}
+
+                  {showCol("descriere") && (
+                    <ResizableTableHead
+                      colKey="descriere"
+                      style={getColumnStyle("descriere")}
+                      onResizeStart={handleColumnResizeStart}
+                      className="relative h-9 p-1 text-left align-middle text-sm font-bold text-foreground"
+                    >
+                      Descriere
+                    </ResizableTableHead>
+                  )}
+
+                  {showCol("unitate") && (
+                    <ResizableTableHead
+                      colKey="unitate"
+                      style={getColumnStyle("unitate")}
+                      onResizeStart={handleColumnResizeStart}
+                      className="relative h-9 p-1 text-center align-middle text-sm font-bold text-foreground"
+                    >
+                      U.M.
+                    </ResizableTableHead>
+                  )}
+
+                  {showCol("cost") && (
+                    <ResizableTableHead
+                      colKey="cost"
+                      style={getColumnStyle("cost")}
+                      onResizeStart={handleColumnResizeStart}
+                      className="relative h-9 p-1 text-center align-middle text-sm font-bold text-foreground"
+                    >
+                      Cost
+                    </ResizableTableHead>
+                  )}
+
+                  {showCol("cantitate") && (
+                    <ResizableTableHead
+                      colKey="cantitate"
+                      style={getColumnStyle("cantitate")}
+                      onResizeStart={handleColumnResizeStart}
+                      className="relative h-9 p-1 text-center align-middle text-sm font-bold text-foreground"
+                    >
+                      Qty
+                    </ResizableTableHead>
+                  )}
+
+                  {showCol("costTotal") && (
+                    <ResizableTableHead
+                      colKey="costTotal"
+                      style={getColumnStyle("costTotal")}
+                      onResizeStart={handleColumnResizeStart}
+                      className="relative h-9 p-1 text-center align-middle text-sm font-bold text-foreground"
+                    >
+                      Total
+                    </ResizableTableHead>
+                  )}
+
+                  {showCol("creat") && (
+                    <ResizableTableHead
+                      colKey="creat"
+                      style={getColumnStyle("creat")}
+                      onResizeStart={handleColumnResizeStart}
+                      className="relative h-9 p-1 text-left align-middle text-sm font-bold text-foreground"
+                    >
+                      Creat
+                    </ResizableTableHead>
+                  )}
+
+                  {showCol("actualizat") && (
+                    <ResizableTableHead
+                      colKey="actualizat"
+                      style={getColumnStyle("actualizat")}
+                      onResizeStart={handleColumnResizeStart}
+                      className="relative h-9 p-1 text-left align-middle text-sm font-bold text-foreground"
+                    >
+                      Actualizat
+                    </ResizableTableHead>
+                  )}
+
+                  {showCol("info") && (
+                    <ResizableTableHead
+                      colKey="info"
+                      style={getColumnStyle("info")}
+                      onResizeStart={handleColumnResizeStart}
+                      className="relative h-9 p-1 text-center align-middle text-sm font-bold text-foreground"
+                    >
+                      Info
+                    </ResizableTableHead>
+                  )}
                 </TableRow>
               )}
-              itemContent={(index, reteta) => {
-                const afisareDenumire = displayLang === "FR" ? reteta.denumire_fr || reteta.denumire || "" : reteta.denumire || "";
-                const afisareDescriere = displayLang === "FR" ? reteta.descriere_fr || reteta.descriere || "" : reteta.descriere || "";
+              itemContent={(index) => {
+                const rowItem = displayRows[index];
+
+                if (!rowItem) return null;
+
+                if (rowItem.type === "empty") {
+                  return (
+                    <TableCell colSpan={visibleTableColumnCount} className="p-2 text-center text-sm text-muted-foreground bg-muted/10">
+                      Nu există elemente în această rețetă.
+                    </TableCell>
+                  );
+                }
+
+                if (rowItem.type === "element") {
+                  return (
+                    <OferteRetetaSubList
+                      element={rowItem.element}
+                      parentItem={rowItem.reteta}
+                      displayLang={displayLang}
+                      dynamicColumns={dynamicColumns}
+                      showCol={showCol}
+                      getColumnStyle={getColumnStyle}
+                    />
+                  );
+                }
+
+                const reteta = rowItem.reteta;
+                const afisareDenumire = displayLang === "FR" ? reteta.denumire_fr || "" : reteta.denumire || "";
+                const afisareDescriere = displayLang === "FR" ? reteta.descriere_fr || reteta.descriere || "" : reteta.descriere || reteta.descriere_fr || "";
 
                 const coloaneValori = normalizeColoaneValori(reteta.coloane_valori);
 
                 const costReteta = getRetetaCost(reteta);
                 const costTotalLucrare = getRetetaTotalLucrare(reteta);
+                const isExpanded = expandedRetetaIds.has(toId(reteta.id));
 
                 return (
                   <>
-                    {showCol("limba") && (
-                      <TableCell className={`text-center px-2 py-1 ${COL.limba}`}>
-                        <div className="flex justify-center">
-                          <div className={`rounded-md border flex items-center justify-center ${reteta.limba !== "FR" ? "bg-cyan-500/5 border-cyan-500" : "bg-lime-500/5 border-lime-500"}`}>
-                            <span className={`text-xs w-9 py-1 font-bold ${reteta.limba !== "FR" ? "text-cyan-600" : "text-lime-600"}`}>{reteta.limba || "RO"}</span>
-                          </div>
+                    {showCol("elemente") && (
+                      <TableCell style={getColumnStyle("elemente")} className="border-r border-border p-1 text-center  text-sky-600 align-middle text-sm">
+                        <div className="inline-flex h-full w-full items-center justify-center leading-none">
+                          <FontAwesomeIcon icon={isExpanded ? faFolderOpen : faFolder} className="text-base" />
                         </div>
                       </TableCell>
                     )}
 
-                    {showCol("info") && (
-                      <TableCell className={`text-center px-2 py-1 ${COL.info}`}>
-                        <RetetaInfoIcons reteta={reteta} />
-                      </TableCell>
-                    )}
-
-                    {showCol("elemente") && (
-                      <TableCell className={`text-center px-2 py-1 ${COL.elemente}`}>
-                        <OferteElementeTooltop reteta={reteta} />
+                    {showCol("poza") && (
+                      <TableCell style={getColumnStyle("poza")} className="border-r border-border p-1 text-center align-middle text-sm">
+                        <span className="text-sm text-muted-foreground/60">-</span>
                       </TableCell>
                     )}
 
@@ -719,34 +1354,36 @@ const OferteReteteList = memo(function OferteReteteList({
                       const value = getColoanaValue(coloaneValori, col);
 
                       return (
-                        <TableCell key={col.id} className={`text-center px-2 py-1 ${COL.dynamic}`}>
+                        <TableCell key={col.id} style={getColumnStyle(`dynamic_${col.id}`)} className="border-r border-border p-1 text-center align-middle text-sm">
                           {value ? (
-                            <OverflowTooltip align="center" text={String(value)} className="text-sm font-semibold text-foreground text-center" maxLines={1} />
+                            <OverflowTooltip align="center" text={String(value)} className="font-normal text-foreground text-center whitespace-nowrap" maxLines={1} textSize="sm" />
                           ) : (
-                            <span className="text-sm text-muted-foreground/40 italic">—</span>
+                            <span className="text-sm font-normal text-muted-foreground/40 italic">—</span>
                           )}
                         </TableCell>
                       );
                     })}
 
                     {showCol("cod") && (
-                      <TableCell className={`text-center px-2 py-1 ${COL.cod}`}>
-                        <span className="text-sm font-bold text-foreground whitespace-nowrap">{reteta.cod_reteta}</span>
+                      <TableCell style={getColumnStyle("cod")} className="border-r border-border p-1 text-center align-middle text-sm">
+                        {reteta.cod_reteta ? (
+                          <OverflowTooltip align="center" text={String(reteta.cod_reteta)} className="font-semibold text-foreground text-center whitespace-nowrap" maxLines={1} textSize="sm" />
+                        ) : (
+                          <span className="text-sm text-muted-foreground/40 italic">—</span>
+                        )}
                       </TableCell>
                     )}
 
                     {showCol("clasa") && (
-                      <TableCell className={`text-center px-2 py-1 ${COL.clasa}`}>
-                        <Badge variant="secondary" className="text-xs bg-card border-border font-medium max-w-full truncate">
-                          {reteta.clasa_reteta}
-                        </Badge>
+                      <TableCell style={getColumnStyle("clasa")} className="border-r border-border p-1 text-center align-middle text-sm">
+                        <OverflowTooltip align="center" text={String(reteta.clasa_reteta)} className="text-foreground font-normal text-center whitespace-nowrap" maxLines={1} textSize="sm" />
                       </TableCell>
                     )}
 
                     {showCol("denumire") && (
-                      <TableCell className={`px-3 py-1 ${COL.denumire}`}>
+                      <TableCell style={getColumnStyle("denumire")} className="border-r border-border p-1 align-middle text-sm">
                         {afisareDenumire ? (
-                          <OverflowTooltip align="left" text={afisareDenumire} className="text-sm whitespace-pre-wrap text-foreground leading-snug" maxLines={2} />
+                          <OverflowTooltip align="left" text={afisareDenumire} className="font-semibold whitespace-nowrap text-foreground leading-none" maxLines={1} textSize="sm" />
                         ) : (
                           <span className="text-sm text-muted-foreground/40 italic">—</span>
                         )}
@@ -754,9 +1391,9 @@ const OferteReteteList = memo(function OferteReteteList({
                     )}
 
                     {showCol("descriere") && (
-                      <TableCell className={`px-3 py-1 ${COL.descriere}`}>
+                      <TableCell style={getColumnStyle("descriere")} className="border-r border-border p-1 align-middle text-sm">
                         {afisareDescriere ? (
-                          <OverflowTooltip align="left" text={afisareDescriere} className="text-sm whitespace-pre-wrap text-foreground leading-snug" maxLines={2} />
+                          <OverflowTooltip align="left" text={afisareDescriere} className="font-normal whitespace-nowrap text-foreground leading-none" maxLines={1} textSize="sm" />
                         ) : (
                           <span className="text-sm text-muted-foreground/40 italic">—</span>
                         )}
@@ -764,15 +1401,13 @@ const OferteReteteList = memo(function OferteReteteList({
                     )}
 
                     {showCol("unitate") && (
-                      <TableCell className={`text-center px-2 py-1 ${COL.unitate}`}>
-                        <Badge variant="outline" className="text-sm px-2 py-1 shadow-none whitespace-nowrap">
-                          {reteta.unitate_masura}
-                        </Badge>
+                      <TableCell style={getColumnStyle("unitate")} className="border-r border-border p-1 text-center align-middle text-sm">
+                        <span className="text-sm font-semibold text-foreground whitespace-nowrap">{reteta.unitate_masura}</span>
                       </TableCell>
                     )}
 
                     {showCol("cost") && (
-                      <TableCell className={`text-center px-2 py-1 ${COL.cost}`}>
+                      <TableCell style={getColumnStyle("cost")} className="border-r border-border p-1 text-center align-middle text-sm">
                         <span className="text-sm font-bold text-foreground whitespace-nowrap">{formatNumber(costReteta)}</span>
                       </TableCell>
                     )}
@@ -780,7 +1415,8 @@ const OferteReteteList = memo(function OferteReteteList({
                     {showCol("cantitate") && (
                       <TableCell
                         data-no-row-open
-                        className={`text-center px-2 py-1 ${COL.cantitate}`}
+                        style={getColumnStyle("cantitate")}
+                        className="relative border-r border-border p-0 text-center text-sm"
                         onPointerDown={(e) => {
                           e.stopPropagation();
                         }}
@@ -802,49 +1438,53 @@ const OferteReteteList = memo(function OferteReteteList({
                     )}
 
                     {showCol("costTotal") && (
-                      <TableCell className={`text-center px-2 py-1 ${COL.costTotal}`}>
+                      <TableCell style={getColumnStyle("costTotal")} className="border-r border-border p-1 text-center align-middle text-sm">
                         <span className="text-sm font-black text-primary whitespace-nowrap">{formatNumber(costTotalLucrare)}</span>
                       </TableCell>
                     )}
 
                     {showCol("creat") && (
-                      <TableCell className={`text-left px-4 py-1 ${COL.creat}`}>
-                        <div className="flex items-center gap-2.5">
+                      <TableCell style={getColumnStyle("creat")} className="border-r border-border p-1 align-middle text-sm">
+                        <div className="flex items-center gap-1.5 overflow-hidden whitespace-nowrap">
                           <ImagePreviewTooltip
                             src={reteta.created_by_photo_url ? `${photoAPI}/${reteta.created_by_photo_url}` : null}
                             alt={reteta.created_by_name}
                             ringColor="ring-primary"
                             fallback={<img src={NoImage} alt="No Image" className="h-full w-full object-cover opacity-50" />}
-                            containerClassName="h-10 w-10 rounded-md border border-border bg-muted flex items-center justify-center overflow-hidden shrink-0"
+                            containerClassName="h-6 w-6 rounded border border-border bg-muted flex items-center justify-center overflow-hidden shrink-0"
                           />
 
-                          <div className="flex flex-col justify-center min-w-0 leading-tight">
-                            <span className="text-sm font-bold text-foreground truncate block">{reteta.created_by_name || "Sistem"}</span>
-                            <span className="text-[11px] text-muted-foreground mt-0.5">
-                              {new Date(reteta.created_at).toLocaleDateString("ro-RO")} {new Date(reteta.created_at).toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" })}
-                            </span>
-                          </div>
+                          <span className="min-w-0 truncate text-sm font-semibold text-foreground">
+                            {reteta.created_by_name || "Sistem"} · {new Date(reteta.created_at).toLocaleDateString("ro-RO")}{" "}
+                            {new Date(reteta.created_at).toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
                         </div>
                       </TableCell>
                     )}
 
                     {showCol("actualizat") && (
-                      <TableCell className={`text-left px-4 py-1 ${COL.actualizat}`}>
-                        <div className="flex items-center gap-2.5">
+                      <TableCell style={getColumnStyle("actualizat")} className="border-r border-border p-1 align-middle text-sm">
+                        <div className="flex items-center gap-1.5 overflow-hidden whitespace-nowrap">
                           <ImagePreviewTooltip
                             src={reteta.updated_by_photo_url ? `${photoAPI}/${reteta.updated_by_photo_url}` : null}
                             alt={reteta.updated_by_name}
                             ringColor="ring-primary"
                             fallback={<img src={NoImage} alt="No Image" className="h-full w-full object-cover opacity-50" />}
-                            containerClassName="h-10 w-10 rounded-md border border-border bg-muted flex items-center justify-center overflow-hidden shrink-0"
+                            containerClassName="h-6 w-6 rounded border border-border bg-muted flex items-center justify-center overflow-hidden shrink-0"
                           />
 
-                          <div className="flex flex-col justify-center min-w-0 leading-tight">
-                            <span className="text-sm font-bold text-foreground truncate block">{reteta.updated_by_name || "Sistem"}</span>
-                            <span className="text-[11px] text-muted-foreground mt-0.5">
-                              {new Date(reteta.updated_at).toLocaleDateString("ro-RO")} {new Date(reteta.updated_at).toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" })}
-                            </span>
-                          </div>
+                          <span className="min-w-0 truncate text-sm font-semibold text-foreground">
+                            {reteta.updated_by_name || "Sistem"} · {new Date(reteta.updated_at).toLocaleDateString("ro-RO")}{" "}
+                            {new Date(reteta.updated_at).toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </div>
+                      </TableCell>
+                    )}
+
+                    {showCol("info") && (
+                      <TableCell style={getColumnStyle("info")} className="border-r border-border p-1 text-center align-middle text-sm">
+                        <div className="flex items-center justify-center whitespace-nowrap overflow-hidden">
+                          <RetetaInfoIcons reteta={reteta} />
                         </div>
                       </TableCell>
                     )}
@@ -856,7 +1496,7 @@ const OferteReteteList = memo(function OferteReteteList({
 
           <DragOverlay>
             {activeDragId ? (
-              <div className="rounded-md border bg-card px-4 py-3 shadow-xl text-sm font-bold text-foreground">
+              <div className="rounded-md border bg-card p-3 shadow-xl text-sm font-bold text-foreground">
                 Muți {selectedIds.includes(activeDragId) && selectedIds.length > 1 ? `${selectedIds.length} rețete` : "1 rețetă"}
               </div>
             ) : null}
@@ -864,69 +1504,86 @@ const OferteReteteList = memo(function OferteReteteList({
         </DndContext>
       </div>
 
-      <div className="shrink-0 border-t px-3 py-3">
-        <div className="flex flex-wrap items-stretch gap-2">
+      <div className="shrink-0 border-t p-2">
+        <div className="flex flex-wrap relative h-full items-stretch gap-1.5">
+          <SummaryBox label="Total ore" value={totals.totalManoperaHours} tone="manopera" />
+
+          <Separator orientation="vertical" className="bg-border mx-1.5" />
+
           <SummaryBox label="Manoperă" value={totals.manopera} />
 
-          <div className="flex items-center text-xl font-black text-muted-foreground px-1">+</div>
+          <div className="flex items-center justify-center text-sm font-black text-muted-foreground">+</div>
 
           <SummaryBox label="Materiale" value={totals.material} />
 
-          <div className="flex items-center text-xl font-black text-muted-foreground px-1">+</div>
+          <div className="flex items-center justify-center text-sm font-black text-muted-foreground">+</div>
 
           <SummaryBox label="Utilaje" value={totals.utilaj} />
 
-          <div className="flex items-center text-xl font-black text-muted-foreground px-1">+</div>
+          <div className="flex items-center justify-center text-sm font-black text-muted-foreground">+</div>
 
           <SummaryBox label="Transport" value={totals.transport} />
 
-          <div className="flex items-center text-xl font-black text-muted-foreground px-1">=</div>
+          <div className="flex items-center justify-center text-sm font-black text-muted-foreground">=</div>
 
           <SummaryBox label="Subtotal" value={totals.subtotal} strong />
 
-          <div className="flex items-center text-xl font-black text-muted-foreground px-1">+</div>
+          <div className="flex items-center justify-center text-sm font-black text-muted-foreground">+</div>
+
+          <SummaryBox label="Recapitulatii">
+            <div className="flex items-center gap-1.5">
+              <inputs
+                value={extraPercent}
+                onChange={handleExtraPercentChange}
+                className="h-6 w-12 rounded-md border bg-background p-1 text-center text-sm font-black text-foreground outline-none"
+                inputMode="decimal"
+                placeholder="0"
+              />
+
+              <span className="text-sm font-black text-muted-foreground">%</span>
+
+              <span className="text-sm font-extrabold text-foreground whitespace-nowrap">{formatNumber(totals.extraValue)}</span>
+            </div>
+          </SummaryBox>
+
+          <div className="flex items-center justify-center text-sm font-black text-muted-foreground">=</div>
+
+          <SummaryBox label="Subtotal" value={totals.totalDupaAdaos} strong />
+
+          <div className="flex items-center justify-center text-sm font-black text-muted-foreground">+</div>
 
           <SummaryBox label="TVA">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <input
                 value={tvaPercent}
                 onChange={handleTvaPercentChange}
-                className="h-8 w-16 rounded-md border bg-background px-2 text-center text-sm font-black text-foreground outline-none"
+                className="h-6 w-12 rounded-md border bg-background p-1 text-center text-sm font-black text-foreground outline-none"
                 inputMode="decimal"
                 placeholder="0"
               />
 
               <span className="text-sm font-black text-muted-foreground">%</span>
 
-              <span className="text-base font-extrabold text-foreground whitespace-nowrap">{formatNumber(totals.tvaValue)}</span>
+              <span className="text-sm font-extrabold text-foreground whitespace-nowrap">{formatNumber(totals.tvaValue)}</span>
             </div>
           </SummaryBox>
 
-          <div className="flex items-center text-xl font-black text-muted-foreground px-1">+</div>
-
-          <SummaryBox label="Adaos">
-            <div className="flex items-center gap-2">
-              <input
-                value={extraPercent}
-                onChange={handleExtraPercentChange}
-                className="h-8 w-16 rounded-md border bg-background px-2 text-center text-sm font-black text-foreground outline-none"
-                inputMode="decimal"
-                placeholder="0"
-              />
-
-              <span className="text-sm font-black text-muted-foreground">%</span>
-
-              <span className="text-base font-extrabold text-foreground whitespace-nowrap">{formatNumber(totals.extraValue)}</span>
-            </div>
-          </SummaryBox>
-
-          <div className="flex items-center text-xl font-black text-muted-foreground px-1">=</div>
+          <div className="flex items-center justify-center text-sm font-black text-muted-foreground">=</div>
 
           <SummaryBox label="Total final" value={totals.totalFinal} strong />
         </div>
       </div>
 
-      <OferteRetetaSubList open={subDialogOpen} setOpen={setSubDialogOpen} parentItem={selectedReteta} selectedLucrare={selectedLucrare} />
+      {selectedElementConfig && selectedElement && selectedElementParentReteta && (
+        <OferteElementVariantDialog
+          open={variantDialogOpen}
+          setOpen={setVariantDialogOpen}
+          config={selectedElementConfig}
+          elementItem={selectedElement}
+          parentItem={selectedElementParentReteta}
+          onSave={handleSaveElementSnapshot}
+        />
+      )}
 
       <OferteDuplicateReteteDialog
         open={duplicateOpen}
@@ -937,6 +1594,7 @@ const OferteReteteList = memo(function OferteReteteList({
         displayLang={displayLang}
         onConfirm={onConfirmDuplicate}
       />
+
       <OferteFurnizoriDialog open={furnizoriOpen} setOpen={setFurnizoriOpen} retete={furnizoriItems} onLoadFurnizori={onLoadFurnizoriRetete} onConfirm={onConfirmFurnizori} />
 
       <OferteActualizeazaReteteDialog open={actualizeazaOpen} setOpen={setActualizeazaOpen} retete={actualizeazaItems} onConfirm={onConfirmActualizeaza} />

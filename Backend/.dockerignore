@@ -1,3 +1,10 @@
-node_modules
-npm-debug.log
 uploads
+node_modules
+.git
+.gitignore
+__MACOSX
+.DS_Store
+.env
+logs
+.cache
+coverage

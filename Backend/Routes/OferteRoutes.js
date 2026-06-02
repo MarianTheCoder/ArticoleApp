@@ -20,6 +20,7 @@ const {
   deleteOfertaRetete,
   duplicateOfertaRetete,
   actualizeazaOfertaRetete,
+  duplicateOfertaLucrare,
 } = require("../Controllers/OferteController");
 
 const router = express.Router();
@@ -38,6 +39,8 @@ router.delete("/deleteOferta/:id", authenticateToken("oferte", "s"), deleteOfert
 router.post("/addOfertaLucrare", authenticateToken("oferte", "c"), addOfertaLucrare);
 router.put("/editOfertaLucrare/:id", authenticateToken("oferte", "e"), editOfertaLucrare);
 router.delete("/deleteOfertaLucrare/:id", authenticateToken("oferte", "s"), deleteOfertaLucrare);
+
+router.post("/duplicateOfertaLucrare/:id", authenticateToken("oferte", "c"), duplicateOfertaLucrare);
 
 // ============================================================================
 // OFERTE RETETE

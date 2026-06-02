@@ -3,17 +3,17 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 
 import { Tooltip, TooltipArrow, TooltipContent, TooltipTrigger } from "@radix-ui/react-tooltip";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheck, faCopy, faQuestion } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faCopy, faFolder, faQuestion } from "@fortawesome/free-solid-svg-icons";
 
 import OverflowTooltip from "@/components/ui/OverflowTooltip";
 import { toast } from "sonner";
-import OferteElementeTooltop from "./components/OferteElementeTooltop";
+
+const MAX_COLUMN_VALUE_LENGTH = 64;
 
 const parseMaybeJson = (value, fallback = []) => {
   if (value === null || value === undefined) return fallback;
@@ -251,42 +251,45 @@ export default function OferteDuplicateReteteDialog({ open, setOpen, retete = []
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="keepSelection max-w-[90vw] h-[72vh] p-0 gap-0 flex flex-col" style={{ animationDuration: "0ms", transitionDuration: "0ms" }}>
-        <DialogHeader className="px-6 py-4 rounded-t-lg border-b bg-muted shrink-0">
-          <div className="flex items-center justify-between gap-4">
-            <DialogTitle className="text-left flex items-center gap-3 min-w-0">
-              <div className="h-10 w-10 rounded-lg bg-sky-600/10 border border-sky-600/30 text-sky-600 flex items-center justify-center shrink-0">
-                <FontAwesomeIcon icon={faCopy} />
-              </div>
+        <DialogHeader className="px-6 py-4 border-b bg-muted shrink-0">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="h-14 w-14 rounded-xl bg-sky-600/20 border border-sky-600/25 flex items-center justify-center shrink-0">
+              <FontAwesomeIcon icon={faCopy} className="text-sky-600 text-2xl" />
+            </div>
+
+            <DialogTitle className="text-left flex flex-col gap-1 min-w-0">
+              <span className="text-sm text-sky-600 font-black uppercase tracking-wider">Dublare</span>
 
               <span className="text-xl font-black text-foreground truncate">
-                Dublează {rows.length} {rows.length === 1 ? "rețetă" : "rețete"}
+                {rows.length} {rows.length === 1 ? "rețetă selectată" : "rețete selectate"}
               </span>
             </DialogTitle>
           </div>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0 overflow-auto bg-card p-5">
-          <div className="rounded-md border overflow-auto">
-            <Table className="min-w-full table-fixed caption-bottom text-left border-collapse border-spacing-0">
-              <TableHeader className="sticky top-0 z-50 shadow-sm bg-muted">
-                <TableRow className="h-12 bg-muted  hover:bg-muted [&>th]:bg-muted [&>th]:border-0 [&>th]:shadow-none">
-                  <TableHead className="text-center px-2 w-[7rem] min-w-[7rem]">Elemente</TableHead>
-                  <TableHead className="text-center px-2 w-[8rem] min-w-[8rem]">Cod</TableHead>
-                  <TableHead className="text-center px-2 w-[8rem] min-w-[8rem]">Clasa</TableHead>
-                  <TableHead className="px-3 w-[12rem] min-w-[12rem]">Denumire</TableHead>
-                  <TableHead className="px-3 w-[18rem] min-w-[18rem]">Descriere</TableHead>
+        <div className="flex-1 min-h-0 overflow-auto bg-card p-2">
+          <div className="rounded-md border bg-card overflow-auto">
+            <Table className="min-w-full table-fixed caption-bottom text-left border-collapse text-sm">
+              <TableHeader className="sticky top-0 z-50 bg-muted shadow-sm">
+                <TableRow className="h-9 bg-muted hover:bg-muted [&>th]:bg-muted [&>th:first-child]:rounded-tl-md [&>th:last-child]:rounded-tr-md">
+                  <TableHead className="p-1 text-center align-middle text-sm font-bold text-foreground w-[3rem] min-w-[3rem]">Tip</TableHead>
 
                   {dynamicColumns.map((col) => (
-                    <TableHead key={col.id} className="text-center px-1.5 w-[8rem] min-w-[8rem]">
-                      <OverflowTooltip text={col.nume} align="center" className=" font-bold text-center" maxLines={1} />
+                    <TableHead key={col.id} className="p-1 text-center align-middle text-sm font-bold text-foreground w-[7rem] min-w-[7rem]">
+                      <OverflowTooltip text={col.nume} align="center" className="font-bold text-center" maxLines={1} />
                     </TableHead>
                   ))}
 
-                  <TableHead className="text-center px-2 w-[7rem] min-w-[7rem]">Cost</TableHead>
-                  <TableHead className="text-center px-2 w-[8rem] min-w-[8rem]">Cantitate</TableHead>
-                  <TableHead className="text-center px-2 w-[8rem] min-w-[8rem]">Total</TableHead>
+                  <TableHead className="p-1 text-center align-middle text-sm font-bold text-foreground w-[7rem] min-w-[7rem]">Cod</TableHead>
+                  <TableHead className="p-1 text-center align-middle text-sm font-bold text-foreground w-[8rem] min-w-[8rem]">Clasa</TableHead>
+                  <TableHead className="p-1 text-left align-middle text-sm font-bold text-foreground w-[14rem] min-w-[14rem]">Denumire</TableHead>
+                  <TableHead className="p-1 text-left align-middle text-sm font-bold text-foreground w-[18rem] min-w-[18rem]">Descriere</TableHead>
+                  <TableHead className="p-1 text-center align-middle text-sm font-bold text-foreground w-[4.5rem] min-w-[4.5rem]">U.M.</TableHead>
+                  <TableHead className="p-1 text-center align-middle text-sm font-bold text-foreground w-[6rem] min-w-[6rem]">Cost</TableHead>
+                  <TableHead className="p-1 text-center align-middle text-sm font-bold text-foreground w-[7rem] min-w-[7rem]">Qty</TableHead>
+                  <TableHead className="p-1 text-center align-middle text-sm font-bold text-foreground w-[7rem] min-w-[7rem]">Total</TableHead>
 
-                  <TableHead className="text-center px-2 w-[10rem] min-w-[10rem]">
+                  <TableHead className="p-1 text-center align-middle text-sm font-bold text-foreground w-[9rem] min-w-[9rem]">
                     <div className="flex items-center justify-center gap-1.5">
                       <HeaderHelp text="Dacă este bifat, elementele care au variantă vor fi refăcute ca definiții din rețeta/catalogul original. Elementele care sunt deja definiții rămân copiate ca snapshot existent." />
 
@@ -298,7 +301,7 @@ export default function OferteDuplicateReteteDialog({ open, setOpen, retete = []
                     </div>
                   </TableHead>
 
-                  <TableHead className="text-center px-2 w-[10rem] min-w-[10rem]">
+                  <TableHead className="p-1 text-center align-middle text-sm font-bold text-foreground w-[9rem] min-w-[9rem]">
                     <div className="flex items-center justify-center gap-1.5">
                       <HeaderHelp text="Funcționează doar când este bifat „Doar definiții”. Dacă este bifat, costurile elementelor din interior se iau din rețeta originală actualizată; dacă nu, se păstrează costurile snapshot din oferta dublată." />
 
@@ -310,7 +313,7 @@ export default function OferteDuplicateReteteDialog({ open, setOpen, retete = []
                     </div>
                   </TableHead>
 
-                  <TableHead className="text-center px-2 w-[10rem] min-w-[10rem]">
+                  <TableHead className="p-1 text-center align-middle text-sm font-bold text-foreground w-[9rem] min-w-[9rem]">
                     <div className="flex items-center justify-center gap-1.5">
                       <HeaderHelp text="Funcționează doar când este bifat „Doar definiții”. Dacă este bifat, cantitățile elementelor din interior se iau din rețeta originală actualizată; dacă nu, se păstrează cantitățile snapshot din oferta dublată." />
 
@@ -332,41 +335,19 @@ export default function OferteDuplicateReteteDialog({ open, setOpen, retete = []
                   const total = cost * (Number.isFinite(cantitate) ? cantitate : 0);
 
                   return (
-                    <TableRow key={row.id} className="h-16 border-b hover:bg-accent">
-                      <TableCell className="text-center px-2 py-1">
-                        <OferteElementeTooltop reteta={reteta} />
-                      </TableCell>
-
-                      <TableCell className="text-center px-2 py-1">
-                        <span className="text-sm font-bold text-foreground whitespace-nowrap">{reteta.cod_reteta}</span>
-                      </TableCell>
-
-                      <TableCell className="text-center px-2 py-1">
-                        <Badge variant="secondary" className="text-xs bg-card border-border font-medium max-w-full truncate">
-                          {reteta.clasa_reteta}
-                        </Badge>
-                      </TableCell>
-
-                      <TableCell className="px-3 py-1">
-                        <OverflowTooltip align="left" text={reteta.denumire || "—"} className="text-sm whitespace-pre-wrap text-foreground leading-snug" maxLines={2} />
-                      </TableCell>
-
-                      <TableCell className="px-3 py-1">
-                        {reteta.descriere ? (
-                          <OverflowTooltip align="left" text={reteta.descriere} className="text-sm whitespace-pre-wrap text-foreground leading-snug" maxLines={2} />
-                        ) : (
-                          <span className="text-sm text-muted-foreground/40 italic">—</span>
-                        )}
+                    <TableRow key={row.id} className="h-12 border-b bg-secondary/80 dark:bg-zinc-900 transition-colors hover:bg-secondary dark:hover:bg-zinc-800">
+                      <TableCell className="border-r border-border p-1 text-center text-sky-600 align-middle text-sm">
+                        <FontAwesomeIcon icon={faFolder} className="text-base" />
                       </TableCell>
 
                       {dynamicColumns.map((col) => (
-                        <TableCell key={col.id} className="text-center px-1.5 py-1">
+                        <TableCell key={col.id} className="border-r border-border p-1 text-center align-middle text-sm">
                           <Input
-                            className="h-8 w-full border-primary border-2 min-w-[7rem] text-center text-xs font-semibold px-2"
-                            maxLength={15}
+                            className="h-8 w-full min-w-0 border-primary/70 text-center text-sm font-semibold"
+                            maxLength={MAX_COLUMN_VALUE_LENGTH}
                             value={row.coloaneMap?.[col.id] || ""}
                             onChange={(e) => {
-                              const value = e.target.value;
+                              const value = e.target.value.slice(0, MAX_COLUMN_VALUE_LENGTH);
 
                               updateRow(row.id, (current) => ({
                                 ...current,
@@ -380,13 +361,49 @@ export default function OferteDuplicateReteteDialog({ open, setOpen, retete = []
                         </TableCell>
                       ))}
 
-                      <TableCell className="text-center px-2 py-1">
+                      <TableCell className="border-r border-border p-1 text-center align-middle text-sm">
+                        {reteta.cod_reteta ? (
+                          <OverflowTooltip align="center" text={String(reteta.cod_reteta)} className="font-semibold text-foreground text-center whitespace-nowrap" maxLines={1} textSize="sm" />
+                        ) : (
+                          <span className="text-sm text-muted-foreground/40 italic">—</span>
+                        )}
+                      </TableCell>
+
+                      <TableCell className="border-r border-border p-1 text-center align-middle text-sm">
+                        {reteta.clasa_reteta ? (
+                          <OverflowTooltip align="center" text={String(reteta.clasa_reteta)} className="text-foreground font-normal text-center whitespace-nowrap" maxLines={1} textSize="sm" />
+                        ) : (
+                          <span className="text-sm text-muted-foreground/40 italic">—</span>
+                        )}
+                      </TableCell>
+
+                      <TableCell className="border-r border-border p-1 align-middle text-sm">
+                        {reteta.denumire ? (
+                          <OverflowTooltip align="left" text={reteta.denumire} className="font-semibold whitespace-nowrap text-foreground leading-none" maxLines={1} textSize="sm" />
+                        ) : (
+                          <span className="text-sm text-muted-foreground/40 italic">—</span>
+                        )}
+                      </TableCell>
+
+                      <TableCell className="border-r border-border p-1 align-middle text-sm">
+                        {reteta.descriere ? (
+                          <OverflowTooltip align="left" text={reteta.descriere} className="font-normal whitespace-nowrap text-foreground leading-none" maxLines={1} textSize="sm" />
+                        ) : (
+                          <span className="text-sm text-muted-foreground/40 italic">—</span>
+                        )}
+                      </TableCell>
+
+                      <TableCell className="border-r border-border p-1 text-center align-middle text-sm">
+                        <span className="text-sm font-semibold text-foreground whitespace-nowrap">{reteta.unitate_masura || "—"}</span>
+                      </TableCell>
+
+                      <TableCell className="border-r border-border p-1 text-center align-middle text-sm">
                         <span className="text-sm font-bold text-foreground whitespace-nowrap">{formatNumber(cost)}</span>
                       </TableCell>
 
-                      <TableCell className="text-center px-2 py-1">
+                      <TableCell className="border-r border-border p-1 text-center align-middle text-sm transition-colors hover:bg-primary/10 dark:hover:bg-primary/20">
                         <Input
-                          className="h-8 w-24 mx-auto border-primary text-center text-xs font-black border-2 px-2"
+                          className="h-8 w-full border-primary/70 text-center text-sm font-black"
                           value={row.cantitate}
                           onChange={(e) => {
                             const val = normalizeDecimalInput(e.target.value);
@@ -401,11 +418,11 @@ export default function OferteDuplicateReteteDialog({ open, setOpen, retete = []
                         />
                       </TableCell>
 
-                      <TableCell className="text-center px-2 py-1">
-                        <span className="text-sm tracking-wide font-black whitespace-nowrap">{formatNumber(total)}</span>
+                      <TableCell className="border-r border-border p-1 text-center align-middle text-sm">
+                        <span className="text-sm font-black text-primary whitespace-nowrap">{formatNumber(total)}</span>
                       </TableCell>
 
-                      <TableCell className="text-left px-2 py-1">
+                      <TableCell className="border-r border-border p-1 text-center align-middle text-sm">
                         <label className="flex items-center justify-center gap-1.5 text-xs font-bold text-foreground cursor-pointer">
                           <Checkbox
                             className="w-5 h-5"
@@ -424,7 +441,7 @@ export default function OferteDuplicateReteteDialog({ open, setOpen, retete = []
                         </label>
                       </TableCell>
 
-                      <TableCell className="text-left px-2 py-1">
+                      <TableCell className="border-r border-border p-1 text-center align-middle text-sm">
                         <label
                           className={`flex items-center justify-center gap-1.5 text-xs font-bold ${row.onlyDefinitions ? "text-foreground cursor-pointer" : "text-muted-foreground/50 cursor-not-allowed"}`}
                         >
@@ -444,7 +461,7 @@ export default function OferteDuplicateReteteDialog({ open, setOpen, retete = []
                         </label>
                       </TableCell>
 
-                      <TableCell className="text-left px-2 py-1">
+                      <TableCell className="p-1 text-center align-middle text-sm">
                         <label
                           className={`flex items-center justify-center gap-1.5 text-xs font-bold ${row.onlyDefinitions ? "text-foreground cursor-pointer" : "text-muted-foreground/50 cursor-not-allowed"}`}
                         >

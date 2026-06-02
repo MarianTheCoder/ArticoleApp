@@ -1,12 +1,10 @@
 import React, { useCallback, useContext, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheck, faColumns, faFileInvoice, faLayerGroup, faPenToSquare, faPlus, faTableColumns } from "@fortawesome/free-solid-svg-icons";
+import { faChevronRight, faColumns, faFileInvoice, faFolderOpen, faLanguage, faLayerGroup, faListCheck, faPlus, faRotateLeft, faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipArrow, TooltipContent, TooltipTrigger } from "@radix-ui/react-tooltip";
 
 import OverflowTooltip from "@/components/ui/OverflowTooltip";
 import OferteAddDialog from "./components/OferteAddDialog";
@@ -30,6 +28,38 @@ import { toast } from "sonner";
 import SpinnerElement from "@/MainElements/SpinnerElement";
 import OferteEditRetetaDialog from "./components/OferteEditReteteDialog";
 import DeleteDialog from "@/components/ui/delete-dialog";
+import { useParams } from "react-router-dom";
+import { Separator } from "@/components/ui/separator";
+
+const COMPACT = {
+  header: "h-14 shrink-0 border-b px-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2",
+  titleIcon: "text-primary text-sm shrink-0",
+  titleText: "block w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-sm text-foreground tracking-tight font-bold",
+  iconBtn: "h-8 w-8 p-0 rounded-md text-foreground hover:text-foreground hover:bg-accent shrink-0",
+  toolbarBtn: "h-8 gap-1.5 px-2 text-sm leading-none shrink-0 rounded-md",
+  toolbarIconBtn: "h-8 w-8 p-0 text-foreground shrink-0 rounded-md",
+  menuContent: "w-48 p-1",
+  menuItem: "text-sm py-1.5 pl-7 pr-2 text-foreground",
+  emptyWrap: "h-full w-full flex flex-col items-center justify-center text-muted-foreground gap-2",
+  emptyIcon: "text-2xl opacity-50",
+  emptyText: "text-sm font-medium",
+};
+
+const ToolbarTooltip = ({ text, children }) => (
+  <Tooltip>
+    <TooltipTrigger asChild>{children}</TooltipTrigger>
+
+    <TooltipContent
+      side="bottom"
+      align="center"
+      sideOffset={6}
+      className="z-[100] max-w-[14rem] rounded-md border-2 border-border bg-popover px-3 py-2 text-center text-sm font-semibold text-popover-foreground shadow-md"
+    >
+      <TooltipArrow width={12} height={6} className="fill-border" />
+      {text}
+    </TooltipContent>
+  </Tooltip>
+);
 
 const parseMaybeJson = (value, fallback = []) => {
   if (value === null || value === undefined) return fallback;
@@ -107,21 +137,25 @@ const formatNumber = (value) => {
     .replace(".", ",");
 };
 
-const normalizeDecimalInput = (value) => {
-  return String(value || "").replace(".", ",");
-};
-
 const parseDecimalInput = (value) => {
   return Number(String(value || "0").replace(",", "."));
 };
 
-export default function OferteContent({ selectedOferta, selectedLucrare, onUpdateSelectedLucrare }) {
+export default function OferteContent({ isCollapsed, selectedOferta, selectedLucrare, onUpdateSelectedLucrare, onToggleCollapse }) {
+  const { limbaUser } = useParams();
+
   const [openAddReteta, setOpenAddReteta] = useState(false);
   const [openColoane, setOpenColoane] = useState(false);
+
+  const [columnResetKey, setColumnResetKey] = useState(0);
+  const [toggleAllReteteKey, setToggleAllReteteKey] = useState(0);
+  const [displayLang, setDisplayLang] = useState("RO");
 
   const [editRetetaOpen, setEditRetetaOpen] = useState(false);
   const [retetaToEdit, setRetetaToEdit] = useState(null);
   const [editCantitate, setEditCantitate] = useState("");
+  const [editDescriere, setEditDescriere] = useState("");
+  const [editDescriereFr, setEditDescriereFr] = useState("");
   const [editColoaneMap, setEditColoaneMap] = useState({});
 
   const [deleteRetetaOpen, setDeleteRetetaOpen] = useState(false);
@@ -134,7 +168,7 @@ export default function OferteContent({ selectedOferta, selectedLucrare, onUpdat
     cod: true,
     clasa: true,
     denumire: true,
-    descriere: true,
+    descriere: false,
     unitate: true,
     cost: true,
     cantitate: true,
@@ -176,7 +210,20 @@ export default function OferteContent({ selectedOferta, selectedLucrare, onUpdat
     }));
   }, []);
 
-  const handleConfirmAddReteta = async ({ lucrare, reteta, cantitate, coloane_valori }) => {
+  const onDisplayLangToggle = useCallback(() => {
+    setDisplayLang((prev) => (prev === "RO" ? "FR" : "RO"));
+  }, []);
+
+  const handleResetColumnWidths = useCallback(() => {
+    setColumnResetKey((prev) => prev + 1);
+    toast.success("Lățimea coloanelor a fost resetată.", { position: "top-right" });
+  }, []);
+
+  const handleToggleAllRetete = useCallback(() => {
+    setToggleAllReteteKey((prev) => prev + 1);
+  }, []);
+
+  const handleConfirmAddReteta = async ({ lucrare, reteta, cantitate, descriere, descriere_fr, coloane_valori }) => {
     if (!lucrare?.id || !reteta?.id) return;
 
     try {
@@ -185,6 +232,8 @@ export default function OferteContent({ selectedOferta, selectedLucrare, onUpdat
         lucrare_id: lucrare.id,
         original_reteta_id: reteta.id,
         cantitate_lucrare: cantitate,
+        descriere: descriere || null,
+        descriere_fr: descriere_fr || null,
         coloane_valori,
         created_by_user_id: user?.id || null,
       });
@@ -209,6 +258,8 @@ export default function OferteContent({ selectedOferta, selectedLucrare, onUpdat
 
       setRetetaToEdit(reteta);
       setEditCantitate(formatNumber(reteta.cantitate_lucrare || 0));
+      setEditDescriere(reteta.descriere || "");
+      setEditDescriereFr(reteta.descriere_fr || "");
       setEditColoaneMap(nextColoaneMap);
       setEditRetetaOpen(true);
     },
@@ -236,6 +287,8 @@ export default function OferteContent({ selectedOferta, selectedLucrare, onUpdat
         santier_id: selectedOferta?.santier_id,
         lucrare_id: selectedLucrare.id,
         cantitate_lucrare: parsedCantitate,
+        descriere: editDescriere.trim() || null,
+        descriere_fr: editDescriereFr.trim() || null,
         coloane_valori,
         updated_by_user_id: user?.id || null,
       });
@@ -244,6 +297,8 @@ export default function OferteContent({ selectedOferta, selectedLucrare, onUpdat
       setEditRetetaOpen(false);
       setRetetaToEdit(null);
       setEditCantitate("");
+      setEditDescriere("");
+      setEditDescriereFr("");
       setEditColoaneMap({});
     } catch (err) {
       toast.error(err?.response?.data?.message || "Eroare la actualizarea rețetei.");
@@ -304,6 +359,7 @@ export default function OferteContent({ selectedOferta, selectedLucrare, onUpdat
 
   const handleDuplicateRetete = async (items) => {
     if (!selectedLucrare?.id || !Array.isArray(items) || items.length === 0) return;
+
     try {
       await duplicateOfertaRetete.mutateAsync({
         santier_id: selectedOferta?.santier_id,
@@ -412,7 +468,6 @@ export default function OferteContent({ selectedOferta, selectedLucrare, onUpdat
         material_furnizor: payload.material_furnizor,
         utilaj_furnizor: payload.utilaj_furnizor,
         updated_by_user_id: user?.id || null,
-
         rewrite_costs: payload.rewrite_costs,
         rewrite_quantities: payload.rewrite_quantities,
       });
@@ -421,12 +476,16 @@ export default function OferteContent({ selectedOferta, selectedLucrare, onUpdat
       const failedCount = Number(res?.failed_count || 0);
 
       if (failedCount > 0 && updatedCount > 0) {
-        toast.warning(`${updatedCount} elemente actualizate, ${failedCount} fără variantă pentru furnizor.`, { position: "top-right" });
+        toast.warning(`${updatedCount} elemente actualizate, ${failedCount} fără variantă pentru furnizor.`, {
+          position: "top-right",
+        });
         return;
       }
 
       if (failedCount > 0) {
-        toast.error(`${failedCount} elemente nu au variantă pentru furnizorul selectat.`, { position: "top-right" });
+        toast.error(`${failedCount} elemente nu au variantă pentru furnizorul selectat.`, {
+          position: "top-right",
+        });
         return;
       }
 
@@ -436,114 +495,153 @@ export default function OferteContent({ selectedOferta, selectedLucrare, onUpdat
   );
 
   return (
-    <div className="w-full h-full bg-card border-border rounded-r-lg border border-l-0 overflow-hidden flex flex-col">
+    <div className={`w-full h-full bg-card border-border border overflow-hidden flex flex-col text-sm text-foreground ${isCollapsed ? "rounded-lg border-l" : "rounded-r-lg border-l-0"}`}>
       {!selectedOferta ? (
-        <div className="h-full w-full flex flex-col items-center justify-center text-muted-foreground gap-3">
-          <FontAwesomeIcon icon={faFileInvoice} className="text-4xl opacity-50" />
-          <p className="text-lg font-medium">Selectează o ofertă din sidebar.</p>
+        <div className={COMPACT.emptyWrap}>
+          <FontAwesomeIcon icon={faFileInvoice} className={COMPACT.emptyIcon} />
+          <p className={COMPACT.emptyText}>Selectează o ofertă din sidebar.</p>
         </div>
       ) : !selectedLucrare ? (
-        <div className="h-full w-full flex flex-col items-center justify-center text-muted-foreground gap-3">
-          <FontAwesomeIcon icon={faLayerGroup} className="text-4xl opacity-50" />
-          <p className="text-lg font-medium">Selectează o lucrare din oferta „{selectedOferta.nume}”.</p>
+        <div className={COMPACT.emptyWrap}>
+          <FontAwesomeIcon icon={faLayerGroup} className={COMPACT.emptyIcon} />
+          <p className={COMPACT.emptyText}>Selectează o lucrare din oferta „{selectedOferta.nume}”.</p>
         </div>
       ) : (
         <>
-          <div className="h-16 shrink-0 border-b px-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
-            <div className="flex items-center gap-3 min-w-0 overflow-hidden">
-              <FontAwesomeIcon icon={faLayerGroup} className="text-primary text-xl shrink-0" />
+          <div className={COMPACT.header}>
+            <div className="flex items-center gap-1.5  min-w-0 overflow-hidden">
+              <Button type="button" variant="ghost" size="icon" onClick={onToggleCollapse} className={COMPACT.iconBtn} title="Deschide sidebar">
+                <FontAwesomeIcon icon={isCollapsed ? faChevronRight : faChevronLeft} className="text-sm text-foreground" />
+              </Button>
 
-              <OverflowTooltip
-                text={selectedLucrare.nume}
-                align="left"
-                className="block w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-lg text-foreground tracking-tight font-bold"
-                maxLines={1}
-              />
+              <div className={`rounded-md border ${limbaUser !== "FR" ? "bg-cyan-500/5 border-cyan-500" : "bg-lime-500/5 border-lime-500"} flex items-center justify-center`}>
+                <span className={`text-sm p-1 px-2 font-bold ${limbaUser !== "FR" ? "text-cyan-600" : "text-lime-600"}`}>{limbaUser}</span>
+              </div>
+              <OverflowTooltip text={selectedLucrare.nume} align="left" className={COMPACT.titleText} maxLines={1} />
             </div>
 
-            <div className="flex justify-end items-center gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="gap-2 text-foreground shrink-0">
-                    <FontAwesomeIcon icon={faTableColumns} />
-                    Coloane tabel
-                  </Button>
-                </DropdownMenuTrigger>
+            <div className="flex justify-end items-center gap-1.5  min-w-0">
+              <div className="flex justify-center"></div>
+              <ToolbarTooltip text="Deschide/închide rețetele">
+                <Button variant="outline" className={COMPACT.toolbarIconBtn} onClick={handleToggleAllRetete}>
+                  <FontAwesomeIcon icon={faFolderOpen} className="text-sm text-foreground" />
+                </Button>
+              </ToolbarTooltip>
 
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuCheckboxItem checked={showTableCol("limba")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("limba")}>
+              <ToolbarTooltip text="Schimbă limba afișată">
+                <Button variant="outline" className={COMPACT.toolbarBtn} onClick={onDisplayLangToggle}>
+                  <FontAwesomeIcon icon={faLanguage} className="text-sm text-foreground" />
+                  <span className="text-sm text-foreground font-semibold">{displayLang}</span>
+                </Button>
+              </ToolbarTooltip>
+
+              <DropdownMenu>
+                <ToolbarTooltip text="Coloane vizibile">
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className={COMPACT.toolbarIconBtn}>
+                      <FontAwesomeIcon icon={faListCheck} className="text-sm text-foreground" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </ToolbarTooltip>
+
+                <DropdownMenuContent align="end" className={COMPACT.menuContent}>
+                  <DropdownMenuCheckboxItem className={COMPACT.menuItem} checked={showTableCol("limba")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("limba")}>
                     Limba
                   </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem checked={showTableCol("info")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("actualizat")}>
+
+                  <DropdownMenuCheckboxItem className={COMPACT.menuItem} checked={showTableCol("info")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("info")}>
                     Info
                   </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem checked={showTableCol("elemente")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("elemente")}>
+
+                  <DropdownMenuCheckboxItem className={COMPACT.menuItem} checked={showTableCol("elemente")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("elemente")}>
                     Elemente
                   </DropdownMenuCheckboxItem>
 
                   {dynamicColumns.map((col) => (
-                    <DropdownMenuCheckboxItem key={col.id} checked={showTableCol(`col_${col.id}`)} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol(`col_${col.id}`)}>
+                    <DropdownMenuCheckboxItem
+                      key={col.id}
+                      className={COMPACT.menuItem}
+                      checked={showTableCol(`col_${col.id}`)}
+                      onSelect={(e) => e.preventDefault()}
+                      onCheckedChange={() => toggleTableCol(`col_${col.id}`)}
+                    >
                       {col.nume}
                     </DropdownMenuCheckboxItem>
                   ))}
 
-                  <DropdownMenuCheckboxItem checked={showTableCol("cod")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("cod")}>
+                  <DropdownMenuCheckboxItem className={COMPACT.menuItem} checked={showTableCol("cod")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("cod")}>
                     Cod
                   </DropdownMenuCheckboxItem>
 
-                  <DropdownMenuCheckboxItem checked={showTableCol("clasa")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("clasa")}>
+                  <DropdownMenuCheckboxItem className={COMPACT.menuItem} checked={showTableCol("clasa")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("clasa")}>
                     Clasa
                   </DropdownMenuCheckboxItem>
 
-                  <DropdownMenuCheckboxItem checked={showTableCol("denumire")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("denumire")}>
+                  <DropdownMenuCheckboxItem className={COMPACT.menuItem} checked={showTableCol("denumire")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("denumire")}>
                     Denumire
                   </DropdownMenuCheckboxItem>
 
-                  <DropdownMenuCheckboxItem checked={showTableCol("descriere")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("descriere")}>
+                  <DropdownMenuCheckboxItem className={COMPACT.menuItem} checked={showTableCol("descriere")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("descriere")}>
                     Descriere
                   </DropdownMenuCheckboxItem>
 
-                  <DropdownMenuCheckboxItem checked={showTableCol("unitate")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("unitate")}>
+                  <DropdownMenuCheckboxItem className={COMPACT.menuItem} checked={showTableCol("unitate")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("unitate")}>
                     Unitate
                   </DropdownMenuCheckboxItem>
 
-                  <DropdownMenuCheckboxItem checked={showTableCol("cost")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("cost")}>
+                  <DropdownMenuCheckboxItem className={COMPACT.menuItem} checked={showTableCol("cost")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("cost")}>
                     Cost rețetă
                   </DropdownMenuCheckboxItem>
 
-                  <DropdownMenuCheckboxItem checked={showTableCol("cantitate")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("cantitate")}>
+                  <DropdownMenuCheckboxItem className={COMPACT.menuItem} checked={showTableCol("cantitate")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("cantitate")}>
                     Cantitate
                   </DropdownMenuCheckboxItem>
 
-                  <DropdownMenuCheckboxItem checked={showTableCol("costTotal")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("costTotal")}>
+                  <DropdownMenuCheckboxItem className={COMPACT.menuItem} checked={showTableCol("costTotal")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("costTotal")}>
                     Total
                   </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem checked={showTableCol("creat")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("creat")}>
+
+                  <DropdownMenuCheckboxItem className={COMPACT.menuItem} checked={showTableCol("creat")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("creat")}>
                     Creat
                   </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem checked={showTableCol("actualizat")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("actualizat")}>
+
+                  <DropdownMenuCheckboxItem className={COMPACT.menuItem} checked={showTableCol("actualizat")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("actualizat")}>
                     Actualizat
                   </DropdownMenuCheckboxItem>
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              <Button variant="outline" className="gap-2 px-2 text-foreground shrink-0" onClick={() => setOpenColoane(true)} title="Configurează coloanele lucrării">
-                <FontAwesomeIcon icon={faColumns} />
-              </Button>
+              <ToolbarTooltip text="Resetează lățimile coloanelor">
+                <Button variant="outline" className={COMPACT.toolbarIconBtn} onClick={handleResetColumnWidths}>
+                  <FontAwesomeIcon icon={faRotateLeft} className="text-sm text-foreground" />
+                </Button>
+              </ToolbarTooltip>
 
-              <Button className="gap-2 shrink-0" onClick={() => setOpenAddReteta(true)}>
-                <FontAwesomeIcon icon={faPlus} />
-                Adaugă rețetă
+              <Separator orientation="vertical" className="h-6 bg-border mx-1" />
+
+              <ToolbarTooltip text="Coloane dinamice">
+                <Button variant="outline" className={COMPACT.toolbarIconBtn} onClick={() => setOpenColoane(true)}>
+                  <FontAwesomeIcon icon={faColumns} className="text-sm text-foreground" />
+                </Button>
+              </ToolbarTooltip>
+
+              <Separator orientation="vertical" className="h-6 bg-border mx-1" />
+
+              <Button className={COMPACT.toolbarBtn} onClick={() => setOpenAddReteta(true)}>
+                <FontAwesomeIcon icon={faPlus} className="text-sm " />
+                <span className="text-sm ">Adaugă</span>
               </Button>
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 p-6 relative">
+          <div className="flex-1 min-h-0 p-2 relative bg-muted/10">
             <OferteReteteList
               reteteItems={reteteLucrare}
               selectedLucrare={selectedLucrare}
-              displayLang="RO"
+              displayLang={displayLang}
               visibleColumns={visibleReteteColumns}
+              columnResetKey={columnResetKey}
+              toggleAllKey={toggleAllReteteKey}
               onEditReteta={handleOpenEditReteta}
               onDeleteReteta={handleOpenDeleteReteta}
               onReorderRetete={handleReorderRetete}
@@ -568,10 +666,15 @@ export default function OferteContent({ selectedOferta, selectedLucrare, onUpdat
             dynamicColumns={dynamicColumns}
             editCantitate={editCantitate}
             setEditCantitate={setEditCantitate}
+            editDescriere={editDescriere}
+            setEditDescriere={setEditDescriere}
+            editDescriereFr={editDescriereFr}
+            setEditDescriereFr={setEditDescriereFr}
             editColoaneMap={editColoaneMap}
             setEditColoaneMap={setEditColoaneMap}
             onSave={handleSaveEditReteta}
           />
+
           <DeleteDialog
             open={deleteRetetaOpen}
             setOpen={setDeleteRetetaOpen}

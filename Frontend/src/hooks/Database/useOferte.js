@@ -143,6 +143,23 @@ export const useDeleteOfertaLucrare = () => {
   });
 };
 
+export const useDuplicateOfertaLucrare = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, nume, created_by_user_id }) => {
+      const { data } = await api.post(`/Oferte/duplicateOfertaLucrare/${id}`, {
+        nume,
+      });
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["oferte"] });
+    },
+  });
+};
+
 // ============================================================================
 // 4. MUTATION PENTRU COLOANE_CONFIG PE LUCRARE
 // ============================================================================

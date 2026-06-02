@@ -139,7 +139,6 @@ export default function ReteteFilters({
                 cod: "",
                 clasa_reteta: "",
                 denumire: "",
-                descriere: "",
                 unitate: "all",
               }));
             }}
@@ -188,11 +187,6 @@ export default function ReteteFilters({
           <div className="flex flex-col min-w-[15rem] flex-1 gap-1.5">
             <span className="text-xs font-semibold uppercase text-foreground">Denumire</span>
             <Input value={advancedFilters.denumire} onChange={(e) => updateFilter("denumire", e.target.value)} className="bg-background" />
-          </div>
-
-          <div className="flex flex-col min-w-[15rem] flex-1 gap-1.5">
-            <span className="text-xs font-semibold uppercase text-foreground">Descriere</span>
-            <Input value={advancedFilters.descriere} onChange={(e) => updateFilter("descriere", e.target.value)} className="bg-background" />
           </div>
 
           <div className="flex flex-col w-[8rem] gap-1.5">

@@ -1,10 +1,8 @@
 import React, { useContext, useEffect, useState } from "react";
-import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 
@@ -34,8 +32,6 @@ export default function ReteteDefDialog({ open, setOpen, mode = "add", initialDa
     clasa_reteta: "",
     denumire: "",
     denumire_fr: "",
-    descriere: "",
-    descriere_fr: "",
     unitate_masura: "U", // Unitate default bazată pe filtre
     duplicateElements: false,
   };
@@ -50,8 +46,6 @@ export default function ReteteDefDialog({ open, setOpen, mode = "add", initialDa
         clasa_reteta: initialData.clasa_reteta || "",
         denumire: initialData.denumire || "",
         denumire_fr: initialData.denumire_fr || "",
-        descriere: initialData.descriere || "",
-        descriere_fr: initialData.descriere_fr || "",
         unitate_masura: initialData.unitate_masura || "m³",
         duplicateElements: isDuplicateMode ? true : false,
         originalId: isDuplicateMode ? initialData.id : null,
@@ -83,8 +77,6 @@ export default function ReteteDefDialog({ open, setOpen, mode = "add", initialDa
       clasa_reteta: draft.clasa_reteta.trim(),
       denumire: draft.denumire.trim(),
       denumire_fr: draft.denumire_fr.trim(),
-      descriere: draft.descriere.trim(),
-      descriere_fr: draft.descriere_fr.trim(),
       unitate_masura: draft.unitate_masura.trim(),
       user_id: user.id,
     };
@@ -113,7 +105,7 @@ export default function ReteteDefDialog({ open, setOpen, mode = "add", initialDa
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="lg:max-w-[70rem] sm:max-w-[40rem] p-0 gap-0 overflow-hidden">
+      <DialogContent className="lg:max-w-[48rem] sm:max-w-[40rem] p-0 gap-0 overflow-hidden">
         <form onSubmit={handleSubmit} className="flex flex-col">
           {/* ── HEADER ── */}
           <div className="relative px-6 pt-5 pb-4 bg-muted border-b border-border">
@@ -129,122 +121,89 @@ export default function ReteteDefDialog({ open, setOpen, mode = "add", initialDa
           </div>
 
           {/* ── BODY ── */}
-          <div className="px-6 py-4 flex flex-col gap-4 overflow-y-auto max-h-[65vh]">
+          <div className="px-6 py-5 flex flex-col gap-4 overflow-y-auto max-h-[65vh]">
+            <div className="flex flex-col gap-3 rounded-md border bg-muted/10 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Denumire</p>
+
+                <Select value={draft.limba} onValueChange={(v) => setField("limba", v)}>
+                  <SelectTrigger className="h-9 w-28">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="RO">RO</SelectItem>
+                    <SelectItem value="FR">FR</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="rounded-md border border-cyan-500 bg-cyan-500/5 px-2 py-1 text-sm font-bold text-cyan-600">RO</span>
+                  <Label className="text-sm font-semibold">
+                    Denumire RO <span className="text-destructive">*</span>
+                  </Label>
+                </div>
+
+                <Input value={draft.denumire} onChange={(e) => setField("denumire", e.target.value)} className="h-11 text-base font-semibold" />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="rounded-md border border-lime-500 bg-lime-500/5 px-2 py-1 text-sm font-bold text-lime-600">FR</span>
+                  <Label className="text-sm font-semibold">
+                    Denumire FR <span className="text-destructive">*</span>
+                  </Label>
+                </div>
+
+                <Input value={draft.denumire_fr} disabled={draft.limba != "FR"} onChange={(e) => setField("denumire_fr", e.target.value)} className="h-11 text-base font-semibold" />
+              </div>
+            </div>
+
             {isDuplicateMode && (
-              <div className="flex items-center gap-2 p-4 rounded-lg border bg-muted">
+              <div className="flex items-center gap-2 p-3 rounded-md border bg-muted">
                 <Switch checked={draft.duplicateElements} onCheckedChange={(checked) => setField("duplicateElements", checked)} className="data-[state=checked]:bg-sky-600 shrink-0" />
                 <label className="text-sm font-medium leading-none text-sky-600">Dublează și elementele (materiale/utilaje) atașate acestei rețete.</label>
               </div>
             )}
 
-            {/* Section 1 — Configurare */}
-            <div className="flex flex-col gap-2">
-              <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Configurare de bază</p>
-
-              <div className="flex gap-5 items-end">
-                <div className="flex-1 grid grid-cols-4 gap-3 mb-1">
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-sm font-semibold">
-                      Cod Rețetă <span className="text-destructive">*</span>
-                    </Label>
-                    <Input value={draft.cod_reteta} onChange={(e) => setField("cod_reteta", e.target.value)} maxLength={30} className="h-9" />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-sm font-semibold">
-                      Clasa Rețetei <span className="text-destructive">*</span>
-                    </Label>
-                    <Input value={draft.clasa_reteta} onChange={(e) => setField("clasa_reteta", e.target.value)} placeholder="Ex: Betoane" className="h-9" />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-sm font-semibold">
-                      Unitate <span className="text-destructive">*</span>
-                    </Label>
-                    <Select value={draft.unitate_masura} onValueChange={(v) => setField("unitate_masura", v)}>
-                      <SelectTrigger className="h-9">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="U">U</SelectItem>
-                        <SelectItem value="kg">kg</SelectItem>
-                        <SelectItem value="m">m</SelectItem>
-                        <SelectItem value="m²">m²</SelectItem>
-                        <SelectItem value="m³">m³</SelectItem>
-                        <SelectItem value="l">l</SelectItem>
-                        <SelectItem value="Set">Set</SelectItem>
-                        <SelectItem value="Rola">Rola</SelectItem>
-                        <SelectItem value="ens">ens</SelectItem>
-                        <SelectItem value="j">j</SelectItem>
-                        <SelectItem value="t">t</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-sm font-semibold">Limbă de bază</Label>
-                    <Select value={draft.limba} onValueChange={(v) => setField("limba", v)}>
-                      <SelectTrigger className="h-9">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="RO">Română (RO)</SelectItem>
-                        <SelectItem value="FR">Franceză (FR)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+            <div className="grid grid-cols-[1fr_1fr_9rem] gap-3 items-end">
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-sm font-semibold">
+                  Cod rețetă <span className="text-destructive">*</span>
+                </Label>
+                <Input value={draft.cod_reteta} onChange={(e) => setField("cod_reteta", e.target.value)} maxLength={30} className="h-9" />
               </div>
-            </div>
 
-            <Separator />
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-sm font-semibold">
+                  Clasa rețetei <span className="text-destructive">*</span>
+                </Label>
+                <Input value={draft.clasa_reteta} onChange={(e) => setField("clasa_reteta", e.target.value)} placeholder="Ex: Betoane" className="h-9" />
+              </div>
 
-            {/* Section 2 — Texte RO / FR */}
-            <div className="flex flex-col gap-2">
-              <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Denumire și descriere</p>
-
-              <div className="grid grid-cols-2 gap-4">
-                {/* RO */}
-                <div className="flex flex-col gap-3 p-4 rounded-xl border border-border bg-muted/20">
-                  <div className="flex items-center gap-2">
-                    <div className="rounded-md p-1 px-2 bg-cyan-500/5 border border-cyan-500 flex items-center justify-center">
-                      <span className="text-sm font-bold text-cyan-600">RO</span>
-                    </div>
-                    <span className="text-sm font-semibold text-foreground">Română</span>
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-sm text-foreground">
-                      Denumire <span className="text-destructive">*</span>
-                    </Label>
-                    <Input value={draft.denumire} onChange={(e) => setField("denumire", e.target.value)} className="h-9" />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-sm text-foreground">Descriere</Label>
-                    <Textarea value={draft.descriere} onChange={(e) => setField("descriere", e.target.value)} className="resize-none h-40" />
-                  </div>
-                </div>
-
-                {/* FR */}
-                <div className="flex flex-col gap-3 p-4 rounded-xl border border-border bg-muted/20">
-                  <div className="flex items-center gap-2">
-                    <div className={`rounded-md p-1 px-2 border ${draft.limba !== "FR" ? "bg-muted/20 border-border" : "bg-lime-500/5 border-lime-500"} flex items-center justify-center`}>
-                      <span className={`text-sm font-bold ${draft.limba !== "FR" ? "text-muted-foreground" : "text-lime-600"}`}>FR</span>
-                    </div>
-                    <span className="text-sm font-semibold text-foreground">Franceză</span>
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-sm text-foreground">Denumire (FR) {draft.limba === "FR" && <span className="text-destructive">*</span>}</Label>
-                    <Input disabled={draft.limba !== "FR"} value={draft.denumire_fr} onChange={(e) => setField("denumire_fr", e.target.value)} className="h-9" />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-sm text-foreground">Descriere (FR)</Label>
-                    <Textarea disabled={draft.limba !== "FR"} value={draft.descriere_fr} onChange={(e) => setField("descriere_fr", e.target.value)} className="resize-none h-40" />
-                  </div>
-                </div>
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-sm font-semibold">
+                  Unitate <span className="text-destructive">*</span>
+                </Label>
+                <Select value={draft.unitate_masura} onValueChange={(v) => setField("unitate_masura", v)}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="U">U</SelectItem>
+                    <SelectItem value="kg">kg</SelectItem>
+                    <SelectItem value="m">m</SelectItem>
+                    <SelectItem value="m²">m²</SelectItem>
+                    <SelectItem value="m³">m³</SelectItem>
+                    <SelectItem value="l">l</SelectItem>
+                    <SelectItem value="Set">Set</SelectItem>
+                    <SelectItem value="Rola">Rola</SelectItem>
+                    <SelectItem value="ens">ens</SelectItem>
+                    <SelectItem value="j">j</SelectItem>
+                    <SelectItem value="t">t</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>

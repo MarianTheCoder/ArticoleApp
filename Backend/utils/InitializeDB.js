@@ -286,8 +286,6 @@ async function initializeDB(pool) {
         clasa_reteta VARCHAR(255) NOT NULL,
         denumire VARCHAR(255) NOT NULL,
         denumire_fr VARCHAR(255),
-        descriere TEXT,
-        descriere_fr TEXT,
         unitate_masura VARCHAR(50) NOT NULL,
         
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

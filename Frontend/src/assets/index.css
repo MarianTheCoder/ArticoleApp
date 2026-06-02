@@ -57,6 +57,8 @@ body {
 :root {
   --mainBG: 0 0% 100% / 10%;
   --radius: 0.65rem;
+  --oferta-child-bg: 0 0% 100%;
+  --oferta-child-hover: 240 6% 94%;
 
   /* neutrals (darker / more distinction) */
   --background: 240 6% 90%;
@@ -123,6 +125,8 @@ body {
 .blue {
   --mainBG: 210 40% 10% / 80%; /* Fundal foarte închis cu ușoară transparență */
   --radius: 0.65rem;
+  --oferta-child-bg: 210 26% 24%;
+  --oferta-child-hover: 210 32% 33%;
 
   /* Deep Dark Blue backgrounds */
   --background: 210 45% 7%; /* Aproape negru-albăstrui */
@@ -190,6 +194,8 @@ body {
 }
 
 .dark {
+  --oferta-child-bg: 197 6% 15%;
+  --oferta-child-hover: 197 6% 20%;
   --background: 197, 6%, 23%;
   --foreground: 180 0% 98%;
   --card: 200, 6%, 10%;
@@ -283,6 +289,15 @@ body::-webkit-scrollbar-thumb {
 }
 
 @layer components {
+  .oferta-child-cell {
+    background-color: hsl(var(--oferta-child-bg));
+    transition: background-color 150ms ease;
+  }
+
+  .group:hover .oferta-child-cell {
+    background-color: hsl(var(--oferta-child-hover));
+  }
+
   /* Contur sus și jos pe toate celulele rândului la hover */
   .hover-row-border:hover td {
     box-shadow:

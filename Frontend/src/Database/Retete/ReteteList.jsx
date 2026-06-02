@@ -143,7 +143,6 @@ const ReteteList = memo(
                 {showCol("cod") && <TableHead className="text-center px-4 w-[12rem] max-w-[12rem]">Cod</TableHead>}
                 {showCol("clasa") && <TableHead className="text-center px-4 w-[12rem] max-w-[12rem]">Clasa</TableHead>}
                 {showCol("denumire") && <TableHead className="px-4 w-[22rem] max-w-[22rem]">Denumire</TableHead>}
-                {showCol("descriere") && <TableHead className="px-4 min-w-[35rem]">Descriere</TableHead>}
                 {showCol("unitate") && <TableHead className="text-center px-4 w-[10rem] max-w-[10rem]">Unitate</TableHead>}
 
                 {showCol("cost") && <TableHead className="text-center px-4 w-[12rem] max-w-[12rem]">Cost Total</TableHead>}
@@ -156,7 +155,6 @@ const ReteteList = memo(
             context={context}
             itemContent={(index, parent) => {
               const afisareDenumire = displayLang === "FR" ? parent.denumire_fr || "" : parent.denumire;
-              const afisareDescriere = displayLang === "FR" ? parent.descriere_fr || "" : parent.descriere;
 
               // Logica de numărare a elementelor pentru coloana Variante
               const elemente = parent.elemente || [];
@@ -221,15 +219,29 @@ const ReteteList = memo(
                   )}
 
                   {showCol("cod") && (
-                    <TableCell className="text-center px-4 py-2 min-w-[12rem] w-[12rem] max-w-[12rem] whitespace-nowrap">
-                      <span className="text-base font-bold text-foreground">{parent.cod_reteta}</span>
+                    <TableCell className="text-center px-4 py-2 min-w-[12rem] w-[12rem] max-w-[12rem] overflow-hidden">
+                      {parent.cod_reteta ? (
+                        <OverflowTooltip
+                          align="center"
+                          text={String(parent.cod_reteta)}
+                          className="block w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-base font-bold text-foreground text-center"
+                          maxLines={1}
+                        />
+                      ) : (
+                        <span className="text-base text-muted-foreground/40 italic">—</span>
+                      )}
                     </TableCell>
                   )}
 
                   {showCol("clasa") && (
-                    <TableCell className="text-center px-4 py-2 min-w-[12rem] w-[12rem] max-w-[12rem] whitespace-nowrap">
-                      <Badge variant="secondary" className="text-sm bg-card border-border font-medium">
-                        {parent.clasa_reteta}
+                    <TableCell className="text-center px-4 py-2 min-w-[12rem] w-[12rem] max-w-[12rem] whitespace-nowrap overflow-hidden">
+                      <Badge variant="secondary" className="text-sm bg-card border-border font-medium max-w-full truncate">
+                        <OverflowTooltip
+                          align="center"
+                          text={String(parent.clasa_reteta)}
+                          className="block w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-sm font-medium text-foreground text-center"
+                          maxLines={1}
+                        />
                       </Badge>
                     </TableCell>
                   )}
@@ -241,18 +253,6 @@ const ReteteList = memo(
                       ) : (
                         <span className="text-base text-muted-foreground/40 italic">—</span>
                       )}
-                    </TableCell>
-                  )}
-
-                  {showCol("descriere") && (
-                    <TableCell className="px-4 py-2 min-w-[35rem]">
-                      <div className="w-full">
-                        {afisareDescriere ? (
-                          <OverflowTooltip align="left" text={afisareDescriere} className="text-base whitespace-pre-wrap text-foreground leading-normal" maxLines={2} />
-                        ) : (
-                          <span className="text-base text-muted-foreground/40 italic">—</span>
-                        )}
-                      </div>
                     </TableCell>
                   )}
 

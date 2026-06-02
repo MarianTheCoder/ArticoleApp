@@ -25,13 +25,12 @@ export default function OferteWrapper() {
       <div
         className="grid h-full w-full transition-[grid-template-columns] duration-300 ease-in-out"
         style={{
-          gridTemplateColumns: sidebarOpen ? "24rem minmax(0, 1fr)" : "4rem minmax(0, 1fr)",
+          gridTemplateColumns: sidebarOpen ? "22rem minmax(0, 1fr)" : "0rem minmax(0, 1fr)",
         }}
       >
         <div className="h-full min-w-0 overflow-hidden">
           <OferteSidebar
             isCollapsed={!sidebarOpen}
-            onToggleCollapse={() => setSidebarOpen((prev) => !prev)}
             selectedOfertaId={selectedOferta?.id || null}
             selectedLucrareId={selectedLucrare?.id || null}
             onSelectOferta={(oferta) => {
@@ -46,7 +45,13 @@ export default function OferteWrapper() {
         </div>
 
         <div className="h-full min-w-0 overflow-hidden">
-          <OferteContent sidebarOpen={sidebarOpen} selectedOferta={selectedOferta} selectedLucrare={selectedLucrare} onUpdateSelectedLucrare={handleUpdateSelectedLucrare} />
+          <OferteContent
+            isCollapsed={!sidebarOpen}
+            onToggleCollapse={() => setSidebarOpen((prev) => !prev)}
+            selectedOferta={selectedOferta}
+            selectedLucrare={selectedLucrare}
+            onUpdateSelectedLucrare={handleUpdateSelectedLucrare}
+          />
         </div>
       </div>
     </div>

@@ -14,6 +14,7 @@ import OverflowTooltip from "@/components/ui/OverflowTooltip";
 import WarningDialog from "@/components/ui/warning-dialog";
 
 const MAX_COLUMNS = 5;
+const MAX_COLUMN_NAME_LENGTH = 64;
 
 const makeColumnId = () => {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
@@ -216,9 +217,9 @@ export default function OferteColoaneDialog({ open, setOpen, selectedLucrare, on
 
                     <Input
                       value={col.name}
-                      onChange={(e) => updateColumn(col.id, e.target.value)}
+                      onChange={(e) => updateColumn(col.id, e.target.value.slice(0, MAX_COLUMN_NAME_LENGTH))}
                       placeholder="Ex: Reper, Etaj, Clădire..."
-                      maxLength={60}
+                      maxLength={MAX_COLUMN_NAME_LENGTH}
                       className="h-9 min-w-0"
                       autoFocus={index === columns.length - 1 && !col.name}
                     />

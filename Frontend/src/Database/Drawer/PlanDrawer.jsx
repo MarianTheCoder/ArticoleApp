@@ -6,8 +6,7 @@ import api from "../../api/axiosAPI.jsx";
 import { useElementSize } from "./hooks/useElementSize.js";
 import { usePlanViewer } from "./hooks/usePlanViewer.js";
 
-import { createInitialDrawingState } from "./engine/createInitialDrawingState.js";
-import { drawingReducer } from "./engine/drawingReducer.js";
+import { createInitialHistoryState, historyReducer } from "./engine/history/historyReducer.js";
 
 import { screenToImagePoint } from "./engine/geometry/coords.js";
 import { dnToRealPipeWidthPx, parseMetersPerPx } from "./engine/geometry/units.js";
@@ -26,6 +25,7 @@ import PreviewLayer from "./components/PreviewLayer.jsx";
 import SnapIndicator from "./components/SnapIndicator.jsx";
 import ToolPanel from "./components/ToolPanel.jsx";
 import HUD from "./components/HUD.jsx";
+import HistoryPanel from "./components/HistoryPanel.jsx";
 
 // Default active tool.
 const DEFAULT_TOOL = {
@@ -37,6 +37,13 @@ const DEFAULT_TOOL = {
 
 // Shift angle snap step.
 const ANGLE_SNAP_STEP_DEG = 15;
+
+// True when keyboard shortcuts should leave the focused field alone.
+function isTypingTarget(target) {
+  const tagName = target?.tagName?.toLowerCase();
+
+  return target?.isContentEditable || tagName === "input" || tagName === "textarea" || tagName === "select";
+}
 
 export default function PlanDrawer({ plan }) {
   // OSD container.
@@ -63,15 +70,16 @@ export default function PlanDrawer({ plan }) {
   // Overlay size used by Konva Stage.
   const size = useElementSize(overlayRef);
 
-  // Canonical CAD drawing state.
-  const [drawingState, dispatchDrawing] = useReducer(drawingReducer, null, () => createInitialDrawingState({ plan }));
+  // Drawing state wrapped with undo/redo history.
+  const [historyState, dispatchHistory] = useReducer(historyReducer, null, () => createInitialHistoryState({ plan }));
+  const drawingState = historyState.present;
 
   // Reset drawing state when changing plan.
   useEffect(() => {
-    dispatchDrawing({
-      type: "RESET_DRAWING",
+    dispatchHistory({
+      type: "RESET_HISTORY_FOR_PLAN",
       payload: {
-        state: createInitialDrawingState({ plan }),
+        plan,
       },
     });
   }, [plan?.id]);
@@ -194,8 +202,13 @@ export default function PlanDrawer({ plan }) {
     setActiveSnap(null);
     if (!drawingState.activeDraft) return;
 
-    dispatchDrawing({
-      type: "CLEAR_ACTIVE_DRAFT",
+    dispatchHistory({
+      type: "APPLY_TRANSACTION",
+      payload: {
+        label: "Clear draft",
+        history: false,
+        actions: [{ type: "CLEAR_ACTIVE_DRAFT" }],
+      },
     });
   }, [drawingState.activeDraft, tool.mode]);
 
@@ -209,20 +222,34 @@ export default function PlanDrawer({ plan }) {
     };
   }, []);
 
-  // Delete selected item from keyboard.
+  // Drawing keyboard shortcuts.
   useEffect(() => {
     const handleKeyDown = (e) => {
-      const target = e.target;
-      const tagName = target?.tagName?.toLowerCase();
-      const isEditing = target?.isContentEditable || tagName === "input" || tagName === "textarea" || tagName === "select";
+      if (isTypingTarget(e.target)) return;
 
-      if (isEditing) return;
+      const key = e.key.toLowerCase();
+      const usesModifier = e.ctrlKey || e.metaKey;
+      const wantsUndo = usesModifier && key === "z" && !e.shiftKey;
+      const wantsRedo = (usesModifier && key === "z" && e.shiftKey) || (usesModifier && key === "y");
+
+      if (wantsUndo || wantsRedo) {
+        e.preventDefault();
+        dispatchHistory({ type: wantsUndo ? "UNDO" : "REDO" });
+        return;
+      }
 
       if (e.key === "Escape") {
         if (!drawingState.activeDraft && !drawingState.selected) return;
 
         e.preventDefault();
-        dispatchDrawing(drawingState.activeDraft ? { type: "CLEAR_ACTIVE_DRAFT" } : { type: "SET_SELECTED", payload: { selected: null } });
+        dispatchHistory({
+          type: "APPLY_TRANSACTION",
+          payload: {
+            label: drawingState.activeDraft ? "Clear draft" : "Clear selection",
+            history: false,
+            actions: [drawingState.activeDraft ? { type: "CLEAR_ACTIVE_DRAFT" } : { type: "SET_SELECTED", payload: { selected: null } }],
+          },
+        });
         setActiveSnap(null);
         return;
       }
@@ -234,10 +261,19 @@ export default function PlanDrawer({ plan }) {
 
       e.preventDefault();
 
-      dispatchDrawing({
-        type: "DELETE_ITEM",
+      dispatchHistory({
+        type: "APPLY_TRANSACTION",
         payload: {
-          itemId,
+          label: "Delete item",
+          history: true,
+          actions: [
+            {
+              type: "DELETE_ITEM",
+              payload: {
+                itemId,
+              },
+            },
+          ],
         },
       });
     };
@@ -316,85 +352,97 @@ export default function PlanDrawer({ plan }) {
   }, []);
 
   // Handle pan first; update draft/cursor only when not panning.
-  const handleMouseMove = useCallback((e) => {
-    const viewer = viewerRef.current;
-    const stage = stageRef.current;
-    const drag = dragStateRef.current;
+  const handleMouseMove = useCallback(
+    (e) => {
+      const viewer = viewerRef.current;
+      const stage = stageRef.current;
+      const drag = dragStateRef.current;
 
-    if (!viewer || !stage) return;
+      if (!viewer || !stage) return;
 
-    const pos = stage.getPointerPosition();
+      const pos = stage.getPointerPosition();
 
-    // Mouse is down: maybe this becomes pan.
-    if (drag.dragging && pos && drag.start && drag.last) {
-      const dist = Math.hypot(pos.x - drag.start.x, pos.y - drag.start.y);
+      // Mouse is down: maybe this becomes pan.
+      if (drag.dragging && pos && drag.start && drag.last) {
+        const dist = Math.hypot(pos.x - drag.start.x, pos.y - drag.start.y);
 
-      // Start pan after small threshold.
-      if (!drag.panning && dist >= 5) {
-        drag.panning = true;
-        drag.moved = true;
-        drag.last = pos;
-
-        stage.container().style.cursor = "grabbing";
-        return;
-      }
-
-      // Active pan: no React state updates here.
-      if (drag.panning) {
-        const dx = pos.x - drag.last.x;
-        const dy = pos.y - drag.last.y;
-
-        if (dx !== 0 || dy !== 0) {
-          viewer.viewport.panBy(viewer.viewport.deltaPointsFromPixels(new OpenSeadragon.Point(-dx, -dy), true));
-
-          viewer.viewport.applyConstraints();
+        // Start pan after small threshold.
+        if (!drag.panning && dist >= 5) {
+          drag.panning = true;
+          drag.moved = true;
           drag.last = pos;
+
+          stage.container().style.cursor = "grabbing";
+          return;
         }
 
-        return;
+        // Active pan: no React state updates here.
+        if (drag.panning) {
+          const dx = pos.x - drag.last.x;
+          const dy = pos.y - drag.last.y;
+
+          if (dx !== 0 || dy !== 0) {
+            viewer.viewport.panBy(viewer.viewport.deltaPointsFromPixels(new OpenSeadragon.Point(-dx, -dy), true));
+
+            viewer.viewport.applyConstraints();
+            drag.last = pos;
+          }
+
+          return;
+        }
       }
-    }
 
-    // Current image point under cursor.
-    const imagePoint = getImagePointFromPointer();
-    const drawTarget =
-      tool.mode === "draw" && imagePoint
-        ? resolveDrawTarget({
-            point: imagePoint,
-            activeDraft: drawingState.activeDraft,
-            shiftKey: Boolean(e?.evt?.shiftKey),
-          })
-        : null;
-    const snap = drawTarget?.snap ?? null;
+      // Current image point under cursor.
+      const imagePoint = getImagePointFromPointer();
+      const drawTarget =
+        tool.mode === "draw" && imagePoint
+          ? resolveDrawTarget({
+              point: imagePoint,
+              activeDraft: drawingState.activeDraft,
+              shiftKey: Boolean(e?.evt?.shiftKey),
+            })
+          : null;
+      const snap = drawTarget?.snap ?? null;
 
-    setActiveSnap(snap);
+      setActiveSnap(snap);
 
-    // Live pipe preview while drawing.
-    if (drawingState.activeDraft?.type === "pipeDraft" && imagePoint) {
-      const endPoint = drawTarget?.targetPoint ?? imagePoint;
+      // Live pipe preview while drawing.
+      if (drawingState.activeDraft?.type === "pipeDraft" && imagePoint) {
+        const endPoint = drawTarget?.targetPoint ?? imagePoint;
 
-      const draft = updatePipeDraftEnd(drawingState.activeDraft, endPoint, {
-        endPortRef: drawTarget?.targetPortRef ?? null,
-        endPortSnapshot: drawTarget?.targetPortSnapshot ?? null,
-      });
+        const draft = updatePipeDraftEnd(drawingState.activeDraft, endPoint, {
+          endPortRef: drawTarget?.targetPortRef ?? null,
+          endPortSnapshot: drawTarget?.targetPortSnapshot ?? null,
+        });
 
-      dispatchDrawing({
-        type: "SET_ACTIVE_DRAFT",
-        payload: {
-          draft: {
-            ...draft,
-            dn: tool.dn,
-            color: tool.color,
-            systemTypeId: tool.systemTypeId,
-            widthPx: pipeWidthPx,
+        dispatchHistory({
+          type: "APPLY_TRANSACTION",
+          payload: {
+            label: "Preview",
+            history: false,
+            actions: [
+              {
+                type: "SET_ACTIVE_DRAFT",
+                payload: {
+                  draft: {
+                    ...draft,
+                    dn: tool.dn,
+                    color: tool.color,
+                    systemTypeId: tool.systemTypeId,
+                    widthPx: pipeWidthPx,
+                  },
+                },
+              },
+            ],
           },
-        },
-      });
-    }
+        });
+      }
 
-    // Cursor HUD update only when not panning.
-    updateCursorFromPointerThrottled();
-  }, [drawingState.activeDraft, getImagePointFromPointer, pipeWidthPx, resolveDrawTarget, tool, updateCursorFromPointerThrottled, viewerRef]);
+      // Cursor HUD update only when not panning.
+      updateCursorFromPointerThrottled();
+    },
+    [drawingState.activeDraft, getImagePointFromPointer, pipeWidthPx, resolveDrawTarget, tool, updateCursorFromPointerThrottled, viewerRef],
+  );
 
   // End pan/click tracking.
   const handleMouseUp = useCallback(() => {
@@ -419,70 +467,92 @@ export default function PlanDrawer({ plan }) {
   }, []);
 
   // Clean click handler.
-  const handleStageClick = useCallback((e) => {
-    // Ignore click fired after panning.
-    if (dragStateRef.current.moved) {
-      dragStateRef.current.moved = false;
-      return;
-    }
+  const handleStageClick = useCallback(
+    (e) => {
+      // Ignore click fired after panning.
+      if (dragStateRef.current.moved) {
+        dragStateRef.current.moved = false;
+        return;
+      }
 
-    const imagePoint = updateCursorFromPointer();
-    if (!imagePoint) return;
+      const imagePoint = updateCursorFromPointer();
+      if (!imagePoint) return;
 
-    // Store last click for HUD/debug.
-    dispatchDrawing({
-      type: "DEBUG_LAST_CLICK",
-      payload: {
-        point: imagePoint,
-      },
-    });
-
-    // Select mode hit-tests committed items.
-    if (tool.mode === "select") {
-      const stage = stageRef.current;
-      const hitItem = findItemAtImagePoint(drawingState, imagePoint, screenToleranceToImagePx(stage));
-
-      dispatchDrawing({
-        type: "SET_SELECTED",
+      // Store last click for HUD/debug.
+      dispatchHistory({
+        type: "APPLY_TRANSACTION",
         payload: {
-          selected: hitItem ? { itemId: hitItem.id, portId: null } : null,
+          label: "Debug click",
+          history: false,
+          actions: [
+            {
+              type: "DEBUG_LAST_CLICK",
+              payload: {
+                point: imagePoint,
+              },
+            },
+          ],
         },
       });
 
-      return;
-    }
+      // Select mode hit-tests committed items.
+      if (tool.mode === "select") {
+        const stage = stageRef.current;
+        const hitItem = findItemAtImagePoint(drawingState, imagePoint, screenToleranceToImagePx(stage));
 
-    // Drawing actions only run in draw mode.
-    if (tool.mode !== "draw") return;
+        dispatchHistory({
+          type: "APPLY_TRANSACTION",
+          payload: {
+            label: "Select item",
+            history: false,
+            actions: [
+              {
+                type: "SET_SELECTED",
+                payload: {
+                  selected: hitItem ? { itemId: hitItem.id, portId: null } : null,
+                },
+              },
+            ],
+          },
+        });
 
-    const drawTarget = resolveDrawTarget({
-      point: imagePoint,
-      activeDraft: drawingState.activeDraft,
-      shiftKey: Boolean(e?.evt?.shiftKey),
-    });
-    const snap = drawTarget.snap;
-    const targetPoint = drawTarget.targetPoint;
-    const targetPortRef = drawTarget.targetPortRef;
-    const targetPortSnapshot = drawTarget.targetPortSnapshot;
+        return;
+      }
 
-    setActiveSnap(snap);
+      // Drawing actions only run in draw mode.
+      if (tool.mode !== "draw") return;
 
-    const result = commitPipeDraftCommand({
-      state: drawingState,
-      draft: drawingState.activeDraft,
-      clickPoint: targetPoint,
-      portRef: targetPortRef,
-      portSnapshot: targetPortSnapshot,
-      tool,
-      metersPerPx,
-    });
+      const drawTarget = resolveDrawTarget({
+        point: imagePoint,
+        activeDraft: drawingState.activeDraft,
+        shiftKey: Boolean(e?.evt?.shiftKey),
+      });
+      const snap = drawTarget.snap;
+      const targetPoint = drawTarget.targetPoint;
+      const targetPortRef = drawTarget.targetPortRef;
+      const targetPortSnapshot = drawTarget.targetPortSnapshot;
 
-    for (const action of result.actions) {
-      dispatchDrawing(action);
-    }
+      setActiveSnap(snap);
 
-    setActiveSnap(null);
-  }, [drawingState, metersPerPx, resolveDrawTarget, tool, updateCursorFromPointer]);
+      const result = commitPipeDraftCommand({
+        state: drawingState,
+        draft: drawingState.activeDraft,
+        clickPoint: targetPoint,
+        portRef: targetPortRef,
+        portSnapshot: targetPortSnapshot,
+        tool,
+        metersPerPx,
+      });
+
+      dispatchHistory({
+        type: "APPLY_TRANSACTION",
+        payload: result,
+      });
+
+      setActiveSnap(null);
+    },
+    [drawingState, metersPerPx, resolveDrawTarget, tool, updateCursorFromPointer],
+  );
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-slate-100">
@@ -514,6 +584,7 @@ export default function PlanDrawer({ plan }) {
         )}
 
         <ToolPanel tool={tool} setTool={setTool} pipeWidthPx={pipeWidthPx} metersPerPx={metersPerPx} />
+        <HistoryPanel historyState={historyState} dispatchHistory={dispatchHistory} />
 
         <HUD plan={plan} cursorImagePoint={cursorImagePoint} tool={tool} pipeWidthPx={pipeWidthPx} metersPerPx={metersPerPx} drawingState={drawingState} />
       </div>

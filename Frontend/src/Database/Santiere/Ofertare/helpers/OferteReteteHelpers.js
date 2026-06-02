@@ -131,16 +131,6 @@ export const elementHasChangedQuantity = (el) => {
   return numbersDifferent(currentQty, defaultQty);
 };
 
-export const getRetetaInfoFlags = (reteta) => {
-  const elemente = reteta?.elemente || [];
-
-  return {
-    hasChangedPrice: elemente.some(elementHasChangedPrice),
-    hasChangedQuantity: elemente.some(elementHasChangedQuantity),
-    hasVariant: elemente.some(hasVariantSelected),
-  };
-};
-
 export const getElementUnitCost = (el) => {
   if (hasVariantSelected(el)) {
     return Number(el.cost_subcategorie ?? el.cost_subcategorie_snapshot ?? el.subcategorie_cost ?? 0);

@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheck, faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faTruck } from "@fortawesome/free-solid-svg-icons";
 import { toast } from "sonner";
 
 export default function OferteFurnizoriDialog({ open, setOpen, retete = [], onLoadFurnizori, onConfirm }) {
@@ -123,100 +123,110 @@ export default function OferteFurnizoriDialog({ open, setOpen, retete = [], onLo
 
   return (
     <Dialog open={!!open} onOpenChange={setOpen}>
-      <DialogContent className="keepSelection sm:max-w-xl xl:max-w-4xl p-8 gap-8 border shadow-2xl">
-        <DialogHeader className="flex flex-col items-center text-center gap-2">
-          <div className="grid gap-2 w-full">
-            <DialogTitle className="text-2xl font-semibold text-center text-foreground">
-              Furnizori pentru {retete.length} {retete.length === 1 ? "rețetă" : "rețete"}
-            </DialogTitle>
+      <DialogContent className="keepSelection sm:max-w-xl xl:max-w-4xl p-0 gap-0 overflow-hidden border shadow-2xl">
+        <DialogHeader className="px-6 py-4 border-b bg-muted">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="h-14 w-14 rounded-xl bg-sky-600/20 border border-sky-600/25 flex items-center justify-center shrink-0">
+              <FontAwesomeIcon icon={faTruck} className="text-sky-600 text-2xl" />
+            </div>
 
-            <DialogDescription className="text-base text-muted-foreground text-center leading-relaxed">
-              Selectează furnizorul pentru materiale și/sau utilaje. Variantele vor fi alese automat după furnizor.
-            </DialogDescription>
+            <div className="grid gap-1 min-w-0 text-left">
+              <DialogTitle className="text-xl font-black text-foreground">
+                Furnizori pentru {retete.length} {retete.length === 1 ? "rețetă" : "rețete"}
+              </DialogTitle>
+
+              <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
+                Selectează furnizorul pentru materiale și/sau utilaje. Variantele vor fi alese automat după furnizor.
+              </DialogDescription>
+            </div>
           </div>
         </DialogHeader>
 
-        <div className="grid gap-4 w-full max-w-md xl:max-w-none mx-auto xl:grid-cols-2">
-          <label className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3 hover:bg-accent transition-colors">
-            <Checkbox className="w-5 h-5" checked={applyMateriale} onCheckedChange={(checked) => setApplyMateriale(checked === true)} />
+        <div className="grid gap-4 w-full bg-card px-6 py-5 xl:grid-cols-2">
+          <div className="flex items-center gap-3 rounded-md border bg-muted/10 px-4 py-3 transition-colors hover:bg-accent">
+            <div className="grid gap-1 flex-1 min-w-0">
+              <span className="text-base font-bold text-foreground">Materiale</span>
 
-            <div className="grid gap-1 flex-1">
-              <span className="text-base font-semibold text-foreground">Materiale</span>
-
-              <select
-                disabled={!applyMateriale || loading || furnizori.materiale.length === 0}
-                value={materialFurnizor}
-                onChange={(e) => setMaterialFurnizor(e.target.value)}
-                className="h-10 rounded-md border bg-background px-3 text-sm font-bold outline-none disabled:opacity-50"
-              >
-                {furnizori.materiale.length === 0 ? (
-                  <option value="">Nu există furnizori</option>
-                ) : (
-                  furnizori.materiale.map((f) => (
-                    <option key={f.value} value={f.value}>
-                      {f.label}
-                    </option>
-                  ))
-                )}
-              </select>
+              <div className="grid grid-cols-[1fr_auto] gap-2 justify-center  flex-1 ">
+                <select
+                  disabled={!applyMateriale || loading || furnizori.materiale.length === 0}
+                  value={materialFurnizor}
+                  onChange={(e) => setMaterialFurnizor(e.target.value)}
+                  className="h-10 rounded-md border bg-background px-3 text-sm font-bold outline-none disabled:opacity-50"
+                >
+                  {furnizori.materiale.length === 0 ? (
+                    <option value="">—</option>
+                  ) : (
+                    furnizori.materiale.map((f) => (
+                      <option key={f.value} value={f.value}>
+                        {f.label}
+                      </option>
+                    ))
+                  )}
+                </select>
+                <div className="flex justify-center items-center">
+                  <Checkbox className="w-5 h-5 shrink-0" checked={applyMateriale} onCheckedChange={(checked) => setApplyMateriale(checked === true)} />
+                </div>
+              </div>
             </div>
-          </label>
+          </div>
 
-          <label className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3 hover:bg-accent transition-colors">
-            <Checkbox className="w-5 h-5" checked={applyUtilaje} onCheckedChange={(checked) => setApplyUtilaje(checked === true)} />
-
-            <div className="grid gap-1 flex-1">
-              <span className="text-base font-semibold text-foreground">Utilaje</span>
-
-              <select
-                disabled={!applyUtilaje || loading || furnizori.utilaje.length === 0}
-                value={utilajFurnizor}
-                onChange={(e) => setUtilajFurnizor(e.target.value)}
-                className="h-10 rounded-md border bg-background px-3 text-sm font-bold outline-none disabled:opacity-50"
-              >
-                {furnizori.utilaje.length === 0 ? (
-                  <option value="">Nu există furnizori</option>
-                ) : (
-                  furnizori.utilaje.map((f) => (
-                    <option key={f.value} value={f.value}>
-                      {f.label}
-                    </option>
-                  ))
-                )}
-              </select>
+          <div className="flex items-center gap-3 rounded-md border bg-muted/10 px-4 py-3 transition-colors hover:bg-accent">
+            <div className="grid gap-1 flex-1 min-w-0">
+              <span className="text-base font-bold text-foreground">Utilaje</span>
+              <div className="grid grid-cols-[1fr_auto] gap-2 justify-center  flex-1 ">
+                <select
+                  disabled={!applyUtilaje || loading || furnizori.utilaje.length === 0}
+                  value={utilajFurnizor}
+                  onChange={(e) => setUtilajFurnizor(e.target.value)}
+                  className="h-10 rounded-md border bg-background px-3 text-sm font-bold outline-none disabled:opacity-50"
+                >
+                  {furnizori.utilaje.length === 0 ? (
+                    <option value="">—</option>
+                  ) : (
+                    furnizori.utilaje.map((f) => (
+                      <option key={f.value} value={f.value}>
+                        {f.label}
+                      </option>
+                    ))
+                  )}
+                </select>
+                <div className="flex justify-center items-center">
+                  <Checkbox className="w-5 h-5 shrink-0" checked={applyUtilaje} onCheckedChange={(checked) => setApplyUtilaje(checked === true)} />
+                </div>
+              </div>
             </div>
-          </label>
+          </div>
 
           <div className="grid gap-3 xl:col-span-2">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <label className="flex items-center justify-center gap-3 rounded-xl border bg-card px-4 py-3 hover:bg-accent transition-colors cursor-pointer">
+              <label className="flex items-center justify-center gap-3 rounded-md border bg-muted/10 px-4 py-3 hover:bg-accent transition-colors cursor-pointer">
                 <Checkbox className="w-5 h-5" checked={rewriteCost} onCheckedChange={(checked) => setRewriteCost(checked === true)} />
                 <span className="text-sm font-black text-foreground">Rescrie Cost</span>
               </label>
 
-              <label className="flex items-center justify-center gap-3 rounded-xl border bg-card px-4 py-3 hover:bg-accent transition-colors cursor-pointer">
+              <label className="flex items-center justify-center gap-3 rounded-md border bg-muted/10 px-4 py-3 hover:bg-accent transition-colors cursor-pointer">
                 <Checkbox className="w-5 h-5" checked={rewriteQuantity} onCheckedChange={(checked) => setRewriteQuantity(checked === true)} />
                 <span className="text-sm font-black text-foreground">Rescrie Qty</span>
               </label>
             </div>
 
-            <div className="rounded-xl border bg-muted/30 px-4 py-3 text-sm text-muted-foreground leading-relaxed text-center">
-              Dacă <span className="font-black text-foreground">Rescrie Cost</span> nu e bifat, se păstrează costul curent. Dacă <span className="font-black text-foreground">Rescrie Qty</span> nu e
-              bifat, se păstrează cantitatea curentă.
+            <div className="rounded-md border bg-muted/30 px-4 py-3 text-sm text-muted-foreground leading-relaxed">
+              <ul className="list-disc pl-5 space-y-1">
+                <li>
+                  <span className="font-black text-foreground">Rescrie Cost</span>: ia costurile din varianta furnizorului selectat. Nebifat păstrează costurile curente.
+                </li>
+                <li>
+                  <span className="font-black text-foreground">Rescrie Qty</span>: ia cantitățile din varianta furnizorului selectat. Nebifat păstrează cantitățile curente.
+                </li>
+              </ul>
             </div>
 
-            {loading ? (
-              <div className="rounded-xl border bg-muted/40 px-4 py-3 text-center text-sm font-bold text-muted-foreground">Se încarcă furnizorii...</div>
-            ) : !furnizori.materiale.length && !furnizori.utilaje.length ? (
-              <div className="rounded-xl border bg-yellow-50 dark:bg-yellow-950/30 px-4 py-3 text-center text-sm font-bold text-yellow-700 dark:text-yellow-300">
-                <FontAwesomeIcon icon={faExclamationTriangle} className="mr-2" />
-                Nu am găsit furnizori pentru materialele/utilajele din selecție.
-              </div>
-            ) : null}
+            {loading ? <div className="rounded-md border bg-muted/40 px-4 py-3 text-center text-sm font-bold text-muted-foreground">Se încarcă furnizorii...</div> : null}
           </div>
         </div>
 
-        <DialogFooter className="flex flex-col sm:flex-row gap-3 sm:justify-center w-full">
+        <DialogFooter className="flex flex-col sm:flex-row gap-3 sm:justify-end w-full border-t bg-muted/20 px-6 py-4">
           <Button type="button" variant="outline" size="lg" onClick={() => setOpen(false)} className="text-base min-w-[120px]">
             Anulează
           </Button>

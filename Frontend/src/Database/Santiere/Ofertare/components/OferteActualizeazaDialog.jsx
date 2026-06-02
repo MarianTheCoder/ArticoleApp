@@ -5,7 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipArrow, TooltipContent, TooltipTrigger } from "@radix-ui/react-tooltip";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheck, faExclamationTriangle, faQuestionCircle, faScrewdriverWrench } from "@fortawesome/free-solid-svg-icons";
+import { faArrowsRotate, faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 
 const HeaderHelp = ({ text }) => {
   return (
@@ -48,24 +48,24 @@ export default function OferteActualizeazaReteteDialog({ open, setOpen, retete =
 
   return (
     <Dialog open={!!open} onOpenChange={setOpen}>
-      <DialogContent className="keepSelection sm:max-w-xl p-8 gap-8 border shadow-2xl">
-        <DialogHeader className="flex flex-col items-center text-center gap-2">
-          <div className="mb-4">
-            <div className="bg-yellow-50 dark:bg-yellow-950/40 p-5 rounded-2xl flex items-center justify-center ring-1 ring-yellow-100 dark:ring-yellow-900 shadow-sm">
-              <FontAwesomeIcon icon={faExclamationTriangle} className="text-yellow-600 dark:text-yellow-400 text-5xl" />
+      <DialogContent className="keepSelection sm:max-w-xl p-0 gap-0 overflow-hidden border shadow-2xl">
+        <DialogHeader className="px-6 py-4 border-b bg-muted">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="h-14 w-14 rounded-xl bg-purple-600/15 border border-purple-600/30 flex items-center justify-center shrink-0">
+              <FontAwesomeIcon icon={faArrowsRotate} className="text-purple-600 dark:text-purple-400 text-2xl" />
             </div>
-          </div>
 
-          <div className="grid gap-2 w-full">
-            <DialogTitle className="text-2xl font-semibold text-center text-foreground">
-              Actualizează {retete.length} {retete.length === 1 ? "rețetă" : "rețete"}
-            </DialogTitle>
+            <div className="grid gap-1 min-w-0 text-left">
+              <DialogTitle className="text-xl font-black text-foreground">
+                Actualizează {retete.length} {retete.length === 1 ? "rețetă" : "rețete"}
+              </DialogTitle>
 
-            <DialogDescription className="text-base text-muted-foreground text-center leading-relaxed">Alege ce valori vrei să fie rescrise din rețeta originală.</DialogDescription>
+              <DialogDescription className="text-sm text-muted-foreground leading-relaxed">Alege ce valori vrei să fie rescrise din rețeta originală.</DialogDescription>
+            </div>
           </div>
         </DialogHeader>
 
-        <div className="grid gap-3 w-full max-w-md mx-auto">
+        <div className="grid gap-3 w-full bg-card px-6 py-5">
           <label className="flex items-center justify-between gap-4 rounded-xl border bg-card px-4 py-3 cursor-pointer hover:bg-accent transition-colors">
             <div className="flex items-center gap-2 text-left">
               <HeaderHelp text="Dacă este bifat, costurile elementelor se iau din rețeta/catalogul original actualizat. Dacă nu, se păstrează costurile snapshot din oferta curentă." />
@@ -85,7 +85,7 @@ export default function OferteActualizeazaReteteDialog({ open, setOpen, retete =
           </label>
         </div>
 
-        <DialogFooter className="flex flex-col sm:flex-row gap-3 sm:justify-center w-full">
+        <DialogFooter className="flex flex-col sm:flex-row gap-3 sm:justify-end w-full border-t bg-muted/20 px-6 py-4">
           <Button type="button" variant="outline" size="lg" onClick={() => setOpen(false)} className="text-base min-w-[120px]">
             Anulează
           </Button>
@@ -95,9 +95,9 @@ export default function OferteActualizeazaReteteDialog({ open, setOpen, retete =
             variant="default"
             size="lg"
             onClick={handleConfirm}
-            className="gap-2 bg-yellow-600 hover:bg-yellow-700 text-white shadow-md hover:shadow-lg transition-all text-base min-w-[150px]"
+            className="gap-2 bg-purple-600 hover:bg-purple-700 text-white shadow-md hover:shadow-lg transition-all text-base min-w-[150px]"
           >
-            <FontAwesomeIcon icon={faScrewdriverWrench} />
+            <FontAwesomeIcon icon={faArrowsRotate} />
             Actualizează
           </Button>
         </DialogFooter>

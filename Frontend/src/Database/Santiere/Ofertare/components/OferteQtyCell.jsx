@@ -3,7 +3,7 @@ import * as Popover from "@radix-ui/react-popover";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheck, faExclamation, faExclamationCircle, faExclamationTriangle, faX } from "@fortawesome/free-solid-svg-icons";
+import { faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
 import { faCheckCircle, faXmarkCircle } from "@fortawesome/free-regular-svg-icons";
 
 const MIN_FORMULA_WIDTH = 112;
@@ -285,11 +285,8 @@ export default function OferteQtyFormulaCell({ value, formula, onSave }) {
       <Popover.Trigger asChild>
         <button
           type="button"
-          onPointerDown={stop}
-          onMouseDown={stop}
-          onClick={stop}
           onKeyDown={stopButtonKey}
-          className={`mx-auto block w-full bg-transparent p-0 text-center text-sm font-black outline-none ${formulaError ? "text-destructive" : "text-foreground"}`}
+          className={`absolute inset-0 flex h-full w-full items-center justify-center rounded-none hover:border-primary hover:border hover:bg-primary/25 p-0 text-center text-sm leading-none font-black outline-none transition-colors ${formulaError ? "text-destructive" : "text-foreground"}`}
         >
           {formulaError ? <FontAwesomeIcon className="text-xl" icon={faExclamationTriangle} /> : formatNumber(value)}
         </button>
@@ -308,7 +305,7 @@ export default function OferteQtyFormulaCell({ value, formula, onSave }) {
           onKeyDown={stop}
           className={`z-[200] overflow-hidden rounded-md border-2 bg-card shadow-[0_10px_25px_rgba(0,0,0,0.35),0_0_0_1px_rgba(255,255,255,0.12)]  dark:shadow-[0_25px_80px_rgba(0,0,0,1),0_0_30px_rgba(255,255,255,0.25),0_0_0_1px_rgba(255,255,255,0.35)] outline-none ${formulaError ? "border-destructive ring-destructive/40" : "border-2"}`}
         >
-          <Popover.Arrow className="" width={14} height={7} />
+          <Popover.Arrow className="dark:fill-white" width={14} height={7} />
           <span ref={measureRef} className="pointer-events-none invisible fixed left-[-9999px] top-[-9999px] whitespace-pre text-sm font-black">
             {formulaText || ""}
           </span>

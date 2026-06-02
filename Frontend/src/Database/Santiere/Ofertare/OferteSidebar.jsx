@@ -3,7 +3,7 @@ import React, { useCallback, useContext, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronDown, faChevronLeft, faChevronRight, faEllipsis, faFileInvoice, faLayerGroup, faPlus, faPenToSquare, faTrash, faClock } from "@fortawesome/free-solid-svg-icons";
+import { faChevronDown, faChevronLeft, faChevronRight, faEllipsis, faFileInvoice, faLayerGroup, faPlus, faPenToSquare, faTrash, faClock, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { AuthContext } from "@/context/TokenContext";
 import { useLoading } from "@/context/LoadingContext";
 
@@ -20,8 +20,9 @@ import SpinnerElement from "@/MainElements/SpinnerElement";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-import { useOferte, useAddOferta, useEditOferta, useDeleteOferta, useAddOfertaLucrare, useEditOfertaLucrare, useDeleteOfertaLucrare } from "@/hooks/Database/useOferte";
+import { useOferte, useAddOferta, useEditOferta, useDeleteOferta, useAddOfertaLucrare, useEditOfertaLucrare, useDeleteOfertaLucrare, useDuplicateOfertaLucrare } from "@/hooks/Database/useOferte";
 import OverflowTooltip from "@/components/ui/OverflowTooltip";
+import AskDialog from "@/components/ui/ask-dialog";
 
 const emptyDraft = {
   id: null,
@@ -56,6 +57,8 @@ export default function OferteSidebar({ santierId: santierIdProp = null, selecte
   const editLucrare = useEditOfertaLucrare();
   const deleteLucrare = useDeleteOfertaLucrare();
 
+  const duplicateLucrare = useDuplicateOfertaLucrare();
+
   const oferte = useMemo(() => {
     return data?.oferte || [];
   }, [data]);
@@ -75,6 +78,9 @@ export default function OferteSidebar({ santierId: santierIdProp = null, selecte
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
+
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [duplicateTarget, setDuplicateTarget] = useState(null);
 
   const selectOferta = useCallback(
     (oferta) => {
@@ -158,6 +164,50 @@ export default function OferteSidebar({ santierId: santierIdProp = null, selecte
     setDeleteTarget({ type, item });
     setDeleteDialogOpen(true);
   }, []);
+
+  const openDuplicateLucrare = useCallback((lucrare, oferta) => {
+    setDuplicateTarget({
+      lucrare,
+      oferta,
+    });
+    setDuplicateDialogOpen(true);
+  }, []);
+
+  const closeDuplicateDialog = useCallback(() => {
+    setDuplicateDialogOpen(false);
+    setDuplicateTarget(null);
+  }, []);
+
+  const setDuplicateDialogOpenSafe = useCallback((open) => {
+    setDuplicateDialogOpen(open);
+
+    if (!open) {
+      setDuplicateTarget(null);
+    }
+  }, []);
+
+  const handleConfirmDuplicateLucrare = async () => {
+    const lucrare = duplicateTarget?.lucrare;
+    const oferta = duplicateTarget?.oferta;
+
+    if (!lucrare?.id) return;
+
+    show();
+
+    try {
+      const duplicated = await duplicateLucrare.mutateAsync({
+        id: lucrare.id,
+        nume: `${lucrare.nume || "Lucrare"} - copie`,
+      });
+
+      toast.success("Lucrarea a fost dublată complet.");
+      closeDuplicateDialog();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "A apărut o eroare la dublarea lucrării.");
+    } finally {
+      hide();
+    }
+  };
 
   const closeEntityDialog = useCallback(() => {
     setEntityDialogOpen(false);
@@ -283,61 +333,35 @@ export default function OferteSidebar({ santierId: santierIdProp = null, selecte
       : `Ești sigur că vrei să ștergi lucrarea "${deleteTarget?.item?.nume || ""}"?`;
 
   return (
-    <div className="h-full w-full rounded-l-lg flex border flex-col bg-card overflow-hidden">
-      <div className="h-16 shrink-0 border-b border-border overflow-hidden">
-        {isCollapsed ? (
-          <div className="h-full w-full flex items-center justify-center gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={onToggleCollapse}
-              className="h-full w-full rounded-none rounded-tl-lg text-muted-foreground hover:text-foreground hover:bg-accent"
-              title="Deschide sidebar"
-            >
-              <FontAwesomeIcon icon={faChevronRight} />
-            </Button>
-          </div>
-        ) : (
-          <div className="h-full w-full p-4 flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={onToggleCollapse}
-                  className="h-10 w-10 shrink-0 text-muted-foreground hover:text-foreground hover:bg-accent"
-                  title="Strânge sidebar"
-                >
-                  <FontAwesomeIcon icon={faChevronLeft} />
-                </Button>
-
-                <h3 className="text-xl font-bold text-foreground flex items-center gap-1 min-w-0">
-                  <FontAwesomeIcon icon={faFileInvoice} className="text-primary shrink-0" />
-                  <span className="truncate">Oferte</span>
-                </h3>
-              </div>
+    <div className="h-full w-full rounded-l-lg flex border flex-col bg-card overflow-hidden text-sm">
+      <div className="h-14 shrink-0 border-b border-border overflow-hidden">
+        <div className="h-full w-full px-2.5 py-2 flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-bold text-foreground flex items-center gap-1 min-w-0">
+                <FontAwesomeIcon icon={faFileInvoice} className="text-primary shrink-0" />
+                <span className="truncate">Oferte</span>
+              </h3>
             </div>
-            <Button size="sm" className="gap-2 shrink-0" onClick={openAddOferta}>
-              <FontAwesomeIcon icon={faPlus} />
-              Ofertă
-            </Button>
           </div>
-        )}
+          <Button size="sm" className="h-7 px-2 gap-1.5 shrink-0 text-sm" onClick={openAddOferta}>
+            <FontAwesomeIcon icon={faPlus} />
+            Ofertă
+          </Button>
+        </div>
       </div>
 
       <div className={cn("flex-1 overflow-y-auto transition-opacity duration-150", isCollapsed ? "opacity-0 pointer-events-none" : "opacity-100")}>
         {isFetching ? (
-          <div className="h-full flex relative flex-col items-center justify-center text-muted-foreground gap-3 p-6 text-center">
+          <div className="h-full flex relative flex-col items-center justify-center text-muted-foreground gap-2 p-3 text-center">
             <SpinnerElement text={2} />
           </div>
         ) : oferte.length === 0 ? (
-          <div className="h-full flex relative flex-col items-center justify-center text-muted-foreground gap-3 p-6 text-center">
-            <div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center">
-              <FontAwesomeIcon icon={faFileInvoice} className="text-2xl opacity-60" />
+          <div className="h-full flex relative flex-col items-center justify-center text-muted-foreground gap-2 p-3 text-center">
+            <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+              <FontAwesomeIcon icon={faFileInvoice} className="text-lg opacity-60" />
             </div>
-            <p className="text-base font-medium">Nu există oferte încă...</p>
+            <p className="text-sm font-medium">Nu există oferte încă...</p>
           </div>
         ) : (
           <div>
@@ -347,73 +371,80 @@ export default function OferteSidebar({ santierId: santierIdProp = null, selecte
               const lucrari = oferta.lucrari || oferta.sections || oferta.oferte_lucrari || [];
 
               return (
-                <div key={oferta.id} className="border-b border-muted-foreground">
+                <div key={oferta.id} className="border-b border-border/60">
                   <div
                     className={cn(
-                      "p-4 flex items-start gap-3 cursor-pointer transition-colors border-l-[6px]",
+                      "px-2 py-2 flex items-start gap-2 cursor-pointer transition-colors border-l-4",
                       isSelected ? "border-l-primary bg-card " : "border-l-muted-foreground hover:bg-accent/50",
                     )}
                     onClick={() => toggleOferta(oferta)}
                   >
-                    <button type="button" className="pt-1 shrink-0">
-                      <FontAwesomeIcon icon={isOpen ? faChevronDown : faChevronRight} className="text-muted-foreground text-base" />
+                    <button type="button" className="pt-0.5 shrink-0">
+                      <FontAwesomeIcon icon={isOpen ? faChevronDown : faChevronRight} className="text-muted-foreground text-sm" />
                     </button>
 
-                    <div className="min-w-0 flex flex-col gap-1 flex-1">
+                    <div className="min-w-0 flex flex-col gap-0.5 flex-1">
                       <OverflowTooltip
                         text={oferta.nume}
                         align="left"
-                        className="text-base font-semibold text-foreground text-left justify-left first-letter:uppercase leading-normal  whitespace-pre-wrap"
+                        textSize="sm"
+                        className="text-sm font-semibold text-foreground text-left justify-left first-letter:uppercase leading-tight whitespace-pre-wrap"
                         maxLines={1}
                       />
 
                       {oferta.descriere ? (
-                        <OverflowTooltip text={oferta.descriere} align="left" className="text-sm text-left justify-left leading-normal text-muted-foreground whitespace-pre-wrap" maxLines={1} />
+                        <OverflowTooltip
+                          text={oferta.descriere}
+                          textSize="sm"
+                          align="left"
+                          className="text-sm text-left justify-left leading-tight text-muted-foreground whitespace-pre-wrap"
+                          maxLines={1}
+                        />
                       ) : (
-                        <div className="text-sm text-muted-foreground/50 italic mt-1">Fără descriere</div>
+                        <div className="text-sm text-muted-foreground/50 italic mt-0.5">Fără descriere</div>
                       )}
                     </div>
 
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent">
+                        <Button variant="ghost" size="icon" className="shrink-0 h-7 w-7 text-sm text-muted-foreground hover:text-foreground hover:bg-accent">
                           <FontAwesomeIcon icon={faEllipsis} />
                         </Button>
                       </DropdownMenuTrigger>
 
-                      <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuContent align="end" className="w-44 text-sm">
                         <DropdownMenuItem
-                          className="gap-3 cursor-pointer"
+                          className="gap-2 cursor-pointer text-sm"
                           onClick={(e) => {
                             e.stopPropagation();
                             openAddLucrare(oferta);
                           }}
                         >
-                          <FontAwesomeIcon icon={faPlus} className="text-primary w-4" />
+                          <FontAwesomeIcon icon={faPlus} className="text-primary w-3.5" />
                           <span className="text-primary font-semibold">Adaugă lucrare</span>
                         </DropdownMenuItem>
 
                         <DropdownMenuSeparator />
 
                         <DropdownMenuItem
-                          className="gap-3 cursor-pointer"
+                          className="gap-2 cursor-pointer text-sm"
                           onClick={(e) => {
                             e.stopPropagation();
                             openEditOferta(oferta);
                           }}
                         >
-                          <FontAwesomeIcon icon={faPenToSquare} className="text-low w-4" />
+                          <FontAwesomeIcon icon={faPenToSquare} className="text-low w-3.5" />
                           <span className="text-low font-semibold">Editează</span>
                         </DropdownMenuItem>
 
                         <DropdownMenuItem
-                          className="gap-3 text-destructive focus:text-destructive cursor-pointer"
+                          className="gap-2 text-destructive focus:text-destructive cursor-pointer text-sm"
                           onClick={(e) => {
                             e.stopPropagation();
                             openDelete("oferta", oferta);
                           }}
                         >
-                          <FontAwesomeIcon icon={faTrash} className="w-4" />
+                          <FontAwesomeIcon icon={faTrash} className="w-3.5" />
                           <span className="font-semibold">Șterge</span>
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -423,7 +454,7 @@ export default function OferteSidebar({ santierId: santierIdProp = null, selecte
                   {isOpen && (
                     <div className="bg-muted/20">
                       {lucrari.length === 0 ? (
-                        <div className="p-4 text-sm text-muted-foreground flex items-center justify-between gap-3">
+                        <div className="px-3 py-2 text-sm text-muted-foreground flex items-center justify-between gap-2">
                           <span>Nicio lucrare în oferta aceasta.</span>
                         </div>
                       ) : (
@@ -436,58 +467,73 @@ export default function OferteSidebar({ santierId: santierIdProp = null, selecte
                                 key={lucrare.id}
                                 onClick={() => selectLucrare(lucrare, oferta)}
                                 className={cn(
-                                  "flex items-start justify-between gap-3 px-4 py-3 cursor-pointer transition-all border-l-2 bg-card",
+                                  "flex items-start justify-between gap-2 px-3 py-2 cursor-pointer transition-all border-l-2 bg-card",
                                   isLucrareSelected ? "bg-primary/10 border-primary shadow-sm" : "hover:bg-accent/50 border-muted-foreground",
                                 )}
                               >
-                                <div className="flex items-start gap-3 min-w-0 flex-1">
+                                <div className="flex items-start gap-2 min-w-0 flex-1">
                                   <div className="min-w-0 flex-1">
                                     <OverflowTooltip
                                       text={lucrare.nume}
                                       align="left"
-                                      className="text-sm text-left justify-left leading-normal font-semibold text-foreground whitespace-pre-wrap"
+                                      textSize="sm"
+                                      className="text-sm text-left justify-left leading-tight font-semibold text-foreground whitespace-pre-wrap"
                                       maxLines={1}
                                     />
                                     {lucrare.descriere ? (
                                       <OverflowTooltip
                                         text={lucrare.descriere}
                                         align="left"
-                                        className="text-xs text-left justify-left leading-normal text-muted-foreground whitespace-pre-wrap"
+                                        textSize="sm"
+                                        className="text-[11px] text-left justify-left leading-tight text-muted-foreground whitespace-pre-wrap"
                                         maxLines={1}
                                       />
                                     ) : (
-                                      <div className="text-xs text-muted-foreground/50 italic mt-1">Fără descriere</div>
+                                      <div className="text-[11px] text-muted-foreground/50 italic mt-0.5">Fără descriere</div>
                                     )}
                                   </div>
                                 </div>
 
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground hover:bg-accent">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-sm text-muted-foreground hover:text-foreground hover:bg-accent">
                                       <FontAwesomeIcon icon={faEllipsis} />
                                     </Button>
                                   </DropdownMenuTrigger>
 
-                                  <DropdownMenuContent align="end" className="w-48">
+                                  <DropdownMenuContent align="end" className="w-44 text-sm">
                                     <DropdownMenuItem
-                                      className="gap-3 cursor-pointer"
+                                      className="gap-2 cursor-pointer text-sm"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         openEditLucrare(lucrare);
                                       }}
                                     >
-                                      <FontAwesomeIcon icon={faPenToSquare} className="text-low w-4" />
+                                      <FontAwesomeIcon icon={faPenToSquare} className="text-low w-3.5" />
                                       <span className="text-low">Editează</span>
                                     </DropdownMenuItem>
 
                                     <DropdownMenuItem
-                                      className="gap-3 text-destructive focus:text-destructive cursor-pointer"
+                                      className="gap-2 cursor-pointer text-sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        openDuplicateLucrare(lucrare, oferta);
+                                      }}
+                                    >
+                                      <FontAwesomeIcon icon={faCopy} className="text-medium w-3.5" />
+                                      <span className="text-medium font-semibold">Dublează</span>
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuSeparator />
+
+                                    <DropdownMenuItem
+                                      className="gap-2 text-destructive focus:text-destructive cursor-pointer text-sm"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         openDelete("lucrare", lucrare);
                                       }}
                                     >
-                                      <FontAwesomeIcon icon={faTrash} className="w-4" />
+                                      <FontAwesomeIcon icon={faTrash} className="w-3.5" />
                                       <span>Șterge</span>
                                     </DropdownMenuItem>
                                   </DropdownMenuContent>
@@ -562,6 +608,15 @@ export default function OferteSidebar({ santierId: santierIdProp = null, selecte
         </DialogContent>
       </Dialog>
 
+      <AskDialog
+        open={duplicateDialogOpen}
+        setOpen={setDuplicateDialogOpenSafe}
+        title="Dublează lucrarea"
+        description={`Ești sigur că vrei să dublezi lucrarea "${duplicateTarget?.lucrare?.nume || ""}"?`}
+        onSubmit={handleConfirmDuplicateLucrare}
+        onCancel={closeDuplicateDialog}
+        useCode={false}
+      />
       <DeleteDialog open={deleteDialogOpen} setOpen={setDeleteDialogOpen} title={deleteTitle} description={deleteDescription} onSubmit={handleConfirmDelete} />
     </div>
   );

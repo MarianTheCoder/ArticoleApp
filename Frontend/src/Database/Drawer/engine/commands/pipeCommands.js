@@ -183,6 +183,33 @@ function pushAction(actions, action) {
   if (action) actions.push(action);
 }
 
+// Human label for history log entries.
+function labelForActions(actions) {
+  const addedTypes = actions.map((action) => action.payload?.item?.type).filter(Boolean);
+
+  if (addedTypes.includes("elbow") && addedTypes.includes("reducer")) return "Add elbow + reducer";
+  if (addedTypes.includes("elbow")) return "Add elbow";
+  if (addedTypes.includes("reducer")) return "Add reducer";
+  if (addedTypes.includes("pipe")) return "Draw pipe";
+  if (actions.some((action) => action.type === "UPDATE_ITEM")) return "Update pipe";
+
+  return "Drawing operation";
+}
+
+// Wraps internal reducer actions into one user operation.
+function createTransaction(actions, { label = null, history = true } = {}) {
+  return {
+    label: label || labelForActions(actions),
+    history,
+    actions,
+  };
+}
+
+// Empty non-history transaction.
+function emptyTransaction() {
+  return createTransaction([], { label: "No-op", history: false });
+}
+
 // Resolves an item including pending command changes.
 function resolveItem(state, pendingItemsById, itemId) {
   return pendingItemsById[itemId] || state.itemsById?.[itemId] || null;
@@ -329,13 +356,13 @@ function setNextDraft(actions, { startPoint, previewEndPoint = startPoint, tool,
 
 // Starts or commits a pipe draft and returns reducer actions.
 export function commitPipeDraftCommand({ state, draft, clickPoint, portRef = null, portSnapshot = null, tool, metersPerPx }) {
-  if (!clickPoint) return { actions: [] };
+  if (!clickPoint) return emptyTransaction();
 
   const currentTool = getToolProps(tool, metersPerPx);
 
   if (!draft) {
-    return {
-      actions: [
+    return createTransaction(
+      [
         {
           type: "SET_ACTIVE_DRAFT",
           payload: {
@@ -349,7 +376,8 @@ export function commitPipeDraftCommand({ state, draft, clickPoint, portRef = nul
           },
         },
       ],
-    };
+      { label: "Start draft", history: false },
+    );
   }
 
   const finalDraft = updatePipeDraftEnd(draft, clickPoint, { endPortRef: portRef, endPortSnapshot: portSnapshot });
@@ -357,7 +385,7 @@ export function commitPipeDraftCommand({ state, draft, clickPoint, portRef = nul
   const targetPoint = finalDraft.endRaw;
   const newDir = normalize(vectorFromPoints(startPoint, targetPoint));
 
-  if (!isValidDir(newDir)) return { actions: [] };
+  if (!isValidDir(newDir)) return emptyTransaction();
 
   const actions = [];
   const pendingItemsById = {};
@@ -369,7 +397,7 @@ export function commitPipeDraftCommand({ state, draft, clickPoint, portRef = nul
   const outputSpecChanged = Boolean(hasPreviousOutput && needsReducer(previousOutput, currentTool));
   const needsElbow = Boolean(hasPreviousOutput && finalDraft.previousDir && !sameDirection);
 
-  if (reverseDirection) return { actions: [] };
+  if (reverseDirection) return emptyTransaction();
 
   let endPortRef = finalDraft.endPortRef;
   if (endPortRef && needsReducer(finalDraft.endPortSnapshot, currentTool)) endPortRef = null;
@@ -389,7 +417,7 @@ export function commitPipeDraftCommand({ state, draft, clickPoint, portRef = nul
         endPortRef,
       });
 
-      if (!pipe) return { actions: [] };
+      if (!pipe) return emptyTransaction();
 
       setNextDraft(actions, {
         startPoint: pipe.b,
@@ -402,7 +430,7 @@ export function commitPipeDraftCommand({ state, draft, clickPoint, portRef = nul
         shouldStop: Boolean(endPortRef),
       });
 
-      return { actions };
+      return createTransaction(actions);
     }
 
     const elbow = createElbowAfterPoint({
@@ -418,8 +446,8 @@ export function commitPipeDraftCommand({ state, draft, clickPoint, portRef = nul
       angleDeg: elbowAngleDeg,
     });
 
-    if (!elbow) return { actions: [] };
-    if (distance(elbow.trimBefore, startPoint) > 0.001) return { actions: [] };
+    if (!elbow) return emptyTransaction();
+    if (distance(elbow.trimBefore, startPoint) > 0.001) return emptyTransaction();
 
     addItem(actions, pendingItemsById, elbow);
     connectPreviousTo(actions, state, pendingItemsById, finalDraft, elbow.id, "in");
@@ -436,7 +464,7 @@ export function commitPipeDraftCommand({ state, draft, clickPoint, portRef = nul
         shouldStop: false,
       });
 
-      return { actions };
+      return createTransaction(actions);
     }
 
     const reducer = createReducerAfterPoint({
@@ -447,8 +475,8 @@ export function commitPipeDraftCommand({ state, draft, clickPoint, portRef = nul
       metersPerPx,
     });
 
-    if (!reducer) return { actions: [] };
-    if (distance(reducer.p0, elbow.trimAfter) > 0.001) return { actions: [] };
+    if (!reducer) return emptyTransaction();
+    if (distance(reducer.p0, elbow.trimAfter) > 0.001) return emptyTransaction();
 
     addItem(actions, pendingItemsById, reducer);
     pushAction(actions, connectionAction(state, pendingItemsById, { itemId: elbow.id, portId: "out" }, { itemId: reducer.id, portId: "in" }));
@@ -484,7 +512,7 @@ export function commitPipeDraftCommand({ state, draft, clickPoint, portRef = nul
       shouldStop,
     });
 
-    return { actions };
+    return createTransaction(actions);
   }
 
   if (outputSpecChanged) {
@@ -496,8 +524,8 @@ export function commitPipeDraftCommand({ state, draft, clickPoint, portRef = nul
       metersPerPx,
     });
 
-    if (!reducer) return { actions: [] };
-    if (distance(reducer.p0, startPoint) > 0.001) return { actions: [] };
+    if (!reducer) return emptyTransaction();
+    if (distance(reducer.p0, startPoint) > 0.001) return emptyTransaction();
 
     addItem(actions, pendingItemsById, reducer);
     connectPreviousTo(actions, state, pendingItemsById, finalDraft, reducer.id, "in");
@@ -532,7 +560,7 @@ export function commitPipeDraftCommand({ state, draft, clickPoint, portRef = nul
       shouldStop,
     });
 
-    return { actions };
+    return createTransaction(actions);
   }
 
   if (previousItem?.type === "pipe" && finalDraft.previousPortId === "b" && sameDirection) {
@@ -551,7 +579,7 @@ export function commitPipeDraftCommand({ state, draft, clickPoint, portRef = nul
       shouldStop: Boolean(endPortRef),
     });
 
-    return { actions };
+    return createTransaction(actions);
   }
 
   const previousRef = hasPreviousOutput ? { itemId: finalDraft.previousItemId, portId: finalDraft.previousPortId } : null;
@@ -567,7 +595,7 @@ export function commitPipeDraftCommand({ state, draft, clickPoint, portRef = nul
     endPortRef,
   });
 
-  if (!pipe) return { actions: [] };
+  if (!pipe) return emptyTransaction();
 
   setNextDraft(actions, {
     startPoint: pipe.b,
@@ -580,5 +608,5 @@ export function commitPipeDraftCommand({ state, draft, clickPoint, portRef = nul
     shouldStop: Boolean(endPortRef),
   });
 
-  return { actions };
+  return createTransaction(actions);
 }

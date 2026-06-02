@@ -1,23 +1,15 @@
 // src/components/Ofertare/OferteRetetaSubList.jsx
-import React, { memo, useCallback, useEffect, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { useEditOfertaRetetaElementVariant } from "@/hooks/Database/useOferte";
+import { memo } from "react";
+import { TableCell } from "@/components/ui/table";
+import { Tooltip, TooltipArrow, TooltipContent, TooltipTrigger } from "@radix-ui/react-tooltip";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBoxOpen, faColumns, faDatabase, faLanguage, faExclamationCircle } from "@fortawesome/free-solid-svg-icons";
+import { faCalculator, faCoins, faListUl, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
 
 import OverflowTooltip from "@/components/ui/OverflowTooltip";
-import ImagePreviewTooltip from "@/components/ui/ImagePreviewTooltip";
-import NoImage from "@/assets/no-image-icon.png";
-import photoAPI from "@/api/photoAPI";
-
 import { resurseConfig } from "@/Database/Catalog/resurseConfig";
-import OferteElementVariantDialog from "./OferteElementVariantDialog";
-import { toast } from "sonner";
+import ImagePreviewTooltip from "@/components/ui/ImagePreviewTooltip";
+import photoAPI from "@/api/photoAPI";
 
 const EMPTY = "—";
 
@@ -28,7 +20,7 @@ const formatNumber = (value) => {
 };
 
 const hasVariantSelected = (el) => {
-  return !!(el?.oferta_subcategorie_id || el?.cod_specific);
+  return !!(el?.oferta_subcategorie_id || el?.original_subcategorie_id || el?.cod_specific);
 };
 
 const getSelectedVariant = (el) => {
@@ -59,10 +51,6 @@ const getDefinitionDescription = (el, displayLang) => {
   return el?.descriere || "";
 };
 
-const getDefinitionPhoto = (el) => {
-  return el?.photo_url || null;
-};
-
 const getDefinitionCost = (el) => {
   return Number(el?.cost_definitie ?? el?.definitie_cost ?? el?.cost ?? el?.cost_definitie_snapshot ?? 0);
 };
@@ -79,12 +67,8 @@ const getVariantDescription = (el, displayLang) => {
   return el?.descriere_specifica || el?.sub_descriere || "";
 };
 
-const getVariantPhoto = (el) => {
-  return el?.photo_specific_url || el?.sub_photo_url || null;
-};
-
 const getVariantCost = (el) => {
-  return Number(el?.cost_subcategorie ?? el?.sub_cost ?? el?.cost_subcategorie_snapshot ?? 0);
+  return Number(el?.cost_subcategorie ?? el?.cost_subcategorie_snapshot ?? el?.subcategorie_oferta?.cost ?? el?.sub_cost ?? 0);
 };
 
 const getDisplayedCode = (el) => {
@@ -95,10 +79,6 @@ const getDisplayedDescription = (el, displayLang) => {
   return hasVariantSelected(el) ? getVariantDescription(el, displayLang) : getDefinitionDescription(el, displayLang);
 };
 
-const getDisplayedPhoto = (el) => {
-  return hasVariantSelected(el) ? getVariantPhoto(el) : getDefinitionPhoto(el);
-};
-
 const getUnitCost = (el) => {
   return hasVariantSelected(el) ? getVariantCost(el) : getDefinitionCost(el);
 };
@@ -107,29 +87,18 @@ const getElementTotal = (el) => {
   return getUnitCost(el) * Number(el?.cantitate_in_reteta || 0);
 };
 
-const getRetetaCost = (reteta) => {
-  const elemente = reteta?.elemente || [];
-  return elemente.reduce((sum, el) => sum + getElementTotal(el), 0);
-};
-
-const getRetetaTotalLucrare = (reteta) => {
-  return getRetetaCost(reteta) * Number(reteta?.cantitate_lucrare || 0);
-};
-
-const getVisibleColumnCount = (visibleColumns) => {
-  return Math.max(1, Object.values(visibleColumns).filter(Boolean).length);
-};
-
 const getReferenceCost = (el) => {
   if (hasVariantSelected(el)) {
     const selectedVariant = getSelectedVariant(el);
     return selectedVariant?.cost ?? null;
   }
 
-  return el?.original_definitie_cost ?? el?.cost_definitie_actual ?? el?.cost_catalog ?? null;
+  return el?.original_definitie_cost ?? el?.cost_definitie_actual ?? el?.cost_definitie_live ?? el?.definitie_live?.cost ?? el?.cost_catalog ?? null;
 };
 
 const hasChangedPrice = (el) => {
+  if (el?.has_cost_diff || el?.sync_status?.has_cost_diff) return true;
+
   const referenceCost = getReferenceCost(el);
 
   if (referenceCost === null || referenceCost === undefined) return false;
@@ -140,7 +109,7 @@ const hasChangedPrice = (el) => {
 };
 
 const getDefaultQuantity = (el) => {
-  const value = el?.cantitate_in_reteta_default ?? el?.cantitate_default ?? el?.reteta_element_cantitate ?? null;
+  const value = el?.cantitate_in_reteta_default ?? el?.cantitate_default ?? el?.reteta_element_cantitate ?? el?.cantitate_originala ?? null;
 
   if (value === null || value === undefined) return null;
 
@@ -148,6 +117,8 @@ const getDefaultQuantity = (el) => {
 };
 
 const hasChangedQuantity = (el) => {
+  if (el?.has_qty_diff || el?.sync_status?.has_qty_diff) return true;
+
   const defaultQuantity = getDefaultQuantity(el);
 
   if (defaultQuantity === null || defaultQuantity === undefined || !Number.isFinite(defaultQuantity)) {
@@ -159,405 +130,313 @@ const hasChangedQuantity = (el) => {
   return Math.abs(currentQuantity - defaultQuantity) > 0.0001;
 };
 
-const getRetetaName = (reteta, displayLang) => {
-  if (displayLang === "FR") {
-    return reteta?.denumire_fr || "";
-  }
-
-  return reteta?.denumire || "";
+const getResourceConfig = (element) => {
+  return resurseConfig[element?.tip_resursa] || resurseConfig.material;
 };
 
-const ResourceMiniHeaderRow = memo(function ResourceMiniHeaderRow({ config, elements, colSpan }) {
+const getElementPhoto = (element) => {
+  if (!["material", "utilaj"].includes(element?.tip_resursa)) return null;
+
   return (
-    <TableRow className={`${config.lessBg} border-y-2`}>
-      <TableCell colSpan={colSpan} className="p-0">
-        <div className="flex items-center justify-between p-2 px-4">
-          <div className="flex items-center justify-center gap-3">
-            <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 border ${config.bgClass}`}>
-              <FontAwesomeIcon icon={config.icon} className={`${config.colorClass} text-base`} />
-            </div>
-
-            <div className="flex items-center justify-center gap-2">
-              <h3 className={`font-bold text-base leading-none ${config.colorClass}`}>{config.titlePlural}</h3>
-            </div>
-          </div>
-        </div>
-      </TableCell>
-    </TableRow>
+    element?.photo_specific_url ||
+    element?.sub_photo_url ||
+    element?.subcategorie_oferta?.photo_url ||
+    element?.photo_url ||
+    element?.definitie_oferta?.photo_url ||
+    element?.photo_url_actual ||
+    element?.definitie_live?.photo_url ||
+    null
   );
-});
+};
 
-const ResourceRows = memo(function ResourceRows({ elements, config, onOpenElement, displayLang, visibleColumns, colSpan }) {
-  const showCol = (key) => visibleColumns[key];
+const getElementClass = (el) => {
+  return (
+    el?.clasa ||
+    el?.clasa_resursa ||
+    el?.clasa_nume ||
+    el?.clasa_material ||
+    el?.clasa_utilaj ||
+    el?.clasa_transport ||
+    el?.clasa_manopera ||
+    el?.definitie_oferta?.clasa ||
+    el?.definitie_oferta?.clasa_resursa ||
+    el?.definitie_oferta?.clasa_material ||
+    el?.definitie_oferta?.clasa_utilaj ||
+    el?.definitie_live?.clasa ||
+    el?.definitie_live?.clasa_resursa ||
+    el?.definitie_live?.clasa_material ||
+    el?.definitie_live?.clasa_utilaj ||
+    ""
+  );
+};
 
-  if (elements.length === 0) {
-    return (
-      <TableRow className="hover:bg-transparent">
-        <TableCell colSpan={colSpan} className="p-3 text-center text-muted-foreground">
-          <div className="flex gap-2 items-center justify-center">
-            <FontAwesomeIcon icon={faBoxOpen} className="text-base text-muted-foreground/50" />
-            <p className="text-sm font-medium">Nu există {config.titlePlural.toLowerCase()} în această rețetă.</p>
-          </div>
-        </TableCell>
-      </TableRow>
-    );
+const getPhotoRingClass = (element) => {
+  if (element?.tip_resursa === "material") return "hover:ring-amber-600";
+  if (element?.tip_resursa === "utilaj") return "hover:ring-rose-600";
+  return "hover:ring-primary";
+};
+
+const isCostDiff = (diff) =>
+  String(diff?.field || "")
+    .toLowerCase()
+    .includes("cost");
+
+const isQuantityDiff = (diff) =>
+  String(diff?.field || "")
+    .toLowerCase()
+    .includes("cantitate") ||
+  String(diff?.scope || "")
+    .toLowerCase()
+    .includes("cantitate");
+
+const getDiffLabels = (syncStatus, predicate) => {
+  const diffs = Array.isArray(syncStatus?.diffs) ? syncStatus.diffs : [];
+
+  return diffs
+    .filter(predicate)
+    .map((diff) => diff?.label || diff?.field)
+    .filter(Boolean);
+};
+
+const getOtherDiffLabels = (syncStatus) => getDiffLabels(syncStatus, (diff) => !isCostDiff(diff) && !isQuantityDiff(diff));
+
+const getIssueGroups = ({ priceChanged, quantityChanged, otherChanged, syncStatus }) => {
+  const groups = [];
+
+  if (priceChanged) {
+    const labels = getDiffLabels(syncStatus, isCostDiff);
+    groups.push({
+      icon: faCoins,
+      title: "Cost",
+      items: labels.length > 0 ? labels : ["Cost modificat față de original."],
+    });
   }
 
-  return elements.map((el) => {
-    const selectedIsVariant = hasVariantSelected(el);
+  if (quantityChanged) {
+    const labels = getDiffLabels(syncStatus, isQuantityDiff);
+    groups.push({
+      icon: faCalculator,
+      title: "Qty",
+      items: labels.length > 0 ? labels : ["Cantitate modificată față de rețetă."],
+    });
+  }
 
-    const afisareCod = getDisplayedCode(el);
-    const afisarePhoto = getDisplayedPhoto(el);
-    const afisareDescriere = getDisplayedDescription(el, displayLang);
-    const afisareDenumire = getDefinitionName(el, displayLang);
+  if (otherChanged) {
+    const labels = getOtherDiffLabels(syncStatus);
+    groups.push({
+      icon: faListUl,
+      title: "Altele",
+      items: labels.length > 0 ? labels : ["Există alte diferențe față de rețeta originală."],
+    });
+  }
 
-    const varianteCount = el.subcategorii?.length || 0;
-    const unitCost = getUnitCost(el);
-    const totalElement = getElementTotal(el);
-    const priceChanged = hasChangedPrice(el);
-    const defaultQuantity = getDefaultQuantity(el);
-    const quantityChanged = hasChangedQuantity(el);
+  return groups;
+};
 
-    return (
-      <TableRow
-        key={el.id}
-        onClick={(e) => {
-          e.stopPropagation();
-          onOpenElement(el, config);
-        }}
-        className="cursor-pointer h-20 p-0 border-b transition-colors group hover:bg-accent hover-row-border"
-      >
-        {showCol("poza") && (
-          <TableCell onClick={(e) => e.stopPropagation()} className="text-center px-4 w-[6rem] max-w-[6rem]">
-            <ImagePreviewTooltip
-              src={config.hasPhoto && afisarePhoto ? `${photoAPI}/${afisarePhoto}` : null}
-              alt={afisareCod || getDefinitionCode(el)}
-              ringColor={`hover:ring-${config.normalColor}`}
-              fallback={<img src={NoImage} alt="No Image" className="h-full w-full object-cover opacity-50" />}
-              containerClassName="h-16 w-16 rounded-md border border-border bg-muted flex items-center justify-center overflow-hidden shrink-0"
-            />
-          </TableCell>
-        )}
+const getChildTypeBgClass = (element) => {
+  switch (element?.tip_resursa) {
+    case "manopera":
+      return "bg-indigo-500/30 group-hover:bg-indigo-500/40 dark:bg-indigo-500/30 dark:group-hover:bg-indigo-500/40";
+    case "material":
+      return "bg-amber-600/30 group-hover:bg-amber-600/40 dark:bg-amber-600/30 dark:group-hover:bg-amber-600/40";
+    case "utilaj":
+      return "bg-rose-600/30 group-hover:bg-rose-600/40 dark:bg-rose-600/30 dark:group-hover:bg-rose-600/40";
+    case "transport":
+      return "bg-emerald-600/30 group-hover:bg-emerald-600/40 dark:bg-emerald-600/30 dark:group-hover:bg-emerald-600/40";
+    default:
+      return "bg-background group-hover:bg-muted dark:bg-muted/60 dark:group-hover:bg-muted";
+  }
+};
 
-        {showCol("variante") && (
-          <TableCell className="text-center px-4 whitespace-nowrap">
-            <Badge
-              variant="outline"
-              className={`text-base w-10 text-center justify-center px-2 shadow-none whitespace-nowrap cursor-pointer ${varianteCount > 0 ? "text-cyan-600 border-cyan-500" : "text-muted-foreground"}`}
-            >
-              {varianteCount}
-            </Badge>
-          </TableCell>
-        )}
+const getChildCellClass = (element) => `border-r border-b border-border p-1 align-middle text-sm transition-colors ${getChildTypeBgClass(element)}`;
 
-        {showCol("specific") && (
-          <TableCell className="px-4 min-w-[10rem] w-[10rem] max-w-[10rem] text-center">
-            <Badge variant="outline" className={`font-black ${selectedIsVariant ? "bg-primary/10 border-primary text-primary" : "bg-card border-foreground/40 text-foreground"}`}>
-              {selectedIsVariant ? "Variantă" : "Definiție"}
-            </Badge>
-          </TableCell>
-        )}
-
-        {showCol("cod") && (
-          <TableCell className="text-center px-4 whitespace-nowrap">
-            <span className="text-base font-bold text-foreground">{afisareCod || EMPTY}</span>
-          </TableCell>
-        )}
-
-        {showCol("denumire") && (
-          <TableCell className="px-4 min-w-[16rem] w-[16rem] max-w-[16rem]">
-            {afisareDenumire ? (
-              <OverflowTooltip align="left" text={afisareDenumire} className="text-base text-foreground whitespace-pre-wrap leading-normal" maxLines={2} />
-            ) : (
-              <span className="text-base text-muted-foreground/40 italic">{EMPTY}</span>
-            )}
-          </TableCell>
-        )}
-
-        {showCol("descriere") && (
-          <TableCell className="px-4 min-w-[20rem]">
-            {afisareDescriere ? (
-              <OverflowTooltip align="left" text={afisareDescriere} className="text-base text-foreground whitespace-pre-wrap leading-normal" maxLines={2} />
-            ) : (
-              <span className="text-base text-muted-foreground/40 italic">{EMPTY}</span>
-            )}
-          </TableCell>
-        )}
-
-        {showCol("unitate") && (
-          <TableCell className="text-center px-4 whitespace-nowrap">
-            <Badge variant="outline" className="text-base px-2 w-10 justify-center py-2 shadow-none whitespace-nowrap">
-              {el.unitate_masura || EMPTY}
-            </Badge>
-          </TableCell>
-        )}
-
-        {showCol("costUnitar") && (
-          <TableCell className="text-center px-4 whitespace-nowrap">
-            <div className="flex items-center justify-center gap-1">
-              <span className={`text-base ${priceChanged ? "text-high font-black" : "text-muted-foreground"}`}>{formatNumber(unitCost)}</span>
-
-              {priceChanged && <FontAwesomeIcon icon={faExclamationCircle} className="text-high text-lg" title="Preț modificat față de original" />}
-            </div>
-          </TableCell>
-        )}
-
-        {showCol("cantitate") && (
-          <TableCell className="text-center px-4 whitespace-nowrap">
-            <div className="flex flex-col items-center justify-center gap-0.5">
-              <div className="flex items-center justify-center gap-1">
-                <span className={`text-base font-bold ${quantityChanged ? "text-high font-black" : "text-foreground"}`}>{formatNumber(el.cantitate_in_reteta)}</span>
-
-                {quantityChanged && <FontAwesomeIcon icon={faExclamationCircle} className="text-high text-lg" title={`Cantitate modificată față de rețetă: ${formatNumber(defaultQuantity)}`} />}
-              </div>
-            </div>
-          </TableCell>
-        )}
-
-        {showCol("costTotal") && (
-          <TableCell className="text-center px-4 whitespace-nowrap">
-            <span className="font-bold text-base">{formatNumber(totalElement)}</span>
-          </TableCell>
-        )}
-      </TableRow>
-    );
-  });
-});
-
-const ResourcesTable = memo(function ResourcesTable({ sections, visibleColumns, displayLang, onOpenElement }) {
-  const showCol = (key) => visibleColumns[key];
-  const colSpan = getVisibleColumnCount(visibleColumns);
-
+const IssueTooltipGroup = memo(function IssueTooltipGroup({ group }) {
   return (
-    <div className="rounded-md border bg-card w-full h-full overflow-auto relative shadow-sm">
-      <Table className="min-w-full table-fixed caption-bottom text-left border-collapse">
-        <TableHeader className="bg-background sticky top-0 z-50 shadow-sm">
-          <TableRow className="h-12 hover:bg-muted-foreground/25 bg-muted-foreground/25">
-            {showCol("poza") && <TableHead className="text-center px-4 w-[6rem] max-w-[6rem]">Poză</TableHead>}
-            {showCol("variante") && <TableHead className="text-center px-4 w-[6rem] max-w-[6rem]">Variante</TableHead>}
-            {showCol("specific") && <TableHead className="px-4 text-center w-[10rem] max-w-[10rem]">Specific</TableHead>}
-            {showCol("cod") && <TableHead className="text-center px-4 w-[12rem] max-w-[12rem]">Cod</TableHead>}
-            {showCol("denumire") && <TableHead className="px-4 min-w-[16rem] w-[16rem] max-w-[16rem]">Denumire</TableHead>}
-            {showCol("descriere") && <TableHead className="px-4 min-w-[20rem]">Descriere</TableHead>}
-            {showCol("unitate") && <TableHead className="text-center px-4 w-[8rem] max-w-[8rem]">Unitate</TableHead>}
-            {showCol("costUnitar") && <TableHead className="text-center px-4 w-[10rem] max-w-[10rem]">Cost Unitar</TableHead>}
-            {showCol("cantitate") && <TableHead className="text-center px-4 w-[10rem] max-w-[10rem]">Cantitate</TableHead>}
-            {showCol("costTotal") && <TableHead className="text-center px-4 w-[12rem] max-w-[12rem]">Cost Total</TableHead>}
-          </TableRow>
-        </TableHeader>
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-2 font-black uppercase tracking-wide text-foreground">
+        <FontAwesomeIcon icon={group.icon} className="text-primary" />
+        <span>{group.title}</span>
+      </div>
 
-        <TableBody>
-          {sections.map((section) => (
-            <React.Fragment key={section.config.id}>
-              <ResourceMiniHeaderRow config={section.config} elements={section.elements} colSpan={colSpan} />
-
-              <ResourceRows elements={section.elements} config={section.config} onOpenElement={onOpenElement} displayLang={displayLang} visibleColumns={visibleColumns} colSpan={colSpan} />
-            </React.Fragment>
-          ))}
-        </TableBody>
-      </Table>
+      <div className="flex flex-col gap-1">
+        {group.items.map((item, index) => (
+          <div key={`${group.title}-${index}`} className="flex items-start gap-2 text-popover-foreground">
+            <span className="text-muted-foreground">-</span>
+            <span className="leading-snug">{item}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 });
 
-export default function OferteRetetaSubList({ open, setOpen, parentItem, selectedLucrare }) {
-  const [localDisplayLang, setLocalDisplayLang] = useState("RO");
+const ElementIssueIcon = memo(function ElementIssueIcon({ priceChanged, quantityChanged, otherChanged, syncStatus }) {
+  if (!priceChanged && !quantityChanged && !otherChanged) {
+    return <span className="text-sm text-muted-foreground/30 italic"></span>;
+  }
 
-  const [visibleColumns, setVisibleColumns] = useState({
-    poza: true,
-    variante: true,
-    specific: true,
-    cod: true,
-    denumire: true,
-    descriere: true,
-    unitate: true,
-    costUnitar: true,
-    cantitate: true,
-    costTotal: true,
-  });
+  const groups = getIssueGroups({ priceChanged, quantityChanged, otherChanged, syncStatus });
 
-  const [variantDialogOpen, setVariantDialogOpen] = useState(false);
-  const [selectedElement, setSelectedElement] = useState(null);
-  const [selectedElementConfig, setSelectedElementConfig] = useState(null);
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex h-6 w-6 items-center justify-center text-sm leading-none text-red-600">
+          <FontAwesomeIcon icon={faTriangleExclamation} />
+        </span>
+      </TooltipTrigger>
 
-  const editElementVariant = useEditOfertaRetetaElementVariant();
-
-  useEffect(() => {
-    if (!variantDialogOpen || !selectedElement?.id || !parentItem?.elemente) return;
-
-    const freshElement = parentItem.elemente.find((el) => Number(el.id) === Number(selectedElement.id));
-
-    if (freshElement) {
-      setSelectedElement(freshElement);
-    }
-  }, [parentItem, selectedElement?.id, variantDialogOpen]);
-
-  const toggleCol = useCallback((key) => {
-    setVisibleColumns((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
-  }, []);
-
-  const handleOpenElement = useCallback((element, config) => {
-    setSelectedElement(element);
-    setSelectedElementConfig(config);
-    setVariantDialogOpen(true);
-  }, []);
-
-  const handleSaveElementSnapshot = useCallback(
-    async (payload) => {
-      await editElementVariant.mutateAsync({
-        ...payload,
-        lucrare_id: selectedLucrare?.id,
-      });
-
-      toast.success("Elementul a fost actualizat.");
-    },
-    [editElementVariant, selectedLucrare?.id],
+      <TooltipContent className="w-72 whitespace-normal break-words font-normal rounded-md text-sm z-[100] bg-popover border-2 border-border text-popover-foreground shadow-md p-3">
+        <TooltipArrow width={15} height={10} className="fill-border" />
+        <div className="flex flex-col gap-3">
+          {groups.map((group) => (
+            <IssueTooltipGroup key={group.title} group={group} />
+          ))}
+        </div>
+      </TooltipContent>
+    </Tooltip>
   );
+});
 
-  if (!parentItem) return null;
+const ResourceTypeIcon = memo(function ResourceTypeIcon({ config }) {
+  return (
+    <div className="inline-flex h-7 w-7 items-center justify-center leading-none">
+      <FontAwesomeIcon icon={config.icon} className={`${config.colorClass} text-lg`} />
+    </div>
+  );
+});
 
-  const elemente = parentItem.elemente || [];
+const OferteRetetaSubList = memo(function OferteRetetaSubList({ element, parentItem, displayLang = "RO", dynamicColumns = [], showCol, getColumnStyle }) {
+  const config = getResourceConfig(element);
 
-  const materiale = elemente.filter((el) => el.tip_resursa === "material");
-  const manopere = elemente.filter((el) => el.tip_resursa === "manopera");
-  const utilaje = elemente.filter((el) => el.tip_resursa === "utilaj");
-  const transporturi = elemente.filter((el) => el.tip_resursa === "transport");
+  const afisareCod = getDisplayedCode(element);
+  const afisareDescriere = getDisplayedDescription(element, displayLang);
+  const afisareDenumire = getDefinitionName(element, displayLang);
+  const afisareClasa = getElementClass(element);
+  const photoUrl = getElementPhoto(element);
+  const photoRingClass = getPhotoRingClass(element);
 
-  const sections = [
-    {
-      config: resurseConfig.manopera,
-      elements: manopere,
-    },
-    {
-      config: resurseConfig.material,
-      elements: materiale,
-    },
-    {
-      config: resurseConfig.utilaj,
-      elements: utilaje,
-    },
-    {
-      config: resurseConfig.transport,
-      elements: transporturi,
-    },
-  ];
+  const unitCost = getUnitCost(element);
+  const totalElement = getElementTotal(element);
 
-  const costReteta = getRetetaCost(parentItem);
-  const totalLucrare = getRetetaTotalLucrare(parentItem);
-  const retetaName = getRetetaName(parentItem, localDisplayLang);
+  const priceChanged = hasChangedPrice(element);
+  const quantityChanged = hasChangedQuantity(element);
+  const syncStatus = element?.sync_status || null;
+  const otherChanged = !!(element?.has_other_diff || syncStatus?.has_other_diff);
+  const hasIssue = priceChanged || quantityChanged || otherChanged;
+  const childTypeBgClass = getChildTypeBgClass(element);
+  const childCellClass = getChildCellClass(element);
 
   return (
     <>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-[85vw] max-h-[90vh] h-[90vh] flex flex-col p-0" style={{ animationDuration: "0ms", transitionDuration: "0ms" }}>
-          <DialogHeader className="px-6 py-4 rounded-md rounded-b-none border-b bg-muted flex flex-row items-center justify-between shrink-0">
-            <div className="flex items-center gap-4 min-w-0">
-              <div className="h-14 w-14 rounded-xl flex items-center justify-center shrink-0 bg-sky-600/25 border border-sky-600/25">
-                <FontAwesomeIcon icon={faDatabase} className="text-sky-600 text-2xl" />
-              </div>
+      {showCol("elemente") && (
+        <TableCell style={getColumnStyle("elemente")} className={`border border-l-0 p-0 text-center align-middle text-sm transition-colors ${childTypeBgClass}`}>
+          <ResourceTypeIcon config={config} />
+        </TableCell>
+      )}
 
-              <DialogTitle className="text-left flex flex-col gap-0 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm text-sky-600 font-bold uppercase tracking-wider">{parentItem.cod_reteta || EMPTY}</p>
-                </div>
+      {showCol("poza") && (
+        <TableCell style={getColumnStyle("poza")} className={`border-r p-0 border-b border-border text-center align-middle text-sm transition-colors ${childTypeBgClass}`}>
+          {photoUrl ? (
+            <ImagePreviewTooltip
+              src={`${photoAPI}/${photoUrl}`}
+              alt={afisareCod || afisareDenumire || "Poză"}
+              ringColor={photoRingClass}
+              fallback={<span className="text-sm text-muted-foreground/60">-</span>}
+              containerClassName="h-7 w-7 rounded border border-border bg-background flex items-center justify-center overflow-hidden shrink-0 mx-auto"
+            />
+          ) : (
+            <span className="text-sm text-muted-foreground/60">-</span>
+          )}
+        </TableCell>
+      )}
 
-                {retetaName ? (
-                  <OverflowTooltip align="left" text={retetaName} className="text-xl font-bold text-foreground" maxLines={1} />
-                ) : (
-                  <span className="text-xl font-bold text-muted-foreground/40 italic">{EMPTY}</span>
-                )}
-              </DialogTitle>
-            </div>
+      {dynamicColumns.map((col) => {
+        if (!showCol(`col_${col.id}`)) return null;
 
-            <div className="flex items-center gap-8 mr-12 shrink-0">
-              <div className="flex items-center gap-3">
-                <Button variant="outline" className="gap-2 h-10 w-20 text-foreground" onClick={() => setLocalDisplayLang((prev) => (prev === "RO" ? "FR" : "RO"))}>
-                  <FontAwesomeIcon icon={faLanguage} />
-                  <span className="font-bold">{localDisplayLang}</span>
-                </Button>
+        return <TableCell key={col.id} style={getColumnStyle(`dynamic_${col.id}`)} className={`${childCellClass} text-center`} />;
+      })}
 
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="gap-2 h-10 text-foreground">
-                      <FontAwesomeIcon icon={faColumns} />
-                      <span>Coloane</span>
-                    </Button>
-                  </DropdownMenuTrigger>
+      {showCol("cod") && (
+        <TableCell style={getColumnStyle("cod")} className={`${childCellClass} text-center`}>
+          <span className="text-sm font-semibold text-foreground whitespace-nowrap">{afisareCod || EMPTY}</span>
+        </TableCell>
+      )}
 
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuCheckboxItem checked={visibleColumns.poza} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleCol("poza")}>
-                      Poză
-                    </DropdownMenuCheckboxItem>
+      {showCol("clasa") && (
+        <TableCell style={getColumnStyle("clasa")} className={`${childCellClass} text-center`}>
+          {afisareClasa ? (
+            <OverflowTooltip align="center" text={String(afisareClasa)} className="text-foreground font-normal text-center whitespace-nowrap" maxLines={1} textSize="sm" />
+          ) : (
+            <span className="block h-5" />
+          )}
+        </TableCell>
+      )}
 
-                    <DropdownMenuCheckboxItem checked={visibleColumns.variante} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleCol("variante")}>
-                      Variante
-                    </DropdownMenuCheckboxItem>
+      {showCol("denumire") && (
+        <TableCell style={getColumnStyle("denumire")} className={childCellClass}>
+          {afisareDenumire ? (
+            <OverflowTooltip align="left" text={afisareDenumire} className="font-medium whitespace-nowrap text-foreground leading-none" maxLines={1} textSize="sm" />
+          ) : (
+            <span className="text-sm text-muted-foreground/40 italic">{EMPTY}</span>
+          )}
+        </TableCell>
+      )}
 
-                    <DropdownMenuCheckboxItem checked={visibleColumns.specific} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleCol("specific")}>
-                      Specific
-                    </DropdownMenuCheckboxItem>
+      {showCol("descriere") && (
+        <TableCell style={getColumnStyle("descriere")} className={childCellClass}>
+          {afisareDescriere ? (
+            <OverflowTooltip align="left" text={afisareDescriere} className="font-normal whitespace-nowrap text-foreground leading-none" maxLines={1} textSize="sm" />
+          ) : (
+            <span className="text-sm text-muted-foreground/40 italic">{EMPTY}</span>
+          )}
+        </TableCell>
+      )}
 
-                    <DropdownMenuCheckboxItem checked={visibleColumns.cod} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleCol("cod")}>
-                      Cod
-                    </DropdownMenuCheckboxItem>
+      {showCol("unitate") && (
+        <TableCell style={getColumnStyle("unitate")} className={`${childCellClass} text-center`}>
+          <span className="text-sm font-semibold text-foreground whitespace-nowrap">{element.unitate_masura || parentItem?.unitate_masura || EMPTY}</span>
+        </TableCell>
+      )}
 
-                    <DropdownMenuCheckboxItem checked={visibleColumns.denumire} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleCol("denumire")}>
-                      Denumire
-                    </DropdownMenuCheckboxItem>
+      {showCol("cost") && (
+        <TableCell style={getColumnStyle("cost")} className={`${childCellClass} text-center`}>
+          <span className={`text-sm whitespace-nowrap ${priceChanged ? "text-high font-black" : "text-foreground font-semibold"}`}>{formatNumber(unitCost)}</span>
+        </TableCell>
+      )}
 
-                    <DropdownMenuCheckboxItem checked={visibleColumns.descriere} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleCol("descriere")}>
-                      Descriere
-                    </DropdownMenuCheckboxItem>
+      {showCol("cantitate") && (
+        <TableCell style={getColumnStyle("cantitate")} className={`${childCellClass} text-center`}>
+          <span className={`text-sm whitespace-nowrap ${quantityChanged ? "text-high font-black" : "text-foreground font-semibold"}`}>{formatNumber(element.cantitate_in_reteta)}</span>
+        </TableCell>
+      )}
 
-                    <DropdownMenuCheckboxItem checked={visibleColumns.unitate} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleCol("unitate")}>
-                      Unitate
-                    </DropdownMenuCheckboxItem>
+      {showCol("costTotal") && (
+        <TableCell style={getColumnStyle("costTotal")} className={`${childCellClass} text-center`}>
+          <span className="text-sm font-bold text-foreground whitespace-nowrap">{formatNumber(totalElement)}</span>
+        </TableCell>
+      )}
 
-                    <DropdownMenuCheckboxItem checked={visibleColumns.costUnitar} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleCol("costUnitar")}>
-                      Cost Unitar
-                    </DropdownMenuCheckboxItem>
+      {showCol("creat") && (
+        <TableCell style={getColumnStyle("creat")} className={childCellClass}>
+          <span className="text-sm text-muted-foreground/30 italic">{EMPTY}</span>
+        </TableCell>
+      )}
 
-                    <DropdownMenuCheckboxItem checked={visibleColumns.cantitate} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleCol("cantitate")}>
-                      Cantitate
-                    </DropdownMenuCheckboxItem>
+      {showCol("actualizat") && (
+        <TableCell style={getColumnStyle("actualizat")} className={childCellClass}>
+          <span className="text-sm text-muted-foreground/30 italic">{EMPTY}</span>
+        </TableCell>
+      )}
 
-                    <DropdownMenuCheckboxItem checked={visibleColumns.costTotal} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleCol("costTotal")}>
-                      Cost Total
-                    </DropdownMenuCheckboxItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-
-              <div className="flex flex-col justify-center items-center gap-1">
-                <span className="text-sm text-foreground font-semibold uppercase tracking-wider">Cost Rețetă</span>
-
-                <div className="flex items-baseline gap-1.5 bg-card px-3 py-1 rounded-md border border-foreground/40">
-                  <span className="text-lg font-extrabold">{formatNumber(costReteta)}</span>
-                  <span className="text-sm font-bold">/ {parentItem.unitate_masura || EMPTY}</span>
-                </div>
-              </div>
-            </div>
-          </DialogHeader>
-
-          <div className="p-6 flex-1 min-h-0 rounded-md bg-card">
-            <ResourcesTable sections={sections} visibleColumns={visibleColumns} displayLang={localDisplayLang} onOpenElement={handleOpenElement} />
+      {showCol("info") && (
+        <TableCell style={getColumnStyle("info")} className={`border border-border p-1 text-center align-middle text-sm transition-colors ${childTypeBgClass}`}>
+          <div className="flex items-center justify-center whitespace-nowrap overflow-hidden">
+            <ElementIssueIcon priceChanged={priceChanged} quantityChanged={quantityChanged} otherChanged={otherChanged} syncStatus={syncStatus} />
           </div>
-        </DialogContent>
-      </Dialog>
-
-      {selectedElementConfig && selectedElement && (
-        <OferteElementVariantDialog
-          open={variantDialogOpen}
-          setOpen={setVariantDialogOpen}
-          config={selectedElementConfig}
-          elementItem={selectedElement}
-          parentItem={parentItem}
-          onSave={handleSaveElementSnapshot}
-        />
+        </TableCell>
       )}
     </>
   );
-}
+});
+
+export default OferteRetetaSubList;

@@ -1,8 +1,10 @@
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipArrow } from "@radix-ui/react-tooltip";
 import { useEffect, useRef, useState } from "react";
 
+const OVERFLOW_TOLERANCE = 1;
+
 // --- OVERFLOW TOOLTIP OPTIMIZAT PENTRU PERFORMANȚĂ ---
-export default function OverflowTooltip({ text, className, maxLines = 2, align = "center" }) {
+export default function OverflowTooltip({ text, className, maxLines = 2, align = "center", textSize = "base" }) {
   const textRef = useRef(null);
   const [isOverflow, setIsOverflow] = useState(false);
 
@@ -11,7 +13,9 @@ export default function OverflowTooltip({ text, className, maxLines = 2, align =
     if (!el) return;
 
     const checkOverflow = () => {
-      const hasOverflow = el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth;
+      const hasHorizontalOverflow = el.scrollWidth - el.clientWidth > OVERFLOW_TOLERANCE;
+      const hasVerticalOverflow = el.scrollHeight - el.clientHeight > OVERFLOW_TOLERANCE;
+      const hasOverflow = maxLines === 1 ? hasHorizontalOverflow : hasHorizontalOverflow || hasVerticalOverflow;
 
       // MICRO-OPTIMIZARE: Schimbăm state-ul DOAR dacă e diferit.
       // Evităm re-render-urile complet inutile când faci scroll sau resize.
@@ -27,7 +31,7 @@ export default function OverflowTooltip({ text, className, maxLines = 2, align =
     resizeObserver.observe(el);
 
     return () => resizeObserver.disconnect();
-  }, [text]); // isOverflow NU se pune în array-ul de dependențe
+  }, [maxLines, text]); // isOverflow NU se pune în array-ul de dependențe
 
   return (
     <Tooltip>
@@ -60,7 +64,9 @@ export default function OverflowTooltip({ text, className, maxLines = 2, align =
       </TooltipTrigger>
 
       {isOverflow && (
-        <TooltipContent className="xxxl:max-w-[40rem] lg:max-w-[30rem] max-w-[20rem] xl:text-base whitespace-pre-wrap break-words rounded-md text-sm z-[100] bg-popover border-2 border-border text-popover-foreground shadow-md p-2 xl:p-4">
+        <TooltipContent
+          className={`xxxl:max-w-[40rem] lg:max-w-[30rem] max-w-[20rem] text-${textSize} whitespace-pre-wrap break-words rounded-md  z-[100] bg-popover border-2 border-border text-popover-foreground shadow-md p-1 xl:p-2`}
+        >
           <TooltipArrow width={15} height={10} className="fill-border" />
           {text}
         </TooltipContent>

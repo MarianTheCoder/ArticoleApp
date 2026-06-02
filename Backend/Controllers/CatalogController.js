@@ -248,7 +248,9 @@ const addDefinitie = async (req, res) => {
             const uniqueSubFilename = `${Date.now()}-${Math.random().toString(36).substring(7)}${ext}`;
             const newPath = path.join(__dirname, "..", dir, uniqueSubFilename);
 
-            fs.copyFileSync(oldPath, newPath);
+            const data = fs.readFileSync(oldPath);
+            fs.writeFileSync(newPath, data);
+
             newSubPhotoUrl = `${dir}/${uniqueSubFilename}`;
           }
         }
@@ -628,7 +630,7 @@ const addReteta = async (req, res) => {
     conn = await global.db.getConnection();
     await conn.beginTransaction();
 
-    const { limba, cod_reteta, clasa_reteta, denumire, denumire_fr, descriere, descriere_fr, unitate_masura, duplicate_from_id } = req.body;
+    const { limba, cod_reteta, clasa_reteta, denumire, denumire_fr, unitate_masura, duplicate_from_id } = req.body;
 
     // 1. Validări de bază
     if (!cod_reteta || !clasa_reteta || !denumire || !unitate_masura) {
@@ -645,8 +647,8 @@ const addReteta = async (req, res) => {
     // 3. Inserăm rețeta nouă
     const insertQuery = `
       INSERT INTO S02_Retete 
-      (limba, cod_reteta, clasa_reteta, denumire, denumire_fr, descriere, descriere_fr, unitate_masura, created_by_user_id, updated_by_user_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (limba, cod_reteta, clasa_reteta, denumire, denumire_fr, unitate_masura, created_by_user_id, updated_by_user_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
@@ -655,8 +657,6 @@ const addReteta = async (req, res) => {
       clasa_reteta.trim(),
       denumire.trim(),
       denumire_fr ? (limba === "FR" ? denumire_fr.trim() : "") : "",
-      descriere ? descriere.trim() : "",
-      descriere_fr ? (limba === "FR" ? descriere_fr.trim() : "") : "",
       unitate_masura.trim(),
       user.id || null,
       user.id || null,
@@ -720,7 +720,6 @@ const getRetete = async (req, res) => {
     const cod = req.query.cod ? req.query.cod.trim() : "";
     const clasa_reteta = req.query.clasa_reteta ? req.query.clasa_reteta.trim() : "";
     const denumire = req.query.denumire ? req.query.denumire.trim() : "";
-    const descriere = req.query.descriere ? req.query.descriere.trim() : "";
     const unitate = req.query.unitate ? req.query.unitate.trim() : "";
 
     // Sortare
@@ -757,12 +756,6 @@ const getRetete = async (req, res) => {
       whereClause += " AND (d.denumire LIKE ? OR d.denumire_fr LIKE ?)";
       const dStr = `%${denumire}%`;
       queryParams.push(dStr, dStr);
-    }
-
-    if (descriere) {
-      whereClause += " AND (d.descriere LIKE ? OR d.descriere_fr LIKE ?)";
-      const ds = `%${descriere}%`;
-      queryParams.push(ds, ds);
     }
 
     if (unitate && unitate !== "all") {
@@ -1033,7 +1026,7 @@ const editReteta = async (req, res) => {
 
   try {
     conn = await global.db.getConnection();
-    const { limba, cod_reteta, clasa_reteta, denumire, denumire_fr, descriere, descriere_fr, unitate_masura } = req.body;
+    const { limba, cod_reteta, clasa_reteta, denumire, denumire_fr, unitate_masura } = req.body;
     if (!id) {
       return res.status(400).json({ message: "Lipsește ID-ul rețetei." });
     }
@@ -1066,8 +1059,6 @@ const editReteta = async (req, res) => {
         clasa_reteta = ?,
         denumire = ?,
         denumire_fr = ?,
-        descriere = ?,
-        descriere_fr = ?,
         unitate_masura = ?,
         updated_by_user_id = ?,
         updated_at = NOW()
@@ -1080,8 +1071,6 @@ const editReteta = async (req, res) => {
       clasa_reteta.trim(),
       denumire.trim(),
       denumire_fr ? (limba === "FR" ? denumire_fr.trim() : "") : "",
-      descriere ? descriere.trim() : "",
-      descriere_fr ? (limba === "FR" ? descriere_fr.trim() : "") : "",
       unitate_masura.trim(),
       user.id || null,
       id,
