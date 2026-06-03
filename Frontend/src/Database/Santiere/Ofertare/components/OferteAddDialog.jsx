@@ -1,5 +1,5 @@
 // src/components/Ofertare/OferteAddDialog.jsx
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useRef } from "react";
 import { useParams } from "react-router-dom";
 
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -64,6 +64,7 @@ export default function OferteAddDialog({ open, setOpen, selectedOferta, selecte
   const [descriere, setDescriere] = useState("");
   const [descriereFr, setDescriereFr] = useState("");
   const [columnValues, setColumnValues] = useState({});
+  const QtyRef = useRef(null);
 
   const dynamicColumns = useMemo(() => {
     return normalizeColumns(selectedLucrare?.coloane_config);
@@ -79,6 +80,7 @@ export default function OferteAddDialog({ open, setOpen, selectedOferta, selecte
 
   const handleSelectReteta = useCallback((reteta) => {
     setSelectedReteta(reteta);
+    QtyRef.current?.focus();
     setDescriere("");
     setDescriereFr("");
   }, []);
@@ -126,6 +128,7 @@ export default function OferteAddDialog({ open, setOpen, selectedOferta, selecte
     }
 
     const coloane_valori = dynamicColumns.map((col) => ({
+      id: col.id,
       name: col.name,
       value: (columnValues[col.id] || "").trim(),
     }));
@@ -220,6 +223,7 @@ export default function OferteAddDialog({ open, setOpen, selectedOferta, selecte
                 className="w-32 h-11 font-black text-center border-2"
                 placeholder="0,000"
                 value={quantity}
+                ref={QtyRef}
                 onChange={(e) => {
                   const val = e.target.value.replace(".", ",");
 

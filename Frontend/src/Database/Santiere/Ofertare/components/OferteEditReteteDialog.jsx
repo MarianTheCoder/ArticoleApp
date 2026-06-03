@@ -29,17 +29,19 @@ export default function OferteEditRetetaDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-[52rem] p-0 gap-0 overflow-hidden" style={{ animationDuration: "0ms", transitionDuration: "0ms" }}>
-        <DialogHeader className="px-6 py-4 border-b bg-muted">
-          <div className="flex items-center gap-4 min-w-0">
+      <DialogContent className="sm:max-w-[52rem] p-0 gap-0 " style={{ animationDuration: "0ms", transitionDuration: "0ms" }}>
+        <DialogHeader className="px-6 py-4 border-b rounded-t-md bg-muted">
+          <div className="flex w-full items-center gap-4 overflow-hidden">
             <div className="h-14 w-14 rounded-xl bg-sky-600/20 border border-sky-600/25 flex items-center justify-center shrink-0">
               <FontAwesomeIcon icon={faFolderOpen} className="text-sky-600 text-2xl" />
             </div>
 
-            <DialogTitle className="text-left flex flex-col gap-1 min-w-0">
-              <span className="text-sm text-sky-600 font-black uppercase tracking-wider">{retetaToEdit?.cod_reteta || "—"}</span>
+            <DialogTitle className="text-left flex min-w-0 w-full max-w-[34rem] flex-col gap-1 overflow-hidden">
+              <span className="truncate text-sm text-sky-600 font-black uppercase tracking-wider">{retetaToEdit?.cod_reteta || "—"}</span>
 
-              <OverflowTooltip align="left" text={retetaToEdit?.denumire || "—"} maxLines={1} className="text-xl font-bold text-foreground" />
+              <div className="w-full min-w-0 overflow-hidden">
+                <OverflowTooltip align="left" text={retetaToEdit?.denumire || "—"} maxLines={1} className="text-xl font-bold text-foreground" />
+              </div>
             </DialogTitle>
           </div>
         </DialogHeader>

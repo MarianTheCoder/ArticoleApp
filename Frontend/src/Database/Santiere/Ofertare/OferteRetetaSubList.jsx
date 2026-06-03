@@ -305,7 +305,7 @@ const ResourceTypeIcon = memo(function ResourceTypeIcon({ config }) {
   );
 });
 
-const OferteRetetaSubList = memo(function OferteRetetaSubList({ element, parentItem, displayLang = "RO", dynamicColumns = [], showCol, getColumnStyle }) {
+const OferteRetetaSubList = memo(function OferteRetetaSubList({ element, parentItem, displayLang = "RO", dynamicColumns = [], showCol, getColumnStyle, isLastElement = false }) {
   const config = getResourceConfig(element);
 
   const afisareCod = getDisplayedCode(element);
@@ -328,8 +328,15 @@ const OferteRetetaSubList = memo(function OferteRetetaSubList({ element, parentI
 
   return (
     <>
+      <TableCell style={getColumnStyle("tree")} className={`${isLastElement ? "border-b border-border" : "border-0"} dark:bg-[#08090b] p-0 align-middle`}>
+        <div className="relative h-8 w-full">
+          <span className={`absolute left-1/2 top-0 w-[2px] -translate-x-1/2 bg-border ${isLastElement ? "bottom-1/2" : "bottom-0"}`} />
+          <span className="absolute left-1/2 right-0 top-1/2 h-[2px] bg-border" />
+        </div>
+      </TableCell>
+
       {showCol("elemente") && (
-        <TableCell style={getColumnStyle("elemente")} className={`border border-l-0 p-0 text-center align-middle text-sm transition-colors ${childTypeBgClass}`}>
+        <TableCell style={getColumnStyle("elemente")} className={`border p-0 text-center align-middle text-sm transition-colors ${childTypeBgClass}`}>
           <ResourceTypeIcon config={config} />
         </TableCell>
       )}
@@ -364,7 +371,9 @@ const OferteRetetaSubList = memo(function OferteRetetaSubList({ element, parentI
 
       {showCol("clasa") && (
         <TableCell style={getColumnStyle("clasa")} className={`${childCellClass} text-center`}>
-          {afisareClasa ? (
+          {hasVariantSelected(element) ? (
+            <span className="inline-flex h-6 max-w-full items-center rounded-md border border-primary/50 bg-primary/15 px-2 text-sm font-black text-primary shadow-sm">Variantă</span>
+          ) : afisareClasa ? (
             <OverflowTooltip align="center" text={String(afisareClasa)} className="text-foreground font-normal text-center whitespace-nowrap" maxLines={1} textSize="sm" />
           ) : (
             <span className="block h-5" />

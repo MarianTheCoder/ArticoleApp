@@ -42,6 +42,98 @@ const normalizeColoaneConfig = (value) => {
     .slice(0, 5);
 };
 
+const normalizeColoaneValoriForDb = (value) => {
+  const parsed = parseMaybeJson(value, []);
+
+  if (Array.isArray(parsed)) {
+    return parsed
+      .map((item) => ({
+        id: item?.id ? String(item.id) : "",
+        name: String(item?.name || item?.nume || "").trim(),
+        value: String(item?.value ?? "").trim(),
+      }))
+      .filter((item) => item.id || item.name);
+  }
+
+  if (parsed && typeof parsed === "object") {
+    return Object.entries(parsed)
+      .map(([key, item]) => {
+        if (!item || typeof item !== "object") return null;
+
+        return {
+          id: item.id ? String(item.id) : String(key || ""),
+          name: String(item.name || item.nume || "").trim(),
+          value: String(item.value ?? "").trim(),
+        };
+      })
+      .filter(Boolean)
+      .filter((item) => item.id || item.name);
+  }
+
+  return [];
+};
+
+const migrateColoaneValoriForRenamedColumns = (value, oldColumns = [], newColumns = []) => {
+  const items = normalizeColoaneValoriForDb(value);
+  const newById = new Map(newColumns.map((col) => [String(col.id), col]));
+  const oldNameToNewColumn = new Map();
+
+  oldColumns.forEach((oldCol) => {
+    const nextCol = newById.get(String(oldCol.id));
+
+    if (!nextCol) return;
+
+    oldNameToNewColumn.set(String(oldCol.nume || "").trim().toLowerCase(), nextCol);
+  });
+
+  const migratedByKey = new Map();
+
+  items.forEach((item) => {
+    const itemId = item.id ? String(item.id) : "";
+    const itemName = String(item.name || "").trim();
+    const itemNameKey = itemName.toLowerCase();
+    const targetColumn = (itemId && newById.get(itemId)) || oldNameToNewColumn.get(itemNameKey);
+
+    if (targetColumn) {
+      migratedByKey.set(`id:${targetColumn.id}`, {
+        id: targetColumn.id,
+        name: targetColumn.nume,
+        value: item.value,
+      });
+      return;
+    }
+
+    if (itemName || itemId) {
+      migratedByKey.set(itemId ? `id:${itemId}` : `name:${itemNameKey}`, {
+        ...(itemId ? { id: itemId } : {}),
+        name: itemName,
+        value: item.value,
+      });
+    }
+  });
+
+  const orderedValues = [];
+  const emittedKeys = new Set();
+
+  newColumns.forEach((col) => {
+    const key = `id:${col.id}`;
+    const item = migratedByKey.get(key);
+
+    if (!item) return;
+
+    orderedValues.push(item);
+    emittedKeys.add(key);
+  });
+
+  migratedByKey.forEach((item, key) => {
+    if (!emittedKeys.has(key)) {
+      orderedValues.push(item);
+    }
+  });
+
+  return orderedValues;
+};
+
 const fs = require("fs/promises");
 const path = require("path");
 const crypto = require("crypto");
@@ -410,6 +502,8 @@ const deleteOfertaLucrare = async (req, res) => {
 };
 
 const editOfertaLucrareColoane = async (req, res) => {
+  const conn = await global.db.getConnection();
+
   try {
     const { id } = req.params;
     const { coloane_config } = req.body;
@@ -420,10 +514,28 @@ const editOfertaLucrareColoane = async (req, res) => {
     }
 
     const normalizedColumns = normalizeColoaneConfig(coloane_config);
-
     const updatedBy = user?.id || null;
 
-    const [result] = await global.db.execute(
+    await conn.beginTransaction();
+
+    const [lucrareRows] = await conn.execute(
+      `
+      SELECT coloane_config
+      FROM S03_Oferte_Lucrari
+      WHERE id = ?
+      FOR UPDATE
+      `,
+      [id],
+    );
+
+    if (lucrareRows.length === 0) {
+      await conn.rollback();
+      return res.status(404).json({ message: "Lucrarea nu a fost găsită." });
+    }
+
+    const oldColumns = normalizeColoaneConfig(lucrareRows[0].coloane_config);
+
+    await conn.execute(
       `
       UPDATE S03_Oferte_Lucrari
       SET
@@ -434,9 +546,29 @@ const editOfertaLucrareColoane = async (req, res) => {
       [JSON.stringify(normalizedColumns), updatedBy, id],
     );
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Lucrarea nu a fost găsită." });
+    const [reteteRows] = await conn.execute(
+      `
+      SELECT id, coloane_valori
+      FROM S03_Oferte_Retete
+      WHERE lucrare_id = ?
+      `,
+      [id],
+    );
+
+    for (const reteta of reteteRows) {
+      const migratedValues = migrateColoaneValoriForRenamedColumns(reteta.coloane_valori, oldColumns, normalizedColumns);
+
+      await conn.execute(
+        `
+        UPDATE S03_Oferte_Retete
+        SET coloane_valori = ?
+        WHERE id = ?
+        `,
+        [parseJsonForDb(migratedValues), reteta.id],
+      );
     }
+
+    await conn.commit();
 
     return res.status(200).json({
       ok: true,
@@ -444,8 +576,11 @@ const editOfertaLucrareColoane = async (req, res) => {
       message: "Coloanele au fost actualizate.",
     });
   } catch (err) {
+    await conn.rollback();
     console.error("editOfertaLucrareColoane error:", err);
     return res.status(500).json({ message: "Eroare la actualizarea coloanelor." });
+  } finally {
+    conn.release();
   }
 };
 

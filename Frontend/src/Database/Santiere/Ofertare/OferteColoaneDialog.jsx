@@ -1,7 +1,10 @@
 // src/components/Ofertare/OferteColoaneDialog.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faColumns, faPlus, faTrash, faCheck } from "@fortawesome/free-solid-svg-icons";
+import { faColumns, faPlus, faTrash, faCheck, faGripVertical } from "@fortawesome/free-solid-svg-icons";
+import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -74,12 +77,74 @@ const columnsAreEqual = (a, b) => {
   });
 };
 
+const SortableColumnRow = ({ col, displayIndex, updateColumn, deleteColumn, autoFocus }) => {
+  const { attributes, listeners, setActivatorNodeRef, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: col.id,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.55 : 1,
+        zIndex: isDragging ? 50 : undefined,
+        position: isDragging ? "relative" : undefined,
+      }}
+      className="grid grid-cols-[2rem_2.75rem_minmax(0,1fr)_2.25rem] items-center gap-2 rounded-lg border bg-card p-2"
+    >
+      <button
+        ref={setActivatorNodeRef}
+        type="button"
+        className="flex h-9 w-8 touch-none cursor-grab items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground active:cursor-grabbing"
+        {...attributes}
+        {...listeners}
+        title="Mută coloana"
+      >
+        <FontAwesomeIcon icon={faGripVertical} />
+      </button>
+
+      <Badge variant="outline" className="h-9 w-9 justify-center shrink-0 bg-background">
+        {displayIndex}
+      </Badge>
+
+      <Input
+        value={col.name}
+        onChange={(e) => updateColumn(col.id, e.target.value.slice(0, MAX_COLUMN_NAME_LENGTH))}
+        placeholder="Ex: Reper, Etaj, Clădire..."
+        maxLength={MAX_COLUMN_NAME_LENGTH}
+        className="h-9 min-w-0"
+        autoFocus={autoFocus}
+      />
+
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={() => deleteColumn(col.id)}
+        className="h-9 w-9 shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+        title="Șterge coloana"
+      >
+        <FontAwesomeIcon icon={faTrash} />
+      </Button>
+    </div>
+  );
+};
+
 export default function OferteColoaneDialog({ open, setOpen, selectedLucrare, onSave }) {
   const [columns, setColumns] = useState([]);
   const [initialColumns, setInitialColumns] = useState([]);
 
   const [warningOpen, setWarningOpen] = useState(false);
   const [pendingSaveColumns, setPendingSaveColumns] = useState(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 6,
+      },
+    }),
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -97,6 +162,10 @@ export default function OferteColoaneDialog({ open, setOpen, selectedLucrare, on
   const hasChanges = useMemo(() => {
     return !columnsAreEqual(initialColumns, columns);
   }, [initialColumns, columns]);
+
+  const initialIndexById = useMemo(() => {
+    return new Map(initialColumns.map((col, index) => [String(col.id), index + 1]));
+  }, [initialColumns]);
 
   const addColumn = () => {
     if (columns.length >= MAX_COLUMNS) {
@@ -119,6 +188,25 @@ export default function OferteColoaneDialog({ open, setOpen, selectedLucrare, on
 
   const deleteColumn = (id) => {
     setColumns((prev) => prev.filter((col) => col.id !== id));
+  };
+
+  const handleDragEnd = (event) => {
+    const activeId = event.active?.id;
+    const overId = event.over?.id;
+
+    if (!activeId || !overId || activeId === overId) return;
+
+    const activeKey = String(activeId);
+    const overKey = String(overId);
+
+    setColumns((prev) => {
+      const oldIndex = prev.findIndex((col) => String(col.id) === activeKey);
+      const newIndex = prev.findIndex((col) => String(col.id) === overKey);
+
+      if (oldIndex === -1 || newIndex === -1) return prev;
+
+      return arrayMove(prev, oldIndex, newIndex);
+    });
   };
 
   const validateColumns = (cleaned) => {
@@ -208,35 +296,26 @@ export default function OferteColoaneDialog({ open, setOpen, selectedLucrare, on
                 </span>
               </div>
             ) : (
-              <div className="flex justify-center min-h-[5rem] flex-col gap-2">
-                {columns.map((col, index) => (
-                  <div key={col.id} className="grid grid-cols-[2.75rem_minmax(0,1fr)_2.25rem] items-center gap-2 rounded-lg border bg-card p-2">
-                    <Badge variant="outline" className="h-9 w-9 justify-center shrink-0 bg-background">
-                      {index + 1}
-                    </Badge>
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={columns.map((col) => col.id)} strategy={verticalListSortingStrategy}>
+                  <div className="flex justify-center min-h-[5rem] flex-col gap-2">
+                    {columns.map((col, index) => {
+                      const displayIndex = initialIndexById.get(String(col.id)) || index + 1;
 
-                    <Input
-                      value={col.name}
-                      onChange={(e) => updateColumn(col.id, e.target.value.slice(0, MAX_COLUMN_NAME_LENGTH))}
-                      placeholder="Ex: Reper, Etaj, Clădire..."
-                      maxLength={MAX_COLUMN_NAME_LENGTH}
-                      className="h-9 min-w-0"
-                      autoFocus={index === columns.length - 1 && !col.name}
-                    />
-
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => deleteColumn(col.id)}
-                      className="h-9 w-9 shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                      title="Șterge coloana"
-                    >
-                      <FontAwesomeIcon icon={faTrash} />
-                    </Button>
+                      return (
+                        <SortableColumnRow
+                          key={col.id}
+                          col={col}
+                          displayIndex={displayIndex}
+                          updateColumn={updateColumn}
+                          deleteColumn={deleteColumn}
+                          autoFocus={index === columns.length - 1 && !col.name}
+                        />
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
+                </SortableContext>
+              </DndContext>
             )}
 
             <Button type="button" variant="outline" onClick={addColumn} disabled={columns.length >= MAX_COLUMNS} className="gap-2 w-full h-10">

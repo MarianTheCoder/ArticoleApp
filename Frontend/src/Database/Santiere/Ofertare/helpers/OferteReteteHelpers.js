@@ -45,33 +45,42 @@ export const normalizeColoaneValori = (value) => {
   if (Array.isArray(parsed)) {
     return parsed
       .map((item) => ({
+        id: item?.id ? String(item.id) : "",
         name: String(item?.name || item?.nume || "").trim(),
-        value: String(item?.value || "").trim(),
+        value: String(item?.value ?? "").trim(),
       }))
-      .filter((item) => item.name);
+      .filter((item) => item.id || item.name);
   }
 
   if (parsed && typeof parsed === "object") {
-    return Object.values(parsed)
-      .map((item) => {
+    return Object.entries(parsed)
+      .map(([key, item]) => {
         if (item && typeof item === "object") {
           return {
+            id: item.id ? String(item.id) : String(key || ""),
             name: String(item.name || item.nume || "").trim(),
-            value: String(item.value || "").trim(),
+            value: String(item.value ?? "").trim(),
           };
         }
 
         return null;
       })
       .filter(Boolean)
-      .filter((item) => item.name);
+      .filter((item) => item.id || item.name);
   }
 
   return [];
 };
 
 export const getColoanaValue = (coloaneValori, col) => {
-  const found = coloaneValori.find((item) => item.name.toLowerCase() === col.nume.toLowerCase());
+  const colId = col?.id ? String(col.id) : "";
+  const colName = String(col?.nume || col?.name || "").trim().toLowerCase();
+
+  const found = coloaneValori.find((item) => {
+    if (colId && item.id && String(item.id) === colId) return true;
+    return item.name && item.name.toLowerCase() === colName;
+  });
+
   return found?.value || "";
 };
 
@@ -270,4 +279,178 @@ export const reorderSelectedBlock = ({ items, selectedIds, activeId, overId }) =
   }
 
   return [...remainingItems.slice(0, insertIndex), ...movingItems, ...remainingItems.slice(insertIndex)];
+};
+
+export const CATEGORY_LEVEL_COUNT = 7;
+export const EMPTY_CATEGORY_VALUE = "Fără valoare";
+
+export const buildAvailableCategoryFields = (dynamicColumns = []) => {
+  const dynamicFields = (dynamicColumns || []).slice(0, 5).map((col) => ({
+    key: `dynamic_${col.id}`,
+    label: col.nume,
+    type: "dynamic",
+    columnId: col.id,
+    column: col,
+  }));
+
+  return [
+    ...dynamicFields,
+    {
+      key: "denumire",
+      label: "Denumire",
+      type: "denumire",
+    },
+    {
+      key: "clasa",
+      label: "Clasa",
+      type: "clasa",
+    },
+  ].slice(0, CATEGORY_LEVEL_COUNT);
+};
+
+export const normalizeCategoryConfig = (config = [], availableFields = []) => {
+  const availableKeys = new Set((availableFields || []).map((field) => field.key));
+  const usedKeys = new Set();
+  const values = Array.isArray(config) ? config : [];
+
+  return Array.from({ length: CATEGORY_LEVEL_COUNT }, (_, index) => {
+    const key = values[index] || "";
+
+    if (!key || !availableKeys.has(key) || usedKeys.has(key)) {
+      return "";
+    }
+
+    usedKeys.add(key);
+    return key;
+  });
+};
+
+export const getCategoryValue = ({ reteta, field, dynamicColumns = [], displayLang = "RO" }) => {
+  if (!field) return EMPTY_CATEGORY_VALUE;
+
+  if (field.type === "dynamic") {
+    const col = field.column || dynamicColumns.find((item) => String(item.id) === String(field.columnId));
+    const value = col ? getColoanaValue(normalizeColoaneValori(reteta?.coloane_valori), col) : "";
+    return String(value || "").trim() || EMPTY_CATEGORY_VALUE;
+  }
+
+  if (field.type === "denumire") {
+    const value = displayLang === "FR" ? reteta?.denumire_fr || reteta?.denumire || "" : reteta?.denumire || reteta?.denumire_fr || "";
+    return String(value || "").trim() || EMPTY_CATEGORY_VALUE;
+  }
+
+  if (field.type === "clasa") {
+    return String(reteta?.clasa_reteta || "").trim() || EMPTY_CATEGORY_VALUE;
+  }
+
+  return EMPTY_CATEGORY_VALUE;
+};
+
+const getCategoryCountKey = (values, levelIndex) => JSON.stringify(values.slice(0, levelIndex + 1));
+
+export const buildDisplayRowsWithCategories = ({ retete = [], expandedRetetaIds = new Set(), categoryConfig = [], dynamicColumns = [], displayLang = "RO" }) => {
+  const availableFields = buildAvailableCategoryFields(dynamicColumns);
+  const normalizedConfig = normalizeCategoryConfig(categoryConfig, availableFields);
+  const activeFields = normalizedConfig
+    .map((key) => availableFields.find((field) => field.key === key))
+    .filter(Boolean);
+
+  const rows = [];
+
+  const pushRetetaRows = (reteta, categoryPath = []) => {
+    const retetaId = toId(reteta.id);
+
+    rows.push({
+      id: `reteta-${retetaId}`,
+      type: "reteta",
+      reteta,
+      categoryPath,
+    });
+
+    if (!expandedRetetaIds.has(retetaId)) return;
+
+    const elemente = reteta.elemente || [];
+
+    if (elemente.length === 0) {
+      rows.push({
+        id: `empty-${retetaId}`,
+        type: "empty",
+        reteta,
+        categoryPath,
+      });
+
+      return;
+    }
+
+    elemente.forEach((element, elementIndex) => {
+      rows.push({
+        id: `element-${retetaId}-${element.id}`,
+        type: "element",
+        reteta,
+        element,
+        isLastElement: elementIndex === elemente.length - 1,
+        categoryPath,
+      });
+    });
+  };
+
+  if (activeFields.length === 0) {
+    retete.forEach((reteta) => pushRetetaRows(reteta));
+    return rows;
+  }
+
+  const pushCategoryGroups = (items, levelIndex, parentValues = []) => {
+    if (levelIndex >= activeFields.length) {
+      items.forEach((reteta) => pushRetetaRows(reteta, parentValues));
+      return;
+    }
+
+    const field = activeFields[levelIndex];
+    const groupedItems = [];
+    const groupedMap = new Map();
+
+    items.forEach((reteta) => {
+      const value = getCategoryValue({
+        reteta,
+        field,
+        dynamicColumns,
+        displayLang,
+      });
+
+      if (!groupedMap.has(value)) {
+        const group = {
+          value,
+          items: [],
+        };
+
+        groupedMap.set(value, group);
+        groupedItems.push(group);
+      }
+
+      groupedMap.get(value).items.push(reteta);
+    });
+
+    groupedItems.forEach((group) => {
+      const pathValues = [...parentValues, group.value];
+      const countKey = getCategoryCountKey(pathValues, levelIndex);
+
+      rows.push({
+        id: `category-${levelIndex + 1}-${countKey}`,
+        type: "category",
+        level: levelIndex + 1,
+        fieldKey: field.key,
+        fieldLabel: field.label,
+        value: group.value,
+        count: group.items.length,
+        parentPath: parentValues,
+        categoryPath: pathValues,
+      });
+
+      pushCategoryGroups(group.items, levelIndex + 1, pathValues);
+    });
+  };
+
+  pushCategoryGroups(retete, 0);
+
+  return rows;
 };

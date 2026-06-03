@@ -15,12 +15,16 @@ import {
   faTruck,
   faTriangleExclamation,
   faFolderOpen,
-  faArrowLeftRotate,
   faArrowsRotate,
+  faFilePdf,
+  faSort,
+  faSortDown,
+  faSortUp,
 } from "@fortawesome/free-solid-svg-icons";
 
 import { TableVirtuoso } from "react-virtuoso";
 import OverflowTooltip from "@/components/ui/OverflowTooltip";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import OferteRetetaSubList from "./OferteRetetaSubList";
 import OferteElementVariantDialog from "./OferteElementVariantDialog";
@@ -48,11 +52,15 @@ import {
   normalizePercentInput,
   getRangeIds,
   reorderSelectedBlock,
+  buildDisplayRowsWithCategories,
+  buildAvailableCategoryFields,
+  normalizeCategoryConfig,
 } from "./helpers/OferteReteteHelpers";
 
 import OferteQtyFormulaCell from "./components/OferteQtyCell";
 import OferteActualizeazaReteteDialog from "./components/OferteActualizeazaDialog";
 import OferteFurnizoriDialog from "./components/OferteFurnizorDialog";
+import OferteExportPdfDialog from "./components/OferteExportPdfDialog";
 import { Separator } from "@/components/ui/separator";
 
 import { resurseConfig } from "@/Database/Catalog/resurseConfig";
@@ -61,6 +69,7 @@ import { useEditOfertaRetetaElementVariant } from "@/hooks/Database/useOferte";
 const COLUMN_WIDTHS_STORAGE_KEY = "oferte_retete_column_widths";
 
 const getDefaultColumnWidths = () => ({
+  tree: 26,
   elemente: 42,
   poza: 48,
   info: 40,
@@ -78,6 +87,7 @@ const getDefaultColumnWidths = () => ({
 });
 
 const MIN_COL_WIDTHS = {
+  tree: 24,
   elemente: 40,
   poza: 42,
   info: 40,
@@ -94,9 +104,28 @@ const MIN_COL_WIDTHS = {
   actualizat: 120,
 };
 
+const ESTIMATED_ROW_HEIGHTS = {
+  category: 40,
+  reteta: 48,
+  element: 32,
+  empty: 32,
+};
+
+const getEstimatedDisplayRowHeight = (row) => {
+  return ESTIMATED_ROW_HEIGHTS[row?.type] || 32;
+};
+
+const normalizeSearchText = (value) => {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+};
+
 const ResizableTableHead = ({ colKey, style, className = "", children, onResizeStart }) => {
   return (
-    <TableHead style={style} className={`relative select-none ${className}`}>
+    <TableHead style={style} className={`relative px-0 select-none ${className}`}>
       {children}
 
       <span data-no-row-open onPointerDown={(e) => onResizeStart(e, colKey)} className="absolute right-0 top-0 z-30 h-full w-2 cursor-col-resize touch-none select-none hover:bg-primary/50" />
@@ -261,12 +290,42 @@ const cleanVirtuosoRowProps = (props) => {
   return domProps;
 };
 
+const getPathKey = (path = []) => JSON.stringify(path || []);
+
+const pathsEqual = (a = [], b = []) => getPathKey(a) === getPathKey(b);
+
+const pathStartsWith = (path = [], prefix = []) => {
+  if (!Array.isArray(path) || !Array.isArray(prefix)) return false;
+  if (prefix.length > path.length) return false;
+
+  return prefix.every((value, index) => path[index] === value);
+};
+
+const getDragIdForRow = (row) => {
+  if (row?.type === "reteta") return toId(row.reteta?.id);
+  if (row?.type === "category") return row.id;
+  return "";
+};
+
+const getDisplayRowByDragId = (rows = [], id) => {
+  const dragId = toId(id);
+  return rows.find((row) => getDragIdForRow(row) === dragId);
+};
+
 const PlainVirtualRow = (props) => {
   const rowItem = getRowItemFromProps(props);
   const domProps = cleanVirtuosoRowProps(props);
 
   if (!rowItem) {
     return <TableRow {...domProps} />;
+  }
+
+  if (rowItem.type === "category") {
+    return (
+      <TableRow {...domProps} className="h-10 border-b bg-[#c4c4ce] dark:bg-[#34363d] dark:text-foreground [.blue_&]:bg-[#22262b]">
+        {props.children}
+      </TableRow>
+    );
   }
 
   if (rowItem.type === "element") {
@@ -291,6 +350,37 @@ const PlainVirtualRow = (props) => {
   );
 };
 
+const SortableCategoryVirtualRow = ({ rowItem, ...props }) => {
+  const isRowOrderLocked = props.context?.isRowOrderLocked;
+
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: rowItem.id,
+    disabled: isRowOrderLocked,
+  });
+
+  const domProps = cleanVirtuosoRowProps(props);
+
+  return (
+    <TableRow
+      {...domProps}
+      ref={setNodeRef}
+      {...(!isRowOrderLocked ? attributes : {})}
+      {...(!isRowOrderLocked ? listeners : {})}
+      style={{
+        ...domProps.style,
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.45 : 1,
+        zIndex: isDragging ? 50 : undefined,
+        position: isDragging ? "relative" : undefined,
+      }}
+      className="h-10 cursor-grab border-b bg-[#c4c4ce] active:cursor-grabbing dark:bg-[#34363d] dark:text-foreground [.blue_&]:bg-[#22262b]"
+    >
+      {props.children}
+    </TableRow>
+  );
+};
+
 const SortableRecipeVirtualRow = ({ reteta, ...props }) => {
   const id = toId(reteta.id);
 
@@ -300,9 +390,11 @@ const SortableRecipeVirtualRow = ({ reteta, ...props }) => {
   const selectedRetete = props.context?.getSelectedRetete?.() || [];
   const contextItems = selected && selectedRetete.length > 1 ? selectedRetete : [reteta];
   const isMultiple = contextItems.length > 1;
+  const isRowOrderLocked = props.context?.isRowOrderLocked;
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
+    disabled: isRowOrderLocked,
   });
 
   const domProps = cleanVirtuosoRowProps(props);
@@ -314,8 +406,8 @@ const SortableRecipeVirtualRow = ({ reteta, ...props }) => {
         <TableRow
           {...domProps}
           ref={setNodeRef}
-          {...attributes}
-          {...listeners}
+          {...(!isRowOrderLocked ? attributes : {})}
+          {...(!isRowOrderLocked ? listeners : {})}
           style={{
             ...domProps.style,
             transform: CSS.Transform.toString(transform),
@@ -324,7 +416,7 @@ const SortableRecipeVirtualRow = ({ reteta, ...props }) => {
             zIndex: isDragging ? 50 : undefined,
             position: isDragging ? "relative" : undefined,
           }}
-          className={`cursor-pointer hover:bgb drag-row data-[state=open]:bg-muted h-12 border-b oferta-parent-row dark:hover:bg-black group  ${
+          className={`cursor-pointer hover:bgb drag-row hover:bg-muted/50 data-[state=open]:bg-muted h-12 border-b group dark:!bg-[#08090b] dark:hover:!bg-[#181e3a] ${
             selected ? "!bg-primary/15 hover:!bg-primary/20 dark:!bg-primary/35 dark:hover:!bg-primary/45" : ""
           }`}
           onMouseDownCapture={(e) => {
@@ -397,6 +489,10 @@ const SortableRetetaRow = (props) => {
     return <TableRow {...domProps} />;
   }
 
+  if (rowItem.type === "category") {
+    return <SortableCategoryVirtualRow {...props} rowItem={rowItem} />;
+  }
+
   if (rowItem.type !== "reteta") {
     return <PlainVirtualRow {...props} />;
   }
@@ -420,7 +516,10 @@ const OferteReteteList = memo(function OferteReteteList({
   displayLang = "RO",
   visibleColumns,
   columnResetKey = 0,
+  sortResetKey = 0,
   toggleAllKey = 0,
+  categoryConfig = [],
+  searchQuery = "",
   onEditReteta,
   onDeleteReteta,
   onReorderRetete,
@@ -429,9 +528,13 @@ const OferteReteteList = memo(function OferteReteteList({
   onLoadFurnizoriRetete,
   onApplyFurnizoriRetete,
   onActualizeazaRetete,
+  onSortActiveChange,
+  onAllExpandedChange,
 }) {
   const containerRef = useRef(null);
+  const displayRowsRef = useRef([]);
   const scrollPosRef = useRef(0);
+  const scrollFrameRef = useRef(null);
   const lastClickedIndexRef = useRef(null);
   const wasDraggingRef = useRef(false);
   const skipSaveColumnWidthsRef = useRef(false);
@@ -444,6 +547,7 @@ const OferteReteteList = memo(function OferteReteteList({
 
   const [furnizoriOpen, setFurnizoriOpen] = useState(false);
   const [furnizoriItems, setFurnizoriItems] = useState([]);
+  const [exportPdfOpen, setExportPdfOpen] = useState(false);
 
   const [expandedRetetaIds, setExpandedRetetaIds] = useState(new Set());
 
@@ -457,6 +561,8 @@ const OferteReteteList = memo(function OferteReteteList({
   const [orderedRetete, setOrderedRetete] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [activeDragId, setActiveDragId] = useState(null);
+  const [sortConfig, setSortConfig] = useState(null);
+  const [categoryScrollTop, setCategoryScrollTop] = useState(0);
 
   const [tvaPercent, setTvaPercent] = useState("0");
   const [extraPercent, setExtraPercent] = useState("0");
@@ -516,6 +622,13 @@ const OferteReteteList = memo(function OferteReteteList({
       return allExpanded ? new Set() : new Set(allIds);
     });
   }, [toggleAllKey]);
+
+  useEffect(() => {
+    const allIds = (reteteItems || []).map((item) => toId(item.id)).filter(Boolean);
+    const allExpanded = allIds.length > 0 && allIds.every((id) => expandedRetetaIds.has(id));
+
+    onAllExpandedChange?.(allExpanded);
+  }, [expandedRetetaIds, onAllExpandedChange, reteteItems]);
 
   const getColumnStyle = useCallback(
     (key) => {
@@ -595,6 +708,112 @@ const OferteReteteList = memo(function OferteReteteList({
   const dynamicColumns = useMemo(() => {
     return normalizeColumns(selectedLucrare?.coloane_config);
   }, [selectedLucrare?.coloane_config]);
+
+  const normalizedCategoryConfig = useMemo(() => {
+    return normalizeCategoryConfig(categoryConfig, buildAvailableCategoryFields(dynamicColumns));
+  }, [categoryConfig, dynamicColumns]);
+
+  useEffect(() => {
+    setSortConfig(null);
+    lastClickedIndexRef.current = null;
+  }, [sortResetKey]);
+
+  const isSortActive = !!sortConfig?.key;
+  const isCategoryActive = normalizedCategoryConfig.some(Boolean);
+  const normalizedSearchQuery = useMemo(() => normalizeSearchText(searchQuery), [searchQuery]);
+  const isSearchActive = normalizedSearchQuery.length > 0;
+  const isRowOrderLocked = isSortActive || isSearchActive;
+
+  useEffect(() => {
+    onSortActiveChange?.(isSortActive);
+  }, [isSortActive, onSortActiveChange]);
+
+  const handleSortColumn = useCallback((key) => {
+    setSortConfig((prev) => {
+      if (prev?.key === key) {
+        if (prev.direction === "asc") {
+          return {
+            key,
+            direction: "desc",
+          };
+        }
+
+        return null;
+      }
+
+      return {
+        key,
+        direction: "asc",
+      };
+    });
+
+    setActiveDragId(null);
+    lastClickedIndexRef.current = null;
+  }, []);
+
+  const getSortValue = useCallback(
+    (reteta, key) => {
+      if (String(key || "").startsWith("dynamic_")) {
+        const columnId = String(key).replace("dynamic_", "");
+        const col = dynamicColumns.find((item) => String(item.id) === String(columnId));
+        const coloaneValori = normalizeColoaneValori(reteta?.coloane_valori);
+        return col ? getColoanaValue(coloaneValori, col) : "";
+      }
+
+      if (key === "cod") return reteta?.cod_reteta || "";
+      if (key === "clasa") return reteta?.clasa_reteta || "";
+      if (key === "denumire") return displayLang === "FR" ? reteta?.denumire_fr || reteta?.denumire || "" : reteta?.denumire || reteta?.denumire_fr || "";
+      if (key === "cost") return getRetetaCost(reteta);
+      if (key === "cantitate") return Number(reteta?.cantitate_lucrare || 0);
+      if (key === "costTotal") return getRetetaTotalLucrare(reteta);
+
+      return "";
+    },
+    [displayLang, dynamicColumns],
+  );
+
+  const searchedRetete = useMemo(() => {
+    if (!normalizedSearchQuery) return orderedRetete;
+
+    return orderedRetete.filter((reteta) => {
+      const coloaneValori = normalizeColoaneValori(reteta?.coloane_valori);
+      const values = [reteta?.cod_reteta, reteta?.clasa_reteta, reteta?.denumire, reteta?.denumire_fr, ...dynamicColumns.map((col) => getColoanaValue(coloaneValori, col))];
+
+      return values.some((value) => normalizeSearchText(value).includes(normalizedSearchQuery));
+    });
+  }, [dynamicColumns, normalizedSearchQuery, orderedRetete]);
+
+  const sortedRetete = useMemo(() => {
+    if (!sortConfig?.key) return searchedRetete;
+
+    const directionMultiplier = sortConfig.direction === "desc" ? -1 : 1;
+
+    return [...searchedRetete].sort((a, b) => {
+      const aValue = getSortValue(a, sortConfig.key);
+      const bValue = getSortValue(b, sortConfig.key);
+      const aNumber = typeof aValue === "number" ? aValue : Number(String(aValue || "").replace(",", "."));
+      const bNumber = typeof bValue === "number" ? bValue : Number(String(bValue || "").replace(",", "."));
+      const bothNumeric = Number.isFinite(aNumber) && Number.isFinite(bNumber) && String(aValue ?? "").trim() !== "" && String(bValue ?? "").trim() !== "";
+
+      if (bothNumeric) {
+        return (aNumber - bNumber) * directionMultiplier;
+      }
+
+      return String(aValue || "").localeCompare(String(bValue || ""), "ro", { numeric: true, sensitivity: "base" }) * directionMultiplier;
+    });
+  }, [getSortValue, searchedRetete, sortConfig]);
+
+  const reteteForSelection = useMemo(() => {
+    return buildDisplayRowsWithCategories({
+      retete: sortedRetete,
+      expandedRetetaIds: new Set(),
+      categoryConfig: normalizedCategoryConfig,
+      dynamicColumns,
+      displayLang,
+    })
+      .filter((row) => row.type === "reteta")
+      .map((row) => row.reteta);
+  }, [displayLang, dynamicColumns, normalizedCategoryConfig, sortedRetete]);
 
   useEffect(() => {
     setOrderedRetete(reteteItems || []);
@@ -713,15 +932,15 @@ const OferteReteteList = memo(function OferteReteteList({
 
   const getRetetaIndex = useCallback(
     (reteta) => {
-      return orderedRetete.findIndex((item) => Number(item.id) === Number(reteta.id));
+      return reteteForSelection.findIndex((item) => Number(item.id) === Number(reteta.id));
     },
-    [orderedRetete],
+    [reteteForSelection],
   );
 
   const getSelectedRetete = useCallback(() => {
     const selectedSet = new Set(selectedIds.map(toId));
-    return orderedRetete.filter((item) => selectedSet.has(toId(item.id)));
-  }, [orderedRetete, selectedIds]);
+    return reteteForSelection.filter((item) => selectedSet.has(toId(item.id)));
+  }, [reteteForSelection, selectedIds]);
 
   const handleRowContextMenu = useCallback(
     (reteta) => {
@@ -741,9 +960,27 @@ const OferteReteteList = memo(function OferteReteteList({
 
   const handleScroll = (e) => {
     if (e.target) {
-      scrollPosRef.current = e.target.scrollTop;
+      const nextTop = e.target.scrollTop;
+      scrollPosRef.current = nextTop;
+
+      if (scrollFrameRef.current) {
+        window.cancelAnimationFrame(scrollFrameRef.current);
+      }
+
+      scrollFrameRef.current = window.requestAnimationFrame(() => {
+        scrollFrameRef.current = null;
+        setCategoryScrollTop(nextTop);
+      });
     }
   };
+
+  useEffect(() => {
+    return () => {
+      if (scrollFrameRef.current) {
+        window.cancelAnimationFrame(scrollFrameRef.current);
+      }
+    };
+  }, []);
 
   useLayoutEffect(() => {
     if (containerRef.current) {
@@ -813,7 +1050,7 @@ const OferteReteteList = memo(function OferteReteteList({
         e.preventDefault();
         window.getSelection()?.removeAllRanges();
 
-        const rangeIds = getRangeIds(orderedRetete, lastClickedIndexRef.current, currentIndex);
+        const rangeIds = getRangeIds(reteteForSelection, lastClickedIndexRef.current, currentIndex);
 
         setSelectedIds(rangeIds);
         return;
@@ -836,7 +1073,7 @@ const OferteReteteList = memo(function OferteReteteList({
 
       toggleRetetaExpand(reteta);
     },
-    [orderedRetete, getRetetaIndex, toggleRetetaExpand],
+    [reteteForSelection, getRetetaIndex, toggleRetetaExpand],
   );
 
   const handleDuplicate = useCallback((items) => {
@@ -934,7 +1171,22 @@ const OferteReteteList = memo(function OferteReteteList({
 
   const handleDragStart = useCallback(
     (event) => {
+      if (isRowOrderLocked) return;
+
       const id = toId(event.active.id);
+      const activeRow = getDisplayRowByDragId(displayRowsRef.current, id);
+
+      if (!activeRow) return;
+
+      if (activeRow.type === "category") {
+        wasDraggingRef.current = true;
+        setActiveDragId(id);
+        lastClickedIndexRef.current = null;
+        return;
+      }
+
+      if (activeRow.type !== "reteta") return;
+
       const currentIndex = orderedRetete.findIndex((item) => toId(item.id) === id);
 
       wasDraggingRef.current = true;
@@ -949,7 +1201,7 @@ const OferteReteteList = memo(function OferteReteteList({
         lastClickedIndexRef.current = currentIndex;
       }
     },
-    [orderedRetete],
+    [isRowOrderLocked, orderedRetete],
   );
 
   const handleDragCancel = useCallback(() => {
@@ -962,6 +1214,11 @@ const OferteReteteList = memo(function OferteReteteList({
 
   const handleDragEnd = useCallback(
     async (event) => {
+      if (isRowOrderLocked) {
+        setActiveDragId(null);
+        return;
+      }
+
       const activeId = event.active?.id;
       const overId = event.over?.id;
 
@@ -973,12 +1230,80 @@ const OferteReteteList = memo(function OferteReteteList({
 
       if (!activeId || !overId || toId(activeId) === toId(overId)) return;
 
-      const next = reorderSelectedBlock({
-        items: orderedRetete,
-        selectedIds,
-        activeId,
-        overId,
-      });
+      const activeRow = getDisplayRowByDragId(displayRowsRef.current, activeId);
+      const overRow = getDisplayRowByDragId(displayRowsRef.current, overId);
+
+      if (!activeRow || !overRow) return;
+
+      let next = null;
+
+      if (isCategoryActive) {
+        if (activeRow.type === "reteta") {
+          if (overRow.type !== "reteta" || !pathsEqual(activeRow.categoryPath, overRow.categoryPath)) {
+            toast.warning("Poți muta rețete doar în aceeași categorie.", { position: "top-right" });
+            return;
+          }
+
+          const activeRetetaId = toId(activeRow.reteta.id);
+          const selectedSet = new Set(selectedIds.map(toId));
+          const movingIds = selectedSet.has(activeRetetaId) ? selectedIds.map(toId) : [activeRetetaId];
+          const sameCategory = movingIds.every((id) => {
+            const row = getDisplayRowByDragId(displayRowsRef.current, id);
+            return row?.type === "reteta" && pathsEqual(row.categoryPath, activeRow.categoryPath);
+          });
+
+          if (!sameCategory) {
+            toast.warning("Selecția trebuie să fie în aceeași categorie.", { position: "top-right" });
+            return;
+          }
+
+          next = reorderSelectedBlock({
+            items: orderedRetete,
+            selectedIds: movingIds,
+            activeId: activeRetetaId,
+            overId: toId(overRow.reteta.id),
+          });
+        } else if (activeRow.type === "category") {
+          if (overRow.type !== "category" || activeRow.level !== overRow.level || !pathsEqual(activeRow.parentPath, overRow.parentPath)) {
+            toast.warning("Poți muta categorii doar între categorii de același nivel.", { position: "top-right" });
+            return;
+          }
+
+          if (pathsEqual(activeRow.categoryPath, overRow.categoryPath)) return;
+
+          const rows = displayRowsRef.current;
+          const getRetetaPath = (reteta) => getDisplayRowByDragId(rows, toId(reteta.id))?.categoryPath || [];
+          const activeItems = orderedRetete.filter((reteta) => pathStartsWith(getRetetaPath(reteta), activeRow.categoryPath));
+          const overItems = orderedRetete.filter((reteta) => pathStartsWith(getRetetaPath(reteta), overRow.categoryPath));
+
+          if (activeItems.length === 0 || overItems.length === 0) return;
+
+          const activeIds = new Set(activeItems.map((reteta) => toId(reteta.id)));
+          const overIds = new Set(overItems.map((reteta) => toId(reteta.id)));
+          const activeIndex = orderedRetete.findIndex((reteta) => activeIds.has(toId(reteta.id)));
+          const overIndex = orderedRetete.findIndex((reteta) => overIds.has(toId(reteta.id)));
+          const remainingItems = orderedRetete.filter((reteta) => !activeIds.has(toId(reteta.id)));
+
+          let insertIndex = remainingItems.findIndex((reteta) => overIds.has(toId(reteta.id)));
+
+          if (insertIndex === -1) return;
+
+          if (overIndex > activeIndex) {
+            insertIndex += remainingItems.filter((reteta) => overIds.has(toId(reteta.id))).length;
+          }
+
+          next = [...remainingItems.slice(0, insertIndex), ...activeItems, ...remainingItems.slice(insertIndex)];
+        }
+      } else if (activeRow.type === "reteta" && overRow.type === "reteta") {
+        next = reorderSelectedBlock({
+          items: orderedRetete,
+          selectedIds,
+          activeId,
+          overId,
+        });
+      }
+
+      if (!next) return;
 
       const oldOrder = orderedRetete.map((item) => toId(item.id)).join(",");
       const newOrder = next.map((item) => toId(item.id)).join(",");
@@ -997,7 +1322,7 @@ const OferteReteteList = memo(function OferteReteteList({
         toast.error(err?.response?.data?.message || "Eroare la reordonarea rețetelor.");
       }
     },
-    [orderedRetete, selectedIds, onReorderRetete, selectedLucrare?.id],
+    [isCategoryActive, isRowOrderLocked, orderedRetete, selectedIds, onReorderRetete, selectedLucrare?.id],
   );
 
   const onConfirmDuplicate = useCallback(
@@ -1028,46 +1353,54 @@ const OferteReteteList = memo(function OferteReteteList({
   );
 
   const displayRows = useMemo(() => {
-    const rows = [];
-
-    orderedRetete.forEach((reteta) => {
-      const retetaId = toId(reteta.id);
-
-      rows.push({
-        id: `reteta-${retetaId}`,
-        type: "reteta",
-        reteta,
-      });
-
-      if (expandedRetetaIds.has(retetaId)) {
-        const elemente = reteta.elemente || [];
-
-        if (elemente.length === 0) {
-          rows.push({
-            id: `empty-${retetaId}`,
-            type: "empty",
-            reteta,
-          });
-
-          return;
-        }
-
-        elemente.forEach((element) => {
-          rows.push({
-            id: `element-${retetaId}-${element.id}`,
-            type: "element",
-            reteta,
-            element,
-          });
-        });
-      }
+    return buildDisplayRowsWithCategories({
+      retete: sortedRetete,
+      expandedRetetaIds,
+      categoryConfig: normalizedCategoryConfig,
+      dynamicColumns,
+      displayLang,
     });
+  }, [displayLang, dynamicColumns, expandedRetetaIds, normalizedCategoryConfig, sortedRetete]);
 
-    return rows;
-  }, [orderedRetete, expandedRetetaIds]);
+  displayRowsRef.current = displayRows;
+
+  const sortableItemIds = useMemo(() => {
+    return displayRows
+      .filter((row) => row.type === "reteta" || row.type === "category")
+      .map(getDragIdForRow)
+      .filter(Boolean);
+  }, [displayRows]);
+
+  const activeDragRow = useMemo(() => {
+    if (!activeDragId) return null;
+    return getDisplayRowByDragId(displayRows, activeDragId);
+  }, [activeDragId, displayRows]);
+
+  const activeCategoryRows = useMemo(() => {
+    if (!isCategoryActive) return [];
+
+    const byLevel = [];
+    let offset = 0;
+
+    for (const row of displayRows) {
+      if (offset > categoryScrollTop) break;
+
+      const rowHeight = getEstimatedDisplayRowHeight(row);
+
+      if (row.type === "category" && offset + rowHeight <= categoryScrollTop) {
+        const levelIndex = Math.max(0, Number(row.level || 1) - 1);
+        byLevel[levelIndex] = row;
+        byLevel.length = levelIndex + 1;
+      }
+
+      offset += rowHeight;
+    }
+
+    return byLevel.filter(Boolean);
+  }, [categoryScrollTop, displayRows, isCategoryActive]);
 
   const visibleTableColumnCount = useMemo(() => {
-    let count = 0;
+    let count = 1;
 
     if (showCol("elemente")) count += 1;
     if (showCol("poza")) count += 1;
@@ -1092,8 +1425,10 @@ const OferteReteteList = memo(function OferteReteteList({
   const context = useMemo(() => {
     return {
       displayRows,
-      reteteItems: orderedRetete,
+      reteteItems: sortedRetete,
       selectedIds,
+      isSortActive,
+      isRowOrderLocked,
       expandedRetetaIds,
       toggleRetetaExpand,
       handleRowClick,
@@ -1108,8 +1443,10 @@ const OferteReteteList = memo(function OferteReteteList({
     };
   }, [
     displayRows,
-    orderedRetete,
+    sortedRetete,
     selectedIds,
+    isSortActive,
+    isRowOrderLocked,
     expandedRetetaIds,
     toggleRetetaExpand,
     handleRowClick,
@@ -1123,11 +1460,37 @@ const OferteReteteList = memo(function OferteReteteList({
     handleActualizeaza,
   ]);
 
+  const renderSortHeaderContent = useCallback(
+    (sortKey, content, align = "center") => {
+      const active = sortConfig?.key === sortKey;
+      const icon = !active ? faSort : sortConfig.direction === "asc" ? faSortDown : faSortUp;
+      const justifyClass = align === "left" ? "justify-start text-left" : "justify-center text-center";
+
+      return (
+        <button
+          data-no-row-open
+          type="button"
+          className={`flex h-full w-full min-w-0 items-center  gap-1.5  px-1.5 py-1 text-sm font-black text-foreground transition-colors hover:bg-background/15 ${justifyClass}`}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleSortColumn(sortKey);
+          }}
+        >
+          <span className="min-w-0 flex-1 overflow-hidden">{content}</span>
+          <FontAwesomeIcon className={`shrink-0 text-base ${active ? "!text-[#facc15] dark:!text-[#b7791f]" : "!text-white dark:!text-[#050507] [.blue_&]:!text-white"}`} icon={icon} />
+        </button>
+      );
+    },
+    [handleSortColumn, sortConfig],
+  );
+
   return (
     <div className="rounded-md border bg-card w-full h-full overflow-hidden relative flex flex-col text-sm text-foreground">
       <div ref={containerRef} onScroll={handleScroll} className="flex-1 min-h-0 overflow-auto relative">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragCancel={handleDragCancel} onDragEnd={handleDragEnd}>
-          <SortableContext items={orderedRetete.map((item) => toId(item.id))} strategy={verticalListSortingStrategy}>
+          <SortableContext items={sortableItemIds} strategy={verticalListSortingStrategy}>
             <TableVirtuoso
               customScrollParent={containerRef.current}
               overscan={10}
@@ -1137,13 +1500,20 @@ const OferteReteteList = memo(function OferteReteteList({
               components={componentsOferteRetete}
               context={context}
               fixedHeaderContent={() => (
-                <TableRow className="h-9 oferta-table-header-row ">
+                <TableRow className="h-9 !bg-[#2b2b31] hover:!bg-[#2b2b31] dark:!bg-[#eeeeef] dark:hover:!bg-[#eeeeef] [.blue_&]:!bg-[#191c20] [.blue_&:hover]:!bg-[#191c20] [&>th]:!border-0 [&>th]:!bg-[#2b2b31] [&>th]:!text-white dark:[&>th]:!bg-[#eeeeef] dark:[&>th]:!text-[#050507] [.blue_&>th]:!bg-[#191c20] [.blue_&>th]:!text-white [&>th]:shadow-[inset_-1px_0_0_#6f6f78,inset_0_-1px_0_#6f6f78] dark:[&>th]:shadow-[inset_-1px_0_0_#60696c,inset_0_-1px_0_#60696c] [.blue_&>th]:shadow-[inset_-1px_0_0_#36506b,inset_0_-1px_0_#36506b] [&_button]:!text-white [&_div]:!text-white [&_span]:!text-white dark:[&_button]:!text-[#050507] dark:[&_div]:!text-[#050507] dark:[&_span]:!text-[#050507]">
+                  <ResizableTableHead
+                    colKey="tree"
+                    style={getColumnStyle("tree")}
+                    onResizeStart={handleColumnResizeStart}
+                    className="relative h-9 border-r border-b border-border text-center align-middle text-sm font-bold text-foreground"
+                  />
+
                   {showCol("elemente") && (
                     <ResizableTableHead
                       colKey="elemente"
                       style={getColumnStyle("elemente")}
                       onResizeStart={handleColumnResizeStart}
-                      className="relative h-9 p-1 text-center align-middle text-sm font-bold text-foreground"
+                      className="relative h-9 border-l border-r border-b border-border  text-center align-middle text-sm font-bold text-foreground"
                     >
                       Tip
                     </ResizableTableHead>
@@ -1154,7 +1524,7 @@ const OferteReteteList = memo(function OferteReteteList({
                       colKey="poza"
                       style={getColumnStyle("poza")}
                       onResizeStart={handleColumnResizeStart}
-                      className="relative h-9 p-1 text-center align-middle text-sm font-bold text-foreground"
+                      className="relative h-9 border-r border-b border-border  text-center align-middle text-sm font-bold text-foreground"
                     >
                       Poza
                     </ResizableTableHead>
@@ -1167,9 +1537,9 @@ const OferteReteteList = memo(function OferteReteteList({
                         colKey={`dynamic_${col.id}`}
                         style={getColumnStyle(`dynamic_${col.id}`)}
                         onResizeStart={handleColumnResizeStart}
-                        className="relative h-9 p-1 text-center align-middle text-sm font-bold text-foreground"
+                        className="relative h-9 border-r border-b border-border w-full  text-center align-middle text-sm font-bold text-foreground"
                       >
-                        <OverflowTooltip text={col.nume} align="center" className="font-bold text-center text-foreground" maxLines={1} textSize="sm" />
+                        {renderSortHeaderContent(`dynamic_${col.id}`, <OverflowTooltip text={col.nume} align="center" className="font-bold text-center text-foreground" maxLines={1} textSize="sm" />)}
                       </ResizableTableHead>
                     ) : null,
                   )}
@@ -1179,9 +1549,9 @@ const OferteReteteList = memo(function OferteReteteList({
                       colKey="cod"
                       style={getColumnStyle("cod")}
                       onResizeStart={handleColumnResizeStart}
-                      className="relative h-9 p-1 text-center align-middle text-sm font-bold text-foreground"
+                      className="relative h-9 border-r border-b border-border  text-center align-middle text-sm font-bold text-foreground"
                     >
-                      Cod
+                      {renderSortHeaderContent("cod", "Cod")}
                     </ResizableTableHead>
                   )}
 
@@ -1190,9 +1560,9 @@ const OferteReteteList = memo(function OferteReteteList({
                       colKey="clasa"
                       style={getColumnStyle("clasa")}
                       onResizeStart={handleColumnResizeStart}
-                      className="relative h-9 p-1 text-center align-middle text-sm font-bold text-foreground"
+                      className="relative h-9 border-r border-b border-border  text-center align-middle text-sm font-bold text-foreground"
                     >
-                      Clasa
+                      {renderSortHeaderContent("clasa", "Clasa")}
                     </ResizableTableHead>
                   )}
 
@@ -1201,9 +1571,9 @@ const OferteReteteList = memo(function OferteReteteList({
                       colKey="denumire"
                       style={getColumnStyle("denumire")}
                       onResizeStart={handleColumnResizeStart}
-                      className="relative h-9 p-1 text-left align-middle text-sm font-bold text-foreground"
+                      className="relative h-9 border-r border-b border-border  text-left align-middle text-sm font-bold text-foreground"
                     >
-                      Denumire
+                      {renderSortHeaderContent("denumire", "Denumire", "left")}
                     </ResizableTableHead>
                   )}
 
@@ -1212,7 +1582,7 @@ const OferteReteteList = memo(function OferteReteteList({
                       colKey="descriere"
                       style={getColumnStyle("descriere")}
                       onResizeStart={handleColumnResizeStart}
-                      className="relative h-9 p-1 text-left align-middle text-sm font-bold text-foreground"
+                      className="relative h-9 border-r border-b border-border  text-left align-middle text-sm font-bold text-foreground"
                     >
                       Descriere
                     </ResizableTableHead>
@@ -1223,7 +1593,7 @@ const OferteReteteList = memo(function OferteReteteList({
                       colKey="unitate"
                       style={getColumnStyle("unitate")}
                       onResizeStart={handleColumnResizeStart}
-                      className="relative h-9 p-1 text-center align-middle text-sm font-bold text-foreground"
+                      className="relative h-9 border-r border-b border-border  text-center align-middle text-sm font-bold text-foreground"
                     >
                       U.M.
                     </ResizableTableHead>
@@ -1234,9 +1604,9 @@ const OferteReteteList = memo(function OferteReteteList({
                       colKey="cost"
                       style={getColumnStyle("cost")}
                       onResizeStart={handleColumnResizeStart}
-                      className="relative h-9 p-1 text-center align-middle text-sm font-bold text-foreground"
+                      className="relative h-9 border-r border-b border-border text-center align-middle text-sm font-bold text-foreground"
                     >
-                      Cost
+                      {renderSortHeaderContent("cost", "Cost")}
                     </ResizableTableHead>
                   )}
 
@@ -1245,9 +1615,9 @@ const OferteReteteList = memo(function OferteReteteList({
                       colKey="cantitate"
                       style={getColumnStyle("cantitate")}
                       onResizeStart={handleColumnResizeStart}
-                      className="relative h-9 p-1 text-center align-middle text-sm font-bold text-foreground"
+                      className="relative h-9 border-r border-b border-border  text-center align-middle text-sm font-bold text-foreground"
                     >
-                      Qty
+                      {renderSortHeaderContent("cantitate", "Qty")}
                     </ResizableTableHead>
                   )}
 
@@ -1256,9 +1626,9 @@ const OferteReteteList = memo(function OferteReteteList({
                       colKey="costTotal"
                       style={getColumnStyle("costTotal")}
                       onResizeStart={handleColumnResizeStart}
-                      className="relative h-9 p-1 text-center align-middle text-sm font-bold text-foreground"
+                      className="relative h-9 border-r border-b border-border  text-center align-middle text-sm font-bold text-foreground"
                     >
-                      Total
+                      {renderSortHeaderContent("costTotal", "Total")}
                     </ResizableTableHead>
                   )}
 
@@ -1267,7 +1637,7 @@ const OferteReteteList = memo(function OferteReteteList({
                       colKey="creat"
                       style={getColumnStyle("creat")}
                       onResizeStart={handleColumnResizeStart}
-                      className="relative h-9 p-1 text-left align-middle text-sm font-bold text-foreground"
+                      className="relative h-9 border-r border-b border-border  text-left align-middle text-sm font-bold text-foreground"
                     >
                       Creat
                     </ResizableTableHead>
@@ -1278,7 +1648,7 @@ const OferteReteteList = memo(function OferteReteteList({
                       colKey="actualizat"
                       style={getColumnStyle("actualizat")}
                       onResizeStart={handleColumnResizeStart}
-                      className="relative h-9 p-1 text-left align-middle text-sm font-bold text-foreground"
+                      className="relative h-9 border-r border-b border-border  text-left align-middle text-sm font-bold text-foreground"
                     >
                       Actualizat
                     </ResizableTableHead>
@@ -1289,7 +1659,7 @@ const OferteReteteList = memo(function OferteReteteList({
                       colKey="info"
                       style={getColumnStyle("info")}
                       onResizeStart={handleColumnResizeStart}
-                      className="relative h-9 p-1 text-center align-middle text-sm font-bold text-foreground"
+                      className="relative h-9 border-r border-b border-border  text-center align-middle text-sm font-bold text-foreground"
                     >
                       Info
                     </ResizableTableHead>
@@ -1300,6 +1670,30 @@ const OferteReteteList = memo(function OferteReteteList({
                 const rowItem = displayRows[index];
 
                 if (!rowItem) return null;
+
+                if (rowItem.type === "category") {
+                  const level = Number(rowItem.level || 1);
+
+                  return (
+                    <TableCell
+                      colSpan={visibleTableColumnCount || 1}
+                      style={{
+                        paddingLeft: `${0.75 + (level - 1) * 1.25}rem`,
+                      }}
+                      className="h-10 border-b border-border bg-[#c4c4ce] py-0 pr-3 align-middle shadow-sm dark:bg-[#34363d] dark:text-foreground dark:[&_*]:!text-foreground [.blue_&]:bg-[#22262b]"
+                    >
+                      <div className="flex h-full min-w-0 items-center gap-2">
+                        <span className="shrink-0 rounded-md border border-border bg-background/70 px-2.5 py-1 text-sm font-black uppercase tracking-wide text-foreground">Nivel {level}</span>
+
+                        <span className="min-w-0 flex-1 truncate text-base font-black text-foreground">{rowItem.value}</span>
+
+                        <span className="shrink-0 rounded-md border border-border bg-background/70 px-2.5 py-1 text-sm font-bold text-foreground">
+                          {rowItem.count} {rowItem.count === 1 ? "rețetă" : "rețete"}
+                        </span>
+                      </div>
+                    </TableCell>
+                  );
+                }
 
                 if (rowItem.type === "empty") {
                   return (
@@ -1318,6 +1712,7 @@ const OferteReteteList = memo(function OferteReteteList({
                       dynamicColumns={dynamicColumns}
                       showCol={showCol}
                       getColumnStyle={getColumnStyle}
+                      isLastElement={rowItem.isLastElement}
                     />
                   );
                 }
@@ -1331,16 +1726,18 @@ const OferteReteteList = memo(function OferteReteteList({
                 const costReteta = getRetetaCost(reteta);
                 const costTotalLucrare = getRetetaTotalLucrare(reteta);
                 const isExpanded = expandedRetetaIds.has(toId(reteta.id));
+                const treeStyle = getColumnStyle("tree");
+                const tipStyle = getColumnStyle("elemente");
 
                 return (
                   <>
-                    {showCol("elemente") && (
-                      <TableCell style={getColumnStyle("elemente")} className="border-r border-border p-1 text-center  text-sky-600 align-middle text-sm">
-                        <div className="inline-flex h-full w-full items-center justify-center leading-none">
-                          <FontAwesomeIcon icon={isExpanded ? faFolderOpen : faFolder} className="text-base" />
-                        </div>
-                      </TableCell>
-                    )}
+                    <TableCell style={treeStyle} className="border-0 p-1 text-center text-sky-600 align-middle text-sm">
+                      <div className="flex h-full w-full items-center justify-center leading-none">
+                        <FontAwesomeIcon icon={isExpanded ? faFolderOpen : faFolder} className="text-lg" />
+                      </div>
+                    </TableCell>
+
+                    {showCol("elemente") && <TableCell style={tipStyle} className="border-l border-r border-border p-0 align-middle" />}
 
                     {showCol("poza") && (
                       <TableCell style={getColumnStyle("poza")} className="border-r border-border p-1 text-center align-middle text-sm">
@@ -1497,12 +1894,42 @@ const OferteReteteList = memo(function OferteReteteList({
           <DragOverlay>
             {activeDragId ? (
               <div className="rounded-md border bg-card p-3 shadow-xl text-sm font-bold text-foreground">
-                Muți {selectedIds.includes(activeDragId) && selectedIds.length > 1 ? `${selectedIds.length} rețete` : "1 rețetă"}
+                {activeDragRow?.type === "category"
+                  ? `Muți categoria ${activeDragRow.value}`
+                  : `Muți ${selectedIds.includes(activeDragId) && selectedIds.length > 1 ? `${selectedIds.length} rețete` : "1 rețetă"}`}
               </div>
             ) : null}
           </DragOverlay>
         </DndContext>
       </div>
+
+      {activeCategoryRows.length > 0 && (
+        <div className="pointer-events-none absolute left-0 right-4 top-9 z-30">
+          {activeCategoryRows.map((row) => {
+            const level = Number(row.level || 1);
+
+            return (
+              <div
+                key={`sticky-${row.id}`}
+                style={{
+                  paddingLeft: `${0.75 + (level - 1) * 1.25}rem`,
+                }}
+                className="flex h-10 items-center border-b border-border bg-[#c4c4ce] py-0 pr-3 shadow-sm dark:bg-[#34363d] dark:text-foreground dark:[&_*]:!text-foreground [.blue_&]:bg-[#22262b]"
+              >
+                <div className="flex min-w-0 flex-1 items-center gap-2">
+                  <span className="shrink-0 rounded-md border border-border bg-background/70 px-2.5 py-1 text-sm font-black uppercase tracking-wide text-foreground">Nivel {level}</span>
+
+                  <span className="min-w-0 flex-1 truncate text-base font-black text-foreground">{row.value}</span>
+
+                  <span className="shrink-0 rounded-md border border-border bg-background/70 px-2.5 py-1 text-sm font-bold text-foreground">
+                    {row.count} {row.count === 1 ? "rețetă" : "rețete"}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <div className="shrink-0 border-t p-2">
         <div className="flex flex-wrap relative h-full items-stretch gap-1.5">
@@ -1532,7 +1959,7 @@ const OferteReteteList = memo(function OferteReteteList({
 
           <SummaryBox label="Recapitulatii">
             <div className="flex items-center gap-1.5">
-              <inputs
+              <input
                 value={extraPercent}
                 onChange={handleExtraPercentChange}
                 className="h-6 w-12 rounded-md border bg-background p-1 text-center text-sm font-black text-foreground outline-none"
@@ -1571,6 +1998,13 @@ const OferteReteteList = memo(function OferteReteteList({
           <div className="flex items-center justify-center text-sm font-black text-muted-foreground">=</div>
 
           <SummaryBox label="Total final" value={totals.totalFinal} strong />
+
+          <div className="ml-auto flex shrink-0 items-stretch">
+            <Button type="button" onClick={() => setExportPdfOpen(true)} className="h-full min-h-[3.5rem] gap-2 px-4 text-sm font-black text-white">
+              <FontAwesomeIcon icon={faFilePdf} />
+              Export PDF
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -1598,6 +2032,8 @@ const OferteReteteList = memo(function OferteReteteList({
       <OferteFurnizoriDialog open={furnizoriOpen} setOpen={setFurnizoriOpen} retete={furnizoriItems} onLoadFurnizori={onLoadFurnizoriRetete} onConfirm={onConfirmFurnizori} />
 
       <OferteActualizeazaReteteDialog open={actualizeazaOpen} setOpen={setActualizeazaOpen} retete={actualizeazaItems} onConfirm={onConfirmActualizeaza} />
+
+      <OferteExportPdfDialog open={exportPdfOpen} setOpen={setExportPdfOpen} />
     </div>
   );
 });

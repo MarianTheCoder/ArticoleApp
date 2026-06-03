@@ -89,7 +89,7 @@ body {
   --destructive-foreground: 210 40% 98%;
 
   /* borders/inputs darker to match darker background */
-  --border: 240 6% 65%;
+  --border: 240 6% 45%;
   --input: 240 6% 55%;
 
   /* keep ring (unchanged) */
@@ -212,7 +212,7 @@ body {
   --accent-foreground: 180 0% 98%;
   --destructive: 10 90% 63%;
   --destructive-foreground: 210 40% 98%;
-  --border: 197 6% 35%;
+  --border: 197 6% 40%;
   --input: 197 6% 48%;
   --ring: 225.3 84% 36%;
   --chart-1: 222.1 89.9% 73%;

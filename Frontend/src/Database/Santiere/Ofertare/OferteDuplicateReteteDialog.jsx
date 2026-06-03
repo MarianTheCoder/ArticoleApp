@@ -37,27 +37,40 @@ const normalizeColoaneValori = (value) => {
   if (Array.isArray(parsed)) {
     return parsed
       .map((item) => ({
+        id: item?.id ? String(item.id) : "",
         name: String(item?.name || item?.nume || "").trim(),
-        value: String(item?.value || "").trim(),
+        value: String(item?.value ?? "").trim(),
       }))
-      .filter((item) => item.name);
+      .filter((item) => item.id || item.name);
   }
 
   if (parsed && typeof parsed === "object") {
-    return Object.values(parsed)
-      .map((item) => {
+    return Object.entries(parsed)
+      .map(([key, item]) => {
         if (!item || typeof item !== "object") return null;
 
         return {
+          id: item.id ? String(item.id) : String(key || ""),
           name: String(item.name || item.nume || "").trim(),
-          value: String(item.value || "").trim(),
+          value: String(item.value ?? "").trim(),
         };
       })
       .filter(Boolean)
-      .filter((item) => item.name);
+      .filter((item) => item.id || item.name);
   }
 
   return [];
+};
+
+const getColoanaValue = (coloaneValori, col) => {
+  const colId = col?.id ? String(col.id) : "";
+  const colName = String(col?.nume || col?.name || "").trim().toLowerCase();
+  const found = coloaneValori.find((item) => {
+    if (colId && item.id && String(item.id) === colId) return true;
+    return item.name && item.name.toLowerCase() === colName;
+  });
+
+  return found?.value || "";
 };
 
 const formatNumber = (value) => {
@@ -129,8 +142,7 @@ export default function OferteDuplicateReteteDialog({ open, setOpen, retete = []
         const coloaneMap = {};
 
         dynamicColumns.forEach((col) => {
-          const found = coloaneValori.find((item) => item.name.toLowerCase() === col.nume.toLowerCase());
-          coloaneMap[col.id] = found?.value || "";
+          coloaneMap[col.id] = getColoanaValue(coloaneValori, col);
         });
 
         return {
@@ -232,6 +244,7 @@ export default function OferteDuplicateReteteDialog({ open, setOpen, retete = []
         rewrite_costs: row.onlyDefinitions && row.rewriteCost,
         rewrite_quantities: row.onlyDefinitions && row.rewriteQuantity,
         coloane_valori: dynamicColumns.map((col) => ({
+          id: col.id,
           name: col.nume,
           value: String(row.coloaneMap?.[col.id] || "").trim(),
         })),
