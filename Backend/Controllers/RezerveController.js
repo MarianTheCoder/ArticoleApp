@@ -774,7 +774,7 @@ const comentariiGET = async (req, res) => {
 
     return res.json({ comments });
   } catch (err) {
-    console.error("GET comments error:", err);
+    console.log("GET comments error:", err);
     return res.status(500).json({ error: "Database error" });
   }
 };
@@ -1383,7 +1383,7 @@ const deletePin = async (req, res) => {
         await conn.rollback();
       } catch {}
     }
-    console.error("DELETE pin error:", err);
+    console.log("DELETE pin error:", err);
     return res.status(500).json({ error: "Database error" });
   } finally {
     if (conn) conn.release?.();
@@ -1612,7 +1612,7 @@ const zonesGET = async (req, res) => {
       patterns,
     });
   } catch (err) {
-    console.error("getPatternsForPlan error:", err);
+    console.log("getPatternsForPlan error:", err);
     res.status(500).json({ error: "Server error fetching patterns" });
   } finally {
     conn.release();
@@ -1733,7 +1733,7 @@ const specificZoneGET = async (req, res) => {
       zones,
     });
   } catch (err) {
-    console.error("specificZoneGET error:", err);
+    console.log("specificZoneGET error:", err);
     res.status(500).json({ error: "Server error fetching specific pattern & zones" });
   } finally {
     conn.release();

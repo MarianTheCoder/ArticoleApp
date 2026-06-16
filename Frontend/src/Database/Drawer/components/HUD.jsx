@@ -21,44 +21,44 @@ export default function HUD({ plan, cursorImagePoint, tool, pipeWidthPx, metersP
 
       <div className="grid grid-cols-[120px_1fr] gap-x-3 gap-y-1">
         <span className="text-slate-400">Plan px</span>
-        <span className="font-mono">
+        <span className="">
           {plan?.width_px} × {plan?.height_px}
         </span>
 
         <span className="text-slate-400">Scale</span>
-        <span className="font-mono">{plan?.scale_label || "—"}</span>
+        <span className="">{plan?.scale_label || "—"}</span>
 
         <span className="text-slate-400">meters/px</span>
-        <span className="font-mono">{metersPerPx || "—"}</span>
+        <span className="">{metersPerPx || "—"}</span>
 
         <span className="text-slate-400">Cursor image</span>
-        <span className="font-mono">{cursorImagePoint ? `${cursorImagePoint.x.toFixed(2)}, ${cursorImagePoint.y.toFixed(2)}` : "—"}</span>
+        <span className="">{cursorImagePoint ? `${cursorImagePoint.x.toFixed(2)}, ${cursorImagePoint.y.toFixed(2)}` : "—"}</span>
 
         <span className="text-slate-400">Tool</span>
-        <span className="font-mono">
+        <span className="">
           {tool.mode} / DN {tool.dn}
         </span>
 
         <span className="text-slate-400">Pipe width</span>
-        <span className="font-mono">{formatPx(pipeWidthPx)}</span>
+        <span className="">{formatPx(pipeWidthPx)}</span>
 
         <span className="text-slate-400">Draft length</span>
-        <span className="font-mono">{draftMetrics ? `${formatMeters(draftMetrics.lengthM)} / ${formatPx(draftMetrics.lengthPx)}` : "—"}</span>
+        <span className="">{draftMetrics ? `${formatMeters(draftMetrics.lengthM)} / ${formatPx(draftMetrics.lengthPx)}` : "—"}</span>
 
         <span className="text-slate-400">Draft angle</span>
-        <span className="font-mono">{draftMetrics ? `${draftMetrics.angleDeg.toFixed(1)} deg` : "—"}</span>
+        <span className="">{draftMetrics ? `${draftMetrics.angleDeg.toFixed(1)} deg` : "—"}</span>
 
         <span className="text-slate-400">Items</span>
-        <span className="font-mono">{drawingState.itemIds.length}</span>
+        <span className="">{drawingState.itemIds.length}</span>
 
         <span className="text-slate-400">Connections</span>
-        <span className="font-mono">{drawingState.connectionIds.length}</span>
+        <span className="">{drawingState.connectionIds.length}</span>
 
         <span className="text-slate-400">Selected</span>
-        <span className="font-mono">{drawingState.selected?.itemId || "—"}</span>
+        <span className="">{drawingState.selected?.itemId || "—"}</span>
 
         <span className="text-slate-400">Last click</span>
-        <span className="font-mono">{drawingState.debug?.lastClick ? `${drawingState.debug.lastClick.x.toFixed(2)}, ${drawingState.debug.lastClick.y.toFixed(2)}` : "—"}</span>
+        <span className="">{drawingState.debug?.lastClick ? `${drawingState.debug.lastClick.x.toFixed(2)}, ${drawingState.debug.lastClick.y.toFixed(2)}` : "—"}</span>
       </div>
     </div>
   );

@@ -1,9 +1,4 @@
-import {
-  faArrowRightArrowLeft,
-  faCancel,
-  faL,
-  faPlus,
-} from "@fortawesome/free-solid-svg-icons";
+import { faArrowRightArrowLeft, faCancel, faL, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React, { useRef, useState } from "react";
 import api from "../../api/axiosAPI";
@@ -48,18 +43,9 @@ export default function MaterialeForm() {
     formDataSend.append("clasa_material", formData.clasa_material.trim());
     formDataSend.append("cod_definitie", formData.cod_definitie.trim());
     formDataSend.append("denumire", formData.denumire.trim());
-    formDataSend.append(
-      "denumire_fr",
-      formData.denumire_fr ? formData.denumire_fr.trim() : ""
-    );
-    formDataSend.append(
-      "descriere",
-      formData.descriere ? formData.descriere.trim() : ""
-    );
-    formDataSend.append(
-      "descriere_fr",
-      formData.descriere_fr ? formData.descriere_fr.trim() : ""
-    );
+    formDataSend.append("denumire_fr", formData.denumire_fr ? formData.denumire_fr.trim() : "");
+    formDataSend.append("descriere", formData.descriere ? formData.descriere.trim() : "");
+    formDataSend.append("descriere_fr", formData.descriere_fr ? formData.descriere_fr.trim() : "");
     formDataSend.append("poza", selectedFile);
     formDataSend.append("unitate_masura", formData.unitate_masura.trim());
     formDataSend.append("cost_unitar", formData.cost_unitar.trim());
@@ -80,9 +66,7 @@ export default function MaterialeForm() {
       formData.pret_vanzare.trim() === "" ||
       formData.tip_material.trim() === ""
     ) {
-      alert(
-        "Toate campurile sunt obligatorii (fara FR daca nu e selectata limba FR)"
-      );
+      alert("Toate campurile sunt obligatorii (fara FR daca nu e selectata limba FR)");
       return;
     }
     if (formData.limba === "FR" && formData.denumire_fr.trim() === "") {
@@ -95,15 +79,11 @@ export default function MaterialeForm() {
     }
     try {
       if (selectedEdit != null) {
-        await api.put(
-          `/Materiale/api/editMaterialDef/${selectedEdit}`,
-          formDataSend,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          }
-        );
+        await api.put(`/Materiale/api/editMaterialDef/${selectedEdit}`, formDataSend, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
         // console.log('Material edited');
         setSelectedEdit(null);
       } else {
@@ -133,7 +113,7 @@ export default function MaterialeForm() {
       setPreview(defaultPhoto);
       handleReload();
     } catch (error) {
-      console.error("Upload error:", error);
+      console.log("Upload error:", error);
     }
   };
 
@@ -223,14 +203,12 @@ export default function MaterialeForm() {
   const deleteRow = async (e) => {
     e.preventDefault();
     try {
-      const response = await api.delete(
-        `/Materiale/api/deleteMaterialDef/${selectedDelete}`
-      );
+      const response = await api.delete(`/Materiale/api/deleteMaterialDef/${selectedDelete}`);
       // console.log(response);
       setSelectedDelete(null);
       handleReload();
     } catch (error) {
-      console.error("Error deleting data:", error);
+      console.log("Error deleting data:", error);
     }
   };
 
@@ -265,26 +243,14 @@ export default function MaterialeForm() {
     <>
       <div className="w-full containerWhiter">
         <div className="flex justify-center items-center text-black  ">
-          <form
-            onSubmit={handleSubmit}
-            className="w-full text-sm xxxl:text-[0.8rem] p-4 py-2  rounded-lg shadow-xl"
-          >
+          <form onSubmit={handleSubmit} className="w-full text-sm xxxl:text-[0.8rem] p-4 py-2  rounded-lg shadow-xl">
             <div className="grid grid-cols-[auto_auto_auto_auto_auto_1fr_auto_auto_auto_auto_auto]  md:gap-2 xl:gap-3 items-center">
               {/* Limba Dropdown */}
               <div className="flex flex-col items-center">
-                <label
-                  htmlFor="unit"
-                  className="col-span-1 font-medium text-black"
-                >
+                <label htmlFor="unit" className="col-span-1 font-medium text-black">
                   Limbă
                 </label>
-                <select
-                  id="limba"
-                  name="limba"
-                  value={formData.limba}
-                  onChange={handleChange}
-                  className=" px-1 py-2 rounded-lg outline-none shadow-sm "
-                >
+                <select id="limba" name="limba" value={formData.limba} onChange={handleChange} className=" px-1 py-2 rounded-lg outline-none shadow-sm ">
                   <option value="RO">RO</option>
                   <option value="FR">FR</option>
                 </select>
@@ -302,21 +268,13 @@ export default function MaterialeForm() {
                     ></img>
                   </div>
 
-                  <input
-                    id="hiddenFileInput"
-                    type="file"
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
+                  <input id="hiddenFileInput" type="file" onChange={handleFileChange} className="hidden" />
                 </div>
               </div>
               {/* clasa materiale */}
               {formData.limba == "RO" ? (
                 <div className="flex flex-col items-center">
-                  <label
-                    htmlFor="unit"
-                    className="col-span-1 font-medium text-black"
-                  >
+                  <label htmlFor="unit" className="col-span-1 font-medium text-black">
                     Clasă
                   </label>
                   <select
@@ -329,9 +287,7 @@ export default function MaterialeForm() {
                     <option value="Organizare de șantier">Organizare de șantier</option>
                     <option value="Regie">Regie</option>
                     <option value="Dezafectare">Dezafectare</option>
-                    <option value="Pregătirea terenului prin terasamente (săpături, nivelări, umpluturi)">
-                      Pregătirea terenului prin terasamente (săpături, nivelări, umpluturi)
-                    </option>
+                    <option value="Pregătirea terenului prin terasamente (săpături, nivelări, umpluturi)">Pregătirea terenului prin terasamente (săpături, nivelări, umpluturi)</option>
                     <option value="Fundații">Fundații</option>
                     <option value="Subsol (Soubassement)">Subsol (Soubassement)</option>
                     <option value="Pereți portanți">Pereți portanți</option>
@@ -342,9 +298,7 @@ export default function MaterialeForm() {
                     <option value="Racordarea clădirilor la rețelele de alimentare cu apă, electricitate, gaz, telefonie, internet">
                       Racordarea clădirilor la rețelele de alimentare cu apă, electricitate, gaz, telefonie, internet
                     </option>
-                    <option value="Realizarea rețelelor de canalizare și evacuare a apelor uzate și pluviale">
-                      Realizarea rețelelor de canalizare și evacuare a apelor uzate și pluviale
-                    </option>
+                    <option value="Realizarea rețelelor de canalizare și evacuare a apelor uzate și pluviale">Realizarea rețelelor de canalizare și evacuare a apelor uzate și pluviale</option>
                     <option value="Amenajare spații verzi - peisagistică">Amenajare spații verzi - peisagistică</option>
                     <option value="Lucrări de șarpantă - bardaj și acoperiș">Lucrări de șarpantă - bardaj și acoperiș</option>
                     <option value="Lucrări de zincărie - Acoperiș">Lucrări de zincărie - Acoperiș</option>
@@ -355,30 +309,18 @@ export default function MaterialeForm() {
                     <option value="Instalații de ventilație">Instalații de ventilație</option>
                     <option value="Lucrări de climatizare">Lucrări de climatizare</option>
                     <option value="Instalații electrice">Instalații electrice</option>
-                    <option value="Lucrări de șarpantă și structuri verticale de lemn">
-                      Lucrări de șarpantă și structuri verticale de lemn
-                    </option>
+                    <option value="Lucrări de șarpantă și structuri verticale de lemn">Lucrări de șarpantă și structuri verticale de lemn</option>
                     <option value="Lucrări de tâmplărie exterioară">Lucrări de tâmplărie exterioară</option>
                     <option value="Lucrări de tâmplărie interioară">Lucrări de tâmplărie interioară</option>
                     <option value="Confecții metalice">Confecții metalice</option>
-                    <option value="Lucrări de tâmplărie: Storuri, obloane, placări exterioare">
-                      Lucrări de tâmplărie: Storuri, obloane, placări exterioare
-                    </option>
-                    <option value="Finisaje interioare - lucrări de ipsoserie și zugrăveli">
-                      Finisaje interioare - lucrări de ipsoserie și zugrăveli
-                    </option>
+                    <option value="Lucrări de tâmplărie: Storuri, obloane, placări exterioare">Lucrări de tâmplărie: Storuri, obloane, placări exterioare</option>
+                    <option value="Finisaje interioare - lucrări de ipsoserie și zugrăveli">Finisaje interioare - lucrări de ipsoserie și zugrăveli</option>
                     <option value="Finisaje exterioare - fațade">Finisaje exterioare - fațade</option>
-                    <option value="Confecționarea și montajul elementelor de sticlă/oglinzi">
-                      Confecționarea și montajul elementelor de sticlă/oglinzi
-                    </option>
-                    <option value="Lucrări de placări ceramice/piatră naturală">
-                      Lucrări de placări ceramice/piatră naturală
-                    </option>
+                    <option value="Confecționarea și montajul elementelor de sticlă/oglinzi">Confecționarea și montajul elementelor de sticlă/oglinzi</option>
+                    <option value="Lucrări de placări ceramice/piatră naturală">Lucrări de placări ceramice/piatră naturală</option>
                     <option value="Lucrări de finisare a pardoselilor">Lucrări de finisare a pardoselilor</option>
                     <option value="Dezafectarea azbestului">Dezafectarea azbestului</option>
-                    <option value="Lucrări de renovare și reabilitări energetice">
-                      Lucrări de renovare și reabilitări energetice
-                    </option>
+                    <option value="Lucrări de renovare și reabilitări energetice">Lucrări de renovare și reabilitări energetice</option>
                     <option value="Conservare">Conservare</option>
                     <option value="Reparații capitale">Reparații capitale</option>
                     <option value="Consolidări">Consolidări</option>
@@ -386,19 +328,10 @@ export default function MaterialeForm() {
                 </div>
               ) : (
                 <div className="flex flex-col items-center">
-                  <label
-                    htmlFor="unit"
-                    className="col-span-1 font-medium text-black"
-                  >
+                  <label htmlFor="unit" className="col-span-1 font-medium text-black">
                     Clasă
                   </label>
-                  <select
-                    id="clasa_material"
-                    name="clasa_material"
-                    value={formData.clasa_material}
-                    onChange={handleChange}
-                    className=" px-1 py-2 rounded-lg max-w-64 outline-none shadow-sm "
-                  >
+                  <select id="clasa_material" name="clasa_material" value={formData.clasa_material} onChange={handleChange} className=" px-1 py-2 rounded-lg max-w-64 outline-none shadow-sm ">
                     <option value="Ouvrages communs TCE">Ouvrages communs TCE</option>
                     <option value="Terrassement">Terrassement</option>
                     <option value="Fondations">Fondations</option>
@@ -444,13 +377,7 @@ export default function MaterialeForm() {
                   <label htmlFor="unit" className="font-medium text-black">
                     Tip
                   </label>
-                  <select
-                    id="tip_material"
-                    name="tip_material"
-                    value={formData.tip_material}
-                    onChange={handleChange}
-                    className=" py-2 border text-center  rounded-lg outline-none shadow-sm "
-                  >
+                  <select id="tip_material" name="tip_material" value={formData.tip_material} onChange={handleChange} className=" py-2 border text-center  rounded-lg outline-none shadow-sm ">
                     <option value="De Bază">De Bază</option>
                     <option value="Auxiliar">Auxiliare</option>
                     <option value="Consumabil">Consumabile</option>
@@ -461,13 +388,7 @@ export default function MaterialeForm() {
                   <label htmlFor="unit" className="font-medium text-black">
                     Tip
                   </label>
-                  <select
-                    id="tip_material"
-                    name="tip_material"
-                    value={formData.tip_material}
-                    onChange={handleChange}
-                    className=" py-2 border text-center  rounded-lg outline-none shadow-sm "
-                  >
+                  <select id="tip_material" name="tip_material" value={formData.tip_material} onChange={handleChange} className=" py-2 border text-center  rounded-lg outline-none shadow-sm ">
                     <option value="Basique">Basique</option>
                     <option value="Soutien">Soutien</option>
                     <option value="Fournitures">Fournitures</option>
@@ -493,31 +414,19 @@ export default function MaterialeForm() {
               {/* div de schimbat unde pun datele!! ro si fr pentru ca spatiul e mic rau */}
               <div className=" grid grid-cols-[auto_1fr_1.5fr] gap-2 border p-2 rounded-lg border-black">
                 <div className="flex  justify-center gap-1 font-medium select-none items-center">
-                  <p
-                    className={`${itIsFR ? "text-green-400 font-bold" : "text-black"
-                      }`}
-                  >
-                    FR
-                  </p>
+                  <p className={`${itIsFR ? "text-green-400 font-bold" : "text-black"}`}>FR</p>
                   <FontAwesomeIcon
                     icon={faArrowRightArrowLeft}
                     onClick={() => setItIsFR((prev) => (prev ? false : true))}
                     className=" text-green-400 border-green-400 hover:text-green-500 hover:border-green-500 cursor-pointer border-2 p-2 rounded-full text-xl"
                   />
-                  <p
-                    className={`${itIsFR ? "text-black" : "text-green-400  font-boold"
-                      }`}
-                  >
-                    RO
-                  </p>
+                  <p className={`${itIsFR ? "text-black" : "text-green-400  font-boold"}`}>RO</p>
                 </div>
                 {/* Denumire Input for RO*/}
                 {!itIsFR ? (
                   <>
                     <div className="flex flex-col items-center">
-                      <label className=" font-medium text-black">
-                        Denumire
-                      </label>
+                      <label className=" font-medium text-black">Denumire</label>
                       <textarea
                         rows={3}
                         type="text"
@@ -529,9 +438,7 @@ export default function MaterialeForm() {
                       />
                     </div>
                     <div className="flex flex-col items-center">
-                      <label className=" font-medium text-black">
-                        Descriere
-                      </label>
+                      <label className=" font-medium text-black">Descriere</label>
                       <textarea
                         type="text"
                         rows={3}
@@ -546,9 +453,7 @@ export default function MaterialeForm() {
                 ) : (
                   <>
                     <div className="flex flex-col items-center">
-                      <label className=" font-medium text-black">
-                        Denumire FR
-                      </label>
+                      <label className=" font-medium text-black">Denumire FR</label>
                       <textarea
                         rows={3}
                         type="text"
@@ -560,9 +465,7 @@ export default function MaterialeForm() {
                       />
                     </div>
                     <div className="flex flex-col items-center">
-                      <label className=" font-medium text-black">
-                        Descriere FR
-                      </label>
+                      <label className=" font-medium text-black">Descriere FR</label>
                       <textarea
                         type="text"
                         rows={3}
@@ -581,13 +484,7 @@ export default function MaterialeForm() {
                 <label htmlFor="unit" className="font-medium text-black">
                   Unitate
                 </label>
-                <select
-                  id="unitate_masura"
-                  name="unitate_masura"
-                  value={formData.unitate_masura}
-                  onChange={handleChange}
-                  className=" py-2 border text-center  rounded-lg outline-none shadow-sm "
-                >
+                <select id="unitate_masura" name="unitate_masura" value={formData.unitate_masura} onChange={handleChange} className=" py-2 border text-center  rounded-lg outline-none shadow-sm ">
                   <option value="U">U</option>
                   <option value="m">m</option>
                   <option value="m²">m²</option>
@@ -646,58 +543,37 @@ export default function MaterialeForm() {
               </div>
               {!selectedDelete && !selectedEdit && !selectedDouble ? (
                 <div className="flex text-base xxxl:text-[0.8rem]  justify-center items-center ">
-                  <button
-                    type="submit"
-                    className="bg-green-500 hover:bg-green-600 text-black  mt-6 px-2 py-2 flex justify-center  items-center rounded-lg"
-                  >
+                  <button type="submit" className="bg-green-500 hover:bg-green-600 text-black  mt-6 px-2 py-2 flex justify-center  items-center rounded-lg">
                     <FontAwesomeIcon icon={faPlus} className="pr-2" /> Încarcă
                   </button>
                 </div>
               ) : selectedDelete ? (
                 <div className="flex gap-2 text-base justify-center xxxl:text-[0.8rem] items-center ">
-                  <button
-                    onClick={(e) => deleteRow(e)}
-                    className="bg-red-500 hover:bg-red-600 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg"
-                  >
+                  <button onClick={(e) => deleteRow(e)} className="bg-red-500 hover:bg-red-600 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg">
                     <FontAwesomeIcon icon={faCancel} className="pr-2" />
                     Șterge
                   </button>
-                  <button
-                    onClick={(e) => cancelDelete(e)}
-                    className="bg-green-500 hover:bg-green-600 text- text mt-6 px-4 py-2 flex  items-center rounded-lg"
-                  >
+                  <button onClick={(e) => cancelDelete(e)} className="bg-green-500 hover:bg-green-600 text- text mt-6 px-4 py-2 flex  items-center rounded-lg">
                     Anulează
                   </button>
                 </div>
               ) : selectedDouble ? (
                 <div className="flex gap-2 items-center ">
-                  <button
-                    type="submit"
-                    className="bg-amber-500 hover:bg-amber-600 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg"
-                  >
+                  <button type="submit" className="bg-amber-500 hover:bg-amber-600 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg">
                     <FontAwesomeIcon icon={faPlus} className="pr-3" />
                     Dublează
                   </button>
-                  <button
-                    onClick={(e) => cancelDouble(e)}
-                    className="bg-red-500 hover:bg-red-600 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg"
-                  >
+                  <button onClick={(e) => cancelDouble(e)} className="bg-red-500 hover:bg-red-600 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg">
                     {" "}
                     Anulează
                   </button>
                 </div>
               ) : (
                 <div className="flex gap-2  text-base justify-center items-center xxxl:text-[0.8rem] ">
-                  <button
-                    type="submit"
-                    className="bg-green-500 hover:bg-green-600 text-black  mt-6 px-2 py-2 flex  items-center rounded-lg"
-                  >
+                  <button type="submit" className="bg-green-500 hover:bg-green-600 text-black  mt-6 px-2 py-2 flex  items-center rounded-lg">
                     <FontAwesomeIcon icon={faPlus} className="pr-2" /> Editează
                   </button>
-                  <button
-                    onClick={(e) => cancelEdit(e)}
-                    className="bg-red-500 hover:bg-red-600 text-black  mt-6 px-2 py-2 flex  items-center rounded-lg"
-                  >
+                  <button onClick={(e) => cancelEdit(e)} className="bg-red-500 hover:bg-red-600 text-black  mt-6 px-2 py-2 flex  items-center rounded-lg">
                     {" "}
                     Anulează
                   </button>

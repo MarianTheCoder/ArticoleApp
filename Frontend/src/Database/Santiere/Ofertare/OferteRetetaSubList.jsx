@@ -10,12 +10,16 @@ import OverflowTooltip from "@/components/ui/OverflowTooltip";
 import { resurseConfig } from "@/Database/Catalog/resurseConfig";
 import ImagePreviewTooltip from "@/components/ui/ImagePreviewTooltip";
 import photoAPI from "@/api/photoAPI";
+import { RecipeCodeTooltip } from "./components/OferteRetetaCodeClassDisplay";
 
 const EMPTY = "—";
+const CLASS_LEVEL_COLUMN_KEYS = ["clasa1", "clasa2", "clasa3", "clasa4", "clasa5"];
 
-const formatNumber = (value) => {
+const formatNumber = (value, decimalPlaces = 3) => {
+  const digits = [1, 2, 3].includes(Number(decimalPlaces)) ? Number(decimalPlaces) : 3;
+
   return parseFloat(value || 0)
-    .toFixed(3)
+    .toFixed(digits)
     .replace(".", ",");
 };
 
@@ -32,7 +36,7 @@ const getSelectedVariant = (el) => {
 };
 
 const getDefinitionCode = (el) => {
-  return el?.cod_definitie || el?.definitie_cod || EMPTY;
+  return el?.cod_definitie || el?.definitie_oferta?.cod_definitie || el?.definitie_live?.cod_definitie || el?.definitie_cod || EMPTY;
 };
 
 const getDefinitionName = (el, displayLang) => {
@@ -73,6 +77,79 @@ const getVariantCost = (el) => {
 
 const getDisplayedCode = (el) => {
   return hasVariantSelected(el) ? getVariantCode(el) : getDefinitionCode(el);
+};
+
+const getElementClassLevels = (el) => {
+  const snapshot = el?.definitie_oferta?.catalog_class_snapshot || el?.catalog_class_snapshot || [];
+
+  if (Array.isArray(snapshot)) return snapshot;
+  if (Array.isArray(snapshot?.levels)) return snapshot.levels;
+  if (Array.isArray(snapshot?.classLevels)) return snapshot.classLevels;
+
+  return [];
+};
+
+const getElementCodeTooltipParts = (el, displayLang = "RO") => {
+  const code = getDefinitionCode(el);
+  const levels = getElementClassLevels(el);
+
+  const parts = levels
+    .filter((level) => level && !level.is_empty && level.code_segment && String(level.code_segment) !== "00")
+    .map((level, index) => {
+      const denumire = displayLang === "FR" ? level.denumire_fr || level.denumire_ro : level.denumire_ro;
+      const isUndefined = !(level.is_defined && denumire);
+
+      return {
+        key: level.path_code || `${level.level_no || index + 1}-${level.code_segment}`,
+        label: `${level.code_segment}. ${isUndefined ? "Nedefinit" : denumire}`,
+        isUndefined,
+      };
+    });
+
+  const specific = String(code || "")
+    .trim()
+    .split(/\s+/)
+    .slice(2)
+    .join(" ");
+
+  if (specific) {
+    parts.push({
+      key: "specific",
+      label: `${specific}. Specific`,
+      isUndefined: false,
+    });
+  }
+
+  return parts.length ? parts : [{ key: "fallback", label: code || "Cod nedefinit", isUndefined: false }];
+};
+
+const getElementClassLevelDisplay = (el, levelNo, displayLang = "RO") => {
+  const levels = getElementClassLevels(el);
+  const level = levels[levelNo - 1] || levels.find((item) => Number(item?.level_no) === Number(levelNo));
+
+  if (!level || level.is_empty) {
+    return {
+      label: "",
+      isUndefined: false,
+    };
+  }
+
+  const code = level.code_segment || level.segment || "";
+
+  if (!code || String(code) === "00") {
+    return {
+      label: "",
+      isUndefined: false,
+    };
+  }
+
+  const denumire = displayLang === "FR" ? level.denumire_fr || level.denumire_ro : level.denumire_ro;
+  const isUndefined = !(level.is_defined && denumire);
+
+  return {
+    label: `${code}. ${isUndefined ? "Nedefinit" : denumire}`,
+    isUndefined,
+  };
 };
 
 const getDisplayedDescription = (el, displayLang) => {
@@ -146,27 +223,6 @@ const getElementPhoto = (element) => {
     element?.photo_url_actual ||
     element?.definitie_live?.photo_url ||
     null
-  );
-};
-
-const getElementClass = (el) => {
-  return (
-    el?.clasa ||
-    el?.clasa_resursa ||
-    el?.clasa_nume ||
-    el?.clasa_material ||
-    el?.clasa_utilaj ||
-    el?.clasa_transport ||
-    el?.clasa_manopera ||
-    el?.definitie_oferta?.clasa ||
-    el?.definitie_oferta?.clasa_resursa ||
-    el?.definitie_oferta?.clasa_material ||
-    el?.definitie_oferta?.clasa_utilaj ||
-    el?.definitie_live?.clasa ||
-    el?.definitie_live?.clasa_resursa ||
-    el?.definitie_live?.clasa_material ||
-    el?.definitie_live?.clasa_utilaj ||
-    ""
   );
 };
 
@@ -248,7 +304,11 @@ const getChildTypeBgClass = (element) => {
   }
 };
 
-const getChildCellClass = (element) => `border-r border-b border-border p-1 align-middle text-sm transition-colors ${getChildTypeBgClass(element)}`;
+const getChildCellClass = (element) => `border-r border-b border-border p-1 align-middle text-xs xxxl:text-sm transition-colors ${getChildTypeBgClass(element)}`;
+
+const getCoefTextClass = (value, colorClass) => {
+  return Number(value || 0) === 0 ? "text-muted-foreground/45" : colorClass;
+};
 
 const IssueTooltipGroup = memo(function IssueTooltipGroup({ group }) {
   return (
@@ -305,13 +365,25 @@ const ResourceTypeIcon = memo(function ResourceTypeIcon({ config }) {
   );
 });
 
-const OferteRetetaSubList = memo(function OferteRetetaSubList({ element, parentItem, displayLang = "RO", dynamicColumns = [], showCol, getColumnStyle, isLastElement = false }) {
+const OferteRetetaSubList = memo(function OferteRetetaSubList({
+  element,
+  parentItem,
+  displayLang = "RO",
+  textAlign = "left",
+  decimalPlaces = 3,
+  dynamicColumns = [],
+  showCol,
+  getColumnStyle,
+  isLastElement = false,
+  isCoeficientHighlighted = false,
+  isCoeficientExcluded = false,
+  coeficientImpact = null,
+}) {
   const config = getResourceConfig(element);
 
   const afisareCod = getDisplayedCode(element);
   const afisareDescriere = getDisplayedDescription(element, displayLang);
   const afisareDenumire = getDefinitionName(element, displayLang);
-  const afisareClasa = getElementClass(element);
   const photoUrl = getElementPhoto(element);
   const photoRingClass = getPhotoRingClass(element);
 
@@ -323,12 +395,31 @@ const OferteRetetaSubList = memo(function OferteRetetaSubList({ element, parentI
   const syncStatus = element?.sync_status || null;
   const otherChanged = !!(element?.has_other_diff || syncStatus?.has_other_diff);
   const hasIssue = priceChanged || quantityChanged || otherChanged;
-  const childTypeBgClass = getChildTypeBgClass(element);
-  const childCellClass = getChildCellClass(element);
+  const coeficientHighlightClass = isCoeficientExcluded
+    ? "!bg-red-200 hover:!bg-red-300 dark:!bg-red-500 dark:hover:!bg-red-400 dark:!text-black dark:[&_*]:!text-black"
+    : isCoeficientHighlighted
+      ? "!bg-yellow-200 hover:!bg-yellow-300 dark:!bg-yellow-500 dark:hover:!bg-yellow-400 dark:!text-black dark:[&_*]:!text-black"
+      : "";
+  const childTypeBgClass = `${getChildTypeBgClass(element)} ${coeficientHighlightClass}`;
+  const childCellClass = `${getChildCellClass(element)} ${coeficientHighlightClass}`;
+  const coeficientPercent = Number(coeficientImpact?.percent || 0);
+  const coeficientAddedValue = Number(coeficientImpact?.addedValue || 0);
+  const cantitateLucrare = Number(parentItem?.cantitate_lucrare || 0);
+  const totalCantitateElement = Number(element?.cantitate_in_reteta || 0) * cantitateLucrare;
+  const totalElementInLucrare = totalElement * cantitateLucrare;
+  const coeficientPriceValue = totalElementInLucrare + coeficientAddedValue;
+  const coeficientExcluded = !!coeficientImpact?.excluded;
+  const safeTextAlign = ["left", "center", "right"].includes(textAlign) ? textAlign : "left";
+  const textAlignClass = {
+    left: "text-left",
+    center: "text-center",
+    right: "text-right",
+  }[safeTextAlign];
+  const tooltipAlign = safeTextAlign;
 
   return (
     <>
-      <TableCell style={getColumnStyle("tree")} className={`${isLastElement ? "border-b border-border" : "border-0"} dark:bg-[#08090b] p-0 align-middle`}>
+      <TableCell style={getColumnStyle("tree")} className={`${isLastElement ? "border-b border-border" : "border-0"} dark:bg-[#08090b] p-0 align-middle ${coeficientHighlightClass}`}>
         <div className="relative h-8 w-full">
           <span className={`absolute left-1/2 top-0 w-[2px] -translate-x-1/2 bg-border ${isLastElement ? "bottom-1/2" : "bottom-0"}`} />
           <span className="absolute left-1/2 right-0 top-1/2 h-[2px] bg-border" />
@@ -336,23 +427,23 @@ const OferteRetetaSubList = memo(function OferteRetetaSubList({ element, parentI
       </TableCell>
 
       {showCol("elemente") && (
-        <TableCell style={getColumnStyle("elemente")} className={`border p-0 text-center align-middle text-sm transition-colors ${childTypeBgClass}`}>
+        <TableCell style={getColumnStyle("elemente")} className={`border p-0 text-center align-middle text-xs xxxl:text-sm transition-colors ${childTypeBgClass}`}>
           <ResourceTypeIcon config={config} />
         </TableCell>
       )}
 
       {showCol("poza") && (
-        <TableCell style={getColumnStyle("poza")} className={`border-r p-0 border-b border-border text-center align-middle text-sm transition-colors ${childTypeBgClass}`}>
+        <TableCell style={getColumnStyle("poza")} className={`border-r p-0 border-b border-border text-center align-middle text-xs xxxl:text-sm transition-colors ${childTypeBgClass}`}>
           {photoUrl ? (
             <ImagePreviewTooltip
               src={`${photoAPI}/${photoUrl}`}
               alt={afisareCod || afisareDenumire || "Poză"}
               ringColor={photoRingClass}
-              fallback={<span className="text-sm text-muted-foreground/60">-</span>}
+              fallback={<span className="text-xs xxxl:text-sm text-muted-foreground/60">-</span>}
               containerClassName="h-7 w-7 rounded border border-border bg-background flex items-center justify-center overflow-hidden shrink-0 mx-auto"
             />
           ) : (
-            <span className="text-sm text-muted-foreground/60">-</span>
+            <span className="text-xs xxxl:text-sm text-muted-foreground/60">-</span>
           )}
         </TableCell>
       )}
@@ -360,33 +451,47 @@ const OferteRetetaSubList = memo(function OferteRetetaSubList({ element, parentI
       {dynamicColumns.map((col) => {
         if (!showCol(`col_${col.id}`)) return null;
 
-        return <TableCell key={col.id} style={getColumnStyle(`dynamic_${col.id}`)} className={`${childCellClass} text-center`} />;
+        return <TableCell key={col.id} style={getColumnStyle(`dynamic_${col.id}`)} className={`${childCellClass} ${textAlignClass}`} />;
       })}
 
       {showCol("cod") && (
-        <TableCell style={getColumnStyle("cod")} className={`${childCellClass} text-center`}>
-          <span className="text-sm font-semibold text-foreground whitespace-nowrap">{afisareCod || EMPTY}</span>
-        </TableCell>
-      )}
-
-      {showCol("clasa") && (
-        <TableCell style={getColumnStyle("clasa")} className={`${childCellClass} text-center`}>
+        <TableCell style={getColumnStyle("cod")} className={`${childCellClass} ${textAlignClass}`}>
           {hasVariantSelected(element) ? (
-            <span className="inline-flex h-6 max-w-full items-center rounded-md border border-primary/50 bg-primary/15 px-2 text-sm font-black text-primary shadow-sm">Variantă</span>
-          ) : afisareClasa ? (
-            <OverflowTooltip align="center" text={String(afisareClasa)} className="text-foreground font-normal text-center whitespace-nowrap" maxLines={1} textSize="sm" />
+            <OverflowTooltip align={tooltipAlign} text={afisareCod || EMPTY} className={`font-semibold text-foreground ${textAlignClass} whitespace-nowrap`} maxLines={1} textSize="sm" />
           ) : (
-            <span className="block h-5" />
+            <RecipeCodeTooltip text={afisareCod || EMPTY} tooltipParts={getElementCodeTooltipParts(element, displayLang)} className={textAlignClass} plainQuestion />
           )}
         </TableCell>
       )}
 
+      {CLASS_LEVEL_COLUMN_KEYS.map((key, index) => {
+        if (!showCol(key)) return null;
+
+        const levelNo = index + 1;
+        const classInfo = levelNo <= 2 ? getElementClassLevelDisplay(element, levelNo, displayLang) : { label: "", isUndefined: false };
+
+        return (
+          <TableCell key={key} style={getColumnStyle(key)} className={`${childCellClass} ${textAlignClass}`}>
+            {classInfo.label ? (
+              <OverflowTooltip
+                align={tooltipAlign}
+                text={classInfo.label}
+                className={`font-normal whitespace-nowrap ${textAlignClass} ${classInfo.isUndefined ? "text-destructive" : "text-foreground"}`}
+                maxLines={1}
+                textSize="sm"
+              />
+            ) : (
+              <span className="text-xs xxxl:text-sm text-muted-foreground/40 italic">{EMPTY}</span>
+            )}
+          </TableCell>
+        );
+      })}
       {showCol("denumire") && (
-        <TableCell style={getColumnStyle("denumire")} className={childCellClass}>
+        <TableCell style={getColumnStyle("denumire")} className={`${childCellClass} ${textAlignClass}`}>
           {afisareDenumire ? (
-            <OverflowTooltip align="left" text={afisareDenumire} className="font-medium whitespace-nowrap text-foreground leading-none" maxLines={1} textSize="sm" />
+            <OverflowTooltip align={tooltipAlign} text={afisareDenumire} className={`font-medium whitespace-nowrap text-foreground leading-none ${textAlignClass}`} maxLines={1} textSize="sm" />
           ) : (
-            <span className="text-sm text-muted-foreground/40 italic">{EMPTY}</span>
+            <span className="text-xs xxxl:text-sm text-muted-foreground/40 italic">{EMPTY}</span>
           )}
         </TableCell>
       )}
@@ -396,32 +501,64 @@ const OferteRetetaSubList = memo(function OferteRetetaSubList({ element, parentI
           {afisareDescriere ? (
             <OverflowTooltip align="left" text={afisareDescriere} className="font-normal whitespace-nowrap text-foreground leading-none" maxLines={1} textSize="sm" />
           ) : (
-            <span className="text-sm text-muted-foreground/40 italic">{EMPTY}</span>
+            <span className="text-xs xxxl:text-sm text-muted-foreground/40 italic">{EMPTY}</span>
           )}
         </TableCell>
       )}
 
       {showCol("unitate") && (
         <TableCell style={getColumnStyle("unitate")} className={`${childCellClass} text-center`}>
-          <span className="text-sm font-semibold text-foreground whitespace-nowrap">{element.unitate_masura || parentItem?.unitate_masura || EMPTY}</span>
-        </TableCell>
-      )}
-
-      {showCol("cost") && (
-        <TableCell style={getColumnStyle("cost")} className={`${childCellClass} text-center`}>
-          <span className={`text-sm whitespace-nowrap ${priceChanged ? "text-high font-black" : "text-foreground font-semibold"}`}>{formatNumber(unitCost)}</span>
+          <span className="text-xs xxxl:text-sm font-semibold text-foreground whitespace-nowrap">{element.unitate_masura || parentItem?.unitate_masura || EMPTY}</span>
         </TableCell>
       )}
 
       {showCol("cantitate") && (
         <TableCell style={getColumnStyle("cantitate")} className={`${childCellClass} text-center`}>
-          <span className={`text-sm whitespace-nowrap ${quantityChanged ? "text-high font-black" : "text-foreground font-semibold"}`}>{formatNumber(element.cantitate_in_reteta)}</span>
+          <span className={`text-xs xxxl:text-sm whitespace-nowrap ${quantityChanged ? "text-high font-black" : "text-foreground font-semibold"}`}>{formatNumber(element.cantitate_in_reteta, decimalPlaces)}</span>
+        </TableCell>
+      )}
+
+      {showCol("qtyTotal") && (
+        <TableCell style={getColumnStyle("qtyTotal")} className={`${childCellClass} text-center`}>
+          <span className={`text-xs xxxl:text-sm whitespace-nowrap ${quantityChanged ? "text-high font-black" : "text-foreground font-semibold"}`}>{formatNumber(totalCantitateElement, decimalPlaces)}</span>
+        </TableCell>
+      )}
+
+      {showCol("cost") && (
+        <TableCell style={getColumnStyle("cost")} className={`${childCellClass} text-center`}>
+          <span className={`text-xs xxxl:text-sm whitespace-nowrap ${priceChanged ? "text-high font-black" : "text-foreground font-semibold"}`}>{formatNumber(unitCost, decimalPlaces)}</span>
         </TableCell>
       )}
 
       {showCol("costTotal") && (
         <TableCell style={getColumnStyle("costTotal")} className={`${childCellClass} text-center`}>
-          <span className="text-sm font-bold text-foreground whitespace-nowrap">{formatNumber(totalElement)}</span>
+          <span className="text-xs xxxl:text-sm font-bold text-foreground whitespace-nowrap">{formatNumber(totalElementInLucrare, decimalPlaces)}</span>
+        </TableCell>
+      )}
+
+      {showCol("coefProcent") && (
+        <TableCell style={getColumnStyle("coefProcent")} className={`${childCellClass} text-center`}>
+          {coeficientExcluded ? (
+            <span className="text-xs xxxl:text-sm font-black text-red-600 whitespace-nowrap">Exclude</span>
+          ) : (
+            <span className={`text-xs xxxl:text-sm font-black whitespace-nowrap ${getCoefTextClass(coeficientPercent, "text-teal-700 dark:text-teal-300")}`}>{formatNumber(coeficientPercent, 2)}%</span>
+          )}
+        </TableCell>
+      )}
+
+      {showCol("coefPret") && (
+        <TableCell style={getColumnStyle("coefPret")} className={`${childCellClass} text-center`}>
+          <span className={`text-xs xxxl:text-sm font-black whitespace-nowrap ${coeficientExcluded ? "text-red-600" : getCoefTextClass(coeficientAddedValue, "text-primary")}`}>
+            {formatNumber(coeficientAddedValue, decimalPlaces)}
+          </span>
+        </TableCell>
+      )}
+
+      {showCol("pret") && (
+        <TableCell style={getColumnStyle("pret")} className={`${childCellClass} text-center`}>
+          <span className={`text-xs xxxl:text-sm font-black whitespace-nowrap ${coeficientExcluded ? "text-red-600" : "text-primary"}`}>
+            {formatNumber(coeficientPriceValue, decimalPlaces)}
+          </span>
         </TableCell>
       )}
 

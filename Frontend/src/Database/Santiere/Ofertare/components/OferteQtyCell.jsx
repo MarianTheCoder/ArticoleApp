@@ -9,9 +9,11 @@ import { faCheckCircle, faXmarkCircle } from "@fortawesome/free-regular-svg-icon
 const MIN_FORMULA_WIDTH = 112;
 const MAX_FORMULA_WIDTH = 520;
 
-const formatNumber = (value) => {
+const formatNumber = (value, decimalPlaces = 3) => {
+  const digits = [1, 2, 3].includes(Number(decimalPlaces)) ? Number(decimalPlaces) : 3;
+
   return parseFloat(value || 0)
-    .toFixed(3)
+    .toFixed(digits)
     .replace(".", ",");
 };
 
@@ -140,7 +142,7 @@ const evalFormula = (rawValue) => {
   return round3(result);
 };
 
-export default function OferteQtyFormulaCell({ value, formula, onSave }) {
+export default function OferteQtyFormulaCell({ value, formula, decimalPlaces = 3, onSave }) {
   const [open, setOpen] = useState(false);
   const [formulaText, setFormulaText] = useState("");
   const [stepText, setStepText] = useState("1");
@@ -288,7 +290,7 @@ export default function OferteQtyFormulaCell({ value, formula, onSave }) {
           onKeyDown={stopButtonKey}
           className={`absolute inset-0 flex h-full w-full items-center justify-center rounded-none hover:border-primary hover:border hover:bg-primary/25 p-0 text-center text-sm leading-none font-black outline-none transition-colors ${formulaError ? "text-destructive" : "text-foreground"}`}
         >
-          {formulaError ? <FontAwesomeIcon className="text-xl" icon={faExclamationTriangle} /> : formatNumber(value)}
+          {formulaError ? <FontAwesomeIcon className="text-xl" icon={faExclamationTriangle} /> : formatNumber(value, decimalPlaces)}
         </button>
       </Popover.Trigger>
       <Popover.Portal>

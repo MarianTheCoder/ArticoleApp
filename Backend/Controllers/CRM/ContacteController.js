@@ -878,7 +878,7 @@ const changeOwner = async (req, res) => {
       if (conn) await conn.rollback();
     } catch (_) {}
 
-    console.error("changeOwner error:", err);
+    console.log("changeOwner error:", err);
     return res.status(500).json({ message: "Eroare server." });
   } finally {
     try {
@@ -1019,7 +1019,7 @@ const removeOwner = async (req, res) => {
       if (conn) await conn.rollback();
     } catch (_) {}
 
-    console.error("removeOwner error:", err);
+    console.log("removeOwner error:", err);
     return res.status(500).json({ message: "Eroare server." });
   } finally {
     try {
@@ -1172,7 +1172,7 @@ const deleteContact = async (req, res) => {
           await fs.rm(contactFolderPath, { recursive: true, force: true });
         }
       } catch (err) {
-        console.error("Warning: Failed to delete contact files:", err.message);
+        console.log("Warning: Failed to delete contact files:", err.message);
       }
     }
 

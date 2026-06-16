@@ -68,7 +68,7 @@ export default function UtilajeSubDefDialog({ open, setOpen, mode = "add", initi
                 setPhotoDeleted(false);
               }
             } catch (error) {
-              console.error("Eroare la încărcarea pozei originale:", error);
+              console.log("Eroare la încărcarea pozei originale:", error);
               if (isMounted) {
                 setPreviewUrl(null);
                 setSelectedFile(null);

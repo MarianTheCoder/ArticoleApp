@@ -1,6 +1,6 @@
 const editReteta = async (req, res) => {
   try {
-    const { id } = req.params;  // Get the reteta_id from the route parameter
+    const { id } = req.params; // Get the reteta_id from the route parameter
     const { formFirst } = req.body;
 
     // Save Reteta (form data)
@@ -18,16 +18,15 @@ const editReteta = async (req, res) => {
       formFirst.articol_fr,
       formFirst.descriere_reteta_fr,
       formFirst.unitate_masura,
-      id
+      id,
     ]);
 
     res.status(200).json({ message: "Reteta updated successfully!" });
   } catch (error) {
-    console.error("Error editing reteta:", error);
+    console.log("Error editing reteta:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
-
 
 const doubleReteta = async (req, res) => {
   const connection = await global.db.getConnection();
@@ -38,10 +37,7 @@ const doubleReteta = async (req, res) => {
     await connection.beginTransaction();
 
     // 1. Fetch original Reteta
-    const [originalRetetaRows] = await connection.execute(
-      `SELECT * FROM Retete WHERE id = ?`,
-      [id]
-    );
+    const [originalRetetaRows] = await connection.execute(`SELECT * FROM Retete WHERE id = ?`, [id]);
 
     if (!originalRetetaRows.length) {
       await connection.rollback();
@@ -66,8 +62,8 @@ const doubleReteta = async (req, res) => {
         formFirst.descriere_reteta || originalReteta.descriere_reteta,
         formFirst.articol_fr || originalReteta.articol_fr,
         formFirst.descriere_reteta_fr || originalReteta.descriere_reteta_fr,
-        formFirst.unitate_masura || originalReteta.unitate_masura
-      ]
+        formFirst.unitate_masura || originalReteta.unitate_masura,
+      ],
     );
 
     const newRetetaId = insertResult.insertId;
@@ -89,7 +85,7 @@ const doubleReteta = async (req, res) => {
       {
         table: "Retete_utilaje",
         definitieField: "utilaje_definitie_id",
-      }
+      },
     ];
 
     for (const { table, definitieField } of copyQueries) {
@@ -104,17 +100,14 @@ const doubleReteta = async (req, res) => {
 
     await connection.commit();
     res.status(200).json({ message: "Reteta duplicated successfully!", newRetetaId });
-
   } catch (error) {
     await connection.rollback();
-    console.error("Error duplicating reteta:", error);
+    console.log("Error duplicating reteta:", error);
     res.status(500).json({ message: "Internal server error" });
   } finally {
     connection.release();
   }
 };
-
-
 
 const addRetetaObjects = async (req, res) => {
   const { whatIs, retetaId, objectId, cantitate } = req.body;
@@ -134,7 +127,6 @@ const addRetetaObjects = async (req, res) => {
         ON DUPLICATE KEY UPDATE cantitate = VALUES(cantitate);
       `;
       params = [retetaId, objectId, cantitate];
-
     } else if (whatIs === "Materiale") {
       childSql = `
         INSERT INTO Retete_materiale (reteta_id, materiale_definitie_id, cantitate)
@@ -142,7 +134,6 @@ const addRetetaObjects = async (req, res) => {
         ON DUPLICATE KEY UPDATE cantitate = VALUES(cantitate);
       `;
       params = [retetaId, objectId, cantitate];
-
     } else if (whatIs === "Transport") {
       childSql = `
         INSERT INTO Retete_transport (reteta_id, transport_definitie_id, cantitate)
@@ -150,7 +141,6 @@ const addRetetaObjects = async (req, res) => {
         ON DUPLICATE KEY UPDATE cantitate = VALUES(cantitate);
       `;
       params = [retetaId, objectId, cantitate];
-
     } else if (whatIs === "Utilaje") {
       childSql = `
         INSERT INTO Retete_utilaje (reteta_id, utilaje_definitie_id, cantitate)
@@ -158,7 +148,6 @@ const addRetetaObjects = async (req, res) => {
         ON DUPLICATE KEY UPDATE cantitate = VALUES(cantitate);
       `;
       params = [retetaId, objectId, cantitate];
-
     } else {
       await connection.rollback();
       return res.status(400).json({ message: `Unknown whatIs type: ${whatIs}` });
@@ -172,24 +161,20 @@ const addRetetaObjects = async (req, res) => {
       `UPDATE Retete
          SET data = NOW()
        WHERE id = ?`,
-      [retetaId]
+      [retetaId],
     );
 
     // 3) Commit both operations together
     await connection.commit();
     res.status(201).json({ message: "Reteta object saved and timestamp updated successfully!" });
-
   } catch (error) {
     await connection.rollback();
-    console.error("Error saving reteta object:", error);
+    console.log("Error saving reteta object:", error);
     res.status(500).json({ message: "Internal server error" });
-
   } finally {
     connection.release();
   }
 };
-
-
 
 const addReteta = async (req, res) => {
   try {
@@ -213,17 +198,17 @@ const addReteta = async (req, res) => {
 
     res.status(201).json({ message: "Reteta saved successfully!" });
   } catch (error) {
-    console.error("Error saving retete:", error);
+    console.log("Error saving retete:", error);
     res.status(500).json({ message: "Internal server error" });
   }
-}
+};
 
 const getReteteLight = async (req, res) => {
   const connection = await global.db.getConnection();
   try {
     await connection.beginTransaction();
 
-    const { clasa = '', cod = '', articol = '', limba = '' } = req.query;
+    const { clasa = "", cod = "", articol = "", limba = "" } = req.query;
     const asc_articol = req.query.asc_articol === "true";
 
     let query = `
@@ -310,7 +295,7 @@ const getReteteLight = async (req, res) => {
     }
 
     if (whereClauses.length > 0) {
-      query += ` WHERE ${whereClauses.join(' AND ')}`;
+      query += ` WHERE ${whereClauses.join(" AND ")}`;
     }
 
     if (asc_articol) {
@@ -323,26 +308,16 @@ const getReteteLight = async (req, res) => {
     res.send({ data: rows });
   } catch (err) {
     await connection.rollback();
-    console.error("Error in getReteteLight:", err);
-    res.status(500).json({ error: 'Database error' });
+    console.log("Error in getReteteLight:", err);
+    res.status(500).json({ error: "Database error" });
   } finally {
     connection.release();
   }
 };
 
-
-
-
 const getRetete = async (req, res) => {
   try {
-    const {
-      offset = 0,
-      limit = 10,
-      clasa = '',
-      cod = '',
-      articol = '',
-      limba = ''
-    } = req.query;
+    const { offset = 0, limit = 10, clasa = "", cod = "", articol = "", limba = "" } = req.query;
     const asc_articol = req.query.asc_articol === "true";
     const asc_cod = req.query.asc_cod === "true";
     const dateOrder = req.query.dateOrder;
@@ -429,14 +404,14 @@ const getRetete = async (req, res) => {
     } else if (dateOrder === "false") {
       query += " ORDER BY r.data DESC";
     } else if (asc_articol && asc_cod) {
-      query += ' ORDER BY r.articol ASC, r.cod_reteta ASC';
+      query += " ORDER BY r.articol ASC, r.cod_reteta ASC";
     } else if (asc_articol) {
-      query += ' ORDER BY r.articol ASC';
+      query += " ORDER BY r.articol ASC";
     } else if (asc_cod) {
-      query += ' ORDER BY r.cod_reteta ASC';
+      query += " ORDER BY r.cod_reteta ASC";
     }
 
-    query += ' LIMIT ? OFFSET ?';
+    query += " LIMIT ? OFFSET ?";
     queryParams.push(parsedLimit, parsedOffset * parsedLimit);
 
     const [rows] = await global.db.query(query, queryParams);
@@ -451,12 +426,10 @@ const getRetete = async (req, res) => {
 
     res.json({ data: rows, totalItems, offset: parsedOffset, limit: parsedLimit });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Database error' });
+    console.log(err);
+    res.status(500).json({ error: "Database error" });
   }
 };
-
-
 
 const getSpecificReteta = async (req, res) => {
   try {
@@ -555,7 +528,7 @@ const getSpecificReteta = async (req, res) => {
     const seenUtilajeIds = new Set();
 
     // Iterate over the results and categorize them
-    rows.forEach(row => {
+    rows.forEach((row) => {
       // Handling manopera (checking if the ID already exists)
       if (row.manopera_id && !seenManoperaIds.has(row.manopera_id)) {
         manopera.push({
@@ -634,7 +607,6 @@ const getSpecificReteta = async (req, res) => {
           cantitate: row.utilaj_cantitate,
           unitate_masura: row.utilaj_unitate_masura,
           reteta_id: id,
-
         });
         seenUtilajeIds.add(row.utilaj_id);
       }
@@ -654,9 +626,8 @@ const getSpecificReteta = async (req, res) => {
       transport,
       utilaje,
     });
-
   } catch (err) {
-    console.error("Error fetching reteta data:", err);
+    console.log("Error fetching reteta data:", err);
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -682,13 +653,12 @@ const deleteReteta = async (req, res) => {
     res.status(200).json({ message: "Reteta și toate legăturile au fost șterse cu succes." });
   } catch (error) {
     await connection.rollback();
-    console.error("Eroare la ștergerea rețetei:", error);
+    console.log("Eroare la ștergerea rețetei:", error);
     res.status(500).json({ message: "Eroare internă la server" });
   } finally {
     connection.release(); // foarte important să eliberezi conexiunea
   }
 };
-
 
 const deleteFromReteta = async (req, res) => {
   const connection = await global.db.getConnection();
@@ -706,28 +676,24 @@ const deleteFromReteta = async (req, res) => {
         WHERE manopera_definitie_id = ? AND reteta_id = ?
       `;
       params = [id, retetaId];
-
     } else if (whatIs === "Material") {
       deleteQuery = `
         DELETE FROM Retete_materiale 
         WHERE materiale_definitie_id = ? AND reteta_id = ?
       `;
       params = [id, retetaId];
-
     } else if (whatIs === "Transport") {
       deleteQuery = `
         DELETE FROM Retete_transport 
         WHERE transport_definitie_id = ? AND reteta_id = ?
       `;
       params = [id, retetaId];
-
     } else if (whatIs === "Utilaj") {
       deleteQuery = `
         DELETE FROM Retete_utilaje 
         WHERE utilaje_definitie_id = ? AND reteta_id = ?
       `;
       params = [id, retetaId];
-
     } else {
       await connection.rollback();
       return res.status(400).json({ message: `Unknown whatIs type: ${whatIs}` });
@@ -735,24 +701,19 @@ const deleteFromReteta = async (req, res) => {
 
     await connection.execute(deleteQuery, params);
 
-    await connection.execute(
-      `UPDATE Retete SET data = NOW() WHERE id = ?`,
-      [retetaId]
-    );
+    await connection.execute(`UPDATE Retete SET data = NOW() WHERE id = ?`, [retetaId]);
 
     await connection.commit();
 
     res.status(200).json({ message: "Object removed from reteta successfully." });
-
   } catch (error) {
     await connection.rollback();
-    console.error("Error deleting reteta object:", error);
+    console.log("Error deleting reteta object:", error);
     res.status(500).json({ message: "Internal server error" });
   } finally {
     connection.release();
   }
 };
-
 
 const editCantitateInterior = async (req, res) => {
   const { retetaId, objectId, whatIs } = req.params;
@@ -809,25 +770,17 @@ const editCantitateInterior = async (req, res) => {
 
     await connection.execute(sql, params);
 
-    await connection.execute(
-      `UPDATE Retete SET data = NOW() WHERE id = ?`,
-      [retetaId]
-    );
+    await connection.execute(`UPDATE Retete SET data = NOW() WHERE id = ?`, [retetaId]);
 
     await connection.commit();
     res.status(200).json({ message: "Cantitate updated successfully!" });
-
   } catch (error) {
     await connection.rollback();
-    console.error("Error editing interior cantitate (transaction):", error);
+    console.log("Error editing interior cantitate (transaction):", error);
     res.status(500).json({ message: "Internal server error" });
-
   } finally {
     connection.release();
   }
 };
-
-
-
 
 module.exports = { addReteta, doubleReteta, editCantitateInterior, getRetete, getSpecificReteta, deleteReteta, editReteta, getReteteLight, deleteFromReteta, addRetetaObjects };

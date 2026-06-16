@@ -45,6 +45,9 @@ import { useCompaniiInterne } from "@/hooks/useCompaniiInterne";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AuthContext } from "@/context/TokenContext";
+import PontajeSantiereList from "./PontajeSantiereList";
+import PontajeSantierLeftPanel from "./PontajeSantiereLeftPanel";
+import PontajeSantiereExportMenu from "./Export/PontajeSantiereExportMenu";
 
 // Dicționar pentru țări
 const TIMEZONE_MAP = {
@@ -117,18 +120,35 @@ export default function Pontaje() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [selectedUserEdit, setSelectedUserEdit] = useState(null);
 
+  const [viewMode, setViewMode] = useState("users"); // users | santiere
+  const [selectedSantier, setSelectedSantier] = useState(null);
+
   const [hourFormat, setHourFormat] = useState(false);
 
   // Add these alongside exportSelectedIds:
   const [exportSelectMode, setExportSelectMode] = useState(false);
   const [exportSelectedIds, setExportSelectedIds] = useState(new Set());
 
+  const [santierExportSelectMode, setSantierExportSelectMode] = useState(false);
+  const [santierExportSelectedIds, setSantierExportSelectedIds] = useState(new Set());
+
   const [filterNume, setFilterNume] = useState("");
   const [filterNumbeDebounced, setFilterNumeDebounced] = useState("");
   const [filterFirma, setFilterFirma] = useState("all");
 
+  const [filterSantier, setFilterSantier] = useState("");
+  const [filterSantierDebounced, setFilterSantierDebounced] = useState("");
+
   const toggleExportUser = useCallback((id) => {
     setExportSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleExportSantier = useCallback((id) => {
+    setSantierExportSelectedIds((prev) => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
@@ -154,7 +174,54 @@ export default function Pontaje() {
       [key]: !prev[key],
     }));
   };
+
+  const [visibleSantierColumns, setVisibleSantierColumns] = useState({
+    santier: true,
+    atribuiti: true,
+    prezenti: true,
+    neatribuiti: true,
+    activi: true,
+    total_ore: true,
+  });
+
+  const toggleSantierColumn = (key) => {
+    setVisibleSantierColumns((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
+  const columnLabels = {
+    poza: "Poză",
+    nume: "Nume",
+    firma: "Firmă",
+    specializare: "Specializare",
+    santier: "Șantier",
+    intrare: "Intrare",
+    iesire: "Ieșire",
+    pauza: "Pauză",
+    total_ore: "Total ore",
+    atribuiti: "Atribuiți",
+    prezenti: "Prezenți",
+    neatribuiti: "Neatribuiți",
+    activi: "Activi",
+  };
   //-------------------------
+
+  const handleToggleViewMode = useCallback(() => {
+    setViewMode((prev) => {
+      const next = prev === "users" ? "santiere" : "users";
+
+      setSelectedUser(null);
+      setSelectedSantier(null);
+      setExportSelectedIds(new Set());
+      setExportSelectMode(false);
+      setSantierExportSelectMode(false);
+      setSantierExportSelectedIds(new Set());
+
+      return next;
+    });
+  }, []);
 
   const { data: pontaje, isFetching: isFetchingPontaje } = usePontaje(selectedDates);
   const { data: atribuiri, isFetching: isFetchingAtribuiri } = useAtribuiri(selectedDates);
@@ -175,15 +242,27 @@ export default function Pontaje() {
   // Seteaza zilele din calendar si reseteaza userul
   const handleCalendarSetDates = useCallback((dates) => {
     setSelectedUser(null);
+    setSelectedSantier(null);
     setSelectedDates(dates);
+
     setExportSelectedIds(new Set());
     setExportSelectMode(false);
+
+    setSantierExportSelectedIds(new Set());
+    setSantierExportSelectMode(false);
   }, []);
 
   // Reseteaza calendarul si userul
   const handleCalendarReset = useCallback(() => {
     setSelectedUser(null);
+    setSelectedSantier(null);
     setSelectedDates([new Date()]);
+
+    setExportSelectedIds(new Set());
+    setExportSelectMode(false);
+
+    setSantierExportSelectedIds(new Set());
+    setSantierExportSelectMode(false);
   }, []);
 
   const selectedIsoDates = useMemo(() => selectedDates.map((d) => format(d, "yyyy-MM-dd")), [selectedDates]);
@@ -247,7 +326,7 @@ export default function Pontaje() {
       setOpen(false);
       setSelectedUser(null);
     } catch (err) {
-      console.error("Error saving pontaj:", err);
+      console.log("Error saving pontaj:", err);
       toast.error(err.response?.data?.message || "Eroare la salvarea pontajului.");
     }
   }, []);
@@ -275,6 +354,7 @@ export default function Pontaje() {
 
       if (!t.closest(".selectedRow")) {
         setSelectedUser(null);
+        setSelectedSantier(null);
       }
     };
 
@@ -286,6 +366,11 @@ export default function Pontaje() {
     const handler = setTimeout(() => setFilterNumeDebounced(filterNume), 500);
     return () => clearTimeout(handler);
   }, [filterNume]);
+
+  useEffect(() => {
+    const handler = setTimeout(() => setFilterSantierDebounced(filterSantier), 500);
+    return () => clearTimeout(handler);
+  }, [filterSantier]);
   // -------------------------------------------------------
   return (
     <div className="h-screen w-full flex overflow-hidden items-center justify-center">
@@ -293,7 +378,11 @@ export default function Pontaje() {
         {/* Left column: calendar + right-panel maps */}
         <div className="flex flex-col p-4 pr-2 xxxl:p-6 xxxl:pr-3 gap-4 xxxl:gap-6 overflow-hidden h-full rounded-lg">
           <PontajeCalendar selectedDates={selectedDates} setSelectedDates={handleCalendarSetDates} onReset={handleCalendarReset} />
-          <PontajeLeftPanel selectedUser={selectedUser} selectedDates={selectedDates} />
+          {viewMode === "users" ? (
+            <PontajeLeftPanel selectedUser={selectedUser} selectedDates={selectedDates} />
+          ) : (
+            <PontajeSantierLeftPanel selectedSantier={selectedSantier} selectedDates={selectedDates} hourFormat={hourFormat} minutesByClock={minutesByClock} fmtHHMM={fmtHHMM} />
+          )}
           <PontajAddDialog
             open={open}
             setOpen={setOpen}
@@ -319,10 +408,10 @@ export default function Pontaje() {
           <div className="flex border bg-card shadow-md w-full p-4 xxxl:p-6 rounded-lg justify-between items-center">
             <div className="flex items-center">
               <FontAwesomeIcon icon={faClock} className="text-primary text-2xl xxxl:text-3xl mr-2" />
-              <h1 className="text-xl xxxl:text-2xl font-bold text-foreground tracking-wide">Pontaje Utilizatori</h1>
+              <h1 className="text-xl xxxl:text-2xl font-bold text-foreground tracking-wide">{viewMode === "users" ? "Pontaje Utilizatori" : "Pontaje Șantiere"}</h1>{" "}
             </div>
             <div>
-              <div>
+              <div className="flex items-center gap-2">
                 <Badge variant="outline" className="flex items-center gap-2 px-2.5 xxxl:px-3 py-1 xxxl:py-1.5 text-sm xxxl:text-base bg-card shadow-sm">
                   <FontAwesomeIcon icon={faClock} className="text-muted-foreground text-base xxxl:text-lg" />
                   <span className="font-medium text-foreground">Fus orar: {locationInfo.name}</span>
@@ -331,6 +420,15 @@ export default function Pontaje() {
                     <span className="tabular-nums font-semibold">{utcOffset}</span>
                   </span>
                 </Badge>
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="group h-8 hover:ring-foreground hover:ring-1 w-8 bg-primary border-none hover:bg-primary xxxl:h-9 xxxl:w-9"
+                  onClick={handleToggleViewMode}
+                >
+                  <FontAwesomeIcon icon={faRetweet} className="text-white transition-all duration-300 group-hover:rotate-180" />
+                </Button>
               </div>
             </div>
           </div>
@@ -342,43 +440,60 @@ export default function Pontaje() {
                   <FontAwesomeIcon icon={faFilter} className="text-primary text-xl xxxl:text-2xl" />
                   <h2 className="text-foreground text-lg xxxl:text-xl font-semibold">Filtre</h2>
                   <Separator orientation="vertical" className="h-full w-1 rounded-full" />
-                  <div className="relative">
-                    <Input placeholder="Caută nume..." value={filterNume} onChange={(e) => setFilterNume(e.target.value)} className="h-8 xxxl:h-9 max-w-44 xxxl:max-w-52 text-foreground text-sm" />
-                    {filterNume && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-1 top-1/2 hover:bg-transparent -translate-y-1/2 px-2 text-muted-foreground"
-                        onClick={() => {
-                          setFilterNume("");
-                        }}
-                      >
-                        ✕
-                      </Button>
-                    )}
-                  </div>
+                  {viewMode === "users" ? (
+                    <>
+                      <div className="relative">
+                        <Input placeholder="Caută nume..." value={filterNume} onChange={(e) => setFilterNume(e.target.value)} className="h-8 xxxl:h-9 max-w-44 xxxl:max-w-52 text-foreground text-sm" />
+                        {filterNume && (
+                          <Button variant="ghost" size="sm" className="absolute right-1 top-1/2 hover:bg-transparent -translate-y-1/2 px-2 text-muted-foreground" onClick={() => setFilterNume("")}>
+                            ✕
+                          </Button>
+                        )}
+                      </div>
 
-                  <Select value={filterFirma} onValueChange={setFilterFirma}>
-                    <SelectTrigger className="h-8 xxxl:h-9 w-36 xxxl:w-40 text-foreground text-sm">
-                      <SelectValue placeholder="Toate firmele" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Toate firmele</SelectItem>
-                      {companiiInterneOptions.map((c) => (
-                        <SelectItem key={c.id} value={String(c.id)}>
-                          {c.nume}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                      <Select value={filterFirma} onValueChange={setFilterFirma}>
+                        <SelectTrigger className="h-8 xxxl:h-9 w-36 xxxl:w-40 text-foreground text-sm">
+                          <SelectValue placeholder="Toate firmele" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Toate firmele</SelectItem>
+                          {companiiInterneOptions.map((c) => (
+                            <SelectItem key={c.id} value={String(c.id)}>
+                              {c.nume}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </>
+                  ) : (
+                    <div className="relative">
+                      <Input
+                        placeholder="Caută șantier..."
+                        value={filterSantier}
+                        onChange={(e) => setFilterSantier(e.target.value)}
+                        className="h-8 xxxl:h-9 max-w-56 xxxl:max-w-64 text-foreground text-sm"
+                      />
+                      {filterSantier && (
+                        <Button variant="ghost" size="sm" className="absolute right-1 top-1/2 hover:bg-transparent -translate-y-1/2 px-2 text-muted-foreground" onClick={() => setFilterSantier("")}>
+                          ✕
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
                 {/* SOMWEHERE THERE THE DIALOG */}
                 <div className="flex relative h-full items-center gap-3 xxxl:gap-4">
-                  <Button variant={showInactivi ? "default" : "outline"} onClick={() => setShowInactivi((v) => !v)} className={`gap-2 h-8 xxxl:h-9 text-sm ${!showInactivi ? "text-foreground" : ""}`}>
-                    <FontAwesomeIcon icon={faUserSlash} />
-                    Inactivi
-                    {showInactivi && <Badge className="ml-1 bg-background text-foreground text-xs xxxl:text-sm px-1.5 py-0">{data.filter((u) => !u.activ).length}</Badge>}
-                  </Button>
+                  {viewMode === "users" && (
+                    <Button
+                      variant={showInactivi ? "default" : "outline"}
+                      onClick={() => setShowInactivi((v) => !v)}
+                      className={`gap-2 h-8 xxxl:h-9 text-sm ${!showInactivi ? "text-foreground" : ""}`}
+                    >
+                      <FontAwesomeIcon icon={faUserSlash} />
+                      Inactivi
+                      {showInactivi && <Badge className="ml-1 bg-background text-foreground text-xs xxxl:text-sm px-1.5 py-0">{data.filter((u) => !u.activ).length}</Badge>}
+                    </Button>
+                  )}
                   <div className="flex items-center">
                     <Button
                       variant="outline"
@@ -406,52 +521,81 @@ export default function Pontaje() {
                     <DropdownMenuContent align="end" className="w-56">
                       <DropdownMenuLabel>Vizibilitate coloane</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      {Object.keys(visibleColumns).map((colKey) => (
+                      {Object.keys(viewMode === "users" ? visibleColumns : visibleSantierColumns).map((colKey) => (
                         <DropdownMenuCheckboxItem
                           key={colKey}
-                          checked={visibleColumns[colKey]}
-                          onCheckedChange={(c) => toggleColumn(colKey, c)}
+                          checked={(viewMode === "users" ? visibleColumns : visibleSantierColumns)[colKey]}
+                          onCheckedChange={() => (viewMode === "users" ? toggleColumn(colKey) : toggleSantierColumn(colKey))}
                           onSelect={(e) => e.preventDefault()}
                           className="capitalize"
                         >
-                          {colKey}
+                          {columnLabels[colKey] || colKey}{" "}
                         </DropdownMenuCheckboxItem>
                       ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
                   <Separator orientation="vertical" className="h-full w-1 rounded-full" />
-                  <PontajeExportMenu
-                    data={filteredData}
-                    companiiInterneOptions={companiiInterneOptions}
-                    selectedDates={selectedIsoDates}
-                    selectMode={exportSelectMode}
-                    setSelectMode={setExportSelectMode}
-                    selectedIds={exportSelectedIds}
-                    setSelectedIds={setExportSelectedIds}
-                  />
+                  {viewMode === "users" ? (
+                    <PontajeExportMenu
+                      data={filteredData}
+                      companiiInterneOptions={companiiInterneOptions}
+                      selectedDates={selectedIsoDates}
+                      selectMode={exportSelectMode}
+                      setSelectMode={setExportSelectMode}
+                      selectedIds={exportSelectedIds}
+                      setSelectedIds={setExportSelectedIds}
+                    />
+                  ) : (
+                    <PontajeSantiereExportMenu
+                      companiiInterneOptions={companiiInterneOptions}
+                      selectedDates={selectedIsoDates}
+                      selectMode={santierExportSelectMode}
+                      setSelectMode={setSantierExportSelectMode}
+                      selectedIds={santierExportSelectedIds}
+                      setSelectedIds={setSantierExportSelectedIds}
+                    />
+                  )}
                 </div>
               </div>
             </div>
 
             {/* table */}
             <div className="relative w-full overflow-auto rounded-xl shadow-md h-full flex flex-col">
-              <PontajeList
-                filteredData={filteredData}
-                visibleColumns={visibleColumns}
-                selectedIsoDates={selectedIsoDates} // ← was selectedDates
-                hourFormat={hourFormat}
-                selectedDates={selectedDates}
-                selectedUser={selectedUser}
-                isFetching={isFetching}
-                onSelectUser={setSelectedUser}
-                onEditUser={handleEditUser}
-                minutesByClock={minutesByClock}
-                fmtHHMM={fmtHHMM}
-                ///
-                exportSelectMode={exportSelectMode}
-                exportSelectedIds={exportSelectedIds}
-                onExportToggleUser={toggleExportUser}
-              />
+              {viewMode === "users" ? (
+                <PontajeList
+                  filteredData={filteredData}
+                  visibleColumns={visibleColumns}
+                  selectedIsoDates={selectedIsoDates}
+                  hourFormat={hourFormat}
+                  selectedDates={selectedDates}
+                  selectedUser={selectedUser}
+                  isFetching={isFetching}
+                  onSelectUser={setSelectedUser}
+                  onEditUser={handleEditUser}
+                  minutesByClock={minutesByClock}
+                  fmtHHMM={fmtHHMM}
+                  exportSelectMode={exportSelectMode}
+                  exportSelectedIds={exportSelectedIds}
+                  onExportToggleUser={toggleExportUser}
+                />
+              ) : (
+                <PontajeSantiereList
+                  data={data}
+                  atribuiri={atribuiri}
+                  selectedIsoDates={selectedIsoDates}
+                  selectedSantier={selectedSantier}
+                  visibleColumns={visibleSantierColumns}
+                  filterSantier={filterSantierDebounced}
+                  isFetching={isFetching}
+                  hourFormat={hourFormat}
+                  onSelectSantier={setSelectedSantier}
+                  minutesByClock={minutesByClock}
+                  fmtHHMM={fmtHHMM}
+                  exportSelectMode={santierExportSelectMode}
+                  exportSelectedIds={santierExportSelectedIds}
+                  onExportToggleSantier={toggleExportSantier}
+                />
+              )}
             </div>
           </div>
         </div>

@@ -87,7 +87,7 @@ export default function MaterialeDefDialog({ open, setOpen, mode = "add", initia
                 setPhotoDeleted(false);
               }
             } catch (error) {
-              console.error("Eroare la încărcarea pozei originale:", error);
+              console.log("Eroare la încărcarea pozei originale:", error);
               // Dacă eșuează fetch-ul, lăsăm fără poză ca fallback
               if (isMounted) {
                 setPreviewUrl(null);

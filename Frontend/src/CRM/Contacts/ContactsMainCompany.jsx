@@ -200,7 +200,7 @@ export default function ContactsMainCompany({ companyLimba = "RO", companyId = n
       setOpen(false);
       resetDraft();
     } catch (error) {
-      console.error(error);
+      console.log(error);
       const msg = error?.response?.data?.message || "A apărut o eroare la salvare.";
       toast.error(msg);
     } finally {
@@ -221,7 +221,7 @@ export default function ContactsMainCompany({ companyLimba = "RO", companyId = n
       await changeOwner({ contactId: id, companyId, user_id: user.id });
       toast.success("Contactul a fost setat ca responsabil extern.");
     } catch (error) {
-      console.error(error);
+      console.log(error);
       const msg = error?.response?.data?.message || "A apărut o eroare la setarea responsabilului.";
       toast.error(msg);
     } finally {
@@ -238,7 +238,7 @@ export default function ContactsMainCompany({ companyLimba = "RO", companyId = n
       await removeOwner({ contactId: id, companyId, user_id: user.id });
       toast.success("Contactul a fost setat ca responsabil extern.");
     } catch (error) {
-      console.error(error);
+      console.log(error);
       const msg = error?.response?.data?.message || "A apărut o eroare la setarea responsabilului.";
       toast.error(msg);
     } finally {

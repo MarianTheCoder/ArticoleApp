@@ -62,18 +62,18 @@ const ResourceMiniHeaderRow = memo(({ config, elements, onAdd, colSpan }) => {
   return (
     <TableRow className={`${config.lessBg} border-y-2`}>
       <TableCell colSpan={colSpan} className="p-0">
-        <div className="flex items-center justify-between p-2 px-4">
-          <div className="flex items-center justify-center gap-3">
-            <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 border ${config.bgClass}`}>
-              <FontAwesomeIcon icon={config.icon} className={`${config.colorClass} text-base`} />
+        <div className="flex items-center justify-between p-2 px-3 xxxl:px-4">
+          <div className="flex items-center justify-center gap-2.5 xxxl:gap-3">
+            <div className={`h-7 w-7 xxxl:h-8 xxxl:w-8 rounded-lg flex items-center justify-center shrink-0 border ${config.bgClass}`}>
+              <FontAwesomeIcon icon={config.icon} className={`${config.colorClass} text-sm xxxl:text-base`} />
             </div>
 
-            <div className="flex  items-center justify-center gap-2">
-              <h3 className={`font-bold text-base leading-none ${config.colorClass}`}>{config.titlePlural}</h3>
+            <div className="flex items-center justify-center gap-1.5 xxxl:gap-2">
+              <h3 className={`font-bold text-sm xxxl:text-base leading-none ${config.colorClass}`}>{config.titlePlural}</h3>
             </div>
           </div>
 
-          <Button onClick={onAdd} className={`gap-2 h-8 py-0 px-4 w-64 ${config.hoverButton} text-white border-transparent`}>
+          <Button onClick={onAdd} className={`gap-2 h-8 xxxl:h-9 py-0 px-3 xxxl:px-4 w-56 xxxl:w-64 text-sm xxxl:text-base ${config.hoverButton} text-white border-transparent`}>
             <FontAwesomeIcon icon={faPlus} /> Adaugă {config.title}
           </Button>
         </div>
@@ -87,10 +87,10 @@ const ResourceRows = memo(({ elements, config, onEdit, onEditDef, onDelete, onOp
   if (elements.length === 0) {
     return (
       <TableRow className="hover:bg-transparent">
-        <TableCell colSpan={colSpan} className="p-3 text-center text-muted-foreground bg-muted/10">
-          <div className="flex  gap-2  items-center justify-center">
-            <FontAwesomeIcon icon={faBoxOpen} className="text-base text-muted-foreground/50" />
-            <p className="text-sm font-medium">Nu există {config.titlePlural.toLowerCase()} în această rețetă.</p>
+        <TableCell colSpan={colSpan} className="p-2.5 xxxl:p-3 text-center text-muted-foreground bg-muted/10">
+          <div className="flex gap-1.5 xxxl:gap-2 items-center justify-center">
+            <FontAwesomeIcon icon={faBoxOpen} className="text-sm xxxl:text-base text-muted-foreground/50" />
+            <p className="text-xs xxxl:text-sm font-medium">Nu există {config.titlePlural.toLowerCase()} în această rețetă.</p>
           </div>
         </TableCell>
       </TableRow>
@@ -111,27 +111,27 @@ const ResourceRows = memo(({ elements, config, onEdit, onEditDef, onDelete, onOp
               e.stopPropagation();
               onOpenSubs(buildCatalogParentFromRetetaElement(el), config);
             }}
-            className="cursor-pointer h-20  p-0 data-[state=open]:bg-muted border-b transition-colors group hover:bg-accent hover-row-border"
+            className="cursor-pointer h-16 xxxl:h-20 p-0 data-[state=open]:bg-muted border-b transition-colors group hover:bg-accent hover-row-border"
           >
             {/* POZĂ */}
             {showCol("poza") && (
-              <TableCell onContextMenu={(e) => e.stopPropagation()} className="text-center px-4 w-[6rem] max-w-[6rem]">
+              <TableCell onContextMenu={(e) => e.stopPropagation()} className="text-center px-3 xxxl:px-4 w-[5.5rem] xxxl:w-[6rem] max-w-[5.5rem] xxxl:max-w-[6rem]">
                 <ImagePreviewTooltip
                   src={config.hasPhoto && el.resursa_photo_url ? `${photoAPI}/${el.resursa_photo_url}` : null}
                   alt={el.cod_definitie}
                   ringColor={`hover:ring-${config.normalColor}`}
                   fallback={<img src={NoImage} alt="No Image" className="h-full w-full object-cover opacity-50" />}
-                  containerClassName="h-16 w-16 rounded-md border border-border bg-muted flex items-center justify-center overflow-hidden shrink-0"
+                  containerClassName="h-14 w-14 xxxl:h-16 xxxl:w-16 rounded-md border border-border bg-muted flex items-center justify-center overflow-hidden shrink-0"
                 />
               </TableCell>
             )}
 
             {/* VARIANTE */}
             {showCol("variante") && (
-              <TableCell className="text-center px-4 whitespace-nowrap">
+              <TableCell className="text-center px-3 xxxl:px-4 whitespace-nowrap">
                 <Badge
                   variant="outline"
-                  className={`text-base w-10 text-center justify-center px-2 shadow-none whitespace-nowrap cursor-pointer transition-all  ${
+                  className={`text-sm xxxl:text-base w-9 xxxl:w-10 text-center justify-center px-2 shadow-none whitespace-nowrap cursor-pointer transition-all  ${
                     varianteCount > 0 ? (resourceLang !== "FR" ? "text-cyan-600 border-cyan-500" : "text-lime-600 border-lime-500") : "text-muted-foreground"
                   }`}
                 >
@@ -142,33 +142,33 @@ const ResourceRows = memo(({ elements, config, onEdit, onEditDef, onDelete, onOp
 
             {/* COD */}
             {showCol("cod") && (
-              <TableCell className="text-center px-4 whitespace-nowrap">
-                <span className="text-base font-bold text-foreground">{el.cod_definitie}</span>
+              <TableCell className="text-center px-3 xxxl:px-4 whitespace-nowrap">
+                <span className="text-sm xxxl:text-base font-bold text-foreground">{el.cod_definitie}</span>
               </TableCell>
             )}
 
             {/* DENUMIRE */}
             {showCol("denumire") && (
-              <TableCell className="px-4 min-w-[16rem] w-[16rem] max-w-[16rem]">
-                <OverflowTooltip align="left" text={afisareDenumire} className="text-base text-foreground whitespace-pre-wrap leading-normal" maxLines={2} />
+              <TableCell className="px-3 xxxl:px-4 min-w-[14rem] xxxl:min-w-[16rem] w-[14rem] xxxl:w-[16rem] max-w-[14rem] xxxl:max-w-[16rem]">
+                <OverflowTooltip align="left" text={afisareDenumire} className="text-sm xxxl:text-base text-foreground whitespace-pre-wrap leading-normal" maxLines={2} />
               </TableCell>
             )}
 
             {/* DESCRIERE */}
             {showCol("descriere") && (
-              <TableCell className="px-4 min-w-[20rem]">
+              <TableCell className="px-3 xxxl:px-4 min-w-[18rem] xxxl:min-w-[20rem]">
                 {afisareDescriere ? (
-                  <OverflowTooltip align="left" text={afisareDescriere} className="text-base text-foreground whitespace-pre-wrap leading-normal" maxLines={2} />
+                  <OverflowTooltip align="left" text={afisareDescriere} className="text-sm xxxl:text-base text-foreground whitespace-pre-wrap leading-normal" maxLines={2} />
                 ) : (
-                  <span className="text-base text-muted-foreground/40 italic">—</span>
+                  <span className="text-sm xxxl:text-base text-muted-foreground/40 italic">—</span>
                 )}
               </TableCell>
             )}
 
             {/* UNITATE */}
             {showCol("unitate") && (
-              <TableCell className="text-center px-4 whitespace-nowrap">
-                <Badge variant="outline" className="text-base px-2 w-10 justify-center py-2 shadow-none whitespace-nowrap">
+              <TableCell className="text-center px-3 xxxl:px-4 whitespace-nowrap">
+                <Badge variant="outline" className="text-sm xxxl:text-base px-2 w-9 xxxl:w-10 justify-center py-1.5 xxxl:py-2 shadow-none whitespace-nowrap">
                   {el.unitate_masura_resursa}
                 </Badge>
               </TableCell>
@@ -176,8 +176,8 @@ const ResourceRows = memo(({ elements, config, onEdit, onEditDef, onDelete, onOp
 
             {/* COST UNITAR */}
             {showCol("costUnitar") && (
-              <TableCell className="text-center px-4 whitespace-nowrap">
-                <span className="text-base text-muted-foreground">
+              <TableCell className="text-center px-3 xxxl:px-4 whitespace-nowrap">
+                <span className="text-sm xxxl:text-base text-muted-foreground">
                   {parseFloat(el.cost_unitar || 0)
                     .toFixed(3)
                     .replace(".", ",")}
@@ -187,7 +187,7 @@ const ResourceRows = memo(({ elements, config, onEdit, onEditDef, onDelete, onOp
 
             {/* CANTITATE */}
             {showCol("cantitate") && (
-              <TableCell className="text-center px-4 whitespace-nowrap font-bold text-foreground">
+              <TableCell className="text-center px-3 xxxl:px-4 whitespace-nowrap text-sm xxxl:text-base font-bold text-foreground">
                 {parseFloat(el.cantitate || 0)
                   .toFixed(3)
                   .replace(".", ",")}
@@ -196,8 +196,8 @@ const ResourceRows = memo(({ elements, config, onEdit, onEditDef, onDelete, onOp
 
             {/* COST TOTAL */}
             {showCol("costTotal") && (
-              <TableCell className="text-center px-4 whitespace-nowrap">
-                <span className={`font-bold text-base ${config.colorClass}`}>
+              <TableCell className="text-center px-3 xxxl:px-4 whitespace-nowrap">
+                <span className={`font-bold text-sm xxxl:text-base ${config.colorClass}`}>
                   {parseFloat(el.cost_total_element || 0)
                     .toFixed(3)
                     .replace(".", ",")}
@@ -207,11 +207,11 @@ const ResourceRows = memo(({ elements, config, onEdit, onEditDef, onDelete, onOp
 
             {/* CREAT */}
             {showCol("creat") && (
-              <TableCell className="text-left px-4 min-w-[14rem] w-[14rem] max-w-[14rem]">
-                <div className="flex items-center gap-2.5 overflow-hidden">
-                  <Avatar className="h-10 w-10 border rounded-md border-border shrink-0">
+              <TableCell className="text-left px-3 xxxl:px-4 min-w-[12.5rem] xxxl:min-w-[14rem] w-[12.5rem] xxxl:w-[14rem] max-w-[12.5rem] xxxl:max-w-[14rem]">
+                <div className="flex items-center gap-2 xxxl:gap-2.5 overflow-hidden">
+                  <Avatar className="h-9 w-9 xxxl:h-10 xxxl:w-10 border rounded-md border-border shrink-0">
                     <AvatarImage src={`${photoAPI}/${el.created_by_photo_url}`} alt={el.created_by_name} className="object-cover" />
-                    <AvatarFallback className="text-sm rounded-md bg-muted font-bold">
+                    <AvatarFallback className="text-xs xxxl:text-sm rounded-md bg-muted font-bold">
                       {el.created_by_name
                         ?.split(" ")
                         .map((n) => n[0])
@@ -221,8 +221,8 @@ const ResourceRows = memo(({ elements, config, onEdit, onEditDef, onDelete, onOp
                   </Avatar>
 
                   <div className="flex flex-col justify-center min-w-0 leading-tight">
-                    <span className="text-sm font-bold text-foreground truncate block">{el.created_by_name || "Sistem"}</span>
-                    <span className="text-[11px] text-muted-foreground mt-0.5">
+                    <span className="text-xs xxxl:text-sm font-bold text-foreground truncate block">{el.created_by_name || "Sistem"}</span>
+                    <span className="text-[10px] xxxl:text-[11px] text-muted-foreground mt-0.5">
                       {new Date(el.created_at).toLocaleDateString("ro-RO")} {new Date(el.created_at).toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" })}
                     </span>
                   </div>
@@ -232,11 +232,11 @@ const ResourceRows = memo(({ elements, config, onEdit, onEditDef, onDelete, onOp
 
             {/* ACTUALIZAT */}
             {showCol("actualizat") && (
-              <TableCell className="text-left px-4 min-w-[14rem] w-[14rem] max-w-[14rem]">
-                <div className="flex items-center gap-2.5 overflow-hidden">
-                  <Avatar className="h-10 w-10 border rounded-md border-border shrink-0">
+              <TableCell className="text-left px-3 xxxl:px-4 min-w-[12.5rem] xxxl:min-w-[14rem] w-[12.5rem] xxxl:w-[14rem] max-w-[12.5rem] xxxl:max-w-[14rem]">
+                <div className="flex items-center gap-2 xxxl:gap-2.5 overflow-hidden">
+                  <Avatar className="h-9 w-9 xxxl:h-10 xxxl:w-10 border rounded-md border-border shrink-0">
                     <AvatarImage src={`${photoAPI}/${el.updated_by_photo_url}`} alt={el.updated_by_name} className="object-cover" />
-                    <AvatarFallback className="text-sm rounded-md bg-muted font-bold">
+                    <AvatarFallback className="text-xs xxxl:text-sm rounded-md bg-muted font-bold">
                       {el.updated_by_name
                         ?.split(" ")
                         .map((n) => n[0])
@@ -246,8 +246,8 @@ const ResourceRows = memo(({ elements, config, onEdit, onEditDef, onDelete, onOp
                   </Avatar>
 
                   <div className="flex flex-col justify-center min-w-0 leading-tight">
-                    <span className="text-sm font-bold text-foreground truncate block">{el.updated_by_name || "Sistem"}</span>
-                    <span className="text-[11px] text-muted-foreground mt-0.5">
+                    <span className="text-xs xxxl:text-sm font-bold text-foreground truncate block">{el.updated_by_name || "Sistem"}</span>
+                    <span className="text-[10px] xxxl:text-[11px] text-muted-foreground mt-0.5">
                       {new Date(el.updated_at).toLocaleDateString("ro-RO")} {new Date(el.updated_at).toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" })}
                     </span>
                   </div>
@@ -288,18 +288,18 @@ const ResourcesTable = memo(({ sections, visibleColumns, displayLang, onEdit, on
     <div className="rounded-md border bg-card w-full h-full overflow-auto relative shadow-sm">
       <Table className="min-w-full table-fixed caption-bottom text-left border-collapse">
         <TableHeader className="bg-background sticky top-0 z-50 shadow-sm">
-          <TableRow className="h-12 hover:bg-muted-foreground/25 bg-muted-foreground/25">
-            {showCol("poza") && <TableHead className="text-center px-4 w-[6rem] max-w-[6rem]">Poză</TableHead>}
-            {showCol("variante") && <TableHead className="text-center px-4 w-[6rem] max-w-[6rem]">Variante</TableHead>}
-            {showCol("cod") && <TableHead className="text-center px-4 w-[12rem] max-w-[12rem]">Cod</TableHead>}
-            {showCol("denumire") && <TableHead className="px-4 min-w-[16rem] w-[16rem] max-w-[16rem]">Denumire</TableHead>}
-            {showCol("descriere") && <TableHead className="px-4 min-w-[20rem]">Descriere</TableHead>}
-            {showCol("unitate") && <TableHead className="text-center px-4 w-[8rem] max-w-[8rem]">Unitate</TableHead>}
-            {showCol("costUnitar") && <TableHead className="text-center px-4 w-[10rem] max-w-[10rem]">Cost Unitar</TableHead>}
-            {showCol("cantitate") && <TableHead className="text-center px-4 w-[10rem] max-w-[10rem]">Cantitate</TableHead>}
-            {showCol("costTotal") && <TableHead className="text-center px-4 w-[12rem] max-w-[12rem]">Cost Total</TableHead>}
-            {showCol("creat") && <TableHead className="text-left px-4 w-[14rem] max-w-[14rem]">Creat</TableHead>}
-            {showCol("actualizat") && <TableHead className="text-left px-4 w-[14rem] max-w-[14rem]">Actualizat</TableHead>}
+          <TableRow className="h-10 xxxl:h-12 hover:bg-muted-foreground/25 bg-muted-foreground/25">
+            {showCol("poza") && <TableHead className="text-center px-3 xxxl:px-4 w-[5.5rem] xxxl:w-[6rem] max-w-[5.5rem] xxxl:max-w-[6rem]">Poză</TableHead>}
+            {showCol("variante") && <TableHead className="text-center px-3 xxxl:px-4 w-[5.5rem] xxxl:w-[6rem] max-w-[5.5rem] xxxl:max-w-[6rem]">Variante</TableHead>}
+            {showCol("cod") && <TableHead className="text-center px-3 xxxl:px-4 w-[10rem] xxxl:w-[12rem] max-w-[10rem] xxxl:max-w-[12rem]">Cod</TableHead>}
+            {showCol("denumire") && <TableHead className="px-3 xxxl:px-4 min-w-[14rem] xxxl:min-w-[16rem] w-[14rem] xxxl:w-[16rem] max-w-[14rem] xxxl:max-w-[16rem]">Denumire</TableHead>}
+            {showCol("descriere") && <TableHead className="px-3 xxxl:px-4 min-w-[18rem] xxxl:min-w-[20rem]">Descriere</TableHead>}
+            {showCol("unitate") && <TableHead className="text-center px-3 xxxl:px-4 w-[7rem] xxxl:w-[8rem] max-w-[7rem] xxxl:max-w-[8rem]">Unitate</TableHead>}
+            {showCol("costUnitar") && <TableHead className="text-center px-3 xxxl:px-4 w-[9rem] xxxl:w-[10rem] max-w-[9rem] xxxl:max-w-[10rem]">Cost Unitar</TableHead>}
+            {showCol("cantitate") && <TableHead className="text-center px-3 xxxl:px-4 w-[9rem] xxxl:w-[10rem] max-w-[9rem] xxxl:max-w-[10rem]">Cantitate</TableHead>}
+            {showCol("costTotal") && <TableHead className="text-center px-3 xxxl:px-4 w-[10rem] xxxl:w-[12rem] max-w-[10rem] xxxl:max-w-[12rem]">Cost Total</TableHead>}
+            {showCol("creat") && <TableHead className="text-left px-3 xxxl:px-4 w-[12.5rem] xxxl:w-[14rem] max-w-[12.5rem] xxxl:max-w-[14rem]">Creat</TableHead>}
+            {showCol("actualizat") && <TableHead className="text-left px-3 xxxl:px-4 w-[12.5rem] xxxl:w-[14rem] max-w-[12.5rem] xxxl:max-w-[14rem]">Actualizat</TableHead>}
           </TableRow>
         </TableHeader>
 
@@ -542,32 +542,36 @@ export default function ReteteSubList({ open, setOpen, parentItem }) {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-[85vw] max-h-[90vh] h-[90vh] flex flex-col p-0" style={{ animationDuration: "0ms", transitionDuration: "0ms" }}>
           {/* HEADER DIALOG (Rețeta) */}
-          <DialogHeader className="px-6 py-4 rounded-md rounded-b-none border-b bg-muted flex flex-row items-center justify-between shrink-0">
-            <div className="flex items-center gap-4">
-              <div className="h-14 w-14 rounded-xl flex items-center justify-center shrink-0 bg-sky-600/25 border border-sky-600/25">
-                <FontAwesomeIcon icon={faDatabase} className="text-sky-600 text-2xl" />
+          <DialogHeader className="px-4 xxxl:px-6 py-3 xxxl:py-4 rounded-md rounded-b-none border-b bg-muted flex flex-row items-center justify-between shrink-0">
+            <div className="flex items-center min-w-0 max-w-[60%] gap-3 xxxl:gap-4">
+              <div className="h-11 w-11 xxxl:h-14 xxxl:w-14 rounded-xl flex items-center justify-center shrink-0 bg-sky-600/25 border border-sky-600/25">
+                <FontAwesomeIcon icon={faDatabase} className="text-sky-600 text-xl xxxl:text-2xl" />
               </div>
 
-              <DialogTitle className="text-left flex flex-col gap-0">
+              <DialogTitle className="text-left overflow-hidden flex flex-col gap-0">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm text-sky-600 font-bold uppercase tracking-wider">{parentItem.cod_reteta}</p>
+                  <p className="text-xs xxxl:text-sm text-sky-600 font-bold uppercase tracking-wider">{parentItem.cod_reteta}</p>
                 </div>
-                <OverflowTooltip align="left" text={parentItem.denumire} className="text-xl font-bold text-foreground" maxLines={1} />
+                <OverflowTooltip align="left" text={parentItem.denumire} className="text-lg xxxl:text-xl font-bold text-foreground" maxLines={1} />
               </DialogTitle>
             </div>
 
             {/* SECȚIUNEA DREAPTA: Toggles Globale + Cost Total */}
-            <div className="flex items-center gap-8 mr-12">
+            <div className="flex items-center gap-5 xxxl:gap-8 mr-12">
               {/* Toggles Globale: Limbă și Coloane */}
-              <div className="flex items-center gap-3">
-                <Button variant="outline" className="gap-2 h-10 w-20 text-foreground" onClick={() => setLocalDisplayLang((prev) => (prev === "RO" ? "FR" : "RO"))}>
+              <div className="flex items-center gap-2.5 xxxl:gap-3">
+                <Button
+                  variant="outline"
+                  className="gap-2 h-9 xxxl:h-10 w-[4.5rem] xxxl:w-20 text-sm xxxl:text-base text-foreground"
+                  onClick={() => setLocalDisplayLang((prev) => (prev === "RO" ? "FR" : "RO"))}
+                >
                   <FontAwesomeIcon icon={faLanguage} />
                   <span className="font-bold">{localDisplayLang}</span>
                 </Button>
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="gap-2 h-10 text-foreground">
+                    <Button variant="outline" className="gap-2 h-9 xxxl:h-10 text-sm xxxl:text-base text-foreground">
                       <FontAwesomeIcon icon={faColumns} />
                       <span>Coloane</span>
                     </Button>
@@ -622,23 +626,23 @@ export default function ReteteSubList({ open, setOpen, parentItem }) {
               </div>
 
               {/* Cost Total Rețetă */}
-              <div className="flex flex-col justify-center items-center gap-1">
-                <span className="text-sm text-foreground font-semibold uppercase tracking-wider">Cost Total Rețetă</span>
+              <div className="flex flex-col justify-center items-center gap-0.5 xxxl:gap-1">
+                <span className="text-xs xxxl:text-sm text-foreground font-semibold uppercase tracking-wider">Cost Total Rețetă</span>
 
-                <div className="flex items-baseline gap-1.5 bg-card px-3 py-1 rounded-md border border-foreground/40">
-                  <span className="text-lg font-extrabold ">
+                <div className="flex items-baseline gap-1 xxxl:gap-1.5 bg-card px-2.5 xxxl:px-3 py-1 rounded-md border border-foreground/40">
+                  <span className="text-base xxxl:text-lg font-extrabold ">
                     {parseFloat(parentItem.cost || 0)
                       .toFixed(3)
                       .replace(".", ",")}
                   </span>
-                  <span className="text-sm font-bold ">/ {parentItem.unitate_masura}</span>
+                  <span className="text-xs xxxl:text-sm font-bold ">/ {parentItem.unitate_masura}</span>
                 </div>
               </div>
             </div>
           </DialogHeader>
 
           {/* BODY DIALOG */}
-          <div className="p-6 flex-1 min-h-0 rounded-md bg-card">
+          <div className="p-4 xxxl:p-6 flex-1 min-h-0 rounded-md bg-card">
             <ResourcesTable
               sections={sections}
               visibleColumns={visibleColumns}
@@ -662,9 +666,9 @@ export default function ReteteSubList({ open, setOpen, parentItem }) {
           </div>
 
           {/* AICI ESTE ZONA DE CONFIRMARE ȘI CANTITATE */}
-          <div className="bg-muted rounded-b-md px-4 border-t border-border shrink-0 flex items-center justify-between gap-6">
+          <div className="bg-muted rounded-b-md px-3 xxxl:px-4 border-t border-border shrink-0 flex items-center justify-between gap-4 xxxl:gap-6">
             {/* ZONA INFO RESURSĂ - w-1/3 */}
-            <div className="flex flex-col h-24 w-1/3 min-w-0 py-4">
+            <div className="flex flex-col h-20 xxxl:h-24 w-1/3 min-w-0 py-3 xxxl:py-4">
               {selectedCatalogItem ? (
                 <>
                   <div className="flex items-center gap-2 min-w-0 w-full">
@@ -673,28 +677,28 @@ export default function ReteteSubList({ open, setOpen, parentItem }) {
                     </Badge>
 
                     <div className="flex-1 min-w-0">
-                      <OverflowTooltip text={selectedCatalogItem.denumire || "—"} align="left" maxLines={1} className="text-sm font-bold text-foreground" />
+                      <OverflowTooltip text={selectedCatalogItem.denumire || "—"} align="left" maxLines={1} className="text-xs xxxl:text-sm font-bold text-foreground" />
                     </div>
                   </div>
 
                   <div className="mt-1 ">
-                    <OverflowTooltip text={selectedCatalogItem.descriere || "—"} align="left" maxLines={2} className="text-sm text-muted-foreground" />
+                    <OverflowTooltip text={selectedCatalogItem.descriere || "—"} align="left" maxLines={2} className="text-xs xxxl:text-sm text-muted-foreground" />
                   </div>
                 </>
               ) : (
                 <div className="flex items-center px-3">
-                  <span className="italic text-base text-muted-foreground">Selectează o resursă din tabel...</span>
+                  <span className="italic text-sm xxxl:text-base text-muted-foreground">Selectează o resursă din tabel...</span>
                 </div>
               )}
             </div>
 
             {/* ZONA INPUT ȘI BUTON */}
-            <div className="flex items-center py-4 gap-4 shrink-0">
-              <div className="flex items-center gap-3">
-                <Label className="font-bold text-base">Cantitate:</Label>
+            <div className="flex items-center py-3 xxxl:py-4 gap-3 xxxl:gap-4 shrink-0">
+              <div className="flex items-center gap-2.5 xxxl:gap-3">
+                <Label className="font-bold text-sm xxxl:text-base">Cantitate:</Label>
 
                 <Input
-                  className="w-32 h-11 font-black text-center border-2"
+                  className="w-28 xxxl:w-32 h-10 xxxl:h-11 text-sm xxxl:text-base font-black text-center border-2"
                   placeholder="0,000"
                   value={quantity}
                   onChange={(e) => {
@@ -711,14 +715,22 @@ export default function ReteteSubList({ open, setOpen, parentItem }) {
               </div>
 
               {selectedCatalogItem && (
-                <Button variant="destructive" onClick={() => setSelectedCatalogItem(null)} className="gap-2 h-11 px-8 font-bold shadow-md transition-all active:scale-95">
-                  <FontAwesomeIcon icon={faTrash} className="text-lg" />
+                <Button
+                  variant="destructive"
+                  onClick={() => setSelectedCatalogItem(null)}
+                  className="gap-2 h-10 xxxl:h-11 px-5 xxxl:px-8 text-sm xxxl:text-base font-bold shadow-md transition-all active:scale-95"
+                >
+                  <FontAwesomeIcon icon={faTrash} className="text-base xxxl:text-lg" />
                   Șterge selecția
                 </Button>
               )}
 
-              <Button onClick={handleConfirmAdd} disabled={!selectedCatalogItem} className="gap-2 bg-sky-600 hover:bg-sky-700 text-white h-11 px-8 font-bold shadow-md transition-all active:scale-95">
-                <FontAwesomeIcon icon={faCheck} className="text-lg" />
+              <Button
+                onClick={handleConfirmAdd}
+                disabled={!selectedCatalogItem}
+                className="gap-2 bg-sky-600 hover:bg-sky-700 text-white h-10 xxxl:h-11 px-5 xxxl:px-8 text-sm xxxl:text-base font-bold shadow-md transition-all active:scale-95"
+              >
+                <FontAwesomeIcon icon={faCheck} className="text-base xxxl:text-lg" />
                 Confirmă adăugarea
               </Button>
             </div>
@@ -728,32 +740,32 @@ export default function ReteteSubList({ open, setOpen, parentItem }) {
       {/* DIALOG EDITARE CANTITATE */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden">
-          <DialogHeader className="px-6 py-4 border-b bg-muted/40">
-            <div className="flex items-center gap-3">
-              <div className={`h-12 w-12 rounded-lg flex items-center justify-center bg-green-500/10 border-low text-low shrink-0 border`}>
-                <FontAwesomeIcon icon={faPenToSquare} className={`text-lg`} />
+          <DialogHeader className="px-4 xxxl:px-6 py-3 xxxl:py-4 border-b bg-muted/40">
+            <div className="flex items-center gap-2.5 xxxl:gap-3">
+              <div className={`h-10 w-10 xxxl:h-12 xxxl:w-12 rounded-lg flex items-center justify-center bg-green-500/10 border-low text-low shrink-0 border`}>
+                <FontAwesomeIcon icon={faPenToSquare} className={`text-base xxxl:text-lg`} />
               </div>
-              <DialogTitle className="text-left">Editează cantitatea</DialogTitle>
+              <DialogTitle className="text-left text-base xxxl:text-lg">Editează cantitatea</DialogTitle>
             </div>
           </DialogHeader>
 
-          <div className="px-6 py-5 flex flex-col gap-4">
+          <div className="px-4 xxxl:px-6 py-4 xxxl:py-5 flex flex-col gap-3 xxxl:gap-4">
             <div className="flex items-center gap-2 min-w-0">
               <Badge variant="outline" className="font-bold shrink-0">
                 {itemToEdit?.cod_definitie}
               </Badge>
 
-              <OverflowTooltip align="left" text={itemToEdit?.denumire_resursa || ""} maxLines={1} className="text-sm font-bold text-foreground" />
+              <OverflowTooltip align="left" text={itemToEdit?.denumire_resursa || ""} maxLines={1} className="text-xs xxxl:text-sm font-bold text-foreground" />
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="edit-reteta-element-quantity" className="font-bold">
+            <div className="grid gap-1.5 xxxl:gap-2">
+              <Label htmlFor="edit-reteta-element-quantity" className="text-sm xxxl:text-base font-bold">
                 Cantitate
               </Label>
 
               <Input
                 id="edit-reteta-element-quantity"
-                className="h-11 font-black text-center border-2"
+                className="h-10 xxxl:h-11 text-sm xxxl:text-base font-black text-center border-2"
                 placeholder="0,000"
                 value={editQuantity}
                 onChange={(e) => {
@@ -770,12 +782,14 @@ export default function ReteteSubList({ open, setOpen, parentItem }) {
             </div>
           </div>
 
-          <DialogFooter className="px-6 py-4 border-t bg-muted/20 gap-2">
+          <DialogFooter className="px-4 xxxl:px-6 py-3 xxxl:py-4 border-t bg-muted/20 gap-2">
             <DialogClose asChild>
-              <Button variant="outline">Anulează</Button>
+              <Button variant="outline" className="h-9 xxxl:h-10 text-sm xxxl:text-base">
+                Anulează
+              </Button>
             </DialogClose>
 
-            <Button onClick={handleConfirmEdit} className="bg-sky-600 hover:bg-sky-700 text-white">
+            <Button onClick={handleConfirmEdit} className="h-9 xxxl:h-10 text-sm xxxl:text-base bg-sky-600 hover:bg-sky-700 text-white">
               Salvează
             </Button>
           </DialogFooter>

@@ -16,7 +16,10 @@ import {
   faTriangleExclamation,
   faFolderOpen,
   faArrowsRotate,
-  faFilePdf,
+  faArrowRightLong,
+  faPlus,
+  faPalette,
+  faRightLeft,
   faSort,
   faSortDown,
   faSortUp,
@@ -38,6 +41,7 @@ import photoAPI from "@/api/photoAPI";
 import ImagePreviewTooltip from "@/components/ui/ImagePreviewTooltip";
 import NoImage from "@/assets/no-image-icon.png";
 import OferteDuplicateReteteDialog from "./OferteDuplicateReteteDialog";
+import OferteReplaceReteteDialog from "./OferteReplaceReteteDialog";
 
 import {
   toId,
@@ -54,13 +58,19 @@ import {
   reorderSelectedBlock,
   buildDisplayRowsWithCategories,
   buildAvailableCategoryFields,
+  EMPTY_CATEGORY_VALUE,
+  getCategoryValue,
+  getCategoryColor,
+  getReadableTextColor,
+  normalizeCategoryColorsConfig,
   normalizeCategoryConfig,
+  getRetetaClassLevelDisplay,
 } from "./helpers/OferteReteteHelpers";
 
 import OferteQtyFormulaCell from "./components/OferteQtyCell";
 import OferteActualizeazaReteteDialog from "./components/OferteActualizeazaDialog";
 import OferteFurnizoriDialog from "./components/OferteFurnizorDialog";
-import OferteExportPdfDialog from "./components/OferteExportPdfDialog";
+import { OferteRetetaCodeValue } from "./components/OferteRetetaCodeClassDisplay";
 import { Separator } from "@/components/ui/separator";
 
 import { resurseConfig } from "@/Database/Catalog/resurseConfig";
@@ -74,14 +84,22 @@ const getDefaultColumnWidths = () => ({
   poza: 48,
   info: 40,
   cod: 112,
-  clasa: 128,
-  denumire: typeof window !== "undefined" && window.innerWidth >= 1980 ? 280 : 190,
-  descriere: typeof window !== "undefined" && window.innerWidth >= 1980 ? 340 : 220,
+  clasa1: 128,
+  clasa2: 128,
+  clasa3: 128,
+  clasa4: 128,
+  clasa5: 128,
+  denumire: typeof window !== "undefined" && window.innerWidth >= 1980 ? 480 : 550,
+  descriere: typeof window !== "undefined" && window.innerWidth >= 1980 ? 220 : 180,
   dynamic: 104,
   unitate: 68,
-  cost: 96,
-  cantitate: 108,
-  costTotal: 112,
+  cantitate: 80,
+  cost: 80,
+  qtyTotal: 88,
+  costTotal: 80,
+  coefProcent: 98,
+  coefPret: 96,
+  pret: 96,
   creat: 180,
   actualizat: 180,
 });
@@ -92,14 +110,22 @@ const MIN_COL_WIDTHS = {
   poza: 42,
   info: 40,
   cod: 80,
-  clasa: 90,
+  clasa1: 90,
+  clasa2: 90,
+  clasa3: 90,
+  clasa4: 90,
+  clasa5: 90,
   denumire: 110,
   descriere: 120,
   dynamic: 80,
   unitate: 56,
-  cost: 80,
   cantitate: 88,
+  cost: 80,
+  qtyTotal: 92,
   costTotal: 90,
+  coefProcent: 92,
+  coefPret: 92,
+  pret: 92,
   creat: 120,
   actualizat: 120,
 };
@@ -113,6 +139,18 @@ const ESTIMATED_ROW_HEIGHTS = {
 
 const getEstimatedDisplayRowHeight = (row) => {
   return ESTIMATED_ROW_HEIGHTS[row?.type] || 32;
+};
+
+const CLASS_LEVEL_COLUMNS = [
+  { key: "clasa1", levelNo: 1, label: "Clasă 1" },
+  { key: "clasa2", levelNo: 2, label: "Clasă 2" },
+  { key: "clasa3", levelNo: 3, label: "Clasă 3" },
+  { key: "clasa4", levelNo: 4, label: "Clasă 4" },
+  { key: "clasa5", levelNo: 5, label: "Clasă 5" },
+];
+
+const getCoefTextClass = (value, colorClass) => {
+  return Number(value || 0) === 0 ? "text-muted-foreground/45" : colorClass;
 };
 
 const normalizeSearchText = (value) => {
@@ -245,7 +283,7 @@ const RetetaInfoIcons = memo(function RetetaInfoIcons({ reteta }) {
   );
 });
 
-const SummaryBox = memo(function SummaryBox({ label, value, children, strong = false, tone = null }) {
+const SummaryBox = memo(function SummaryBox({ label, value, children, strong = false, tone = null, decimalPlaces = 3 }) {
   const toneClass = tone === "manopera" ? "border-emerald-600/50 bg-emerald-600/10" : strong ? "border-primary" : "border-border";
 
   const valueClass = tone === "manopera" ? "font-black text-emerald-600" : strong ? "font-black text-primary" : "font-extrabold text-foreground";
@@ -254,7 +292,7 @@ const SummaryBox = memo(function SummaryBox({ label, value, children, strong = f
     <div className={`min-w-[7rem] xxxl:min-w-[8rem] rounded-md border p-2 flex flex-col justify-center gap-0.5 ${toneClass}`}>
       <span className="text-sm uppercase tracking-wide font-bold text-muted-foreground">{label}</span>
 
-      {children ? children : <span className={`text-sm whitespace-nowrap ${valueClass}`}>{formatNumber(value)}</span>}
+      {children ? children : <span className={`text-sm whitespace-nowrap ${valueClass}`}>{formatNumber(value, decimalPlaces)}</span>}
     </div>
   );
 });
@@ -301,6 +339,48 @@ const pathStartsWith = (path = [], prefix = []) => {
   return prefix.every((value, index) => path[index] === value);
 };
 
+const getInsertAfterFromDragEvent = (event) => {
+  const translatedRect = event?.active?.rect?.current?.translated;
+  const initialRect = event?.active?.rect?.current?.initial;
+  const overRect = event?.over?.rect;
+
+  if (!overRect) return false;
+
+  const activeRect =
+    translatedRect ||
+    (initialRect
+      ? {
+          ...initialRect,
+          top: initialRect.top + Number(event?.delta?.y || 0),
+          bottom: initialRect.bottom + Number(event?.delta?.y || 0),
+        }
+      : null);
+
+  if (!activeRect) return false;
+
+  const activeCenterY = activeRect.top + activeRect.height / 2;
+  const overCenterY = overRect.top + overRect.height / 2;
+
+  return activeCenterY > overCenterY;
+};
+
+const reorderSelectedBlockAt = ({ items, selectedIds, activeId, overId, insertAfter = false }) => {
+  const active = toId(activeId);
+  const over = toId(overId);
+  const selectedSet = new Set(selectedIds.map(toId));
+  const movingIds = selectedSet.has(active) ? selectedIds.map(toId) : [active];
+  const movingSet = new Set(movingIds);
+  const movingItems = items.filter((item) => movingSet.has(toId(item.id)));
+  const remainingItems = items.filter((item) => !movingSet.has(toId(item.id)));
+  const overIndex = remainingItems.findIndex((item) => toId(item.id) === over);
+
+  if (movingItems.length === 0 || overIndex === -1) return items;
+
+  const insertIndex = overIndex + (insertAfter ? 1 : 0);
+
+  return [...remainingItems.slice(0, insertIndex), ...movingItems, ...remainingItems.slice(insertIndex)];
+};
+
 const getDragIdForRow = (row) => {
   if (row?.type === "reteta") return toId(row.reteta?.id);
   if (row?.type === "category") return row.id;
@@ -335,6 +415,10 @@ const PlainVirtualRow = (props) => {
         className={`group cursor-pointer h-8 border-0 hover:bg-transparent `}
         onClick={(e) => {
           e.stopPropagation();
+          if (props.context?.isCoeficientEditing) {
+            props.context?.handleCoeficientElementClick?.(rowItem.element, rowItem.reteta);
+            return;
+          }
           props.context?.handleElementRowClick?.(rowItem.element, rowItem.reteta);
         }}
       >
@@ -352,10 +436,11 @@ const PlainVirtualRow = (props) => {
 
 const SortableCategoryVirtualRow = ({ rowItem, ...props }) => {
   const isRowOrderLocked = props.context?.isRowOrderLocked;
+  const isCoeficientEditing = props.context?.isCoeficientEditing;
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: rowItem.id,
-    disabled: isRowOrderLocked,
+    disabled: isRowOrderLocked || isCoeficientEditing,
   });
 
   const domProps = cleanVirtuosoRowProps(props);
@@ -364,8 +449,8 @@ const SortableCategoryVirtualRow = ({ rowItem, ...props }) => {
     <TableRow
       {...domProps}
       ref={setNodeRef}
-      {...(!isRowOrderLocked ? attributes : {})}
-      {...(!isRowOrderLocked ? listeners : {})}
+      {...(!isRowOrderLocked && !isCoeficientEditing ? attributes : {})}
+      {...(!isRowOrderLocked && !isCoeficientEditing ? listeners : {})}
       style={{
         ...domProps.style,
         transform: CSS.Transform.toString(transform),
@@ -391,50 +476,74 @@ const SortableRecipeVirtualRow = ({ reteta, ...props }) => {
   const contextItems = selected && selectedRetete.length > 1 ? selectedRetete : [reteta];
   const isMultiple = contextItems.length > 1;
   const isRowOrderLocked = props.context?.isRowOrderLocked;
+  const isCoeficientEditing = props.context?.isCoeficientEditing;
+  const isCoeficientHighlighted = props.context?.highlightedRetetaIds?.has(id);
+  const isCoeficientExcluded = props.context?.excludedRetetaIds?.has(id);
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
-    disabled: isRowOrderLocked,
+    disabled: isRowOrderLocked || isCoeficientEditing,
   });
 
   const domProps = cleanVirtuosoRowProps(props);
   const isLastRow = props["data-index"] === props.context?.displayRows?.length - 1;
+  const rowNode = (
+    <TableRow
+      {...domProps}
+      ref={setNodeRef}
+      {...(!isRowOrderLocked && !isCoeficientEditing ? attributes : {})}
+      {...(!isRowOrderLocked && !isCoeficientEditing ? listeners : {})}
+      style={{
+        ...domProps.style,
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.45 : 1,
+        zIndex: isDragging ? 50 : undefined,
+        position: isDragging ? "relative" : undefined,
+      }}
+      className={`cursor-pointer hover:bgb drag-row hover:bg-muted/50 data-[state=open]:bg-muted h-12 border-b group dark:!bg-[#08090b] dark:hover:!bg-[#181e3a] ${
+        isCoeficientExcluded
+          ? "!bg-red-200 hover:!bg-red-300 dark:!bg-red-500 dark:hover:!bg-red-400 dark:!text-black dark:[&_*]:!text-black"
+          : isCoeficientHighlighted
+          ? "!bg-yellow-200 hover:!bg-yellow-300 dark:!bg-yellow-500 dark:hover:!bg-yellow-400 dark:!text-black dark:[&_*]:!text-black"
+          : selected
+            ? "!bg-primary/15 hover:!bg-primary/20 dark:!bg-primary/35 dark:hover:!bg-primary/45"
+            : ""
+      }`}
+      onMouseDownCapture={(e) => {
+        if (e.shiftKey) {
+          e.preventDefault();
+          window.getSelection()?.removeAllRanges();
+        }
+      }}
+      onFocus={(e) => {
+        if (e.target === e.currentTarget) {
+          e.currentTarget.blur();
+        }
+      }}
+      onContextMenuCapture={(e) => {
+        if (isCoeficientEditing) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+
+        props.context?.handleRowContextMenu(reteta);
+      }}
+      onClick={(e) => props.context?.handleRowClick(e, reteta)}
+    >
+      {props.children}
+    </TableRow>
+  );
+
+  if (isCoeficientEditing) {
+    return rowNode;
+  }
 
   return (
     <ContextMenu key={reteta.id}>
       <ContextMenuTrigger asChild>
-        <TableRow
-          {...domProps}
-          ref={setNodeRef}
-          {...(!isRowOrderLocked ? attributes : {})}
-          {...(!isRowOrderLocked ? listeners : {})}
-          style={{
-            ...domProps.style,
-            transform: CSS.Transform.toString(transform),
-            transition,
-            opacity: isDragging ? 0.45 : 1,
-            zIndex: isDragging ? 50 : undefined,
-            position: isDragging ? "relative" : undefined,
-          }}
-          className={`cursor-pointer hover:bgb drag-row hover:bg-muted/50 data-[state=open]:bg-muted h-12 border-b group dark:!bg-[#08090b] dark:hover:!bg-[#181e3a] ${
-            selected ? "!bg-primary/15 hover:!bg-primary/20 dark:!bg-primary/35 dark:hover:!bg-primary/45" : ""
-          }`}
-          onMouseDownCapture={(e) => {
-            if (e.shiftKey) {
-              e.preventDefault();
-              window.getSelection()?.removeAllRanges();
-            }
-          }}
-          onFocus={(e) => {
-            if (e.target === e.currentTarget) {
-              e.currentTarget.blur();
-            }
-          }}
-          onContextMenuCapture={() => props.context?.handleRowContextMenu(reteta)}
-          onClick={(e) => props.context?.handleRowClick(e, reteta)}
-        >
-          {props.children}
-        </TableRow>
+        {rowNode}
       </ContextMenuTrigger>
 
       <ContextMenuContent className="w-48">
@@ -463,12 +572,20 @@ const SortableRecipeVirtualRow = ({ reteta, ...props }) => {
           Dublează
         </ContextMenuItem>
 
-        {!isMultiple && (
-          <ContextMenuItem className="gap-3" onClick={() => props.context?.handleEdit(reteta)}>
-            <FontAwesomeIcon className="text-low" icon={faPenToSquare} />
-            Editează
-          </ContextMenuItem>
-        )}
+        <ContextMenuItem className="gap-3" onClick={() => props.context?.handleMove(contextItems)}>
+          <FontAwesomeIcon className="text-cyan-600 dark:text-cyan-300" icon={faArrowRightLong} />
+          Mută
+        </ContextMenuItem>
+
+        <ContextMenuItem className="gap-3" onClick={() => props.context?.handleReplace(contextItems)}>
+          <FontAwesomeIcon className="text-pink-600 dark:text-pink-400" icon={faRightLeft} />
+          Înlocuiește
+        </ContextMenuItem>
+
+        <ContextMenuItem className="gap-3" onClick={() => props.context?.handleEdit(contextItems)}>
+          <FontAwesomeIcon className="text-low" icon={faPenToSquare} />
+          Editează
+        </ContextMenuItem>
 
         <ContextMenuSeparator />
 
@@ -510,26 +627,66 @@ const componentsOferteRetete = {
   TableRow: SortableRetetaRow,
 };
 
+const CategoryColorButton = memo(function CategoryColorButton({ row, color, textColor, onChange }) {
+  const inputRef = useRef(null);
+  const pickerColor = color || "#c4c4ce";
+
+  if (!row?.fieldKey || !onChange) return null;
+
+  return (
+    <span data-no-row-open className="pointer-events-auto relative shrink-0" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+      <Button
+        type="button"
+        variant="ghost"
+        className="h-8 w-8 border-0 bg-transparent p-0 text-lg shadow-none hover:bg-transparent hover:opacity-80"
+        style={textColor ? { color: textColor } : undefined}
+        onClick={() => inputRef.current?.click()}
+      >
+        <FontAwesomeIcon icon={faPalette} className="text-lg" />
+      </Button>
+
+      <input ref={inputRef} type="color" value={pickerColor} className="absolute h-0 w-0 opacity-0" tabIndex={-1} onChange={(e) => onChange(row.fieldKey, row.value, e.target.value)} />
+    </span>
+  );
+});
+
 const OferteReteteList = memo(function OferteReteteList({
   reteteItems = [],
+  selectedOferta,
   selectedLucrare,
   displayLang = "RO",
   visibleColumns,
+  textAlign = "left",
+  decimalPlaces = 3,
   columnResetKey = 0,
   sortResetKey = 0,
   toggleAllKey = 0,
   categoryConfig = [],
+  showCategoryTotals = false,
+  categoryColorsConfig = {},
+  recapitulatiiPercent = "0",
+  tvaPercent = "0",
   searchQuery = "",
   onEditReteta,
   onDeleteReteta,
   onReorderRetete,
   onDuplicateRetete,
+  onMoveRetete,
+  onReplaceRetete,
   onUpdateRetetaQuantity,
+  onUpdateRetetaCategoryValues,
   onLoadFurnizoriRetete,
   onApplyFurnizoriRetete,
   onActualizeazaRetete,
   onSortActiveChange,
   onAllExpandedChange,
+  onSelectedCountChange,
+  onCategoryColorChange,
+  onRecapitulatiiPercentChange,
+  onTvaPercentChange,
+  coeficientEditorState = null,
+  oferteOptions = [],
+  onAddReteta,
 }) {
   const containerRef = useRef(null);
   const displayRowsRef = useRef([]);
@@ -541,13 +698,16 @@ const OferteReteteList = memo(function OferteReteteList({
 
   const [duplicateOpen, setDuplicateOpen] = useState(false);
   const [duplicateItems, setDuplicateItems] = useState([]);
+  const [moveOpen, setMoveOpen] = useState(false);
+  const [moveItems, setMoveItems] = useState([]);
+  const [replaceOpen, setReplaceOpen] = useState(false);
+  const [replaceItems, setReplaceItems] = useState([]);
 
   const [actualizeazaOpen, setActualizeazaOpen] = useState(false);
   const [actualizeazaItems, setActualizeazaItems] = useState([]);
 
   const [furnizoriOpen, setFurnizoriOpen] = useState(false);
   const [furnizoriItems, setFurnizoriItems] = useState([]);
-  const [exportPdfOpen, setExportPdfOpen] = useState(false);
 
   const [expandedRetetaIds, setExpandedRetetaIds] = useState(new Set());
 
@@ -563,9 +723,6 @@ const OferteReteteList = memo(function OferteReteteList({
   const [activeDragId, setActiveDragId] = useState(null);
   const [sortConfig, setSortConfig] = useState(null);
   const [categoryScrollTop, setCategoryScrollTop] = useState(0);
-
-  const [tvaPercent, setTvaPercent] = useState("0");
-  const [extraPercent, setExtraPercent] = useState("0");
 
   const [columnWidths, setColumnWidths] = useState(() => {
     const defaults = getDefaultColumnWidths();
@@ -622,6 +779,13 @@ const OferteReteteList = memo(function OferteReteteList({
       return allExpanded ? new Set() : new Set(allIds);
     });
   }, [toggleAllKey]);
+
+  useEffect(() => {
+    if (!coeficientEditorState?.expandAllKey) return;
+
+    const allIds = (reteteItems || []).map((item) => toId(item.id)).filter(Boolean);
+    setExpandedRetetaIds(new Set(allIds));
+  }, [coeficientEditorState?.expandAllKey, reteteItems]);
 
   useEffect(() => {
     const allIds = (reteteItems || []).map((item) => toId(item.id)).filter(Boolean);
@@ -713,6 +877,16 @@ const OferteReteteList = memo(function OferteReteteList({
     return normalizeCategoryConfig(categoryConfig, buildAvailableCategoryFields(dynamicColumns));
   }, [categoryConfig, dynamicColumns]);
 
+  const activeCategoryFields = useMemo(() => {
+    const availableFields = buildAvailableCategoryFields(dynamicColumns);
+
+    return normalizedCategoryConfig.map((key) => availableFields.find((field) => field.key === key)).filter(Boolean);
+  }, [dynamicColumns, normalizedCategoryConfig]);
+
+  const normalizedCategoryColorsConfig = useMemo(() => {
+    return normalizeCategoryColorsConfig(categoryColorsConfig);
+  }, [categoryColorsConfig]);
+
   useEffect(() => {
     setSortConfig(null);
     lastClickedIndexRef.current = null;
@@ -723,10 +897,28 @@ const OferteReteteList = memo(function OferteReteteList({
   const normalizedSearchQuery = useMemo(() => normalizeSearchText(searchQuery), [searchQuery]);
   const isSearchActive = normalizedSearchQuery.length > 0;
   const isRowOrderLocked = isSortActive || isSearchActive;
+  const isCoeficientEditing = !!coeficientEditorState?.active;
+  const highlightedRetetaIds = useMemo(() => new Set((coeficientEditorState?.retetaIds || []).map(toId)), [coeficientEditorState?.retetaIds]);
+  const highlightedElementIds = useMemo(() => new Set((coeficientEditorState?.elementIds || []).map(toId)), [coeficientEditorState?.elementIds]);
+  const excludedRetetaIds = useMemo(() => new Set((coeficientEditorState?.excludedRetetaIds || []).map(toId)), [coeficientEditorState?.excludedRetetaIds]);
+  const excludedElementIds = useMemo(() => new Set((coeficientEditorState?.excludedElementIds || []).map(toId)), [coeficientEditorState?.excludedElementIds]);
+  const coefRetetaImpactById = coeficientEditorState?.retetaImpactById || {};
+  const coefElementImpactById = coeficientEditorState?.elementImpactById || {};
 
   useEffect(() => {
     onSortActiveChange?.(isSortActive);
   }, [isSortActive, onSortActiveChange]);
+
+  useEffect(() => {
+    onSelectedCountChange?.(selectedIds.length);
+  }, [onSelectedCountChange, selectedIds.length]);
+
+  useEffect(() => {
+    if (!isCoeficientEditing) return;
+
+    setSelectedIds([]);
+    lastClickedIndexRef.current = null;
+  }, [isCoeficientEditing]);
 
   const handleSortColumn = useCallback((key) => {
     setSortConfig((prev) => {
@@ -761,15 +953,25 @@ const OferteReteteList = memo(function OferteReteteList({
       }
 
       if (key === "cod") return reteta?.cod_reteta || "";
-      if (key === "clasa") return reteta?.clasa_reteta || "";
+      if (String(key || "").startsWith("clasa")) {
+        const levelNo = Number(String(key).replace("clasa", ""));
+        return getRetetaClassLevelDisplay(reteta, levelNo, displayLang);
+      }
       if (key === "denumire") return displayLang === "FR" ? reteta?.denumire_fr || reteta?.denumire || "" : reteta?.denumire || reteta?.denumire_fr || "";
+      if (key === "cantitate") return 1;
       if (key === "cost") return getRetetaCost(reteta);
-      if (key === "cantitate") return Number(reteta?.cantitate_lucrare || 0);
+      if (key === "qtyTotal") return Number(reteta?.cantitate_lucrare || 0);
       if (key === "costTotal") return getRetetaTotalLucrare(reteta);
+      if (key === "coefProcent") {
+        const impact = coefRetetaImpactById[toId(reteta?.id)] || {};
+        return Number(impact.directPercent || 0) + Number(impact.interiorPercent || 0);
+      }
+      if (key === "coefPret") return Number(coefRetetaImpactById[toId(reteta?.id)]?.totalAdded || 0);
+      if (key === "pret") return getRetetaTotalLucrare(reteta) + Number(coefRetetaImpactById[toId(reteta?.id)]?.totalAdded || 0);
 
       return "";
     },
-    [displayLang, dynamicColumns],
+    [coefRetetaImpactById, displayLang, dynamicColumns],
   );
 
   const searchedRetete = useMemo(() => {
@@ -777,11 +979,17 @@ const OferteReteteList = memo(function OferteReteteList({
 
     return orderedRetete.filter((reteta) => {
       const coloaneValori = normalizeColoaneValori(reteta?.coloane_valori);
-      const values = [reteta?.cod_reteta, reteta?.clasa_reteta, reteta?.denumire, reteta?.denumire_fr, ...dynamicColumns.map((col) => getColoanaValue(coloaneValori, col))];
+      const values = [
+        reteta?.cod_reteta,
+        ...CLASS_LEVEL_COLUMNS.map((column) => getRetetaClassLevelDisplay(reteta, column.levelNo, displayLang)),
+        reteta?.denumire,
+        reteta?.denumire_fr,
+        ...dynamicColumns.map((col) => getColoanaValue(coloaneValori, col)),
+      ];
 
       return values.some((value) => normalizeSearchText(value).includes(normalizedSearchQuery));
     });
-  }, [dynamicColumns, normalizedSearchQuery, orderedRetete]);
+  }, [displayLang, dynamicColumns, normalizedSearchQuery, orderedRetete]);
 
   const sortedRetete = useMemo(() => {
     if (!sortConfig?.key) return searchedRetete;
@@ -853,11 +1061,21 @@ const OferteReteteList = memo(function OferteReteteList({
       setSelectedIds([]);
       lastClickedIndexRef.current = null;
     };
+    const cancelReorderESC = (e) => {
+      const target = e.target;
+      if (e.key !== "Escape") return;
+
+      setActiveDragId(null);
+      setSelectedIds([]);
+      lastClickedIndexRef.current = null;
+    };
 
     window.addEventListener("pointerdown", cancelReorder, true);
+    window.addEventListener("keydown", cancelReorderESC, true);
 
     return () => {
       window.removeEventListener("pointerdown", cancelReorder, true);
+      window.removeEventListener("keydown", cancelReorderESC, true);
     };
   }, []);
 
@@ -868,6 +1086,23 @@ const OferteReteteList = memo(function OferteReteteList({
     },
     [visibleColumns],
   );
+
+  const safeTextAlign = ["left", "center", "right"].includes(textAlign) ? textAlign : "left";
+  const safeDecimalPlaces = [1, 2, 3].includes(Number(decimalPlaces)) ? Number(decimalPlaces) : 3;
+
+  const textAlignClass = {
+    left: "text-left",
+    center: "text-center",
+    right: "text-right",
+  }[safeTextAlign];
+
+  const justifyAlignClass = {
+    left: "justify-start",
+    center: "justify-center",
+    right: "justify-end",
+  }[safeTextAlign];
+
+  const tooltipAlign = safeTextAlign;
 
   const totals = useMemo(() => {
     const resourceTotals = {
@@ -882,22 +1117,43 @@ const OferteReteteList = memo(function OferteReteteList({
     orderedRetete.forEach((reteta) => {
       const elemente = reteta.elemente || [];
       const cantitateLucrare = Number(reteta.cantitate_lucrare || 0);
+      const retetaResourceBaseTotals = {
+        manopera: 0,
+        material: 0,
+        utilaj: 0,
+        transport: 0,
+      };
 
       elemente.forEach((el) => {
         if (resourceTotals[el.tip_resursa] === undefined) return;
 
-        resourceTotals[el.tip_resursa] += getElementTotalInLucrare(el, reteta);
+        const elementBaseTotal = getElementTotalInLucrare(el, reteta);
+        const elementImpact = coefElementImpactById[toId(el.id)] || {};
+        const elementAddedValue = elementImpact.excluded ? 0 : Number(elementImpact.addedValue || 0);
+
+        retetaResourceBaseTotals[el.tip_resursa] += elementBaseTotal;
+        resourceTotals[el.tip_resursa] += elementBaseTotal + elementAddedValue;
 
         if (el.tip_resursa === "manopera") {
           const cantitateManoperaInReteta = Number(el.cantitate_in_reteta || 0);
           totalManoperaHours += cantitateManoperaInReteta * cantitateLucrare;
         }
       });
+
+      const retetaBaseTotal = retetaResourceBaseTotals.manopera + retetaResourceBaseTotals.material + retetaResourceBaseTotals.utilaj + retetaResourceBaseTotals.transport;
+      const retetaImpact = coefRetetaImpactById[toId(reteta.id)] || {};
+      const retetaDirectAdded = retetaImpact.excluded ? 0 : Number(retetaImpact.directAdded || 0);
+
+      if (retetaDirectAdded && retetaBaseTotal > 0) {
+        Object.keys(retetaResourceBaseTotals).forEach((tipResursa) => {
+          resourceTotals[tipResursa] += retetaDirectAdded * (retetaResourceBaseTotals[tipResursa] / retetaBaseTotal);
+        });
+      }
     });
 
     const subtotal = resourceTotals.manopera + resourceTotals.material + resourceTotals.utilaj + resourceTotals.transport;
 
-    const extraValue = subtotal * (getPercentNumber(extraPercent) / 100);
+    const extraValue = subtotal * (getPercentNumber(recapitulatiiPercent) / 100);
     const totalDupaAdaos = subtotal + extraValue;
 
     const tvaValue = totalDupaAdaos * (getPercentNumber(tvaPercent) / 100);
@@ -912,23 +1168,29 @@ const OferteReteteList = memo(function OferteReteteList({
       tvaValue,
       totalFinal,
     };
-  }, [orderedRetete, tvaPercent, extraPercent]);
+  }, [coefElementImpactById, coefRetetaImpactById, orderedRetete, tvaPercent, recapitulatiiPercent]);
 
-  const handleTvaPercentChange = useCallback((e) => {
-    const next = normalizePercentInput(e.target.value);
+  const handleTvaPercentChange = useCallback(
+    (e) => {
+      const next = normalizePercentInput(e.target.value);
 
-    if (next !== null) {
-      setTvaPercent(next);
-    }
-  }, []);
+      if (next !== null) {
+        onTvaPercentChange?.(next);
+      }
+    },
+    [onTvaPercentChange],
+  );
 
-  const handleExtraPercentChange = useCallback((e) => {
-    const next = normalizeAdaosPercentInput(e.target.value);
+  const handleExtraPercentChange = useCallback(
+    (e) => {
+      const next = normalizeAdaosPercentInput(e.target.value);
 
-    if (next !== null) {
-      setExtraPercent(next);
-    }
-  }, []);
+      if (next !== null) {
+        onRecapitulatiiPercentChange?.(next);
+      }
+    },
+    [onRecapitulatiiPercentChange],
+  );
 
   const getRetetaIndex = useCallback(
     (reteta) => {
@@ -944,6 +1206,8 @@ const OferteReteteList = memo(function OferteReteteList({
 
   const handleRowContextMenu = useCallback(
     (reteta) => {
+      if (isCoeficientEditing) return;
+
       const id = toId(reteta.id);
       const currentIndex = getRetetaIndex(reteta);
 
@@ -955,7 +1219,7 @@ const OferteReteteList = memo(function OferteReteteList({
         lastClickedIndexRef.current = currentIndex;
       }
     },
-    [getRetetaIndex, selectedIds],
+    [getRetetaIndex, isCoeficientEditing, selectedIds],
   );
 
   const handleScroll = (e) => {
@@ -1007,7 +1271,7 @@ const OferteReteteList = memo(function OferteReteteList({
   }, []);
 
   const handleElementRowClick = useCallback((element, parentReteta) => {
-    if (!element || !parentReteta) return;
+    if (isCoeficientEditing || !element || !parentReteta) return;
 
     const config = resurseConfig[element.tip_resursa] || resurseConfig.material;
 
@@ -1015,10 +1279,25 @@ const OferteReteteList = memo(function OferteReteteList({
     setSelectedElementConfig(config);
     setSelectedElementParentReteta(parentReteta);
     setVariantDialogOpen(true);
-  }, []);
+  }, [isCoeficientEditing]);
+
+  const handleCoeficientElementClick = useCallback(
+    (element) => {
+      if (!isCoeficientEditing || !element) return;
+      coeficientEditorState?.onElementToggle?.(element);
+    },
+    [coeficientEditorState, isCoeficientEditing],
+  );
 
   const handleRowClick = useCallback(
     (e, reteta) => {
+      if (isCoeficientEditing) {
+        e.preventDefault();
+        e.stopPropagation();
+        coeficientEditorState?.onRetetaToggle?.(reteta);
+        return;
+      }
+
       if (wasDraggingRef.current) return;
       if (e.target.closest("[data-no-row-open]") && !e.shiftKey) return;
       if (e.target.closest("a, button, input") && !e.shiftKey) return;
@@ -1053,6 +1332,7 @@ const OferteReteteList = memo(function OferteReteteList({
         const rangeIds = getRangeIds(reteteForSelection, lastClickedIndexRef.current, currentIndex);
 
         setSelectedIds(rangeIds);
+        lastClickedIndexRef.current = currentIndex;
         return;
       }
 
@@ -1071,9 +1351,19 @@ const OferteReteteList = memo(function OferteReteteList({
         return;
       }
 
-      toggleRetetaExpand(reteta);
+      const wasSelected = selectedIds.includes(id);
+
+      if (!wasSelected) {
+        setSelectedIds([id]);
+      }
+
+      lastClickedIndexRef.current = currentIndex;
+
+      if (wasSelected) {
+        toggleRetetaExpand(reteta);
+      }
     },
-    [reteteForSelection, getRetetaIndex, toggleRetetaExpand],
+    [coeficientEditorState, getRetetaIndex, isCoeficientEditing, reteteForSelection, selectedIds, toggleRetetaExpand],
   );
 
   const handleDuplicate = useCallback((items) => {
@@ -1083,6 +1373,24 @@ const OferteReteteList = memo(function OferteReteteList({
 
     setDuplicateItems(nextItems);
     setDuplicateOpen(true);
+  }, []);
+
+  const handleMove = useCallback((items) => {
+    const nextItems = Array.isArray(items) ? items.filter(Boolean) : [items].filter(Boolean);
+
+    if (nextItems.length === 0) return;
+
+    setMoveItems(nextItems);
+    setMoveOpen(true);
+  }, []);
+
+  const handleReplace = useCallback((items) => {
+    const nextItems = Array.isArray(items) ? items.filter(Boolean) : [items].filter(Boolean);
+
+    if (nextItems.length === 0) return;
+
+    setReplaceItems(nextItems);
+    setReplaceOpen(true);
   }, []);
 
   const handleActualizeaza = useCallback((items) => {
@@ -1123,9 +1431,13 @@ const OferteReteteList = memo(function OferteReteteList({
   );
 
   const handleEdit = useCallback(
-    (reteta) => {
+    (items) => {
+      const nextItems = Array.isArray(items) ? items.filter(Boolean) : [items].filter(Boolean);
+
+      if (nextItems.length === 0) return;
+
       if (onEditReteta) {
-        onEditReteta(reteta);
+        onEditReteta(nextItems);
         return;
       }
 
@@ -1212,6 +1524,78 @@ const OferteReteteList = memo(function OferteReteteList({
     }, 0);
   }, []);
 
+  const buildRetetaWithCategoryPath = useCallback(
+    (reteta, targetPath = []) => {
+      const nextColoaneValori = normalizeColoaneValori(reteta?.coloane_valori);
+      let changed = false;
+      let unsupportedField = null;
+
+      targetPath.forEach((targetPathValue, levelIndex) => {
+        const field = activeCategoryFields[levelIndex];
+
+        if (!field) return;
+
+        const targetValue = String(targetPathValue === EMPTY_CATEGORY_VALUE ? "" : targetPathValue || "").trim();
+
+        if (field.type !== "dynamic") {
+          const currentValue = getCategoryValue({
+            reteta,
+            field,
+            dynamicColumns,
+            displayLang,
+          });
+          const comparableTarget = targetValue || EMPTY_CATEGORY_VALUE;
+
+          if (currentValue !== comparableTarget) {
+            unsupportedField = field;
+          }
+
+          return;
+        }
+
+        const col = field.column || dynamicColumns.find((item) => String(item.id) === String(field.columnId));
+
+        if (!col) return;
+
+        const colId = col.id ? String(col.id) : "";
+        const colName = String(col.nume || col.name || "").trim();
+        const colNameLower = colName.toLowerCase();
+        const existingIndex = nextColoaneValori.findIndex((item) => {
+          if (colId && item.id && String(item.id) === colId) return true;
+          return item.name && item.name.toLowerCase() === colNameLower;
+        });
+
+        if (existingIndex === -1) {
+          nextColoaneValori.push({
+            id: colId,
+            name: colName,
+            value: targetValue,
+          });
+          changed = true;
+          return;
+        }
+
+        if (String(nextColoaneValori[existingIndex].value || "") !== targetValue) {
+          nextColoaneValori[existingIndex] = {
+            ...nextColoaneValori[existingIndex],
+            id: nextColoaneValori[existingIndex].id || colId,
+            name: nextColoaneValori[existingIndex].name || colName,
+            value: targetValue,
+          };
+          changed = true;
+        }
+      });
+
+      return {
+        reteta: changed ? { ...reteta, coloane_valori: nextColoaneValori } : reteta,
+        coloane_valori: nextColoaneValori,
+        changed,
+        unsupportedField,
+      };
+    },
+    [activeCategoryFields, displayLang, dynamicColumns],
+  );
+
   const handleDragEnd = useCallback(
     async (event) => {
       if (isRowOrderLocked) {
@@ -1236,33 +1620,87 @@ const OferteReteteList = memo(function OferteReteteList({
       if (!activeRow || !overRow) return;
 
       let next = null;
+      let categoryUpdates = [];
+      let movedRetetaIds = [];
+      let lastMovedRetetaId = null;
 
       if (isCategoryActive) {
         if (activeRow.type === "reteta") {
-          if (overRow.type !== "reteta" || !pathsEqual(activeRow.categoryPath, overRow.categoryPath)) {
-            toast.warning("Poți muta rețete doar în aceeași categorie.", { position: "top-right" });
-            return;
-          }
+          if (overRow.type !== "reteta" && overRow.type !== "category") return;
 
           const activeRetetaId = toId(activeRow.reteta.id);
           const selectedSet = new Set(selectedIds.map(toId));
           const movingIds = selectedSet.has(activeRetetaId) ? selectedIds.map(toId) : [activeRetetaId];
-          const sameCategory = movingIds.every((id) => {
-            const row = getDisplayRowByDragId(displayRowsRef.current, id);
-            return row?.type === "reteta" && pathsEqual(row.categoryPath, activeRow.categoryPath);
+          const movingSet = new Set(movingIds);
+          movedRetetaIds = movingIds;
+          lastMovedRetetaId = activeRetetaId;
+          const insertAfterOver = getInsertAfterFromDragEvent(event);
+          let targetPath = overRow.categoryPath || [];
+          let overRetetaRow = null;
+          let insertAfterTarget = false;
+
+          if (overRow.type === "reteta") {
+            overRetetaRow = overRow;
+            insertAfterTarget = insertAfterOver;
+          } else {
+            const overRowIndex = displayRowsRef.current.findIndex((row) => getDragIdForRow(row) === getDragIdForRow(overRow));
+
+            if (!insertAfterOver && overRowIndex > 0) {
+              const previousRetetaRow = [...displayRowsRef.current]
+                .slice(0, overRowIndex)
+                .reverse()
+                .find((row) => row.type === "reteta" && !movingSet.has(toId(row.reteta?.id)));
+
+              if (previousRetetaRow) {
+                targetPath = previousRetetaRow.categoryPath || [];
+                overRetetaRow = previousRetetaRow;
+                insertAfterTarget = true;
+              }
+            }
+
+            if (!overRetetaRow) {
+              overRetetaRow = displayRowsRef.current.find((row) => row.type === "reteta" && pathStartsWith(row.categoryPath, targetPath) && !movingSet.has(toId(row.reteta?.id)));
+              insertAfterTarget = false;
+            }
+          }
+
+          let unsupportedField = null;
+
+          const reteteWithUpdatedCategories = orderedRetete.map((reteta) => {
+            if (!movingSet.has(toId(reteta.id))) return reteta;
+
+            const result = buildRetetaWithCategoryPath(reteta, targetPath);
+
+            if (result.unsupportedField) {
+              unsupportedField = result.unsupportedField;
+            }
+
+            if (result.changed) {
+              categoryUpdates.push({
+                reteta: result.reteta,
+                coloane_valori: result.coloane_valori,
+              });
+            }
+
+            return result.reteta;
           });
 
-          if (!sameCategory) {
-            toast.warning("Selecția trebuie să fie în aceeași categorie.", { position: "top-right" });
+          if (unsupportedField) {
+            toast.warning(`Categoria "${unsupportedField.label}" nu poate fi schimbată prin drag & drop. Folosește coloane dinamice pentru mutări între categorii.`, { position: "top-right" });
             return;
           }
 
-          next = reorderSelectedBlock({
-            items: orderedRetete,
-            selectedIds: movingIds,
-            activeId: activeRetetaId,
-            overId: toId(overRow.reteta.id),
-          });
+          if (!overRetetaRow) {
+            next = reteteWithUpdatedCategories;
+          } else {
+            next = reorderSelectedBlockAt({
+              items: reteteWithUpdatedCategories,
+              selectedIds: movingIds,
+              activeId: activeRetetaId,
+              overId: toId(overRetetaRow.reteta.id),
+              insertAfter: insertAfterTarget,
+            });
+          }
         } else if (activeRow.type === "category") {
           if (overRow.type !== "category" || activeRow.level !== overRow.level || !pathsEqual(activeRow.parentPath, overRow.parentPath)) {
             toast.warning("Poți muta categorii doar între categorii de același nivel.", { position: "top-right" });
@@ -1272,27 +1710,50 @@ const OferteReteteList = memo(function OferteReteteList({
           if (pathsEqual(activeRow.categoryPath, overRow.categoryPath)) return;
 
           const rows = displayRowsRef.current;
-          const getRetetaPath = (reteta) => getDisplayRowByDragId(rows, toId(reteta.id))?.categoryPath || [];
-          const activeItems = orderedRetete.filter((reteta) => pathStartsWith(getRetetaPath(reteta), activeRow.categoryPath));
-          const overItems = orderedRetete.filter((reteta) => pathStartsWith(getRetetaPath(reteta), overRow.categoryPath));
+          const reteteById = new Map(orderedRetete.map((reteta) => [toId(reteta.id), reteta]));
+          const siblingCategoryRows = rows.filter((row) => row.type === "category" && row.level === activeRow.level && pathsEqual(row.parentPath, activeRow.parentPath));
+          const activeIndex = siblingCategoryRows.findIndex((row) => pathsEqual(row.categoryPath, activeRow.categoryPath));
+          const overIndex = siblingCategoryRows.findIndex((row) => pathsEqual(row.categoryPath, overRow.categoryPath));
 
-          if (activeItems.length === 0 || overItems.length === 0) return;
+          if (activeIndex === -1 || overIndex === -1) return;
 
-          const activeIds = new Set(activeItems.map((reteta) => toId(reteta.id)));
-          const overIds = new Set(overItems.map((reteta) => toId(reteta.id)));
-          const activeIndex = orderedRetete.findIndex((reteta) => activeIds.has(toId(reteta.id)));
-          const overIndex = orderedRetete.findIndex((reteta) => overIds.has(toId(reteta.id)));
-          const remainingItems = orderedRetete.filter((reteta) => !activeIds.has(toId(reteta.id)));
+          const getCategoryRetete = (categoryRow) => {
+            const ids = rows
+              .filter((row) => row.type === "reteta" && pathStartsWith(row.categoryPath, categoryRow.categoryPath))
+              .map((row) => toId(row.reteta?.id))
+              .filter(Boolean);
 
-          let insertIndex = remainingItems.findIndex((reteta) => overIds.has(toId(reteta.id)));
+            return ids.map((id) => reteteById.get(id)).filter(Boolean);
+          };
 
-          if (insertIndex === -1) return;
+          const siblingGroups = siblingCategoryRows.map((row) => ({
+            row,
+            items: getCategoryRetete(row),
+          }));
+          const movingGroup = siblingGroups[activeIndex];
 
-          if (overIndex > activeIndex) {
-            insertIndex += remainingItems.filter((reteta) => overIds.has(toId(reteta.id))).length;
-          }
+          if (!movingGroup?.items?.length) return;
 
-          next = [...remainingItems.slice(0, insertIndex), ...activeItems, ...remainingItems.slice(insertIndex)];
+          siblingGroups.splice(activeIndex, 1);
+          siblingGroups.splice(overIndex, 0, movingGroup);
+
+          const siblingIds = new Set(siblingGroups.flatMap((group) => group.items.map((reteta) => toId(reteta.id))));
+          const reorderedSiblingItems = siblingGroups.flatMap((group) => group.items);
+          let insertedSiblings = false;
+
+          next = orderedRetete.reduce((acc, reteta) => {
+            if (!siblingIds.has(toId(reteta.id))) {
+              acc.push(reteta);
+              return acc;
+            }
+
+            if (!insertedSiblings) {
+              acc.push(...reorderedSiblingItems);
+              insertedSiblings = true;
+            }
+
+            return acc;
+          }, []);
         }
       } else if (activeRow.type === "reteta" && overRow.type === "reteta") {
         next = reorderSelectedBlock({
@@ -1307,22 +1768,60 @@ const OferteReteteList = memo(function OferteReteteList({
 
       const oldOrder = orderedRetete.map((item) => toId(item.id)).join(",");
       const newOrder = next.map((item) => toId(item.id)).join(",");
+      const orderChanged = oldOrder !== newOrder;
 
-      if (oldOrder === newOrder) return;
+      if (!orderChanged && categoryUpdates.length === 0) return;
 
       setOrderedRetete(next);
 
+      if (lastMovedRetetaId) {
+        const nextReteteForSelection = buildDisplayRowsWithCategories({
+          retete: next,
+          expandedRetetaIds: new Set(),
+          categoryConfig: normalizedCategoryConfig,
+          dynamicColumns,
+          displayLang,
+        })
+          .filter((row) => row.type === "reteta")
+          .map((row) => row.reteta);
+        const nextIndex = nextReteteForSelection.findIndex((reteta) => toId(reteta.id) === lastMovedRetetaId);
+
+        if (nextIndex !== -1) {
+          lastClickedIndexRef.current = nextIndex;
+        }
+
+        setSelectedIds(movedRetetaIds.length > 0 ? movedRetetaIds : [lastMovedRetetaId]);
+      }
+
       try {
-        await onReorderRetete?.({
-          lucrare_id: selectedLucrare?.id,
-          ordered_ids: next.map((item) => item.id),
-        });
+        if (categoryUpdates.length > 0) {
+          await onUpdateRetetaCategoryValues?.(categoryUpdates);
+        }
+
+        if (orderChanged) {
+          await onReorderRetete?.({
+            lucrare_id: selectedLucrare?.id,
+            ordered_ids: next.map((item) => item.id),
+          });
+        }
       } catch (err) {
         setOrderedRetete(orderedRetete);
         toast.error(err?.response?.data?.message || "Eroare la reordonarea rețetelor.");
       }
     },
-    [isCategoryActive, isRowOrderLocked, orderedRetete, selectedIds, onReorderRetete, selectedLucrare?.id],
+    [
+      buildRetetaWithCategoryPath,
+      displayLang,
+      dynamicColumns,
+      isCategoryActive,
+      isRowOrderLocked,
+      normalizedCategoryConfig,
+      orderedRetete,
+      selectedIds,
+      onReorderRetete,
+      onUpdateRetetaCategoryValues,
+      selectedLucrare?.id,
+    ],
   );
 
   const onConfirmDuplicate = useCallback(
@@ -1333,6 +1832,26 @@ const OferteReteteList = memo(function OferteReteteList({
       setSelectedIds([]);
     },
     [onDuplicateRetete],
+  );
+
+  const onConfirmMove = useCallback(
+    async (payload) => {
+      await onMoveRetete?.(payload);
+      setMoveOpen(false);
+      setMoveItems([]);
+      setSelectedIds([]);
+    },
+    [onMoveRetete],
+  );
+
+  const onConfirmReplace = useCallback(
+    async (payload) => {
+      await onReplaceRetete?.(payload);
+      setReplaceOpen(false);
+      setReplaceItems([]);
+      setSelectedIds([]);
+    },
+    [onReplaceRetete],
   );
 
   const onConfirmActualizeaza = useCallback(
@@ -1411,7 +1930,7 @@ const OferteReteteList = memo(function OferteReteteList({
       }
     });
 
-    ["cod", "clasa", "denumire", "descriere", "unitate", "cost", "cantitate", "costTotal", "creat", "actualizat"].forEach((key) => {
+    ["cod", "clasa1", "clasa2", "clasa3", "clasa4", "clasa5", "denumire", "descriere", "unitate", "cantitate", "qtyTotal", "cost", "costTotal", "coefProcent", "coefPret", "pret", "creat", "actualizat"].forEach((key) => {
       if (showCol(key)) {
         count += 1;
       }
@@ -1422,6 +1941,68 @@ const OferteReteteList = memo(function OferteReteteList({
     return count;
   }, [dynamicColumns, showCol]);
 
+  const categoryTotalsLabelColSpan = useMemo(() => {
+    let count = 1;
+
+    if (showCol("elemente")) count += 1;
+    if (showCol("poza")) count += 1;
+
+    dynamicColumns.forEach((col) => {
+      if (showCol(`col_${col.id}`)) {
+        count += 1;
+      }
+    });
+
+    ["cod", "clasa1", "clasa2", "clasa3", "clasa4", "clasa5", "denumire", "descriere"].forEach((key) => {
+      if (showCol(key)) {
+        count += 1;
+      }
+    });
+
+    return Math.max(1, count);
+  }, [dynamicColumns, showCol]);
+
+  const getCategoryTheme = useCallback(
+    (row) => {
+      const backgroundColor = getCategoryColor(normalizedCategoryColorsConfig, row?.fieldKey, row?.value);
+
+      if (!backgroundColor) {
+        return {
+          hasColor: false,
+          backgroundColor: "",
+          textColor: "",
+          style: {},
+          cellClass:
+            "h-10 border-b border-r border-border bg-[#c4c4ce] p-1 align-middle text-sm text-foreground shadow-sm dark:bg-[#34363d] dark:text-foreground dark:[&_*]:!text-foreground [.blue_&]:bg-[#22262b]",
+          fullClass: "h-10 border-b border-border bg-[#c4c4ce] py-0 pr-3 align-middle shadow-sm dark:bg-[#34363d] dark:text-foreground dark:[&_*]:!text-foreground [.blue_&]:bg-[#22262b]",
+          badgeClass: "shrink-0 flex gap-3 rounded-md border border-border bg-background/70 px-2.5 py-1 text-sm font-bold text-foreground",
+          levelClass: "shrink-0 rounded-md border border-border bg-background/70 px-2.5 py-1 text-sm font-black uppercase tracking-wide text-foreground",
+          valueClass: "min-w-0 flex-1 truncate text-base font-black text-foreground",
+          totalClass: "text-sm font-black text-primary whitespace-nowrap",
+        };
+      }
+
+      const color = getReadableTextColor(backgroundColor);
+
+      return {
+        hasColor: true,
+        backgroundColor,
+        textColor: color,
+        style: {
+          backgroundColor,
+          color,
+        },
+        cellClass: "h-10 border-b border-r border-border p-1 align-middle text-sm shadow-sm",
+        fullClass: "h-10 border-b border-border py-0 pr-3 align-middle shadow-sm",
+        badgeClass: "shrink-0 flex gap-3 rounded-md border border-current bg-white/20 px-2.5 py-1 text-sm font-bold",
+        levelClass: "shrink-0 rounded-md border border-current/40 bg-white/20 px-2.5 py-1 text-sm font-black uppercase tracking-wide",
+        valueClass: "min-w-0 flex-1 truncate text-base font-black",
+        totalClass: "text-sm font-black whitespace-nowrap",
+      };
+    },
+    [normalizedCategoryColorsConfig],
+  );
+
   const context = useMemo(() => {
     return {
       displayRows,
@@ -1429,15 +2010,21 @@ const OferteReteteList = memo(function OferteReteteList({
       selectedIds,
       isSortActive,
       isRowOrderLocked,
+      isCoeficientEditing,
+      highlightedRetetaIds,
+      excludedRetetaIds,
       expandedRetetaIds,
       toggleRetetaExpand,
       handleRowClick,
       handleRowContextMenu,
       handleElementRowClick,
+      handleCoeficientElementClick,
       getSelectedRetete,
       handleEdit,
       handleDelete,
       handleDuplicate,
+      handleMove,
+      handleReplace,
       handleFurnizori,
       handleActualizeaza,
     };
@@ -1447,15 +2034,21 @@ const OferteReteteList = memo(function OferteReteteList({
     selectedIds,
     isSortActive,
     isRowOrderLocked,
+    isCoeficientEditing,
+    highlightedRetetaIds,
+    excludedRetetaIds,
     expandedRetetaIds,
     toggleRetetaExpand,
     handleRowClick,
     handleRowContextMenu,
     handleElementRowClick,
+    handleCoeficientElementClick,
     getSelectedRetete,
     handleEdit,
     handleDelete,
     handleDuplicate,
+    handleMove,
+    handleReplace,
     handleFurnizori,
     handleActualizeaza,
   ]);
@@ -1475,6 +2068,7 @@ const OferteReteteList = memo(function OferteReteteList({
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
+            if (isCoeficientEditing) return;
             handleSortColumn(sortKey);
           }}
         >
@@ -1483,7 +2077,7 @@ const OferteReteteList = memo(function OferteReteteList({
         </button>
       );
     },
-    [handleSortColumn, sortConfig],
+    [handleSortColumn, isCoeficientEditing, sortConfig],
   );
 
   return (
@@ -1539,7 +2133,11 @@ const OferteReteteList = memo(function OferteReteteList({
                         onResizeStart={handleColumnResizeStart}
                         className="relative h-9 border-r border-b border-border w-full  text-center align-middle text-sm font-bold text-foreground"
                       >
-                        {renderSortHeaderContent(`dynamic_${col.id}`, <OverflowTooltip text={col.nume} align="center" className="font-bold text-center text-foreground" maxLines={1} textSize="sm" />)}
+                        {renderSortHeaderContent(
+                          `dynamic_${col.id}`,
+                          <OverflowTooltip text={col.nume} align={tooltipAlign} className={`font-bold ${textAlignClass} text-foreground`} maxLines={1} textSize="sm" />,
+                          safeTextAlign,
+                        )}
                       </ResizableTableHead>
                     ) : null,
                   )}
@@ -1551,19 +2149,23 @@ const OferteReteteList = memo(function OferteReteteList({
                       onResizeStart={handleColumnResizeStart}
                       className="relative h-9 border-r border-b border-border  text-center align-middle text-sm font-bold text-foreground"
                     >
-                      {renderSortHeaderContent("cod", "Cod")}
+                      {renderSortHeaderContent("cod", "Cod", safeTextAlign)}
                     </ResizableTableHead>
                   )}
 
-                  {showCol("clasa") && (
-                    <ResizableTableHead
-                      colKey="clasa"
-                      style={getColumnStyle("clasa")}
-                      onResizeStart={handleColumnResizeStart}
-                      className="relative h-9 border-r border-b border-border  text-center align-middle text-sm font-bold text-foreground"
-                    >
-                      {renderSortHeaderContent("clasa", "Clasa")}
-                    </ResizableTableHead>
+                  {CLASS_LEVEL_COLUMNS.map(
+                    (column) =>
+                      showCol(column.key) && (
+                        <ResizableTableHead
+                          key={column.key}
+                          colKey={column.key}
+                          style={getColumnStyle(column.key)}
+                          onResizeStart={handleColumnResizeStart}
+                          className="relative h-9 border-r border-b border-border  text-center align-middle text-sm font-bold text-foreground"
+                        >
+                          {renderSortHeaderContent(column.key, column.label, safeTextAlign)}
+                        </ResizableTableHead>
+                      ),
                   )}
 
                   {showCol("denumire") && (
@@ -1573,7 +2175,7 @@ const OferteReteteList = memo(function OferteReteteList({
                       onResizeStart={handleColumnResizeStart}
                       className="relative h-9 border-r border-b border-border  text-left align-middle text-sm font-bold text-foreground"
                     >
-                      {renderSortHeaderContent("denumire", "Denumire", "left")}
+                      {renderSortHeaderContent("denumire", "Denumire", safeTextAlign)}
                     </ResizableTableHead>
                   )}
 
@@ -1599,17 +2201,6 @@ const OferteReteteList = memo(function OferteReteteList({
                     </ResizableTableHead>
                   )}
 
-                  {showCol("cost") && (
-                    <ResizableTableHead
-                      colKey="cost"
-                      style={getColumnStyle("cost")}
-                      onResizeStart={handleColumnResizeStart}
-                      className="relative h-9 border-r border-b border-border text-center align-middle text-sm font-bold text-foreground"
-                    >
-                      {renderSortHeaderContent("cost", "Cost")}
-                    </ResizableTableHead>
-                  )}
-
                   {showCol("cantitate") && (
                     <ResizableTableHead
                       colKey="cantitate"
@@ -1621,6 +2212,28 @@ const OferteReteteList = memo(function OferteReteteList({
                     </ResizableTableHead>
                   )}
 
+                  {showCol("qtyTotal") && (
+                    <ResizableTableHead
+                      colKey="qtyTotal"
+                      style={getColumnStyle("qtyTotal")}
+                      onResizeStart={handleColumnResizeStart}
+                      className="relative h-9 border-r border-b border-border  text-center align-middle text-sm font-bold text-foreground"
+                    >
+                      {renderSortHeaderContent("qtyTotal", "Qty total")}
+                    </ResizableTableHead>
+                  )}
+
+                  {showCol("cost") && (
+                    <ResizableTableHead
+                      colKey="cost"
+                      style={getColumnStyle("cost")}
+                      onResizeStart={handleColumnResizeStart}
+                      className="relative h-9 border-r border-b border-border text-center align-middle text-sm font-bold text-foreground"
+                    >
+                      {renderSortHeaderContent("cost", "Cost")}
+                    </ResizableTableHead>
+                  )}
+
                   {showCol("costTotal") && (
                     <ResizableTableHead
                       colKey="costTotal"
@@ -1628,7 +2241,40 @@ const OferteReteteList = memo(function OferteReteteList({
                       onResizeStart={handleColumnResizeStart}
                       className="relative h-9 border-r border-b border-border  text-center align-middle text-sm font-bold text-foreground"
                     >
-                      {renderSortHeaderContent("costTotal", "Total")}
+                      {renderSortHeaderContent("costTotal", "Cost total")}
+                    </ResizableTableHead>
+                  )}
+
+                  {showCol("coefProcent") && (
+                    <ResizableTableHead
+                      colKey="coefProcent"
+                      style={getColumnStyle("coefProcent")}
+                      onResizeStart={handleColumnResizeStart}
+                      className="relative h-9 border-r border-b border-border  text-center align-middle text-sm font-bold text-foreground"
+                    >
+                      {renderSortHeaderContent("coefProcent", "Coef")}
+                    </ResizableTableHead>
+                  )}
+
+                  {showCol("coefPret") && (
+                    <ResizableTableHead
+                      colKey="coefPret"
+                      style={getColumnStyle("coefPret")}
+                      onResizeStart={handleColumnResizeStart}
+                      className="relative h-9 border-r border-b border-border  text-center align-middle text-sm font-bold text-foreground"
+                    >
+                      {renderSortHeaderContent("coefPret", "Coef. preț")}
+                    </ResizableTableHead>
+                  )}
+
+                  {showCol("pret") && (
+                    <ResizableTableHead
+                      colKey="pret"
+                      style={getColumnStyle("pret")}
+                      onResizeStart={handleColumnResizeStart}
+                      className="relative h-9 border-r border-b border-border  text-center align-middle text-sm font-black text-foreground"
+                    >
+                      {renderSortHeaderContent("pret", "Preț")}
                     </ResizableTableHead>
                   )}
 
@@ -1673,25 +2319,112 @@ const OferteReteteList = memo(function OferteReteteList({
 
                 if (rowItem.type === "category") {
                   const level = Number(rowItem.level || 1);
+                  const categoryTheme = getCategoryTheme(rowItem);
+                  const categoryTotals = rowItem.totals || {};
+                  const categoryInfoVisible = showCol("info");
+                  const categoryMainColSpan = categoryInfoVisible ? Math.max(1, (visibleTableColumnCount || 1) - 1) : visibleTableColumnCount || 1;
+
+                  if (showCategoryTotals) {
+                    return (
+                      <>
+                        <TableCell
+                          colSpan={categoryTotalsLabelColSpan}
+                          style={{
+                            paddingLeft: `${0.75 + (level - 1) * 1.25}rem`,
+                            ...categoryTheme.style,
+                          }}
+                          className={`${categoryTheme.cellClass} pr-3`}
+                        >
+                          <div className="flex h-full min-w-0 items-center gap-2">
+                            <span className={categoryTheme.levelClass}>Nivel {level}</span>
+
+                            <span className={categoryTheme.valueClass}>{rowItem.value}</span>
+
+                            <span className={categoryTheme.badgeClass}>
+                              {rowItem.count} {rowItem.count === 1 ? "rețetă" : "rețete"}
+                            </span>
+                          </div>
+                        </TableCell>
+
+                        {showCol("unitate") && (
+                          <TableCell style={{ ...getColumnStyle("unitate"), ...categoryTheme.style }} className={`${categoryTheme.cellClass} text-center`}>
+                            <div className="grid leading-tight">
+                              <span className="text-xs font-black uppercase opacity-75">Ore</span>
+                              <span className={categoryTheme.totalClass}>{formatNumber(categoryTotals.totalManoperaHours, safeDecimalPlaces)}</span>
+                            </div>
+                          </TableCell>
+                        )}
+
+                        {showCol("cantitate") && (
+                          <TableCell style={{ ...getColumnStyle("cantitate"), ...categoryTheme.style }} className={`${categoryTheme.cellClass} text-center`}>
+                            <span className={categoryTheme.totalClass}>{formatNumber(rowItem.count, safeDecimalPlaces)}</span>
+                          </TableCell>
+                        )}
+
+                        {showCol("qtyTotal") && (
+                          <TableCell style={{ ...getColumnStyle("qtyTotal"), ...categoryTheme.style }} className={`${categoryTheme.cellClass} text-center`}>
+                            <span className={categoryTheme.totalClass}>{formatNumber(categoryTotals.cantitate, safeDecimalPlaces)}</span>
+                          </TableCell>
+                        )}
+
+                        {showCol("cost") && (
+                          <TableCell style={{ ...getColumnStyle("cost"), ...categoryTheme.style }} className={`${categoryTheme.cellClass} text-center`}>
+                            <span className={categoryTheme.totalClass}>{formatNumber(categoryTotals.cost, safeDecimalPlaces)}</span>
+                          </TableCell>
+                        )}
+
+                        {showCol("costTotal") && (
+                          <TableCell style={{ ...getColumnStyle("costTotal"), ...categoryTheme.style }} className={`${categoryTheme.cellClass} text-center`}>
+                            <span className={categoryTheme.totalClass}>{formatNumber(categoryTotals.total, safeDecimalPlaces)}</span>
+                          </TableCell>
+                        )}
+
+                        {showCol("coefProcent") && <TableCell style={{ ...getColumnStyle("coefProcent"), ...categoryTheme.style }} className={`${categoryTheme.cellClass} text-center`} />}
+                        {showCol("coefPret") && <TableCell style={{ ...getColumnStyle("coefPret"), ...categoryTheme.style }} className={`${categoryTheme.cellClass} text-center`} />}
+                        {showCol("pret") && <TableCell style={{ ...getColumnStyle("pret"), ...categoryTheme.style }} className={`${categoryTheme.cellClass} text-center`} />}
+
+                        {showCol("creat") && <TableCell style={{ ...getColumnStyle("creat"), ...categoryTheme.style }} className={categoryTheme.cellClass} />}
+                        {showCol("actualizat") && <TableCell style={{ ...getColumnStyle("actualizat"), ...categoryTheme.style }} className={categoryTheme.cellClass} />}
+                        {categoryInfoVisible && (
+                          <TableCell style={{ ...getColumnStyle("info"), ...categoryTheme.style }} className={`${categoryTheme.cellClass} text-center`}>
+                            <div className="flex h-full items-center justify-center">
+                              <CategoryColorButton row={rowItem} color={categoryTheme.backgroundColor} textColor={categoryTheme.textColor} onChange={isCoeficientEditing ? undefined : onCategoryColorChange} />
+                            </div>
+                          </TableCell>
+                        )}
+                      </>
+                    );
+                  }
 
                   return (
-                    <TableCell
-                      colSpan={visibleTableColumnCount || 1}
-                      style={{
-                        paddingLeft: `${0.75 + (level - 1) * 1.25}rem`,
-                      }}
-                      className="h-10 border-b border-border bg-[#c4c4ce] py-0 pr-3 align-middle shadow-sm dark:bg-[#34363d] dark:text-foreground dark:[&_*]:!text-foreground [.blue_&]:bg-[#22262b]"
-                    >
-                      <div className="flex h-full min-w-0 items-center gap-2">
-                        <span className="shrink-0 rounded-md border border-border bg-background/70 px-2.5 py-1 text-sm font-black uppercase tracking-wide text-foreground">Nivel {level}</span>
+                    <>
+                      <TableCell
+                        colSpan={categoryMainColSpan}
+                        style={{
+                          paddingLeft: `${0.75 + (level - 1) * 1.25}rem`,
+                          ...categoryTheme.style,
+                        }}
+                        className={categoryTheme.fullClass}
+                      >
+                        <div className="flex h-full min-w-0 items-center gap-2">
+                          <span className={categoryTheme.levelClass}>Nivel {level}</span>
 
-                        <span className="min-w-0 flex-1 truncate text-base font-black text-foreground">{rowItem.value}</span>
+                          <span className={categoryTheme.valueClass}>{rowItem.value}</span>
 
-                        <span className="shrink-0 rounded-md border border-border bg-background/70 px-2.5 py-1 text-sm font-bold text-foreground">
-                          {rowItem.count} {rowItem.count === 1 ? "rețetă" : "rețete"}
-                        </span>
-                      </div>
-                    </TableCell>
+                          <span className={categoryTheme.badgeClass}>
+                            {rowItem.count} {rowItem.count === 1 ? "rețetă" : "rețete"}
+                          </span>
+                        </div>
+                      </TableCell>
+
+                      {categoryInfoVisible && (
+                        <TableCell style={{ ...getColumnStyle("info"), ...categoryTheme.style }} className={`${categoryTheme.cellClass} text-center`}>
+                          <div className="flex h-full items-center justify-center">
+                            <CategoryColorButton row={rowItem} color={categoryTheme.backgroundColor} textColor={categoryTheme.textColor} onChange={isCoeficientEditing ? undefined : onCategoryColorChange} />
+                          </div>
+                        </TableCell>
+                      )}
+                    </>
                   );
                 }
 
@@ -1709,10 +2442,15 @@ const OferteReteteList = memo(function OferteReteteList({
                       element={rowItem.element}
                       parentItem={rowItem.reteta}
                       displayLang={displayLang}
+                      textAlign={textAlign}
+                      decimalPlaces={safeDecimalPlaces}
                       dynamicColumns={dynamicColumns}
                       showCol={showCol}
                       getColumnStyle={getColumnStyle}
                       isLastElement={rowItem.isLastElement}
+                      isCoeficientHighlighted={highlightedElementIds.has(toId(rowItem.element?.id))}
+                      isCoeficientExcluded={excludedElementIds.has(toId(rowItem.element?.id))}
+                      coeficientImpact={coefElementImpactById[toId(rowItem.element?.id)]}
                     />
                   );
                 }
@@ -1725,6 +2463,12 @@ const OferteReteteList = memo(function OferteReteteList({
 
                 const costReteta = getRetetaCost(reteta);
                 const costTotalLucrare = getRetetaTotalLucrare(reteta);
+                const coefImpact = coefRetetaImpactById[toId(reteta.id)] || {};
+                const coefDirectPercent = Number(coefImpact.directPercent || 0);
+                const coefInteriorPercent = Number(coefImpact.interiorPercent || 0);
+                const coefAddedValue = Number(coefImpact.totalAdded || 0);
+                const coefPriceValue = costTotalLucrare + coefAddedValue;
+                const coefExcluded = !!coefImpact.excluded;
                 const isExpanded = expandedRetetaIds.has(toId(reteta.id));
                 const treeStyle = getColumnStyle("tree");
                 const tipStyle = getColumnStyle("elemente");
@@ -1751,9 +2495,9 @@ const OferteReteteList = memo(function OferteReteteList({
                       const value = getColoanaValue(coloaneValori, col);
 
                       return (
-                        <TableCell key={col.id} style={getColumnStyle(`dynamic_${col.id}`)} className="border-r border-border p-1 text-center align-middle text-sm">
+                        <TableCell key={col.id} style={getColumnStyle(`dynamic_${col.id}`)} className={`border-r border-border p-1 align-middle text-sm ${textAlignClass}`}>
                           {value ? (
-                            <OverflowTooltip align="center" text={String(value)} className="font-normal text-foreground text-center whitespace-nowrap" maxLines={1} textSize="sm" />
+                            <OverflowTooltip align={tooltipAlign} text={String(value)} className={`font-normal text-foreground ${textAlignClass} whitespace-nowrap`} maxLines={1} textSize="sm" />
                           ) : (
                             <span className="text-sm font-normal text-muted-foreground/40 italic">—</span>
                           )}
@@ -1762,25 +2506,44 @@ const OferteReteteList = memo(function OferteReteteList({
                     })}
 
                     {showCol("cod") && (
-                      <TableCell style={getColumnStyle("cod")} className="border-r border-border p-1 text-center align-middle text-sm">
-                        {reteta.cod_reteta ? (
-                          <OverflowTooltip align="center" text={String(reteta.cod_reteta)} className="font-semibold text-foreground text-center whitespace-nowrap" maxLines={1} textSize="sm" />
-                        ) : (
-                          <span className="text-sm text-muted-foreground/40 italic">—</span>
-                        )}
+                      <TableCell style={getColumnStyle("cod")} className={`border-r border-border p-1 align-middle text-sm ${textAlignClass}`}>
+                        <OferteRetetaCodeValue reteta={reteta} displayLang={displayLang} className={textAlignClass} emptyClassName="text-sm text-muted-foreground/40 italic" />
                       </TableCell>
                     )}
 
-                    {showCol("clasa") && (
-                      <TableCell style={getColumnStyle("clasa")} className="border-r border-border p-1 text-center align-middle text-sm">
-                        <OverflowTooltip align="center" text={String(reteta.clasa_reteta)} className="text-foreground font-normal text-center whitespace-nowrap" maxLines={1} textSize="sm" />
-                      </TableCell>
-                    )}
+                    {CLASS_LEVEL_COLUMNS.map((column) => {
+                      if (!showCol(column.key)) return null;
+
+                      const classValue = getRetetaClassLevelDisplay(reteta, column.levelNo, displayLang);
+                      const isUndefined = classValue.includes("Nedefinit");
+
+                      return (
+                        <TableCell key={column.key} style={getColumnStyle(column.key)} className={`border-r border-border p-1 align-middle text-sm ${textAlignClass}`}>
+                          {classValue ? (
+                            <OverflowTooltip
+                              align={tooltipAlign}
+                              text={classValue}
+                              className={`font-normal whitespace-nowrap ${textAlignClass} ${isUndefined ? "text-destructive" : "text-foreground"}`}
+                              maxLines={1}
+                              textSize="sm"
+                            />
+                          ) : (
+                            <span className="text-sm text-muted-foreground/40 italic">—</span>
+                          )}
+                        </TableCell>
+                      );
+                    })}
 
                     {showCol("denumire") && (
-                      <TableCell style={getColumnStyle("denumire")} className="border-r border-border p-1 align-middle text-sm">
+                      <TableCell style={getColumnStyle("denumire")} className={`border-r border-border p-1 align-middle text-sm ${textAlignClass}`}>
                         {afisareDenumire ? (
-                          <OverflowTooltip align="left" text={afisareDenumire} className="font-semibold whitespace-nowrap text-foreground leading-none" maxLines={1} textSize="sm" />
+                          <OverflowTooltip
+                            align={tooltipAlign}
+                            text={afisareDenumire}
+                            className={`font-semibold whitespace-nowrap text-foreground leading-none ${textAlignClass}`}
+                            maxLines={1}
+                            textSize="sm"
+                          />
                         ) : (
                           <span className="text-sm text-muted-foreground/40 italic">—</span>
                         )}
@@ -1803,16 +2566,16 @@ const OferteReteteList = memo(function OferteReteteList({
                       </TableCell>
                     )}
 
-                    {showCol("cost") && (
-                      <TableCell style={getColumnStyle("cost")} className="border-r border-border p-1 text-center align-middle text-sm">
-                        <span className="text-sm font-bold text-foreground whitespace-nowrap">{formatNumber(costReteta)}</span>
+                    {showCol("cantitate") && (
+                      <TableCell style={getColumnStyle("cantitate")} className="border-r border-border p-1 text-center align-middle text-sm">
+                        <span className="text-sm font-bold text-foreground whitespace-nowrap">{formatNumber(1, safeDecimalPlaces)}</span>
                       </TableCell>
                     )}
 
-                    {showCol("cantitate") && (
+                    {showCol("qtyTotal") && (
                       <TableCell
                         data-no-row-open
-                        style={getColumnStyle("cantitate")}
+                        style={getColumnStyle("qtyTotal")}
                         className="relative border-r border-border p-0 text-center text-sm"
                         onPointerDown={(e) => {
                           e.stopPropagation();
@@ -1821,6 +2584,11 @@ const OferteReteteList = memo(function OferteReteteList({
                           e.stopPropagation();
                         }}
                         onClick={(e) => {
+                          if (isCoeficientEditing) {
+                            handleRowClick(e, reteta);
+                            return;
+                          }
+
                           e.stopPropagation();
                         }}
                         onDoubleClick={(e) => {
@@ -1830,13 +2598,60 @@ const OferteReteteList = memo(function OferteReteteList({
                           e.stopPropagation();
                         }}
                       >
-                        <OferteQtyFormulaCell value={reteta.cantitate_lucrare} formula={reteta.cantitate_lucrare_formula} onSave={(values) => handleSaveRetetaQuantity(reteta, values)} />
+                        {isCoeficientEditing ? (
+                          <span className="inline-flex h-full w-full items-center justify-center px-1 text-sm font-bold text-foreground whitespace-nowrap">
+                            {formatNumber(reteta.cantitate_lucrare, safeDecimalPlaces)}
+                          </span>
+                        ) : (
+                          <OferteQtyFormulaCell
+                            value={reteta.cantitate_lucrare}
+                            formula={reteta.cantitate_lucrare_formula}
+                            decimalPlaces={safeDecimalPlaces}
+                            onSave={(values) => handleSaveRetetaQuantity(reteta, values)}
+                          />
+                        )}
+                      </TableCell>
+                    )}
+
+                    {showCol("cost") && (
+                      <TableCell style={getColumnStyle("cost")} className="border-r border-border p-1 text-center align-middle text-sm">
+                        <span className="text-sm font-bold text-foreground whitespace-nowrap">{formatNumber(costReteta, safeDecimalPlaces)}</span>
                       </TableCell>
                     )}
 
                     {showCol("costTotal") && (
                       <TableCell style={getColumnStyle("costTotal")} className="border-r border-border p-1 text-center align-middle text-sm">
-                        <span className="text-sm font-black text-primary whitespace-nowrap">{formatNumber(costTotalLucrare)}</span>
+                        <span className="text-sm font-black text-primary whitespace-nowrap">{formatNumber(costTotalLucrare, safeDecimalPlaces)}</span>
+                      </TableCell>
+                    )}
+
+                    {showCol("coefProcent") && (
+                      <TableCell style={getColumnStyle("coefProcent")} className="border-r border-border p-1 text-center align-middle text-sm">
+                        {coefExcluded ? (
+                          <span className="text-sm font-black text-red-600 whitespace-nowrap">Exclude</span>
+                        ) : (
+                          <span className="inline-flex items-center justify-center gap-1 text-sm font-black whitespace-nowrap">
+                            <span className={getCoefTextClass(coefDirectPercent, "text-sky-700 dark:text-sky-300")}>{formatNumber(coefDirectPercent, 2)}%</span>
+                            <span className="text-muted-foreground/45">+</span>
+                            <span className={getCoefTextClass(coefInteriorPercent, "text-teal-700 dark:text-teal-300")}>{formatNumber(coefInteriorPercent, 2)}%</span>
+                          </span>
+                        )}
+                      </TableCell>
+                    )}
+
+                    {showCol("coefPret") && (
+                      <TableCell style={getColumnStyle("coefPret")} className="border-r border-border p-1 text-center align-middle text-sm">
+                        <span className={`text-sm font-black whitespace-nowrap ${coefExcluded ? "text-red-600" : getCoefTextClass(coefAddedValue, "text-primary")}`}>
+                          {formatNumber(coefAddedValue, safeDecimalPlaces)}
+                        </span>
+                      </TableCell>
+                    )}
+
+                    {showCol("pret") && (
+                      <TableCell style={getColumnStyle("pret")} className="border-r border-border p-1 text-center align-middle text-sm">
+                        <span className={`text-sm font-black whitespace-nowrap ${coefExcluded ? "text-red-600" : "text-primary"}`}>
+                          {formatNumber(coefPriceValue, safeDecimalPlaces)}
+                        </span>
                       </TableCell>
                     )}
 
@@ -1907,23 +2722,37 @@ const OferteReteteList = memo(function OferteReteteList({
         <div className="pointer-events-none absolute left-0 right-4 top-9 z-30">
           {activeCategoryRows.map((row) => {
             const level = Number(row.level || 1);
+            const categoryTheme = getCategoryTheme(row);
 
             return (
               <div
                 key={`sticky-${row.id}`}
                 style={{
                   paddingLeft: `${0.75 + (level - 1) * 1.25}rem`,
+                  ...categoryTheme.style,
                 }}
-                className="flex h-10 items-center border-b border-border bg-[#c4c4ce] py-0 pr-3 shadow-sm dark:bg-[#34363d] dark:text-foreground dark:[&_*]:!text-foreground [.blue_&]:bg-[#22262b]"
+                className={`flex h-10 items-center border-b border-border py-0 pr-3 shadow-sm ${categoryTheme.hasColor ? "" : "bg-[#c4c4ce] dark:bg-[#34363d] dark:text-foreground dark:[&_*]:!text-foreground [.blue_&]:bg-[#22262b]"}`}
               >
                 <div className="flex min-w-0 flex-1 items-center gap-2">
-                  <span className="shrink-0 rounded-md border border-border bg-background/70 px-2.5 py-1 text-sm font-black uppercase tracking-wide text-foreground">Nivel {level}</span>
+                  <span className={categoryTheme.levelClass}>Nivel {level}</span>
 
-                  <span className="min-w-0 flex-1 truncate text-base font-black text-foreground">{row.value}</span>
+                  <span className={categoryTheme.valueClass}>{row.value}</span>
 
-                  <span className="shrink-0 rounded-md border border-border bg-background/70 px-2.5 py-1 text-sm font-bold text-foreground">
+                  <span className={categoryTheme.badgeClass}>
                     {row.count} {row.count === 1 ? "rețetă" : "rețete"}
                   </span>
+
+                  {showCategoryTotals && row.totals && (
+                    <div className={categoryTheme.badgeClass}>
+                      <span> Ore {formatNumber(row.totals.totalManoperaHours, safeDecimalPlaces)}</span>
+                      <span>|</span>
+                      <span> Cost {formatNumber(row.totals.cost, safeDecimalPlaces)}</span>
+                      <span>|</span>
+                      <span> Qty total {formatNumber(row.totals.cantitate, safeDecimalPlaces)} </span>
+                      <span>|</span>
+                      <span>Total {formatNumber(row.totals.total, safeDecimalPlaces)}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -1933,34 +2762,34 @@ const OferteReteteList = memo(function OferteReteteList({
 
       <div className="shrink-0 border-t p-2">
         <div className="flex flex-wrap relative h-full items-stretch gap-1.5">
-          <SummaryBox label="Total ore" value={totals.totalManoperaHours} tone="manopera" />
+          <SummaryBox label="Total ore" value={totals.totalManoperaHours} tone="manopera" decimalPlaces={safeDecimalPlaces} />
 
           <Separator orientation="vertical" className="bg-border mx-1.5" />
 
-          <SummaryBox label="Manoperă" value={totals.manopera} />
+          <SummaryBox label="Manoperă" value={totals.manopera} decimalPlaces={safeDecimalPlaces} />
 
           <div className="flex items-center justify-center text-sm font-black text-muted-foreground">+</div>
 
-          <SummaryBox label="Materiale" value={totals.material} />
+          <SummaryBox label="Materiale" value={totals.material} decimalPlaces={safeDecimalPlaces} />
 
           <div className="flex items-center justify-center text-sm font-black text-muted-foreground">+</div>
 
-          <SummaryBox label="Utilaje" value={totals.utilaj} />
+          <SummaryBox label="Utilaje" value={totals.utilaj} decimalPlaces={safeDecimalPlaces} />
 
           <div className="flex items-center justify-center text-sm font-black text-muted-foreground">+</div>
 
-          <SummaryBox label="Transport" value={totals.transport} />
+          <SummaryBox label="Transport" value={totals.transport} decimalPlaces={safeDecimalPlaces} />
 
           <div className="flex items-center justify-center text-sm font-black text-muted-foreground">=</div>
 
-          <SummaryBox label="Subtotal" value={totals.subtotal} strong />
+          <SummaryBox label="Subtotal" value={totals.subtotal} strong decimalPlaces={safeDecimalPlaces} />
 
           <div className="flex items-center justify-center text-sm font-black text-muted-foreground">+</div>
 
           <SummaryBox label="Recapitulatii">
             <div className="flex items-center gap-1.5">
               <input
-                value={extraPercent}
+                value={recapitulatiiPercent}
                 onChange={handleExtraPercentChange}
                 className="h-6 w-12 rounded-md border bg-background p-1 text-center text-sm font-black text-foreground outline-none"
                 inputMode="decimal"
@@ -1969,13 +2798,13 @@ const OferteReteteList = memo(function OferteReteteList({
 
               <span className="text-sm font-black text-muted-foreground">%</span>
 
-              <span className="text-sm font-extrabold text-foreground whitespace-nowrap">{formatNumber(totals.extraValue)}</span>
+              <span className="text-sm font-extrabold text-foreground whitespace-nowrap">{formatNumber(totals.extraValue, safeDecimalPlaces)}</span>
             </div>
           </SummaryBox>
 
           <div className="flex items-center justify-center text-sm font-black text-muted-foreground">=</div>
 
-          <SummaryBox label="Subtotal" value={totals.totalDupaAdaos} strong />
+          <SummaryBox label="Subtotal" value={totals.totalDupaAdaos} strong decimalPlaces={safeDecimalPlaces} />
 
           <div className="flex items-center justify-center text-sm font-black text-muted-foreground">+</div>
 
@@ -1991,18 +2820,18 @@ const OferteReteteList = memo(function OferteReteteList({
 
               <span className="text-sm font-black text-muted-foreground">%</span>
 
-              <span className="text-sm font-extrabold text-foreground whitespace-nowrap">{formatNumber(totals.tvaValue)}</span>
+              <span className="text-sm font-extrabold text-foreground whitespace-nowrap">{formatNumber(totals.tvaValue, safeDecimalPlaces)}</span>
             </div>
           </SummaryBox>
 
           <div className="flex items-center justify-center text-sm font-black text-muted-foreground">=</div>
 
-          <SummaryBox label="Total final" value={totals.totalFinal} strong />
+          <SummaryBox label="Total final" value={totals.totalFinal} strong decimalPlaces={safeDecimalPlaces} />
 
           <div className="ml-auto flex shrink-0 items-stretch">
-            <Button type="button" onClick={() => setExportPdfOpen(true)} className="h-full min-h-[3.5rem] gap-2 px-4 text-sm font-black text-white">
-              <FontAwesomeIcon icon={faFilePdf} />
-              Export PDF
+            <Button type="button" onClick={onAddReteta} className="h-full min-h-[3.5rem] gap-2 px-4 text-sm font-black text-white">
+              <FontAwesomeIcon className="text-lg" icon={faPlus} />
+              Adaugă
             </Button>
           </div>
         </div>
@@ -2023,17 +2852,30 @@ const OferteReteteList = memo(function OferteReteteList({
         open={duplicateOpen}
         setOpen={setDuplicateOpen}
         retete={duplicateItems}
-        selectedLucrare={selectedLucrare}
         dynamicColumns={dynamicColumns}
         displayLang={displayLang}
         onConfirm={onConfirmDuplicate}
       />
 
+      <OferteDuplicateReteteDialog
+        open={moveOpen}
+        setOpen={setMoveOpen}
+        retete={moveItems}
+        dynamicColumns={dynamicColumns}
+        displayLang={displayLang}
+        onConfirm={onConfirmMove}
+        mode="move"
+        oferteOptions={oferteOptions}
+        selectedOfertaId={selectedOferta?.id}
+        selectedLucrareId={selectedLucrare?.id}
+      />
+
+      <OferteReplaceReteteDialog open={replaceOpen} setOpen={setReplaceOpen} retete={replaceItems} dynamicColumns={dynamicColumns} displayLang={displayLang} onConfirm={onConfirmReplace} />
+
       <OferteFurnizoriDialog open={furnizoriOpen} setOpen={setFurnizoriOpen} retete={furnizoriItems} onLoadFurnizori={onLoadFurnizoriRetete} onConfirm={onConfirmFurnizori} />
 
       <OferteActualizeazaReteteDialog open={actualizeazaOpen} setOpen={setActualizeazaOpen} retete={actualizeazaItems} onConfirm={onConfirmActualizeaza} />
 
-      <OferteExportPdfDialog open={exportPdfOpen} setOpen={setExportPdfOpen} />
     </div>
   );
 });

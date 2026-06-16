@@ -169,7 +169,7 @@ export default function SantiereAdd({
       setDetailedCosts(response.data.detailedCosts);
       setRetete(response.data.data);
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.log("Error fetching data:", error);
     }
   };
 
@@ -260,7 +260,7 @@ export default function SantiereAdd({
         return newSet;
       });
     } catch (error) {
-      console.error("Error deleting item:", error);
+      console.log("Error deleting item:", error);
     }
   };
 
@@ -404,7 +404,7 @@ export default function SantiereAdd({
       console.log("Updated detailed costs: oare?");
       setDetailedCosts(tempCosts);
     } catch (error) {
-      console.error("Error at editing the Reteta:", error);
+      console.log("Error at editing the Reteta:", error);
     }
     setEditedCosts({});
     setSelectedEdit(null);
@@ -505,7 +505,7 @@ export default function SantiereAdd({
           return newSet;
         });
       } catch (err) {
-        console.error("Error fetching preview:", err);
+        console.log("Error fetching preview:", err);
       }
     }
   };
@@ -549,7 +549,7 @@ export default function SantiereAdd({
       setOriginalRow(null);
       setActiveRowIndex(null);
     } catch (error) {
-      console.error("Error saving next item:", error);
+      console.log("Error saving next item:", error);
     }
   };
 
@@ -771,7 +771,7 @@ export default function SantiereAdd({
     } catch (error) {
       setActiveRowIndex(null);
       setOriginalRow(null);
-      console.error("Error setting next item in list:", error);
+      console.log("Error setting next item in list:", error);
     }
   };
 
@@ -838,7 +838,7 @@ export default function SantiereAdd({
         return id;
       });
     } catch (error) {
-      console.error("Error updating reteta:", error);
+      console.log("Error updating reteta:", error);
     }
   };
 
@@ -864,7 +864,7 @@ export default function SantiereAdd({
         }
       }
     } catch (error) {
-      console.error("Error toggling all dropdowns:", error);
+      console.log("Error toggling all dropdowns:", error);
     }
   };
 
@@ -968,7 +968,7 @@ export default function SantiereAdd({
         try {
           await deleteItem(id); // your existing single-delete logic
         } catch (e) {
-          console.error("Eroare la ștergere ID:", id, e);
+          console.log("Eroare la ștergere ID:", id, e);
         }
       }
       setSelectedRowIdsDelete([]);
@@ -1054,7 +1054,7 @@ export default function SantiereAdd({
         });
         setRetete(newRetete);
       } catch (err) {
-        console.error("Failed to persist new order on server:", err);
+        console.log("Failed to persist new order on server:", err);
       }
       return;
     }
@@ -1077,7 +1077,7 @@ export default function SantiereAdd({
       });
       setRetete(newRetete);
     } catch (err) {
-      console.error("Failed to persist new order on server:", err);
+      console.log("Failed to persist new order on server:", err);
     }
   };
 
@@ -1130,7 +1130,7 @@ export default function SantiereAdd({
   //     });
   //     setRetete(newRetete);
   //   } catch (err) {
-  //     console.error("Failed to persist new order on server:", err);
+  //     console.log("Failed to persist new order on server:", err);
   //     // Optionally roll back state or show an error message
   //   }
 

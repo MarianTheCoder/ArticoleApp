@@ -49,8 +49,8 @@ export const resurseConfig = {
     hasPhoto: true,
     hasFurnizor: true, // Adăugat la cererea ta
     hasStatus: true,
-    defaultUnit: "U",
-    unitOptions: ["U", "kg", "m", "m²", "m³", "l", "Set", "Rola", "ens", "j", "t"],
+    defaultUnit: "h",
+    unitOptions: ["h", "zi", "U"],
   },
   transport: {
     id: "transport",
@@ -66,7 +66,7 @@ export const resurseConfig = {
     hasFurnizor: false,
     hasStatus: false,
     defaultUnit: "km",
-    unitOptions: ["km", "cursa", "t", "kg", "m³"],
+    unitOptions: ["km", "cursa", "t", "kg", "m³", "h", "zi"],
     switchClass: "data-[state=checked]:bg-emerald-600", // Clasa completă pt Switch
   },
 };

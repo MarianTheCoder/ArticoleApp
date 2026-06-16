@@ -221,8 +221,6 @@ export default function OferteFurnizoriDialog({ open, setOpen, retete = [], onLo
                 </li>
               </ul>
             </div>
-
-            {loading ? <div className="rounded-md border bg-muted/40 px-4 py-3 text-center text-sm font-bold text-muted-foreground">Se încarcă furnizorii...</div> : null}
           </div>
         </div>
 

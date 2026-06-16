@@ -17,7 +17,7 @@ async function verifyMailer() {
     await transporter.verify();
     console.log("✅ SMTP ready");
   } catch (e) {
-    console.error("❌ SMTP verify failed:", e.message);
+    console.log("❌ SMTP verify failed:", e.message);
   }
 }
 
@@ -97,7 +97,7 @@ const sendMentionHtmlEmail = async (emailsToNotify, authorName, mesaj) => {
       html: htmlContent,
     });
   } catch (error) {
-    console.error("Eroare la trimiterea emailului separat de mențiune:", error);
+    console.log("Eroare la trimiterea emailului separat de mențiune:", error);
   }
 };
 

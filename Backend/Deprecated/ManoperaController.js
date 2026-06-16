@@ -1,14 +1,7 @@
 const AddManoperaDef = async (req, res) => {
   const { form, childs = null } = req.body;
 
-  if (
-    !form.cod_definitie ||
-    !form.ocupatie ||
-    !form.unitate_masura ||
-    form.cost_unitar === "" ||
-    form.cost_unitar == null ||
-    !form.limba
-  ) {
+  if (!form.cod_definitie || !form.ocupatie || !form.unitate_masura || form.cost_unitar === "" || form.cost_unitar == null || !form.limba) {
     return res.status(400).json({ message: "Missing required fields." });
   }
 
@@ -51,14 +44,7 @@ const AddManoperaDef = async (req, res) => {
         `;
 
         for (const child of existingChilds) {
-          await conn.execute(insertChildQuery, [
-            newDefId,
-            child.cod_manopera,
-            child.descriere,
-            child.descriere_fr,
-            child.cost_unitar,
-            child.cantitate,
-          ]);
+          await conn.execute(insertChildQuery, [newDefId, child.cod_manopera, child.descriere, child.descriere_fr, child.cost_unitar, child.cantitate]);
         }
       }
     }
@@ -67,7 +53,7 @@ const AddManoperaDef = async (req, res) => {
     res.status(200).json({ message: "Manopera definition added!", id: newDefId });
   } catch (err) {
     await conn.rollback();
-    console.error("AddManoperaDef failed:", err);
+    console.log("AddManoperaDef failed:", err);
     res.status(500).json({ message: "Database transaction error." });
   } finally {
     conn.release();
@@ -78,14 +64,7 @@ const AddManopera = async (req, res) => {
   const { form, parentId } = req.body;
   // console.log(form, parentId);
 
-  if (
-    !parentId ||
-    !form.cod_manopera ||
-    form.cost_unitar === "" ||
-    form.cost_unitar == null ||
-    form.cantitate === "" ||
-    form.cantitate == null
-  ) {
+  if (!parentId || !form.cod_manopera || form.cost_unitar === "" || form.cost_unitar == null || form.cantitate === "" || form.cantitate == null) {
     return res.status(400).json({ message: "Missing required fields." });
   }
 
@@ -95,10 +74,7 @@ const AddManopera = async (req, res) => {
     await conn.beginTransaction();
 
     // Optional: verify definitie_id exists
-    const [definition] = await conn.execute(
-      `SELECT id FROM Manopera_Definition WHERE id = ?`,
-      [parentId]
-    );
+    const [definition] = await conn.execute(`SELECT id FROM Manopera_Definition WHERE id = ?`, [parentId]);
 
     if (definition.length === 0) {
       await conn.rollback();
@@ -111,22 +87,13 @@ const AddManopera = async (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, NOW())
     `;
 
-    const [result] = await conn.execute(insertQuery, [
-      parentId,
-      form.cod_manopera,
-      form.descriere || null,
-      form.descriere_fr || null,
-      form.cost_unitar,
-      form.cantitate,
-    ]);
+    const [result] = await conn.execute(insertQuery, [parentId, form.cod_manopera, form.descriere || null, form.descriere_fr || null, form.cost_unitar, form.cantitate]);
 
     await conn.commit();
-    res
-      .status(200)
-      .json({ message: "Manopera added successfully!", id: result.insertId });
+    res.status(200).json({ message: "Manopera added successfully!", id: result.insertId });
   } catch (err) {
     await conn.rollback();
-    console.error("Transaction failed:", err);
+    console.log("Transaction failed:", err);
     res.status(500).json({ message: "Database transaction error." });
   } finally {
     conn.release(); // always release connection
@@ -136,14 +103,7 @@ const AddManopera = async (req, res) => {
 const EditManopera = async (req, res) => {
   const { form } = req.body;
 
-  if (
-    !form.id ||
-    !form.definitie_id ||
-    !form.cod_manopera ||
-    form.cost_unitar == null ||
-    form.cost_unitar === "" ||
-    form.cantitate == null
-  ) {
+  if (!form.id || !form.definitie_id || !form.cod_manopera || form.cost_unitar == null || form.cost_unitar === "" || form.cantitate == null) {
     return res.status(400).json({ message: "Missing required fields." });
   }
 
@@ -161,15 +121,7 @@ const EditManopera = async (req, res) => {
       WHERE id = ?
     `;
 
-    const [result] = await global.db.execute(updateQuery, [
-      form.definitie_id,
-      form.cod_manopera,
-      form.descriere || null,
-      form.descriere_fr || null,
-      form.cost_unitar,
-      form.cantitate,
-      form.id,
-    ]);
+    const [result] = await global.db.execute(updateQuery, [form.definitie_id, form.cod_manopera, form.descriere || null, form.descriere_fr || null, form.cost_unitar, form.cantitate, form.id]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: "Manopera not found." });
@@ -177,7 +129,7 @@ const EditManopera = async (req, res) => {
 
     res.status(200).json({ message: "Manopera updated successfully!" });
   } catch (err) {
-    console.error("Failed to update Manopera:", err);
+    console.log("Failed to update Manopera:", err);
     res.status(500).json({ message: "Database error." });
   }
 };
@@ -185,15 +137,7 @@ const EditManopera = async (req, res) => {
 const EditManoperaDef = async (req, res) => {
   const { form, id } = req.body;
 
-  if (
-    !id ||
-    !form.cod_definitie ||
-    !form.ocupatie ||
-    !form.unitate_masura ||
-    form.cost_unitar === "" ||
-    form.cost_unitar == null ||
-    !form.limba
-  ) {
+  if (!id || !form.cod_definitie || !form.ocupatie || !form.unitate_masura || form.cost_unitar === "" || form.cost_unitar == null || !form.limba) {
     return res.status(400).json({ message: "Missing required fields." });
   }
 
@@ -226,55 +170,29 @@ const EditManoperaDef = async (req, res) => {
     ]);
 
     if (result.affectedRows === 0) {
-      return res
-        .status(404)
-        .json({ message: "Manopera definition not found." });
+      return res.status(404).json({ message: "Manopera definition not found." });
     }
 
-    res
-      .status(200)
-      .json({ message: "Manopera definition updated successfully!" });
+    res.status(200).json({ message: "Manopera definition updated successfully!" });
   } catch (err) {
-    console.error("Failed to update Manopera definition:", err);
+    console.log("Failed to update Manopera definition:", err);
     res.status(500).json({ message: "Database error." });
   }
 };
 
 const GetManopere = async (req, res) => {
   try {
-    const {
-      offset = 0,
-      limit = 10,
-      cod_manopera = "",
-      ocupatie = "",
-      limba = "",
-    } = req.query;
+    const { offset = 0, limit = 10, cod_manopera = "", ocupatie = "", limba = "" } = req.query;
     const asc_ocupatie = req.query.asc_ocupatie === "true";
     const asc_cod_manopera = req.query.asc_cod_manopera === "true";
     const dateOrder = req.query.dateOrder;
-    console.log(
-      offset,
-      limit,
-      cod_manopera,
-      ocupatie,
-      limba,
-      asc_ocupatie,
-      asc_cod_manopera,
-      dateOrder
-    );
+    console.log(offset, limit, cod_manopera, ocupatie, limba, asc_ocupatie, asc_cod_manopera, dateOrder);
     // Validate limit and offset to be integers
     const parsedOffset = parseInt(offset, 10);
     const parsedLimit = parseInt(limit, 10);
 
-    if (
-      isNaN(parsedOffset) ||
-      isNaN(parsedLimit) ||
-      parsedOffset < 0 ||
-      parsedLimit <= 0
-    ) {
-      return res
-        .status(400)
-        .json({ message: "Invalid offset or limit values." });
+    if (isNaN(parsedOffset) || isNaN(parsedLimit) || parsedOffset < 0 || parsedLimit <= 0) {
+      return res.status(400).json({ message: "Invalid offset or limit values." });
     }
 
     // Start constructing the base query
@@ -341,20 +259,14 @@ const GetManopere = async (req, res) => {
       limit: parsedLimit,
     });
   } catch (err) {
-    console.error(err);
+    console.log(err);
     res.status(500).json({ error: "Database error" });
   }
 };
 
 const GetManopereDef = async (req, res) => {
   try {
-    const {
-      offset = 0,
-      limit = 10,
-      cod_definitie = "",
-      ocupatie = "",
-      limba = "",
-    } = req.query;
+    const { offset = 0, limit = 10, cod_definitie = "", ocupatie = "", limba = "" } = req.query;
 
     const asc_ocupatie = req.query.asc_ocupatie === "true";
     const asc_cod_definitie = req.query.asc_cod_definitie === "true";
@@ -363,15 +275,8 @@ const GetManopereDef = async (req, res) => {
     const parsedOffset = parseInt(offset, 10);
     const parsedLimit = parseInt(limit, 10);
 
-    if (
-      isNaN(parsedOffset) ||
-      isNaN(parsedLimit) ||
-      parsedOffset < 0 ||
-      parsedLimit <= 0
-    ) {
-      return res
-        .status(400)
-        .json({ message: "Invalid offset or limit values." });
+    if (isNaN(parsedOffset) || isNaN(parsedLimit) || parsedOffset < 0 || parsedLimit <= 0) {
+      return res.status(400).json({ message: "Invalid offset or limit values." });
     }
 
     let query = `SELECT * FROM Manopera_Definition`;
@@ -431,7 +336,7 @@ const GetManopereDef = async (req, res) => {
       limit: parsedLimit,
     });
   } catch (err) {
-    console.error(err);
+    console.log(err);
     res.status(500).json({ error: "Database error" });
   }
 };
@@ -449,7 +354,7 @@ const getSpecificManopera = async (req, res) => {
 
     res.json(rows);
   } catch (err) {
-    console.error("Error fetching manopera children:", err);
+    console.log("Error fetching manopera children:", err);
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -463,20 +368,14 @@ const DeleteManopera = async (req, res) => {
     }
 
     // Check if record exists before deleting (optional, but good UX)
-    const [existing] = await global.db.execute(
-      `SELECT id FROM Manopera WHERE id = ?`,
-      [id]
-    );
+    const [existing] = await global.db.execute(`SELECT id FROM Manopera WHERE id = ?`, [id]);
 
     if (existing.length === 0) {
       return res.status(404).json({ message: "Manopera not found." });
     }
 
     // Delete the record
-    const [result] = await global.db.execute(
-      `DELETE FROM Manopera WHERE id = ?`,
-      [id]
-    );
+    const [result] = await global.db.execute(`DELETE FROM Manopera WHERE id = ?`, [id]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: "Deletion failed." });
@@ -484,7 +383,7 @@ const DeleteManopera = async (req, res) => {
 
     res.status(200).json({ message: "Manopera deleted successfully!" });
   } catch (err) {
-    console.error("Failed to delete Manopera:", err);
+    console.log("Failed to delete Manopera:", err);
     res.status(500).json({ message: "Database error." });
   }
 };
@@ -501,26 +400,18 @@ const DeleteManoperaDef = async (req, res) => {
     await conn.beginTransaction();
 
     // Verificăm dacă definitia există
-    const [existingDef] = await conn.execute(
-      `SELECT id FROM Manopera_Definition WHERE id = ?`,
-      [id]
-    );
+    const [existingDef] = await conn.execute(`SELECT id FROM Manopera_Definition WHERE id = ?`, [id]);
 
     if (existingDef.length === 0) {
       await conn.rollback();
-      return res
-        .status(404)
-        .json({ message: "Manopera definition not found." });
+      return res.status(404).json({ message: "Manopera definition not found." });
     }
 
     // Ștergem copiii din tabelul Manopera
     await conn.execute(`DELETE FROM Manopera WHERE definitie_id = ?`, [id]);
 
     // Ștergem definiția
-    const [result] = await conn.execute(
-      `DELETE FROM Manopera_Definition WHERE id = ?`,
-      [id]
-    );
+    const [result] = await conn.execute(`DELETE FROM Manopera_Definition WHERE id = ?`, [id]);
 
     if (result.affectedRows === 0) {
       await conn.rollback();
@@ -533,7 +424,7 @@ const DeleteManoperaDef = async (req, res) => {
     });
   } catch (err) {
     await conn.rollback();
-    console.error("Failed to delete Manopera definition:", err);
+    console.log("Failed to delete Manopera definition:", err);
     res.status(500).json({ message: "Database error." });
   } finally {
     conn.release();
@@ -542,8 +433,7 @@ const DeleteManoperaDef = async (req, res) => {
 
 const GetManopereLight = async (req, res) => {
   try {
-    const { cod_definitie = '', ocupatie = '', limba = "" } = req.query;
-
+    const { cod_definitie = "", ocupatie = "", limba = "" } = req.query;
 
     // Start constructing the base query
     let query = `SELECT * FROM Manopera_Definition`;
@@ -567,18 +457,18 @@ const GetManopereLight = async (req, res) => {
 
     // If there are any filters, add them to the query
     if (whereClauses.length > 0) {
-      query += ` WHERE ${whereClauses.join(' AND ')}`;
+      query += ` WHERE ${whereClauses.join(" AND ")}`;
     }
     query += ` ORDER BY ocupatie ASC`;
     // Execute the query with filters and pagination
     const [rows] = await global.db.query(query, queryParams);
 
     res.send({
-      data: rows
+      data: rows,
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Database error' });
+    console.log(err);
+    res.status(500).json({ error: "Database error" });
   }
 };
 

@@ -2,12 +2,7 @@ const AddTransport = async (req, res) => {
   const { form, parentId } = req.body;
   // console.log(form, parentId);
   // console.log("AddTransport form data:", form, "parentId:", parentId);
-  if (
-    !parentId ||
-    !form.cod_transport ||
-    form.cost_unitar === "" ||
-    form.cost_unitar == null
-  ) {
+  if (!parentId || !form.cod_transport || form.cost_unitar === "" || form.cost_unitar == null) {
     return res.status(400).json({ message: "Missing required fields." });
   }
 
@@ -17,10 +12,7 @@ const AddTransport = async (req, res) => {
     await conn.beginTransaction();
 
     // Optional: verify definitie_id exists
-    const [definition] = await conn.execute(
-      `SELECT id FROM Transport_Definition WHERE id = ?`,
-      [parentId]
-    );
+    const [definition] = await conn.execute(`SELECT id FROM Transport_Definition WHERE id = ?`, [parentId]);
 
     if (definition.length === 0) {
       await conn.rollback();
@@ -33,21 +25,13 @@ const AddTransport = async (req, res) => {
       VALUES (?, ?, ?, ?, ?, NOW())
     `;
 
-    const [result] = await conn.execute(insertQuery, [
-      parentId,
-      form.cod_transport,
-      form.descriere || null,
-      form.descriere_fr || null,
-      form.cost_unitar,
-    ]);
+    const [result] = await conn.execute(insertQuery, [parentId, form.cod_transport, form.descriere || null, form.descriere_fr || null, form.cost_unitar]);
 
     await conn.commit();
-    res
-      .status(200)
-      .json({ message: "Transport added successfully!", id: result.insertId });
+    res.status(200).json({ message: "Transport added successfully!", id: result.insertId });
   } catch (err) {
     await conn.rollback();
-    console.error("Transaction failed:", err);
+    console.log("Transaction failed:", err);
     res.status(500).json({ message: "Database transaction error." });
   } finally {
     conn.release(); // always release connection
@@ -59,14 +43,7 @@ const AddTransportDef = async (req, res) => {
   const conn = await global.db.getConnection();
 
   try {
-    if (
-      form.limba === "" ||
-      form.cod_definitie === "" ||
-      form.transport === "" ||
-      form.cost_unitar === "" ||
-      form.clasa_transport === "" ||
-      form.unitate_masura === ""
-    ) {
+    if (form.limba === "" || form.cod_definitie === "" || form.transport === "" || form.cost_unitar === "" || form.clasa_transport === "" || form.unitate_masura === "") {
       return res.status(400).json({ message: "Invalid input fields." });
     }
 
@@ -95,22 +72,13 @@ const AddTransportDef = async (req, res) => {
 
     // 🧬 Dacă avem `childs`, copiem rândurile din `Transport`
     if (childs) {
-      const [childRows] = await conn.query(
-        `SELECT * FROM Transport WHERE definitie_id = ?`,
-        [childs]
-      );
+      const [childRows] = await conn.query(`SELECT * FROM Transport WHERE definitie_id = ?`, [childs]);
 
       for (const row of childRows) {
         await conn.query(
           `INSERT INTO Transport (
             definitie_id, cod_transport, descriere,descriere_fr, cost_unitar) VALUES (?, ?, ?, ?, ?)`,
-          [
-            newDefinitionId,
-            row.cod_transport,
-            row.descriere,
-            row.descriere_fr,
-            row.cost_unitar,
-          ]
+          [newDefinitionId, row.cod_transport, row.descriere, row.descriere_fr, row.cost_unitar],
         );
       }
     }
@@ -118,32 +86,22 @@ const AddTransportDef = async (req, res) => {
     await conn.commit();
     conn.release();
 
-    res
-      .status(200)
-      .json({ message: "Data added successfully!", id: newDefinitionId });
+    res.status(200).json({ message: "Data added successfully!", id: newDefinitionId });
   } catch (err) {
-    console.error("Failed to insert data:", err);
+    console.log("Failed to insert data:", err);
     if (conn) await conn.rollback();
     res.status(500).json({ message: "Database error." });
-  }
-  finally {
+  } finally {
     if (conn) conn.release(); // always release connection
   }
 };
-
 
 const EditTransport = async (req, res) => {
   const { form } = req.body;
   console.log("EditTransport form data:", form);
   try {
     // Check if all necessary fields are filled
-    if (
-      !form.id ||
-      !form.definitie_id ||
-      !form.cod_transport ||
-      form.cost_unitar === "" ||
-      form.cost_unitar == null
-    ) {
+    if (!form.id || !form.definitie_id || !form.cod_transport || form.cost_unitar === "" || form.cost_unitar == null) {
       return res.status(400).json({ message: "Missing required fields." });
     }
 
@@ -161,14 +119,7 @@ const EditTransport = async (req, res) => {
       `;
 
     // Execute the query
-    const [result] = await global.db.execute(updateQuery, [
-      form.definitie_id,
-      form.cod_transport,
-      form.descriere || null,
-      form.descriere_fr || null,
-      form.cost_unitar,
-      form.id,
-    ]);
+    const [result] = await global.db.execute(updateQuery, [form.definitie_id, form.cod_transport, form.descriere || null, form.descriere_fr || null, form.cost_unitar, form.id]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: "Record not found." });
@@ -176,7 +127,7 @@ const EditTransport = async (req, res) => {
 
     res.status(200).json({ message: "Data updated successfully!" });
   } catch (err) {
-    console.error("Failed to update data:", err);
+    console.log("Failed to update data:", err);
     res.status(500).json({ message: "Database error." });
   }
 };
@@ -184,16 +135,7 @@ const EditTransport = async (req, res) => {
 const EditTransportDef = async (req, res) => {
   const { form, id } = req.body;
 
-  if (
-    !id ||
-    !form.cod_definitie ||
-    !form.transport ||
-    !form.clasa_transport ||
-    !form.unitate_masura ||
-    form.cost_unitar === "" ||
-    form.cost_unitar == null ||
-    !form.limba
-  ) {
+  if (!id || !form.cod_definitie || !form.transport || !form.clasa_transport || !form.unitate_masura || form.cost_unitar === "" || form.cost_unitar == null || !form.limba) {
     return res.status(400).json({ message: "Missing required fields." });
   }
 
@@ -228,30 +170,19 @@ const EditTransportDef = async (req, res) => {
     ]);
 
     if (result.affectedRows === 0) {
-      return res
-        .status(404)
-        .json({ message: "Transport definition not found." });
+      return res.status(404).json({ message: "Transport definition not found." });
     }
 
-    res
-      .status(200)
-      .json({ message: "Transport definition updated successfully!" });
+    res.status(200).json({ message: "Transport definition updated successfully!" });
   } catch (err) {
-    console.error("Failed to update Manopera definition:", err);
+    console.log("Failed to update Manopera definition:", err);
     res.status(500).json({ message: "Database error." });
   }
 };
 
 const GetTransport = async (req, res) => {
   try {
-    const {
-      offset = 0,
-      limit = 10,
-      cod_transport = "",
-      transport = "",
-      clasa_transport = "",
-      limba = "",
-    } = req.query;
+    const { offset = 0, limit = 10, cod_transport = "", transport = "", clasa_transport = "", limba = "" } = req.query;
     const asc_transport = req.query.asc_transport === "true";
     const dateOrder = req.query.dateOrder;
 
@@ -259,15 +190,8 @@ const GetTransport = async (req, res) => {
     const parsedOffset = parseInt(offset, 10);
     const parsedLimit = parseInt(limit, 10);
 
-    if (
-      isNaN(parsedOffset) ||
-      isNaN(parsedLimit) ||
-      parsedOffset < 0 ||
-      parsedLimit <= 0
-    ) {
-      return res
-        .status(400)
-        .json({ message: "Invalid offset or limit values." });
+    if (isNaN(parsedOffset) || isNaN(parsedLimit) || parsedOffset < 0 || parsedLimit <= 0) {
+      return res.status(400).json({ message: "Invalid offset or limit values." });
     }
 
     // Start constructing the base query
@@ -331,21 +255,14 @@ const GetTransport = async (req, res) => {
       limit: parsedLimit,
     });
   } catch (err) {
-    console.error(err);
+    console.log(err);
     res.status(500).json({ error: "Database error" });
   }
 };
 
 const GetTransportDef = async (req, res) => {
   try {
-    const {
-      offset = 0,
-      limit = 10,
-      cod_transport = "",
-      transport = "",
-      clasa_transport = "",
-      limba = "",
-    } = req.query;
+    const { offset = 0, limit = 10, cod_transport = "", transport = "", clasa_transport = "", limba = "" } = req.query;
     const asc_transport = req.query.asc_transport === "true";
     const dateOrder = req.query.dateOrder;
 
@@ -353,15 +270,8 @@ const GetTransportDef = async (req, res) => {
     const parsedOffset = parseInt(offset, 10);
     const parsedLimit = parseInt(limit, 10);
 
-    if (
-      isNaN(parsedOffset) ||
-      isNaN(parsedLimit) ||
-      parsedOffset < 0 ||
-      parsedLimit <= 0
-    ) {
-      return res
-        .status(400)
-        .json({ message: "Invalid offset or limit values." });
+    if (isNaN(parsedOffset) || isNaN(parsedLimit) || parsedOffset < 0 || parsedLimit <= 0) {
+      return res.status(400).json({ message: "Invalid offset or limit values." });
     }
 
     // Start constructing the base query
@@ -425,7 +335,7 @@ const GetTransportDef = async (req, res) => {
       limit: parsedLimit,
     });
   } catch (err) {
-    console.error(err);
+    console.log(err);
     res.status(500).json({ error: "Database error" });
   }
 };
@@ -443,7 +353,7 @@ const GetSpecificTransport = async (req, res) => {
 
     res.json(rows);
   } catch (err) {
-    console.error("Error fetching transport children:", err);
+    console.log("Error fetching transport children:", err);
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -457,20 +367,14 @@ const DeleteTransport = async (req, res) => {
     }
 
     // Check if record exists before deleting (optional, but good UX)
-    const [existing] = await global.db.execute(
-      `SELECT id FROM Transport WHERE id = ?`,
-      [id]
-    );
+    const [existing] = await global.db.execute(`SELECT id FROM Transport WHERE id = ?`, [id]);
 
     if (existing.length === 0) {
       return res.status(404).json({ message: "Transport not found." });
     }
 
     // Delete the record
-    const [result] = await global.db.execute(
-      `DELETE FROM Transport WHERE id = ?`,
-      [id]
-    );
+    const [result] = await global.db.execute(`DELETE FROM Transport WHERE id = ?`, [id]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: "Deletion failed." });
@@ -478,7 +382,7 @@ const DeleteTransport = async (req, res) => {
 
     res.status(200).json({ message: "Transport deleted successfully!" });
   } catch (err) {
-    console.error("Failed to delete Transport:", err);
+    console.log("Failed to delete Transport:", err);
     res.status(500).json({ message: "Database error." });
   }
 };
@@ -495,26 +399,18 @@ const DeleteTransportDef = async (req, res) => {
     await conn.beginTransaction();
 
     // Verificăm dacă definitia există
-    const [existingDef] = await conn.execute(
-      `SELECT id FROM Transport_Definition WHERE id = ?`,
-      [id]
-    );
+    const [existingDef] = await conn.execute(`SELECT id FROM Transport_Definition WHERE id = ?`, [id]);
 
     if (existingDef.length === 0) {
       await conn.rollback();
-      return res
-        .status(404)
-        .json({ message: "Transport definition not found." });
+      return res.status(404).json({ message: "Transport definition not found." });
     }
 
     // Ștergem copiii din tabelul Transport
     await conn.execute(`DELETE FROM Transport WHERE definitie_id = ?`, [id]);
 
     // Ștergem definiția
-    const [result] = await conn.execute(
-      `DELETE FROM Transport_Definition WHERE id = ?`,
-      [id]
-    );
+    const [result] = await conn.execute(`DELETE FROM Transport_Definition WHERE id = ?`, [id]);
 
     if (result.affectedRows === 0) {
       await conn.rollback();
@@ -527,7 +423,7 @@ const DeleteTransportDef = async (req, res) => {
     });
   } catch (err) {
     await conn.rollback();
-    console.error("Failed to delete Transport definition:", err);
+    console.log("Failed to delete Transport definition:", err);
     res.status(500).json({ message: "Database error." });
   } finally {
     conn.release();
@@ -536,7 +432,7 @@ const DeleteTransportDef = async (req, res) => {
 
 const GetTransportLight = async (req, res) => {
   try {
-    const { cod_definitie = '', transport = '', clasa_transport = '', limba = "" } = req.query;
+    const { cod_definitie = "", transport = "", clasa_transport = "", limba = "" } = req.query;
 
     // Start constructing the base query
     let query = `SELECT * FROM Transport_Definition`;
@@ -565,19 +461,19 @@ const GetTransportLight = async (req, res) => {
 
     // If there are any filters, add them to the query
     if (whereClauses.length > 0) {
-      query += ` WHERE ${whereClauses.join(' AND ')}`;
+      query += ` WHERE ${whereClauses.join(" AND ")}`;
     }
 
-    query += ` ORDER BY transport ASC`
+    query += ` ORDER BY transport ASC`;
 
     const [rows] = await global.db.query(query, queryParams);
 
     res.send({
-      data: rows
+      data: rows,
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Database error' });
+    console.log(err);
+    res.status(500).json({ error: "Database error" });
   }
 };
 

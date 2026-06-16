@@ -542,7 +542,7 @@ export default async function ExportPontajeExcel({ selectedUserIds, dates, selec
     link.remove();
     URL.revokeObjectURL(link.href);
   } catch (err) {
-    console.error("ExportPontajeExcel error:", err);
+    console.log("ExportPontajeExcel error:", err);
     alert("Eroare la exportul în Excel.");
   }
 }

@@ -67,7 +67,7 @@ export default function MaterialeSubDefDialog({ open, setOpen, mode = "add", ini
                 setPhotoDeleted(false);
               }
             } catch (error) {
-              console.error("Eroare la încărcarea pozei originale:", error);
+              console.log("Eroare la încărcarea pozei originale:", error);
               if (isMounted) {
                 setPreviewUrl(null);
                 setSelectedFile(null);

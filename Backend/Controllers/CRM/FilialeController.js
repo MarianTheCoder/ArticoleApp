@@ -34,7 +34,7 @@ const getFilialeByCompany = async (req, res) => {
     );
     return res.status(200).json({ filiale: rows, total: rows.length });
   } catch (err) {
-    console.error("getFilialeByCompany error:", err);
+    console.log("getFilialeByCompany error:", err);
     return res.status(500).json({ message: "Eroare la preluarea filialelor." });
   } finally {
     if (conn) conn.release();
@@ -72,7 +72,7 @@ const getFiliala = async (req, res) => {
     );
     return res.status(200).json({ filiala: rows[0] || null });
   } catch (err) {
-    console.error("getFiliala error:", err);
+    console.log("getFiliala error:", err);
     return res.status(500).json({ message: "Eroare la preluarea filialei." });
   } finally {
     if (conn) conn.release();
@@ -103,7 +103,7 @@ const getAllFiliale = async (req, res) => {
     );
     return res.status(200).json({ filiale: rows, total: rows.length });
   } catch (err) {
-    console.error("getAllFiliale error:", err);
+    console.log("getAllFiliale error:", err);
     return res.status(500).json({ message: "Eroare la preluarea filialelor." });
   } finally {
     if (conn) conn.release();
@@ -454,7 +454,7 @@ const editFiliala = async (req, res) => {
   } catch (err) {
     if (conn) await conn.rollback();
 
-    console.error("editFiliale error:", err);
+    console.log("editFiliale error:", err);
     return res.status(500).json({ message: "Eroare server la actualizarea filialei." });
   } finally {
     if (conn) conn.release();
@@ -565,7 +565,7 @@ const deleteFiliala = async (req, res) => {
   } catch (err) {
     if (conn) await conn.rollback();
 
-    console.error("deleteFiliale error:", err);
+    console.log("deleteFiliale error:", err);
 
     if (err.code === "ER_ROW_IS_REFERENCED_2") {
       return res.status(409).json({

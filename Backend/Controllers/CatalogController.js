@@ -1,6 +1,17 @@
 // Presupunem că folosești mysql2 și ai un pool global (ex: global.db sau importat)
 const fs = require("fs");
 const path = require("path");
+const {
+  validatePathCode,
+  normalizePathCode,
+  normalizeClassScope,
+  isCatalogClassScope,
+  getCatalogTipResursaFromScope,
+  parseRetetaCode,
+  parseCatalogCode,
+  resolveRetetaCodes,
+  resolveCatalogCodes,
+} = require("../utils/reteteClaseHelper");
 
 const getResurse = async (req, res) => {
   let conn;
@@ -50,8 +61,11 @@ const getResurse = async (req, res) => {
     }
 
     if (cod) {
+      const codSegments = cod.split(/\s+/).filter(Boolean);
+      const isClassPrefixFilter = codSegments.length > 0 && /^\d{2}$/.test(codSegments[0]);
+
       whereClause += " AND d.cod_definitie LIKE ?";
-      queryParams.push(`%${cod}%`);
+      queryParams.push(isClassPrefixFilter ? `${cod}%` : `%${cod}%`);
     }
 
     if (denumire) {
@@ -111,6 +125,11 @@ const getResurse = async (req, res) => {
     );
 
     if (parents.length > 0) {
+      const coduriCatalogMeta = await resolveCatalogCodes(
+        conn,
+        parents.map((parent) => parent.cod_definitie).filter(Boolean),
+        tip_resursa,
+      );
       const parentIds = parents.map((p) => p.id);
       const placeholders = parentIds.map(() => "?").join(",");
 
@@ -132,6 +151,7 @@ const getResurse = async (req, res) => {
 
       const items = parents.map((parent) => ({
         ...parent,
+        cod_definitie_meta: coduriCatalogMeta.get(parent.cod_definitie) || null,
         subcategorii: subcategories
           .filter((sub) => sub.definitie_id === parent.id)
           .map((sub) => {
@@ -147,10 +167,64 @@ const getResurse = async (req, res) => {
       return res.status(200).json({ total, totalPages, items: [] });
     }
   } catch (error) {
-    console.error("Eroare getResurse:", error);
+    console.log("Eroare getResurse:", error);
     return res.status(500).json({ message: "Eroare la preluarea catalogului." });
   } finally {
     if (conn) conn.release();
+  }
+};
+
+const getNextCatalogDefinitionCode = async (req, res) => {
+  try {
+    const tipResursa = String(req.query.tip_resursa || "").trim();
+    const classPath = normalizePathCode(req.query.class_path || req.query.path_code || "");
+    const classSegments = classPath.split(".").filter(Boolean);
+
+    if (!tipResursa) {
+      return res.status(400).json({ message: "Parametrul tip_resursa este obligatoriu." });
+    }
+
+    if (classSegments.length < 1 || classSegments.length > 2 || !classSegments.every((segment) => /^\d{2}$/.test(segment) && segment !== "00")) {
+      return res.status(400).json({ message: "Clasa este obligatorie pentru codul catalogului." });
+    }
+
+    const prefix = [classSegments[0], classSegments[1] || "00"].join(" ");
+    const [rows] = await global.db.execute(
+      `
+      SELECT cod_definitie
+      FROM S02_Catalog_Definitii
+      WHERE tip_resursa = ?
+        AND cod_definitie LIKE ?
+      `,
+      [tipResursa, `${prefix} %`],
+    );
+
+    const maxSpecificNumber = rows.reduce((maxValue, row) => {
+      const segments = String(row.cod_definitie || "")
+        .trim()
+        .split(/\s+/)
+        .slice(2, 5);
+
+      if (segments.length !== 3 || !segments.every((segment) => /^\d{3}$/.test(segment))) {
+        return maxValue;
+      }
+
+      const numericValue = Number(segments.join(""));
+      return Number.isFinite(numericValue) ? Math.max(maxValue, numericValue) : maxValue;
+    }, -1);
+
+    const nextSpecificNumber = maxSpecificNumber >= 0 ? maxSpecificNumber + 1 : 0;
+    const nextSpecific = String(nextSpecificNumber).padStart(9, "0").slice(-9);
+    const finalSegments = [nextSpecific.slice(0, 3), nextSpecific.slice(3, 6), nextSpecific.slice(6, 9)];
+
+    return res.status(200).json({
+      cod_definitie: `${prefix} ${finalSegments.join(" ")}`,
+      class_path: classPath,
+      final_segments: finalSegments,
+    });
+  } catch (error) {
+    console.log("Eroare getNextCatalogDefinitionCode:", error);
+    return res.status(500).json({ message: "Eroare la generarea următorului cod de catalog." });
   }
 };
 
@@ -272,7 +346,7 @@ const addDefinitie = async (req, res) => {
     });
   } catch (error) {
     if (conn) await conn.rollback();
-    console.error("Eroare la adăugarea/dublarea definiției de catalog:", error);
+    console.log("Eroare la adăugarea/dublarea definiției de catalog:", error);
     if (req.file && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
@@ -363,7 +437,7 @@ const editDefinitie = async (req, res) => {
 
     return res.status(200).json({ message: "Definiția a fost actualizată cu succes." });
   } catch (error) {
-    console.error("Eroare la editarea definiției:", error);
+    console.log("Eroare la editarea definiției:", error);
     if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
     return res.status(500).json({ message: "Eroare internă de server la editare." });
   } finally {
@@ -410,7 +484,7 @@ const deleteDefinitie = async (req, res) => {
 
     return res.status(200).json({ message: "Definiția, subcategoriile și TOATE pozele asociate au fost șterse definitiv." });
   } catch (error) {
-    console.error("Eroare la ștergerea definiției și a pozelor:", error);
+    console.log("Eroare la ștergerea definiției și a pozelor:", error);
     return res.status(500).json({ message: "Eroare internă de server la ștergere." });
   } finally {
     if (conn) conn.release();
@@ -488,7 +562,7 @@ const addSubcategorie = async (req, res) => {
       id: result.insertId,
     });
   } catch (error) {
-    console.error("Eroare la adăugarea variantei:", error);
+    console.log("Eroare la adăugarea variantei:", error);
     if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
     return res.status(500).json({ message: "Eroare internă de server la salvarea variantei." });
   } finally {
@@ -579,7 +653,7 @@ const editSubcategorie = async (req, res) => {
 
     return res.status(200).json({ message: "Varianta a fost actualizată cu succes." });
   } catch (error) {
-    console.error("Eroare la editarea variantei:", error);
+    console.log("Eroare la editarea variantei:", error);
     if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
     return res.status(500).json({ message: "Eroare internă de server la editare." });
   } finally {
@@ -615,8 +689,786 @@ const deleteSubcategorie = async (req, res) => {
 
     return res.status(200).json({ message: "Varianta a fost ștearsă cu succes." });
   } catch (error) {
-    console.error("Eroare la ștergerea variantei:", error);
+    console.log("Eroare la ștergerea variantei:", error);
     return res.status(500).json({ message: "Eroare internă de server la ștergere." });
+  } finally {
+    if (conn) conn.release();
+  }
+};
+
+const getReteteClaseCoduri = async (req, res) => {
+  let conn;
+  try {
+    conn = await global.db.getConnection();
+    const includeInactive = req.query.includeInactive === "1" || req.query.includeInactive === "true";
+    const scope = normalizeClassScope(req.query.scope);
+
+    const [rows] = await conn.execute(
+      `SELECT id, scope, level_no, code_segment, path_code, denumire_ro, denumire_fr, descriere, sort_order, is_active,
+              DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at,
+              DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%sZ') AS updated_at
+       FROM S02_Retete_Clase_Coduri
+       WHERE scope = ?
+       ${includeInactive ? "" : "AND is_active = 1"}
+       ORDER BY path_code ASC, sort_order ASC, denumire_ro ASC`,
+      [scope],
+    );
+
+    return res.status(200).json({ scope, items: rows });
+  } catch (error) {
+    console.log("Eroare getReteteClaseCoduri:", error);
+    return res.status(500).json({ message: "Eroare la preluarea claselor de rețete." });
+  } finally {
+    if (conn) conn.release();
+  }
+};
+
+const addRetetaClasaCod = async (req, res) => {
+  let conn;
+  try {
+    const scope = normalizeClassScope(req.body.scope);
+    const validation = validatePathCode(req.body.path_code, scope);
+    if (!validation.valid) {
+      return res.status(400).json({ message: validation.message });
+    }
+
+    const { parsed } = validation;
+    const denumireRo = String(req.body.denumire_ro || "").trim();
+    const denumireFr = String(req.body.denumire_fr || "").trim();
+    const descriere = String(req.body.descriere || "").trim();
+    const sortOrder = Number.isFinite(Number(req.body.sort_order)) ? Number(req.body.sort_order) : 0;
+    const isActive = req.body.is_active === false || req.body.is_active === 0 || req.body.is_active === "0" ? 0 : 1;
+
+    if (!denumireRo || !denumireFr) {
+      return res.status(400).json({ message: "Denumirile RO și FR sunt obligatorii." });
+    }
+
+    conn = await global.db.getConnection();
+
+    const [existing] = await conn.execute(`SELECT id FROM S02_Retete_Clase_Coduri WHERE scope = ? AND path_code = ?`, [scope, parsed.pathCode]);
+    if (existing.length > 0) {
+      return res.status(400).json({ message: `Path code ${parsed.pathCode} există deja.` });
+    }
+
+    const [result] = await conn.execute(
+      `INSERT INTO S02_Retete_Clase_Coduri
+       (scope, level_no, code_segment, path_code, denumire_ro, denumire_fr, descriere, sort_order, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [scope, parsed.levelNo, parsed.codeSegment, parsed.pathCode, denumireRo, denumireFr, descriere || null, sortOrder, isActive],
+    );
+
+    return res.status(201).json({ message: "Clasa de rețetă a fost adăugată.", id: result.insertId });
+  } catch (error) {
+    console.log("Eroare addRetetaClasaCod:", error);
+    return res.status(500).json({ message: "Eroare la adăugarea clasei de rețetă." });
+  } finally {
+    if (conn) conn.release();
+  }
+};
+
+const bulkSaveRetetaClaseCoduri = async (req, res) => {
+  let conn;
+
+  const TABLE = "S02_Retete_Clase_Coduri";
+
+  const asArray = (value) => (Array.isArray(value) ? value : []);
+
+  const toIntId = (value) => {
+    const id = Number(value);
+    return Number.isInteger(id) && id > 0 ? id : null;
+  };
+
+  const isFalseLike = (value) => {
+    return value === false || value === 0 || value === "0";
+  };
+
+  const normalizeBulkRow = (row, scope, requireId = false) => {
+    const id = toIntId(row?.id);
+
+    if (requireId && !id) {
+      throw new Error("Update fără ID valid.");
+    }
+
+    const validation = validatePathCode(row?.path_code, scope);
+
+    if (!validation.valid) {
+      throw new Error(validation.message || "Path code invalid.");
+    }
+
+    const { parsed } = validation;
+
+    const denumireRo = String(row?.denumire_ro || "").trim();
+    const denumireFr = String(row?.denumire_fr || "").trim();
+    const descriere = String(row?.descriere || "").trim();
+
+    const sortOrder = Number.isFinite(Number(row?.sort_order)) ? Number(row.sort_order) : 0;
+
+    const isActive = isFalseLike(row?.is_active) ? 0 : 1;
+
+    if (!denumireRo || !denumireFr) {
+      throw new Error("Denumirile RO și FR sunt obligatorii.");
+    }
+
+    return {
+      id,
+      scope,
+      level_no: parsed.levelNo,
+      code_segment: parsed.codeSegment,
+      path_code: parsed.pathCode,
+      denumire_ro: denumireRo,
+      denumire_fr: denumireFr,
+      descriere: descriere || null,
+      sort_order: sortOrder,
+      is_active: isActive,
+    };
+  };
+
+  const isPathInside = (pathCode, parentPath) => {
+    return pathCode === parentPath || pathCode.startsWith(`${parentPath}.`);
+  };
+
+  const getClassPathFromCode = (code, levelCount) => {
+    return String(code || "")
+      .trim()
+      .split(/\s+/)
+      .slice(0, levelCount)
+      .filter((segment) => segment && segment !== "00")
+      .join(".");
+  };
+
+  const replaceCodeByPathMap = (code, replacements, levelCount) => {
+    const segments = String(code || "")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+
+    if (segments.length < levelCount + 1) return code;
+
+    const currentPath = getClassPathFromCode(code, levelCount);
+    if (!currentPath) return code;
+
+    const matchingReplacement = replacements
+      .filter((replacement) => {
+        return currentPath === replacement.oldPath || currentPath.startsWith(`${replacement.oldPath}.`);
+      })
+      .sort((a, b) => b.oldPath.length - a.oldPath.length)[0];
+
+    if (!matchingReplacement) return code;
+
+    const oldParts = matchingReplacement.oldPath.split(".").filter(Boolean);
+    const newParts = matchingReplacement.newPath.split(".").filter(Boolean);
+    const currentParts = currentPath.split(".").filter(Boolean);
+
+    const nextClassParts = [...newParts, ...currentParts.slice(oldParts.length)];
+
+    const paddedClassParts = Array.from({ length: levelCount }, (_, index) => {
+      return nextClassParts[index] || "00";
+    });
+
+    const finalSegments = segments.slice(levelCount);
+
+    return [...paddedClassParts, ...finalSegments].join(" ");
+  };
+
+  try {
+    const scope = normalizeClassScope(req.body.scope);
+
+    const createsPayload = asArray(req.body.creates);
+    const updatesPayload = asArray(req.body.updates);
+    const deletesPayload = asArray(req.body.deletes);
+    const deletePathsPayload = asArray(req.body.delete_paths);
+
+    const cleanCreates = createsPayload.map((row) => normalizeBulkRow(row, scope, false));
+
+    const cleanUpdates = updatesPayload.map((row) => normalizeBulkRow(row, scope, true));
+
+    const cleanDeleteIds = [...new Set(deletesPayload.map((row) => toIntId(row?.id ?? row)).filter(Boolean))];
+
+    const cleanDeletePaths = [...new Set(deletePathsPayload.map((pathCode) => normalizePathCode(pathCode)).filter(Boolean))];
+
+    if (cleanCreates.length === 0 && cleanUpdates.length === 0 && cleanDeleteIds.length === 0 && cleanDeletePaths.length === 0) {
+      return res.status(200).json({
+        message: "Nu sunt modificări de salvat.",
+        counts: {
+          created: 0,
+          updated: 0,
+          deleted: 0,
+          updated_recipes: 0,
+          updated_catalog_definitions: 0,
+        },
+      });
+    }
+
+    conn = await global.db.getConnection();
+    await conn.beginTransaction();
+
+    /**
+     * Luăm toate clasele din scope și le blocăm până terminăm tranzacția.
+     * Asta previne conflicte dacă două request-uri salvează clase simultan.
+     */
+    const [existingRows] = await conn.execute(
+      `SELECT id, scope, level_no, code_segment, path_code, denumire_ro, denumire_fr,
+              descriere, sort_order, is_active
+       FROM ${TABLE}
+       WHERE scope = ?
+       FOR UPDATE`,
+      [scope],
+    );
+
+    const originalById = new Map(
+      existingRows.map((row) => [
+        Number(row.id),
+        {
+          ...row,
+          id: Number(row.id),
+          path_code: normalizePathCode(row.path_code),
+        },
+      ]),
+    );
+
+    const finalById = new Map(
+      existingRows.map((row) => [
+        Number(row.id),
+        {
+          ...row,
+          id: Number(row.id),
+          path_code: normalizePathCode(row.path_code),
+        },
+      ]),
+    );
+
+    /**
+     * Update-urile se procesează pe niveluri crescătoare.
+     * Dacă schimbi părintele, întâi mutăm părintele + copiii,
+     * apoi update-urile copiilor se aplică pe noua cale.
+     */
+    const sortedUpdates = [...cleanUpdates].sort((a, b) => {
+      const oldA = originalById.get(a.id);
+      const oldB = originalById.get(b.id);
+      return Number(oldA?.level_no || a.level_no) - Number(oldB?.level_no || b.level_no);
+    });
+
+    for (const update of sortedUpdates) {
+      /**
+       * Dacă rândul e și în delete, delete câștigă.
+       */
+      if (cleanDeleteIds.includes(update.id)) continue;
+
+      const currentRow = finalById.get(update.id);
+
+      if (!currentRow) {
+        throw new Error(`Clasa cu ID ${update.id} nu există.`);
+      }
+
+      const previousPathCode = normalizePathCode(currentRow.path_code);
+      const nextPathCode = normalizePathCode(update.path_code);
+
+      if (previousPathCode !== nextPathCode) {
+        const previousParts = previousPathCode.split(".").filter(Boolean);
+        const nextParts = nextPathCode.split(".").filter(Boolean);
+
+        if (previousParts.length !== nextParts.length || previousParts.slice(0, -1).join(".") !== nextParts.slice(0, -1).join(".")) {
+          throw new Error("Poți schimba doar numărul clasei pe același nivel, nu și părintele/nivelul.");
+        }
+
+        /**
+         * Mutăm în memorie și copiii.
+         */
+        for (const [id, row] of finalById.entries()) {
+          const rowPath = normalizePathCode(row.path_code);
+
+          if (isPathInside(rowPath, previousPathCode)) {
+            const nextRowPath = replacePathPrefix(rowPath, previousPathCode, nextPathCode);
+
+            const validation = validatePathCode(nextRowPath, scope);
+
+            if (!validation.valid) {
+              throw new Error(validation.message || "Path code invalid după mutare.");
+            }
+
+            finalById.set(id, {
+              ...row,
+              level_no: validation.parsed.levelNo,
+              code_segment: validation.parsed.codeSegment,
+              path_code: validation.parsed.pathCode,
+            });
+          }
+        }
+      }
+
+      const movedRow = finalById.get(update.id);
+
+      finalById.set(update.id, {
+        ...movedRow,
+        denumire_ro: update.denumire_ro,
+        denumire_fr: update.denumire_fr,
+        descriere: update.descriere,
+        sort_order: update.sort_order,
+        is_active: update.is_active,
+      });
+    }
+
+    /**
+     * Delete pe ID.
+     * Șterge și subclasele clasei respective.
+     * Se aplică după update-uri, ca delete_paths să fie în forma finală.
+     */
+    for (const id of cleanDeleteIds) {
+      const row = finalById.get(id);
+      if (!row) continue;
+
+      const deletePath = normalizePathCode(row.path_code);
+
+      for (const [candidateId, candidate] of [...finalById.entries()]) {
+        if (isPathInside(normalizePathCode(candidate.path_code), deletePath)) {
+          finalById.delete(candidateId);
+        }
+      }
+    }
+
+    /**
+     * Delete pe path.
+     */
+    for (const deletePathRaw of cleanDeletePaths) {
+      const deletePath = normalizePathCode(deletePathRaw);
+
+      for (const [candidateId, candidate] of [...finalById.entries()]) {
+        if (isPathInside(normalizePathCode(candidate.path_code), deletePath)) {
+          finalById.delete(candidateId);
+        }
+      }
+    }
+
+    /**
+     * Create.
+     * Dacă create-ul este sub un path șters, îl ignorăm.
+     * Asta rezolvă cazul: adaugă ceva, apoi șterge părintele.
+     */
+    const finalRows = [...finalById.values()];
+    const createRows = [];
+
+    for (const create of cleanCreates) {
+      const isUnderDeletedPath = cleanDeletePaths.some((deletePath) => isPathInside(create.path_code, deletePath));
+
+      if (isUnderDeletedPath) continue;
+
+      createRows.push(create);
+      finalRows.push({
+        ...create,
+        id: null,
+      });
+    }
+
+    /**
+     * Validare duplicate finale.
+     */
+    const pathMap = new Map();
+
+    for (const row of finalRows) {
+      const key = `${scope}::${normalizePathCode(row.path_code)}`;
+
+      if (pathMap.has(key)) {
+        throw new Error(`Path code ${row.path_code} există deja.`);
+      }
+
+      pathMap.set(key, true);
+    }
+
+    const finalExistingIds = new Set([...finalById.keys()].map((id) => Number(id)));
+
+    const removedIds = [...originalById.keys()].filter((id) => !finalExistingIds.has(Number(id)));
+
+    const remainingExistingRows = [...finalById.values()].filter((row) => Number.isInteger(Number(row.id)));
+
+    const changedPathRows = remainingExistingRows.filter((row) => {
+      const original = originalById.get(Number(row.id));
+      return original && normalizePathCode(original.path_code) !== normalizePathCode(row.path_code);
+    });
+
+    const pathReplacements = changedPathRows.map((row) => {
+      const original = originalById.get(Number(row.id));
+
+      return {
+        id: Number(row.id),
+        oldPath: normalizePathCode(original.path_code),
+        newPath: normalizePathCode(row.path_code),
+      };
+    });
+
+    /**
+     * 1. Ștergem ce nu mai există în forma finală.
+     */
+    if (removedIds.length > 0) {
+      await conn.query(
+        `DELETE FROM ${TABLE}
+         WHERE scope = ?
+           AND id IN (?)`,
+        [scope, removedIds],
+      );
+    }
+
+    /**
+     * 2. Pentru rândurile care și-au schimbat path_code,
+     * le mutăm temporar ca să evităm conflicte de UNIQUE.
+     */
+    const tempStamp = Date.now();
+
+    for (const row of changedPathRows) {
+      await conn.execute(
+        `UPDATE ${TABLE}
+         SET path_code = ?
+         WHERE id = ?
+           AND scope = ?`,
+        [`__tmp_${tempStamp}_${row.id}`, row.id, scope],
+      );
+    }
+
+    /**
+     * 3. Actualizăm toate rândurile existente rămase.
+     */
+    for (const row of remainingExistingRows) {
+      await conn.execute(
+        `UPDATE ${TABLE}
+         SET level_no = ?,
+             code_segment = ?,
+             path_code = ?,
+             denumire_ro = ?,
+             denumire_fr = ?,
+             descriere = ?,
+             sort_order = ?,
+             is_active = ?
+         WHERE id = ?
+           AND scope = ?`,
+        [
+          row.level_no,
+          row.code_segment,
+          normalizePathCode(row.path_code),
+          row.denumire_ro,
+          row.denumire_fr,
+          row.descriere || null,
+          Number.isFinite(Number(row.sort_order)) ? Number(row.sort_order) : 0,
+          isFalseLike(row.is_active) ? 0 : 1,
+          row.id,
+          scope,
+        ],
+      );
+    }
+
+    /**
+     * 4. Insert bulk pentru clase noi.
+     */
+    if (createRows.length > 0) {
+      const values = createRows.map((row) => [
+        scope,
+        row.level_no,
+        row.code_segment,
+        normalizePathCode(row.path_code),
+        row.denumire_ro,
+        row.denumire_fr,
+        row.descriere || null,
+        Number.isFinite(Number(row.sort_order)) ? Number(row.sort_order) : 0,
+        isFalseLike(row.is_active) ? 0 : 1,
+      ]);
+
+      await conn.query(
+        `INSERT INTO ${TABLE}
+         (scope, level_no, code_segment, path_code, denumire_ro, denumire_fr, descriere, sort_order, is_active)
+         VALUES ?`,
+        [values],
+      );
+    }
+
+    /**
+     * 5. Dacă s-au schimbat path-uri, actualizăm codurile din rețete/catalog.
+     */
+    let updatedRecipes = 0;
+    let updatedCatalogDefinitions = 0;
+
+    if (pathReplacements.length > 0 && scope === "reteta") {
+      const [recipes] = await conn.execute(`SELECT id, cod_reteta FROM S02_Retete`);
+
+      for (const recipe of recipes) {
+        const nextCode = replaceCodeByPathMap(recipe.cod_reteta, pathReplacements, 5);
+
+        if (!nextCode || nextCode === recipe.cod_reteta) continue;
+
+        await conn.execute(
+          `UPDATE S02_Retete
+           SET cod_reteta = ?
+           WHERE id = ?`,
+          [nextCode, recipe.id],
+        );
+
+        updatedRecipes += 1;
+      }
+    }
+
+    if (pathReplacements.length > 0 && isCatalogClassScope(scope)) {
+      const tipResursa = getCatalogTipResursaFromScope(scope);
+      const [definitions] = tipResursa
+        ? await conn.execute(`SELECT id, cod_definitie FROM S02_Catalog_Definitii WHERE tip_resursa = ?`, [tipResursa])
+        : await conn.execute(`SELECT id, cod_definitie FROM S02_Catalog_Definitii`);
+
+      for (const definition of definitions) {
+        const nextCode = replaceCodeByPathMap(definition.cod_definitie, pathReplacements, 2);
+
+        if (!nextCode || nextCode === definition.cod_definitie) continue;
+
+        await conn.execute(
+          `UPDATE S02_Catalog_Definitii
+           SET cod_definitie = ?
+           WHERE id = ?`,
+          [nextCode, definition.id],
+        );
+
+        updatedCatalogDefinitions += 1;
+      }
+    }
+
+    await conn.commit();
+
+    return res.status(200).json({
+      message: "Clasele au fost salvate bulk.",
+      counts: {
+        created: createRows.length,
+        updated: remainingExistingRows.length,
+        deleted: removedIds.length,
+        path_changes: pathReplacements.length,
+        updated_recipes: updatedRecipes,
+        updated_catalog_definitions: updatedCatalogDefinitions,
+      },
+    });
+  } catch (error) {
+    if (conn) await conn.rollback();
+
+    console.log("Eroare bulkSaveRetetaClaseCoduri:", error);
+
+    return res.status(500).json({
+      message: error?.message || "Eroare la salvarea bulk a claselor.",
+    });
+  } finally {
+    if (conn) conn.release();
+  }
+};
+
+const replacePathPrefix = (pathCode, oldPrefix, newPrefix) => {
+  if (pathCode === oldPrefix) return newPrefix;
+  if (pathCode.startsWith(`${oldPrefix}.`)) return `${newPrefix}${pathCode.slice(oldPrefix.length)}`;
+  return pathCode;
+};
+
+const buildRetetaCodeWithPathReplacement = (codReteta, oldPathCode, newPathCode) => {
+  const parsed = parseRetetaCode(codReteta);
+  const oldParts = String(oldPathCode || "")
+    .split(".")
+    .filter(Boolean);
+  const newParts = String(newPathCode || "")
+    .split(".")
+    .filter(Boolean);
+  const currentPrefix = parsed.classSegments.slice(0, oldParts.length);
+
+  if (oldParts.length === 0 || currentPrefix.join(".") !== oldParts.join(".")) return null;
+
+  const nextClassSegments = [...parsed.classSegments];
+  newParts.forEach((segment, index) => {
+    nextClassSegments[index] = segment;
+  });
+
+  return [...nextClassSegments, parsed.recipeCode || ""].join(" ").trim();
+};
+
+const buildCatalogCodeWithPathReplacement = (codDefinitie, oldPathCode, newPathCode) => {
+  const parsed = parseCatalogCode(codDefinitie);
+  const oldParts = String(oldPathCode || "")
+    .split(".")
+    .filter(Boolean);
+  const newParts = String(newPathCode || "")
+    .split(".")
+    .filter(Boolean);
+  const currentPrefix = parsed.classSegments.slice(0, oldParts.length);
+
+  if (oldParts.length === 0 || currentPrefix.join(".") !== oldParts.join(".")) return null;
+
+  const nextClassSegments = [...parsed.classSegments];
+  newParts.forEach((segment, index) => {
+    nextClassSegments[index] = segment;
+  });
+
+  return [...nextClassSegments, ...parsed.specificSegments].join(" ").trim();
+};
+
+const editRetetaClasaCod = async (req, res) => {
+  let conn;
+  const { id } = req.params;
+
+  try {
+    if (!id) {
+      return res.status(400).json({ message: "Lipsește ID-ul clasei." });
+    }
+
+    const scope = normalizeClassScope(req.body.scope);
+    const validation = validatePathCode(req.body.path_code, scope);
+    if (!validation.valid) {
+      return res.status(400).json({ message: validation.message });
+    }
+
+    const { parsed } = validation;
+    const denumireRo = String(req.body.denumire_ro || "").trim();
+    const denumireFr = String(req.body.denumire_fr || "").trim();
+    const descriere = String(req.body.descriere || "").trim();
+    const sortOrder = Number.isFinite(Number(req.body.sort_order)) ? Number(req.body.sort_order) : 0;
+    const isActive = req.body.is_active === false || req.body.is_active === 0 || req.body.is_active === "0" ? 0 : 1;
+
+    if (!denumireRo || !denumireFr) {
+      return res.status(400).json({ message: "Denumirile RO și FR sunt obligatorii." });
+    }
+
+    conn = await global.db.getConnection();
+    await conn.beginTransaction();
+
+    const [existing] = await conn.execute(`SELECT id, scope, path_code FROM S02_Retete_Clase_Coduri WHERE id = ? AND scope = ? FOR UPDATE`, [id, scope]);
+    if (existing.length === 0) {
+      await conn.rollback();
+      return res.status(404).json({ message: "Clasa de rețetă nu a fost găsită." });
+    }
+
+    const previousPathCode = normalizePathCode(existing[0].path_code);
+    if (previousPathCode !== parsed.pathCode) {
+      const previousParts = previousPathCode.split(".").filter(Boolean);
+      const nextParts = parsed.pathCode.split(".").filter(Boolean);
+
+      if (previousParts.length !== nextParts.length || previousParts.slice(0, -1).join(".") !== nextParts.slice(0, -1).join(".")) {
+        await conn.rollback();
+        return res.status(400).json({ message: "Poți schimba doar numărul clasei pe același nivel, nu și părintele/nivelul." });
+      }
+    }
+
+    if (previousPathCode === parsed.pathCode) {
+      const [samePath] = await conn.execute(`SELECT id FROM S02_Retete_Clase_Coduri WHERE scope = ? AND path_code = ? AND id != ?`, [scope, parsed.pathCode, id]);
+      if (samePath.length > 0) {
+        await conn.rollback();
+        return res.status(400).json({ message: `Path code ${parsed.pathCode} există deja.` });
+      }
+
+      await conn.execute(
+        `UPDATE S02_Retete_Clase_Coduri
+         SET level_no = ?, code_segment = ?, path_code = ?, denumire_ro = ?, denumire_fr = ?, descriere = ?, sort_order = ?, is_active = ?
+         WHERE id = ?`,
+        [parsed.levelNo, parsed.codeSegment, parsed.pathCode, denumireRo, denumireFr, descriere || null, sortOrder, isActive, id],
+      );
+
+      await conn.commit();
+      return res.status(200).json({ message: "Clasa de rețetă a fost actualizată." });
+    }
+
+    const [movingRows] = await conn.execute(
+      `SELECT id, path_code
+       FROM S02_Retete_Clase_Coduri
+       WHERE scope = ? AND (path_code = ? OR path_code LIKE ?)
+       ORDER BY level_no ASC`,
+      [scope, previousPathCode, `${previousPathCode}.%`],
+    );
+
+    const movingIds = new Set(movingRows.map((row) => Number(row.id)));
+    const nextPaths = movingRows.map((row) => replacePathPrefix(normalizePathCode(row.path_code), previousPathCode, parsed.pathCode));
+
+    if (nextPaths.length > 0) {
+      const placeholders = nextPaths.map(() => "?").join(",");
+      const [conflicts] = await conn.execute(`SELECT id, path_code FROM S02_Retete_Clase_Coduri WHERE scope = ? AND path_code IN (${placeholders})`, [scope, ...nextPaths]);
+      const conflict = conflicts.find((row) => !movingIds.has(Number(row.id)));
+
+      if (conflict) {
+        await conn.rollback();
+        return res.status(400).json({ message: `Path code ${conflict.path_code} există deja.` });
+      }
+    }
+
+    for (const row of movingRows) {
+      const nextPath = replacePathPrefix(normalizePathCode(row.path_code), previousPathCode, parsed.pathCode);
+      const nextParsed = validatePathCode(nextPath, scope).parsed;
+
+      await conn.execute(
+        `UPDATE S02_Retete_Clase_Coduri
+         SET level_no = ?, code_segment = ?, path_code = ?
+         WHERE id = ?`,
+        [nextParsed.levelNo, nextParsed.codeSegment, nextParsed.pathCode, row.id],
+      );
+    }
+
+    await conn.execute(
+      `UPDATE S02_Retete_Clase_Coduri
+       SET denumire_ro = ?, denumire_fr = ?, descriere = ?, sort_order = ?, is_active = ?
+       WHERE id = ?`,
+      [denumireRo, denumireFr, descriere || null, sortOrder, isActive, id],
+    );
+
+    let updatedRecipes = 0;
+    let updatedCatalogDefinitions = 0;
+
+    if (scope === "reteta") {
+      const [recipes] = await conn.execute(`SELECT id, cod_reteta FROM S02_Retete`);
+
+      for (const recipe of recipes) {
+        const nextCode = buildRetetaCodeWithPathReplacement(recipe.cod_reteta, previousPathCode, parsed.pathCode);
+        if (!nextCode || nextCode === recipe.cod_reteta) continue;
+
+        await conn.execute(`UPDATE S02_Retete SET cod_reteta = ? WHERE id = ?`, [nextCode, recipe.id]);
+        updatedRecipes += 1;
+      }
+    } else if (isCatalogClassScope(scope)) {
+      const tipResursa = getCatalogTipResursaFromScope(scope);
+      const [definitions] = tipResursa
+        ? await conn.execute(`SELECT id, cod_definitie FROM S02_Catalog_Definitii WHERE tip_resursa = ?`, [tipResursa])
+        : await conn.execute(`SELECT id, cod_definitie FROM S02_Catalog_Definitii`);
+
+      for (const definition of definitions) {
+        const nextCode = buildCatalogCodeWithPathReplacement(definition.cod_definitie, previousPathCode, parsed.pathCode);
+        if (!nextCode || nextCode === definition.cod_definitie) continue;
+
+        await conn.execute(`UPDATE S02_Catalog_Definitii SET cod_definitie = ? WHERE id = ?`, [nextCode, definition.id]);
+        updatedCatalogDefinitions += 1;
+      }
+    }
+
+    await conn.commit();
+    return res.status(200).json({ message: "Clasa a fost actualizată.", updated_recipes: updatedRecipes, updated_catalog_definitions: updatedCatalogDefinitions });
+  } catch (error) {
+    if (conn) await conn.rollback();
+    console.log("Eroare editRetetaClasaCod:", error);
+    return res.status(500).json({ message: "Eroare la editarea clasei de rețetă." });
+  } finally {
+    if (conn) conn.release();
+  }
+};
+
+const deleteRetetaClasaCod = async (req, res) => {
+  let conn;
+  const { id } = req.params;
+
+  try {
+    if (!id) {
+      return res.status(400).json({ message: "Lipsește ID-ul clasei." });
+    }
+
+    const scope = normalizeClassScope(req.query.scope || req.body?.scope);
+
+    conn = await global.db.getConnection();
+    await conn.beginTransaction();
+
+    const [rows] = await conn.execute(`SELECT id, path_code FROM S02_Retete_Clase_Coduri WHERE id = ? AND scope = ?`, [id, scope]);
+    if (rows.length === 0) {
+      await conn.rollback();
+      return res.status(404).json({ message: "Clasa de rețetă nu a fost găsită." });
+    }
+
+    const pathCode = normalizePathCode(rows[0].path_code);
+    const [result] = await conn.execute(`DELETE FROM S02_Retete_Clase_Coduri WHERE scope = ? AND (path_code = ? OR path_code LIKE ?)`, [scope, pathCode, `${pathCode}.%`]);
+    await conn.commit();
+    return res.status(200).json({ message: "Clasa de rețetă și subclasele ei au fost șterse.", deleted_count: result.affectedRows || 0 });
+  } catch (error) {
+    if (conn) await conn.rollback();
+    console.log("Eroare deleteRetetaClasaCod:", error);
+    return res.status(500).json({ message: "Eroare la ștergerea clasei de rețetă." });
   } finally {
     if (conn) conn.release();
   }
@@ -630,11 +1482,11 @@ const addReteta = async (req, res) => {
     conn = await global.db.getConnection();
     await conn.beginTransaction();
 
-    const { limba, cod_reteta, clasa_reteta, denumire, denumire_fr, unitate_masura, duplicate_from_id } = req.body;
+    const { limba, cod_reteta, denumire, denumire_fr, unitate_masura, duplicate_from_id } = req.body;
 
     // 1. Validări de bază
-    if (!cod_reteta || !clasa_reteta || !denumire || !unitate_masura) {
-      return res.status(400).json({ message: "Câmpuri obligatorii lipsă (cod, clasa, denumire, unitate)." });
+    if (!cod_reteta || !denumire || !unitate_masura) {
+      return res.status(400).json({ message: "Câmpuri obligatorii lipsă (cod, denumire, unitate)." });
     }
 
     // 2. Verificăm dacă codul rețetei există deja
@@ -643,6 +1495,10 @@ const addReteta = async (req, res) => {
     if (existing.length > 0) {
       return res.status(400).json({ message: `Codul ${cod_reteta} există deja în baza de date.` });
     }
+
+    const codMetaMap = await resolveRetetaCodes(conn, [cod_reteta.trim()]);
+    const codMeta = codMetaMap.get(cod_reteta.trim());
+    const resolvedClasaReteta = String(codMeta?.display_ro || "").trim();
 
     // 3. Inserăm rețeta nouă
     const insertQuery = `
@@ -654,7 +1510,7 @@ const addReteta = async (req, res) => {
     const values = [
       limba || "RO",
       cod_reteta.trim(),
-      clasa_reteta.trim(),
+      resolvedClasaReteta,
       denumire.trim(),
       denumire_fr ? (limba === "FR" ? denumire_fr.trim() : "") : "",
       unitate_masura.trim(),
@@ -697,7 +1553,7 @@ const addReteta = async (req, res) => {
     });
   } catch (error) {
     if (conn) await conn.rollback();
-    console.error("Eroare la adăugarea/dublarea rețetei:", error);
+    console.log("Eroare la adăugarea/dublarea rețetei:", error);
     return res.status(500).json({ message: "Eroare internă de server la salvare." });
   } finally {
     if (conn) conn.release();
@@ -723,7 +1579,7 @@ const getRetete = async (req, res) => {
     const unitate = req.query.unitate ? req.query.unitate.trim() : "";
 
     // Sortare
-    const allowedSortColumns = ["updated_at", "created_at", "cod_reteta"];
+    const allowedSortColumns = ["updated_at", "created_at", "cod_reteta", "limba", "clasa_reteta", "denumire", "cost"];
     const sortBy = allowedSortColumns.includes(req.query.sortBy) ? req.query.sortBy : "updated_at";
     const sortOrder = req.query.sortOrder === "asc" ? "ASC" : "DESC";
 
@@ -748,8 +1604,24 @@ const getRetete = async (req, res) => {
     }
 
     if (clasa_reteta) {
-      whereClause += " AND d.clasa_reteta LIKE ?";
-      queryParams.push(`%${clasa_reteta}%`);
+      const classSearch = `%${clasa_reteta}%`;
+      const [matchingClasses] = await conn.execute(
+        `SELECT path_code
+         FROM S02_Retete_Clase_Coduri
+         WHERE scope = 'reteta'
+           AND is_active = 1
+           AND (path_code LIKE ? OR code_segment LIKE ? OR denumire_ro LIKE ? OR denumire_fr LIKE ?)`,
+        [classSearch, classSearch, classSearch, classSearch],
+      );
+
+      if (matchingClasses.length === 0) {
+        whereClause += " AND 1=0";
+      } else {
+        whereClause += ` AND (${matchingClasses.map(() => "d.cod_reteta LIKE ?").join(" OR ")})`;
+        matchingClasses.forEach((classRow) => {
+          queryParams.push(`${String(classRow.path_code).replace(/\./g, " ")} %`);
+        });
+      }
     }
 
     if (denumire) {
@@ -793,6 +1665,10 @@ const getRetete = async (req, res) => {
 
     // --- 5. EXECUTARE QUERY PENTRU ELEMENTE (COPII) ȘI CALCUL COST ---
     if (parents.length > 0) {
+      const coduriReteteMeta = await resolveRetetaCodes(
+        conn,
+        parents.map((parent) => parent.cod_reteta),
+      );
       const parentIds = parents.map((p) => p.id);
       const placeholders = parentIds.map(() => "?").join(",");
 
@@ -875,6 +1751,7 @@ const getRetete = async (req, res) => {
 
         return {
           ...parent,
+          cod_reteta_meta: coduriReteteMeta.get(parent.cod_reteta),
           cost: cost_total_reteta,
           elemente: elementeProcesate,
         };
@@ -885,7 +1762,7 @@ const getRetete = async (req, res) => {
       return res.status(200).json({ total, totalPages, items: [] });
     }
   } catch (error) {
-    console.error("Eroare getRetete:", error);
+    console.log("Eroare getRetete:", error);
     return res.status(500).json({ message: "Eroare la preluarea rețetelor." });
   } finally {
     if (conn) conn.release();
@@ -936,7 +1813,7 @@ const addRetetaElement = async (req, res) => {
     return res.status(201).json({ message: "Resursa a fost adăugată cu succes în rețetă." });
   } catch (error) {
     if (conn) await conn.rollback();
-    console.error("Eroare la adăugarea elementului în rețetă:", error);
+    console.log("Eroare la adăugarea elementului în rețetă:", error);
     return res.status(500).json({ message: "Eroare internă de server la salvare." });
   } finally {
     if (conn) conn.release();
@@ -977,7 +1854,7 @@ const editRetetaElement = async (req, res) => {
     return res.status(200).json({ message: "Cantitatea a fost actualizată cu succes." });
   } catch (error) {
     if (conn) await conn.rollback();
-    console.error("Eroare la editarea elementului din rețetă:", error);
+    console.log("Eroare la editarea elementului din rețetă:", error);
     return res.status(500).json({ message: "Eroare internă de server la actualizare." });
   } finally {
     if (conn) conn.release();
@@ -1012,7 +1889,7 @@ const deleteRetetaElement = async (req, res) => {
     return res.status(200).json({ message: "Elementul a fost eliminat din rețetă." });
   } catch (error) {
     if (conn) await conn.rollback();
-    console.error("Eroare la ștergerea elementului din rețetă:", error);
+    console.log("Eroare la ștergerea elementului din rețetă:", error);
     return res.status(500).json({ message: "Eroare internă de server la ștergere." });
   } finally {
     if (conn) conn.release();
@@ -1026,12 +1903,12 @@ const editReteta = async (req, res) => {
 
   try {
     conn = await global.db.getConnection();
-    const { limba, cod_reteta, clasa_reteta, denumire, denumire_fr, unitate_masura } = req.body;
+    const { limba, cod_reteta, denumire, denumire_fr, unitate_masura } = req.body;
     if (!id) {
       return res.status(400).json({ message: "Lipsește ID-ul rețetei." });
     }
-    if (!cod_reteta || !clasa_reteta || !denumire || !unitate_masura) {
-      return res.status(400).json({ message: "Câmpuri obligatorii lipsă (cod, clasa, denumire, unitate)." });
+    if (!cod_reteta || !denumire || !unitate_masura) {
+      return res.status(400).json({ message: "Câmpuri obligatorii lipsă (cod, denumire, unitate)." });
     }
     const [existingRecipe] = await conn.execute(`SELECT id, limba FROM S02_Retete WHERE id = ?`, [id]);
     if (existingRecipe.length === 0) {
@@ -1051,6 +1928,11 @@ const editReteta = async (req, res) => {
     if (existingCode.length > 0) {
       return res.status(400).json({ message: `Codul ${cod_reteta} este deja folosit de altă rețetă.` });
     }
+
+    const codMetaMap = await resolveRetetaCodes(conn, [cod_reteta.trim()]);
+    const codMeta = codMetaMap.get(cod_reteta.trim());
+    const resolvedClasaReteta = String(codMeta?.display_ro || "").trim();
+
     const updateQuery = `
       UPDATE S02_Retete
       SET 
@@ -1065,22 +1947,13 @@ const editReteta = async (req, res) => {
       WHERE id = ?
     `;
 
-    const values = [
-      limba || "RO",
-      cod_reteta.trim(),
-      clasa_reteta.trim(),
-      denumire.trim(),
-      denumire_fr ? (limba === "FR" ? denumire_fr.trim() : "") : "",
-      unitate_masura.trim(),
-      user.id || null,
-      id,
-    ];
+    const values = [limba || "RO", cod_reteta.trim(), resolvedClasaReteta, denumire.trim(), denumire_fr ? (limba === "FR" ? denumire_fr.trim() : "") : "", unitate_masura.trim(), user.id || null, id];
 
     await conn.execute(updateQuery, values);
 
     return res.status(200).json({ message: "Rețeta a fost actualizată cu succes." });
   } catch (error) {
-    console.error("Eroare la editarea rețetei:", error);
+    console.log("Eroare la editarea rețetei:", error);
     return res.status(500).json({ message: "Eroare internă de server la editare." });
   } finally {
     if (conn) conn.release();
@@ -1122,7 +1995,7 @@ const deleteReteta = async (req, res) => {
     });
   } catch (error) {
     if (conn) await conn.rollback();
-    console.error("Eroare la ștergerea rețetei:", error);
+    console.log("Eroare la ștergerea rețetei:", error);
     return res.status(500).json({ message: "Eroare internă de server la ștergere." });
   } finally {
     if (conn) conn.release();
@@ -1131,12 +2004,17 @@ const deleteReteta = async (req, res) => {
 
 module.exports = {
   getResurse,
+  getNextCatalogDefinitionCode,
   addDefinitie,
   deleteDefinitie,
   editDefinitie,
   addSubcategorie,
   editSubcategorie,
   deleteSubcategorie,
+  getReteteClaseCoduri,
+  addRetetaClasaCod,
+  editRetetaClasaCod,
+  deleteRetetaClasaCod,
   addReteta,
   getRetete,
   addRetetaElement,
@@ -1144,4 +2022,5 @@ module.exports = {
   deleteRetetaElement,
   editReteta,
   deleteReteta,
+  bulkSaveRetetaClaseCoduri,
 };

@@ -1,11 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import api from "../../api/axiosAPI";
-import {
-  flexRender,
-  getCoreRowModel,
-  getPaginationRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
+import { flexRender, getCoreRowModel, getPaginationRowModel, useReactTable } from "@tanstack/react-table";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowDownAZ,
@@ -103,7 +98,6 @@ export default function TransportTable({
     transport: "",
   });
 
-
   const fetchTransport = async (offset, limit) => {
     setOpen([]);
     try {
@@ -133,7 +127,7 @@ export default function TransportTable({
         setCurrentOffset(response.data.currentOffset);
       }
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.log("Error fetching data:", error);
     }
   };
 
@@ -190,13 +184,13 @@ export default function TransportTable({
             return item.definitie_id == null;
           }
           return true; // restul itemilor rămân
-        })
+        }),
       );
 
       // Reset selected delete state
       setSelectedDeleteInterior(null);
     } catch (err) {
-      console.error("Error deleting Transport:", err);
+      console.log("Error deleting Transport:", err);
     }
   };
 
@@ -238,17 +232,17 @@ export default function TransportTable({
         prev.map((item) =>
           item.id === row.id && item.definitie_id != null // Ensure it's a child row
             ? {
-              ...item,
-              cost_unitar: cost_unitar.toFixed(3),
-              cod_transport,
-              descriere,
-              descriere_fr,
-            }
-            : item
-        )
+                ...item,
+                cost_unitar: cost_unitar.toFixed(3),
+                cod_transport,
+                descriere,
+                descriere_fr,
+              }
+            : item,
+        ),
       );
     } catch (err) {
-      console.error("Error updating Transport row:", err);
+      console.log("Error updating Transport row:", err);
     }
     setSelectedEditInterior(null);
   };
@@ -353,22 +347,11 @@ export default function TransportTable({
       // console.log(open, id)
       setOpen((prev) => prev.filter((item) => item !== id));
       const updatedTransport = [...transport];
-      const transportIndex = updatedTransport.findIndex(
-        (item) => item.id === id && item.cod_definitie != null
-      ); // sa fie diferit de manopere/material etc
-      const addButtonIndex = updatedTransport.findIndex(
-        (item) => item.id === `addButton-${id}`
-      );
+      const transportIndex = updatedTransport.findIndex((item) => item.id === id && item.cod_definitie != null); // sa fie diferit de manopere/material etc
+      const addButtonIndex = updatedTransport.findIndex((item) => item.id === `addButton-${id}`);
       // console.log("reteIDX ", manoperaIndex, "btnIDX ", addButtonIndex);
-      if (
-        addButtonIndex !== -1 &&
-        transportIndex !== -1 &&
-        addButtonIndex > transportIndex
-      ) {
-        updatedTransport.splice(
-          transportIndex + 1,
-          addButtonIndex - transportIndex
-        );
+      if (addButtonIndex !== -1 && transportIndex !== -1 && addButtonIndex > transportIndex) {
+        updatedTransport.splice(transportIndex + 1, addButtonIndex - transportIndex);
         setTransport([...updatedTransport]);
       }
       return [updatedTransport, transportIndex];
@@ -393,15 +376,13 @@ export default function TransportTable({
         definitieIdForFetch: id,
       };
 
-      const updatedTransport = transportParam
-        ? [...transportParam]
-        : [...transport];
+      const updatedTransport = transportParam ? [...transportParam] : [...transport];
       updatedTransport.splice(index + 1, 0, ...children, addButton);
 
       setOpen((prev) => [...prev, id]);
       setTransport(updatedTransport);
     } catch (err) {
-      console.error("Failed to fetch children:", err);
+      console.log("Failed to fetch children:", err);
     }
   };
 
@@ -440,9 +421,7 @@ export default function TransportTable({
       });
       const insertedId = response.data.id; // Make sure backend returns { insertId }
 
-      const parent = transport.find(
-        (item) => item.id == parentId && item.cod_definitie != null
-      );
+      const parent = transport.find((item) => item.id == parentId && item.cod_definitie != null);
       if (!parent) return;
 
       const newChild = {
@@ -461,9 +440,7 @@ export default function TransportTable({
       if (!data) updated.splice(row.index, 0, newChild);
       // ⬅️ Insert right before the addButton
       else {
-        const addButtonIndex = updated.findIndex(
-          (item) => item.id === `addButton-${parentId}`
-        );
+        const addButtonIndex = updated.findIndex((item) => item.id === `addButton-${parentId}`);
         if (addButtonIndex !== -1) {
           updated.splice(addButtonIndex, 0, newChild);
         } else {
@@ -477,15 +454,13 @@ export default function TransportTable({
       setDescriereTransport(form.descriere);
       setDescriereTransportFR(form.descriere_fr);
     } catch (error) {
-      console.error("Upload error:", error);
+      console.log("Upload error:", error);
     }
   };
 
   const handleCopy = () => {
     const rows = table.getRowModel().rows; // Access rows directly from the table
-    const selectedRowIds = Object.keys(selectedRows).filter(
-      (rowId) => selectedRows[rowId]
-    );
+    const selectedRowIds = Object.keys(selectedRows).filter((rowId) => selectedRows[rowId]);
 
     if (selectedRowIds.length === 0) {
       return;
@@ -519,7 +494,7 @@ export default function TransportTable({
         console.log("Selected rows copied to clipboard!");
       })
       .catch((err) => {
-        console.error("Failed to copy text: ", err);
+        console.log("Failed to copy text: ", err);
       });
   };
 
@@ -563,22 +538,12 @@ export default function TransportTable({
         header: "",
         cell: ({ row, getValue, cell }) => (
           <div
-            onClick={(e) =>
-              toggleDropdown(
-                e,
-                cell.row.original.id,
-                cell.row.index,
-                cell.row.original
-              )
-            } // Pass both id and index
+            onClick={(e) => toggleDropdown(e, cell.row.original.id, cell.row.index, cell.row.original)} // Pass both id and index
             className="flex justify-center h-full overflow-hidden w-full cursor-pointer items-center"
           >
             <FontAwesomeIcon
               className={`text-center 
-                                        ${open.includes(cell.row.original.id)
-                  ? "rotate-90"
-                  : ""
-                } text-xl`}
+                                        ${open.includes(cell.row.original.id) ? "rotate-90" : ""} text-xl`}
               icon={faChevronRight}
             />
           </div>
@@ -587,20 +552,13 @@ export default function TransportTable({
       {
         accessorKey: "limba",
         header: "Limba",
-        cell: ({ getValue, row }) => (
-          <div className="w-full flex justify-center  font-bold">
-            {getValue()}
-          </div>
-        ), // Display default value if the value is empty or undefined
+        cell: ({ getValue, row }) => <div className="w-full flex justify-center  font-bold">{getValue()}</div>, // Display default value if the value is empty or undefined
         size: 50,
       },
       {
         accessorKey: "cod_definitie",
         header: (
-          <div
-            onClick={() => console.log(transport)}
-            className="flex items-center w-[95%] justify-between text-black "
-          >
+          <div onClick={() => console.log(transport)} className="flex items-center w-[95%] justify-between text-black ">
             <span>Cod</span>
             {/* <FontAwesomeIcon
             //   onClick={() =>
@@ -612,9 +570,7 @@ export default function TransportTable({
           </div>
         ),
         cell: ({ getValue, row }) => {
-          const isEditable =
-            row.original.id == selectedEditInterior &&
-            row.original.definitie_id != null;
+          const isEditable = row.original.id == selectedEditInterior && row.original.definitie_id != null;
 
           return (
             <TextAreaCell
@@ -638,18 +594,13 @@ export default function TransportTable({
           <div className="flex items-center w-[95%] justify-between text-black ">
             <span>Transport</span>
             <FontAwesomeIcon
-              onClick={() =>
-                setAscendent((prev) => (prev == false ? true : false))
-              }
+              onClick={() => setAscendent((prev) => (prev == false ? true : false))}
               className="text-xl border border-black p-2  rounded-full  cursor-pointer"
               icon={!ascendent ? faArrowUpAZ : faArrowDownAZ}
             />
           </div>
         ),
-        cell: ({ getValue, row }) =>
-        (
-          <div className="">{localLimba === "FR" ? row.original.transport_fr || "..." : row.original.transport || "..."}</div>
-        ),
+        cell: ({ getValue, row }) => <div className="">{localLimba === "FR" ? row.original.transport_fr || "..." : row.original.transport || "..."}</div>,
         size: 300,
       },
       {
@@ -657,24 +608,22 @@ export default function TransportTable({
         header: (
           <div className="flex items-center w-[95%]  justify-between text-black ">
             <span>Descriere</span>
-            <span className='flex items-center'>Limba:
-              <span onClick={() => setLocalLimba(prev => prev == 'RO' ? 'FR' : 'RO')} className='ml-2 text-green-600 border-2 hover:text-green-500 hover:border-green-500 cursor-pointer border-green-600 rounded-full aspect-square min-w-[2.2rem] flex items-center justify-center'>
+            <span className="flex items-center">
+              Limba:
+              <span
+                onClick={() => setLocalLimba((prev) => (prev == "RO" ? "FR" : "RO"))}
+                className="ml-2 text-green-600 border-2 hover:text-green-500 hover:border-green-500 cursor-pointer border-green-600 rounded-full aspect-square min-w-[2.2rem] flex items-center justify-center"
+              >
                 {localLimba}
               </span>
             </span>
           </div>
         ),
         cell: ({ getValue, row }) => {
-          const isEditable =
-            row.original.id === selectedEditInterior &&
-            row.original.definitie_id != null;
+          const isEditable = row.original.id === selectedEditInterior && row.original.definitie_id != null;
 
           if (localLimba === "FR" && !isEditable) {
-            return (
-              <div className="flex items-center gap-2">
-                {row.original.descriere_fr || "..."}
-              </div>
-            );
+            return <div className="flex items-center gap-2">{row.original.descriere_fr || "..."}</div>;
           }
 
           return (
@@ -702,9 +651,7 @@ export default function TransportTable({
         accessorKey: "cost_unitar",
         header: "Cost unitar",
         cell: ({ getValue, row }) => {
-          const isEditable =
-            row.original.id == selectedEditInterior &&
-            row.original.definitie_id != null;
+          const isEditable = row.original.id == selectedEditInterior && row.original.definitie_id != null;
 
           return (
             <CostInputCell
@@ -726,64 +673,47 @@ export default function TransportTable({
           <div className="absolute group w-full">
             {/* Trigger sau Confirm */}
             <div className="w-full select-none flex items-center justify-center">
-              {(selectedDeleteInterior === row.original.id ||
-                selectedEditInterior === row.original.id) &&
-                row.original.definitie_id != null ? (
+              {(selectedDeleteInterior === row.original.id || selectedEditInterior === row.original.id) && row.original.definitie_id != null ? (
                 <button
                   onClick={() => {
-                    if (selectedDeleteInterior === row.original.id)
-                      handleAcceptDelete(row.original);
-                    else if (selectedEditInterior === row.original.id)
-                      handleAcceptEdit(row.original);
+                    if (selectedDeleteInterior === row.original.id) handleAcceptDelete(row.original);
+                    else if (selectedEditInterior === row.original.id) handleAcceptEdit(row.original);
                   }}
                   className="bg-green-500 hover:bg-green-600 text-white font-semibold text-base px-3 py-3 rounded-lg"
                 >
                   Confirm
                 </button>
               ) : (
-                <FontAwesomeIcon
-                  icon={faEllipsis}
-                  className="text-xl text-gray-600"
-                />
+                <FontAwesomeIcon icon={faEllipsis} className="text-xl text-gray-600" />
               )}
             </div>
 
             {/* Dropdown doar dacă NU e în confirm mode */}
-            {selectedDeleteInterior !== row.original.id &&
-              selectedEditInterior !== row.original.id && (
-                <div className="absolute z-10 left-0 -translate-x-[40%] bg-white border shadow-lg rounded-md w-40 p-2 flex flex-col items-center gap-1 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-all duration-200 text-lg font-semibold text-gray-700">
-                  <div
-                    onClick={(e) => handleSelectedForEdit(e, row.original)}
-                    className="cursor-pointer w-full flex justify-start items-center rounded-md px-2 py-2 hover:bg-green-100 hover:bg-opacity-90"
-                  >
-                    <FontAwesomeIcon
-                      icon={faPenToSquare}
-                      className="mr-2 text-green-400"
-                    />
-                    Edit
-                  </div>
-                  <div
-                    onClick={(e) => handleSelectedDouble(e, row.original)}
-                    className="cursor-pointer w-full flex justify-start items-center rounded-md px-2 py-2 hover:bg-amber-100 hover:bg-opacity-90"
-                  >
-                    <FontAwesomeIcon
-                      icon={faFileCirclePlus}
-                      className="mr-2 text-amber-400"
-                    />
-                    Duplicate
-                  </div>
-                  <div
-                    onClick={(e) => handleSelectedForDelete(e, row.original)}
-                    className="cursor-pointer w-full flex justify-start items-center rounded-md px-2 py-2 hover:bg-red-100 hover:bg-opacity-90"
-                  >
-                    <FontAwesomeIcon
-                      icon={faTrashCan}
-                      className="mr-2 text-red-400"
-                    />
-                    Delete
-                  </div>
+            {selectedDeleteInterior !== row.original.id && selectedEditInterior !== row.original.id && (
+              <div className="absolute z-10 left-0 -translate-x-[40%] bg-white border shadow-lg rounded-md w-40 p-2 flex flex-col items-center gap-1 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-all duration-200 text-lg font-semibold text-gray-700">
+                <div
+                  onClick={(e) => handleSelectedForEdit(e, row.original)}
+                  className="cursor-pointer w-full flex justify-start items-center rounded-md px-2 py-2 hover:bg-green-100 hover:bg-opacity-90"
+                >
+                  <FontAwesomeIcon icon={faPenToSquare} className="mr-2 text-green-400" />
+                  Edit
                 </div>
-              )}
+                <div
+                  onClick={(e) => handleSelectedDouble(e, row.original)}
+                  className="cursor-pointer w-full flex justify-start items-center rounded-md px-2 py-2 hover:bg-amber-100 hover:bg-opacity-90"
+                >
+                  <FontAwesomeIcon icon={faFileCirclePlus} className="mr-2 text-amber-400" />
+                  Duplicate
+                </div>
+                <div
+                  onClick={(e) => handleSelectedForDelete(e, row.original)}
+                  className="cursor-pointer w-full flex justify-start items-center rounded-md px-2 py-2 hover:bg-red-100 hover:bg-opacity-90"
+                >
+                  <FontAwesomeIcon icon={faTrashCan} className="mr-2 text-red-400" />
+                  Delete
+                </div>
+              </div>
+            )}
           </div>
         ),
         meta: {
@@ -794,17 +724,7 @@ export default function TransportTable({
         },
       },
     ],
-    [
-      selectedDelete,
-      selectedDeleteInterior,
-      selectedEdit,
-      selectedEditInterior,
-      selectedDouble,
-      ascendent,
-      open,
-      localLimba,
-      transport,
-    ]
+    [selectedDelete, selectedDeleteInterior, selectedEdit, selectedEditInterior, selectedDouble, ascendent, open, localLimba, transport],
   );
 
   const table = useReactTable({
@@ -825,18 +745,9 @@ export default function TransportTable({
             <table className="w-full   border-separate border-spacing-0 ">
               <thead className="top-0 w-full sticky bg-white  z-10 ">
                 <tr className="text-black">
-                  <th
-                    className="border-b border-r border-black bg-white"
-                    colSpan={1}
-                  ></th>
+                  <th className="border-b border-r border-black bg-white" colSpan={1}></th>
                   <th className="border-b border-r bg-white border-black">
-                    <select
-                      id="limba"
-                      name="limba"
-                      value={filters.limba}
-                      onChange={handleInputChange}
-                      className=" p-2 w-full cursor-pointer outline-none py-3"
-                    >
+                    <select id="limba" name="limba" value={filters.limba} onChange={handleInputChange} className=" p-2 w-full cursor-pointer outline-none py-3">
                       <option value="">RO&FR</option>
                       <option value="RO">RO</option>
                       <option value="FR">FR</option>
@@ -867,103 +778,45 @@ export default function TransportTable({
                     />
                   </th>
                   <th className="border-b border-r bg-white border-black">
-                    <input
-                      type="text"
-                      name="transport"
-                      value={filters.transport}
-                      onChange={handleInputChange}
-                      className="p-2 w-full outline-none  py-3"
-                      placeholder="Filtru Transport"
-                    />
+                    <input type="text" name="transport" value={filters.transport} onChange={handleInputChange} className="p-2 w-full outline-none  py-3" placeholder="Filtru Transport" />
                   </th>
-                  <th
-                    className=" bg-white border-b border-r border-black"
-                    colSpan={3}
-                  >
+                  <th className=" bg-white border-b border-r border-black" colSpan={3}>
                     <div className=" flex  justify-evenly items-center">
                       <div className="flex items-center">
                         <p className="px-2">Arată</p>
-                        <input
-                          className="border border-black p-1 w-12 text-center rounded-lg"
-                          type="text"
-                          onChange={(e) => handleLimit(e)}
-                          value={limit}
-                          name=""
-                          id=""
-                        />
+                        <input className="border border-black p-1 w-12 text-center rounded-lg" type="text" onChange={(e) => handleLimit(e)} value={limit} name="" id="" />
                         <p className="px-2">rânduri</p>
                       </div>
                       <div className="flex justify-center  items-center">
                         <div
-                          onClick={() =>
-                            setAscendentTime((prev) =>
-                              prev == null ? true : prev == true ? false : null
-                            )
-                          }
+                          onClick={() => setAscendentTime((prev) => (prev == null ? true : prev == true ? false : null))}
                           className="bg-blue-500 rounded-xl px-4 hover:bg-blue-600 hover:cursor-pointer flex gap-2 p-2 items-center justify-center"
                         >
                           <span className="font-semibold">Data</span>
-                          <FontAwesomeIcon
-                            className="text-white text-lg"
-                            icon={
-                              ascendentTime == null
-                                ? faSort
-                                : ascendentTime == true
-                                  ? faSortDown
-                                  : faSortUp
-                            }
-                          />
+                          <FontAwesomeIcon className="text-white text-lg" icon={ascendentTime == null ? faSort : ascendentTime == true ? faSortDown : faSortUp} />
                         </div>
                       </div>
                     </div>
                   </th>
-                  <th
-                    className="border-b border-r border-black bg-white"
-                    colSpan={1}
-                  >
-                  </th>
+                  <th className="border-b border-r border-black bg-white" colSpan={1}></th>
                 </tr>
                 {table.getHeaderGroups().map((headerGroup) => (
-                  <tr
-                    key={headerGroup.id}
-                    className="bg-white text-black text-left  font-bold "
-                  >
+                  <tr key={headerGroup.id} className="bg-white text-black text-left  font-bold ">
                     {headerGroup.headers.map((header) => (
                       <th
                         key={header.id}
-                        className={`relative border-b-2 border-r border-black   bg-white p-2 py-4 ${header.column.id === "threeDots" ? "text-center" : ""
-                          } `}
+                        className={`relative border-b-2 border-r border-black   bg-white p-2 py-4 ${header.column.id === "threeDots" ? "text-center" : ""} `}
                         style={{
-                          width:
-                            header.column.id === "threeDots"
-                              ? "4rem"
-                              : header.column.id === "Dropdown"
-                                ? "4rem"
-                                : header.column.id === "logo"
-                                  ? "3rem"
-                                  : `${header.getSize()}px`, // Enforce width for "Options"
-                          minWidth:
-                            header.column.id === "threeDots"
-                              ? "4rem"
-                              : header.column.id === "Dropdown"
-                                ? header.column.id === "logo"
-                                  ? "35px"
-                                  : "4rem"
-                                : "", // Ensure no shrinkage
-                          maxWidth:
-                            header.column.id === "threeDots"
-                              ? "4rem"
-                              : header.column.id === "Dropdown"
-                                ? header.column.id === "logo"
-                                  ? "35px"
-                                  : "4rem"
-                                : "", // Ensure no expansion
+                          width: header.column.id === "threeDots" ? "4rem" : header.column.id === "Dropdown" ? "4rem" : header.column.id === "logo" ? "3rem" : `${header.getSize()}px`, // Enforce width for "Options"
+                          minWidth: header.column.id === "threeDots" ? "4rem" : header.column.id === "Dropdown" ? (header.column.id === "logo" ? "35px" : "4rem") : "", // Ensure no shrinkage
+                          maxWidth: header.column.id === "threeDots" ? "4rem" : header.column.id === "Dropdown" ? (header.column.id === "logo" ? "35px" : "4rem") : "", // Ensure no expansion
                         }}
                       >
                         <div
                           onMouseDown={header.getResizeHandler()}
-                          className={`absolute top-0 right-0 h-full w-2 bg-blue-300 cursor-pointer opacity-0 active:opacity-100 hover:opacity-100 transition-opacity duration-200 ${header.column.id === "threeDots" ? "hidden" : ""
-                            }`}
+                          className={`absolute top-0 right-0 h-full w-2 bg-blue-300 cursor-pointer opacity-0 active:opacity-100 hover:opacity-100 transition-opacity duration-200 ${
+                            header.column.id === "threeDots" ? "hidden" : ""
+                          }`}
                         ></div>
                         {header.column.columnDef.header}
                       </th>
@@ -975,9 +828,7 @@ export default function TransportTable({
                 <tbody className="relative z-0">
                   <tr>
                     <td className="bg-white text-black h-12" colSpan={9}>
-                      <div className=" flex justify-center items-center w-full text-lg font-semibold h-full">
-                        Nici un rezultat
-                      </div>
+                      <div className=" flex justify-center items-center w-full text-lg font-semibold h-full">Nici un rezultat</div>
                     </td>
                   </tr>
                 </tbody>
@@ -988,22 +839,13 @@ export default function TransportTable({
                       <tr key={row.original.id}>
                         <td></td>
                         <td
-                          onClick={(e) =>
-                            handleSubmit(
-                              e,
-                              row,
-                              row.original.definitieIdForFetch
-                            )
-                          }
+                          onClick={(e) => handleSubmit(e, row, row.original.definitieIdForFetch)}
                           className="bg-green-400 p-1 px-3 hover:bg-green-500 cursor-pointer border-b border-r border-black text-black"
                           colSpan={8}
                         >
                           <div className="flex font-bold text-center justify-center items-center gap-2">
                             <p className=" text-center">Adauga Obiecte</p>
-                            <FontAwesomeIcon
-                              className="text-black  text-center text-lg"
-                              icon={faPlus}
-                            />
+                            <FontAwesomeIcon className="text-black  text-center text-lg" icon={faPlus} />
                           </div>
                         </td>
                       </tr>
@@ -1011,13 +853,7 @@ export default function TransportTable({
                       <React.Fragment key={row.id}>
                         <tr
                           className={` 
-                                                                             text-black ${selectedEditInterior ==
-                              row
-                                .original
-                                .id
-                              ? "dropdown-container"
-                              : ""
-                            }`}
+                                                                             text-black ${selectedEditInterior == row.original.id ? "dropdown-container" : ""}`}
                         >
                           {row.getVisibleCells().map((cell) =>
                             cell.column.id == "Dropdown" ? (
@@ -1027,25 +863,16 @@ export default function TransportTable({
                                 style={cell.column.columnDef.meta?.style} // Apply the custom style
                                 key={cell.id}
                                 className={` 
-                                                                                                     ${row
-                                    .original
-                                    .id ===
-                                    selectedDeleteInterior
-                                    ? "bg-red-300"
-                                    : "bg-white"
-                                  }
+                                                                                                     ${row.original.id === selectedDeleteInterior ? "bg-red-300" : "bg-white"}
                                                                                                      border-b border-r break-words max-w-72 whitespace-pre-line   relative border-black p-2 px-3 `}
                               >
                                 <div className="h-full w-full overflow-hidden ">
                                   <div className="max-h-12 h-12   grid grid-cols-1 items-center  break-words whitespace-pre-line   overflow-auto  scrollbar-webkit">
-                                    {flexRender(
-                                      cell.column.columnDef.cell,
-                                      cell.getContext()
-                                    )}
+                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                   </div>
                                 </div>
                               </td>
-                            )
+                            ),
                           )}
                         </tr>
                       </React.Fragment>
@@ -1059,16 +886,17 @@ export default function TransportTable({
                             }
                           }
                         }}
-                        className={` text-black ${row.original.id === selectedDelete
-                          ? "bg-red-300"
-                          : row.original.id === selectedEdit
-                            ? "bg-green-300"
-                            : row.original.id === selectedDouble
-                              ? "bg-amber-300"
-                              : selectedRows[row.index]
-                                ? "bg-blue-200 hover:bg-blue-300"
-                                : "bg-[rgb(255,255,255,0.80)] hover:bg-[rgb(255,255,255,0.6)]"
-                          }`}
+                        className={` text-black ${
+                          row.original.id === selectedDelete
+                            ? "bg-red-300"
+                            : row.original.id === selectedEdit
+                              ? "bg-green-300"
+                              : row.original.id === selectedDouble
+                                ? "bg-amber-300"
+                                : selectedRows[row.index]
+                                  ? "bg-blue-200 hover:bg-blue-300"
+                                  : "bg-[rgb(255,255,255,0.80)] hover:bg-[rgb(255,255,255,0.6)]"
+                        }`}
                       >
                         {row.getVisibleCells().map((cell) => (
                           <td
@@ -1077,17 +905,12 @@ export default function TransportTable({
                             style={cell.column.columnDef.meta?.style} // Apply the custom style
                           >
                             <div className="h-full w-full overflow-hidden ">
-                              <div className="max-h-12 h-12 w-full  grid grid-cols-1 items-center  overflow-auto  scrollbar-webkit">
-                                {flexRender(
-                                  cell.column.columnDef.cell,
-                                  cell.getContext()
-                                )}
-                              </div>
+                              <div className="max-h-12 h-12 w-full  grid grid-cols-1 items-center  overflow-auto  scrollbar-webkit">{flexRender(cell.column.columnDef.cell, cell.getContext())}</div>
                             </div>
                           </td>
                         ))}
                       </tr>
-                    )
+                    ),
                   )}
                 </tbody>
               )}
@@ -1095,27 +918,16 @@ export default function TransportTable({
           </div>
           {/* Pagination Controls */}
           <div className="mt-4 flex items-center justify-between">
-            <button
-              className="p-2 min-w-24 bg-white text-black rounded-lg"
-              onClick={() => setPage(-1)}
-              disabled={currentOffset === 0}
-            >
+            <button className="p-2 min-w-24 bg-white text-black rounded-lg" onClick={() => setPage(-1)} disabled={currentOffset === 0}>
               Înapoi
             </button>
             <span className="">
               Pagina{" "}
               <span className=" font-semibold tracking-widest">
-                {currentOffset + 1}/
-                {Math.ceil(totalItems / limit) == Infinity
-                  ? Math.ceil(totalItems / 10)
-                  : Math.ceil(totalItems / limit)}
+                {currentOffset + 1}/{Math.ceil(totalItems / limit) == Infinity ? Math.ceil(totalItems / 10) : Math.ceil(totalItems / limit)}
               </span>
             </span>
-            <button
-              className="p-2 min-w-24 bg-white text-black rounded-lg"
-              onClick={() => setPage(1)}
-              disabled={currentOffset + 1 >= Math.ceil(totalItems / limit)}
-            >
+            <button className="p-2 min-w-24 bg-white text-black rounded-lg" onClick={() => setPage(1)} disabled={currentOffset + 1 >= Math.ceil(totalItems / limit)}>
               Înainte
             </button>
           </div>

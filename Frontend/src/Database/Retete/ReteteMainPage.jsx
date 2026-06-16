@@ -2,7 +2,7 @@ import React, { useCallback, useContext, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronLeft, faChevronRight, faDatabase } from "@fortawesome/free-solid-svg-icons";
+import { faChevronLeft, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 
 import { useLoading } from "@/context/LoadingContext";
 import { AuthContext } from "@/context/TokenContext";
@@ -37,7 +37,11 @@ export default function ReteteMainPage({ isEmbedded = false, isSelectionMode = f
     limba: true,
     elemente: true,
     cod: true,
-    clasa: true,
+    clasa1: false,
+    clasa2: false,
+    clasa3: false,
+    clasa4: false,
+    clasa5: false,
     denumire: true,
     unitate: true,
     cost: true,
@@ -54,6 +58,9 @@ export default function ReteteMainPage({ isEmbedded = false, isSelectionMode = f
   const [limitDebounced, setLimitDebounced] = useState(50);
 
   const [displayLang, setDisplayLang] = useState("RO");
+  const [decimalPlaces, setDecimalPlaces] = useState(3);
+  const [textAlign, setTextAlign] = useState("center");
+  const [columnResetKey, setColumnResetKey] = useState(0);
 
   // STATE FILTRE AVANSATE
   const [advancedFilters, setAdvancedFilters] = useState({
@@ -147,7 +154,9 @@ export default function ReteteMainPage({ isEmbedded = false, isSelectionMode = f
     <div className="h-full w-full flex justify-center overflow-hidden items-center">
       <div
         className={
-          isEmbedded ? "w-full h-full flex flex-col p-4 gap-4 overflow-hidden bg-background relative" : "w-[95%] h-[95%] flex flex-col p-4 gap-4 overflow-hidden bg-background relative rounded-lg"
+          isEmbedded
+            ? "w-full h-full flex flex-col p-2 xxxl:p-3 gap-2 xxxl:gap-3 overflow-hidden bg-background relative"
+            : "w-[95%] h-[95%] flex flex-col p-2 xxxl:p-3 gap-2 xxxl:gap-3 overflow-hidden bg-background relative rounded-lg"
         }
       >
         {/* --- 1. HEADER (FILTRE) --- */}
@@ -158,6 +167,11 @@ export default function ReteteMainPage({ isEmbedded = false, isSelectionMode = f
           onAddClick={handleAddClick}
           displayLang={displayLang}
           onDisplayLangToggle={() => setDisplayLang((prev) => (prev === "RO" ? "FR" : "RO"))}
+          decimalPlaces={decimalPlaces}
+          setDecimalPlaces={setDecimalPlaces}
+          textAlign={textAlign}
+          setTextAlign={setTextAlign}
+          onResetColumnWidths={() => setColumnResetKey((prev) => prev + 1)}
           visibleColumns={visibleColumns}
           toggleCol={toggleCol}
           advancedFilters={advancedFilters}
@@ -172,7 +186,7 @@ export default function ReteteMainPage({ isEmbedded = false, isSelectionMode = f
 
         {/* --- 2. LISTA ȘI PAGINAREA --- */}
         <div className="flex-1 w-full bg-card rounded-lg overflow-hidden relative shadow-base border border-border flex flex-col">
-          <div className="flex-1 p-5 overflow-hidden flex flex-col relative">
+          <div className="flex-1 p-2 xxxl:p-3 overflow-hidden flex flex-col relative">
             {reteteList.length > 0 ? (
               <ReteteList
                 reteteItems={reteteList}
@@ -185,10 +199,22 @@ export default function ReteteMainPage({ isEmbedded = false, isSelectionMode = f
                 isSelectionMode={isSelectionMode}
                 selectedRetetaId={selectedRetetaId}
                 onSelectReteta={onSelectReteta}
+                sortBy={advancedFilters.sortBy}
+                sortOrder={advancedFilters.sortOrder}
+                decimalPlaces={decimalPlaces}
+                textAlign={textAlign}
+                columnResetKey={columnResetKey}
+                onSortChange={(sortBy, sortOrder) => {
+                  setAdvancedFilters((prev) => ({
+                    ...prev,
+                    sortBy,
+                    sortOrder,
+                  }));
+                }}
               />
             ) : (
               <div className="flex-1 w-full flex justify-center items-center rounded-lg border border-border bg-muted/10">
-                <span className="text-xl text-muted-foreground italic">
+                <span className="text-base xxxl:text-xl text-muted-foreground italic">
                   {searchDebounced.trim() === "" && advancedFiltersDebounced.cod === ""
                     ? `Nu am găsit nicio rețetă conform criteriilor de căutare.`
                     : `Nu am găsit nicio rețetă conform criteriilor de căutare.`}
@@ -200,9 +226,9 @@ export default function ReteteMainPage({ isEmbedded = false, isSelectionMode = f
           </div>
 
           {/* PAGINARE BAZĂ */}
-          <div className="shrink-0 border-t border-border bg-muted/10 p-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-base text-foreground font-medium">Arată:</span>
+          <div className="shrink-0 border-t border-border bg-muted/10 p-2 xxxl:p-2.5 flex items-center justify-between">
+            <div className="flex items-center gap-1.5 xxxl:gap-2">
+              <span className="text-sm xxxl:text-base text-foreground font-medium">Arată:</span>
               <Input
                 type="text"
                 value={limitInput}
@@ -213,19 +239,19 @@ export default function ReteteMainPage({ isEmbedded = false, isSelectionMode = f
                 onBlur={() => {
                   if (limitInput === "" || parseInt(limitInput) < 1) setLimitInput("50");
                 }}
-                className="w-[60px] h-8 text-center bg-background text-foreground px-2"
+                className="w-[54px] xxxl:w-[60px] h-8 text-sm xxxl:text-base text-center bg-background text-foreground px-2"
               />
-              <span className="text-base text-foreground font-medium">rânduri</span>
+              <span className="text-sm xxxl:text-base text-foreground font-medium">rânduri</span>
             </div>
 
-            <div className="flex items-center gap-4">
-              <Button variant="default" size="lg" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="bg-sky-600 hover:bg-sky-700 text-white">
+            <div className="flex items-center gap-3 xxxl:gap-4">
+              <Button variant="default" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="h-9 xxxl:h-10 px-3 xxxl:px-4 text-sm xxxl:text-base bg-sky-600 hover:bg-sky-700 text-white">
                 <FontAwesomeIcon icon={faChevronLeft} className="text-sm" /> Înapoi
               </Button>
-              <span className="text-base font-semibold text-foreground">
+              <span className="text-sm xxxl:text-base font-semibold text-foreground">
                 Pagina {page} / {totalPages || 1}
               </span>
-              <Button variant="default" size="lg" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= (totalPages || 1)} className="bg-sky-600 hover:bg-sky-700 text-white">
+              <Button variant="default" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= (totalPages || 1)} className="h-9 xxxl:h-10 px-3 xxxl:px-4 text-sm xxxl:text-base bg-sky-600 hover:bg-sky-700 text-white">
                 Înainte <FontAwesomeIcon icon={faChevronRight} className="text-sm" />
               </Button>
             </div>

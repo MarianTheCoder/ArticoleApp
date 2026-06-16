@@ -56,7 +56,7 @@ const checkCatalogPermission = (actionCode) => {
 
       return res.status(403).json({ message: "Acces interzis: Permisiuni insuficiente." });
     } catch (err) {
-      console.error("Eroare la verificarea permisiunilor dinamice:", err);
+      console.log("Eroare la verificarea permisiunilor dinamice:", err);
       return res.status(500).json({ message: "Eroare internă la validarea accesului." });
     }
   };

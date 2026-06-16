@@ -51,6 +51,8 @@ import {
   faRotate,
   faRotateRight,
   faSchool,
+  faWarehouse,
+  faBoxesStacked,
 } from "@fortawesome/free-solid-svg-icons";
 import photo from "../assets/no-user-image-square.jpg";
 import { useNavigate } from "react-router-dom";
@@ -67,6 +69,8 @@ import { Switch } from "@/components/ui/switch";
 import NotificationBell from "./NotificationsBell";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
+import { useInventare } from "@/hooks/Database/useInventar";
+import InventarAddDialog from "@/Database/Inventar/InventarAddDialog";
 
 const getContrastColor = (hexColor) => {
   if (!hexColor) return "white";
@@ -107,6 +111,8 @@ function Navbar() {
   const [crmOpen, setCrmOpen] = useState(false);
   const [bazaDeDateOpen, setBazaDeDateOpen] = useState(false);
   const [dateOpen, setDateOpen] = useState(false);
+  const [inventarOpen, setInventarOpen] = useState(false);
+  const [inventarAddOpen, setInventarAddOpen] = useState(false);
   const [santiereOpen, setSantiereOpen] = useState(false);
 
   const navigate = useNavigate();
@@ -125,6 +131,8 @@ function Navbar() {
   // console.log("Navbar data:", data);
   let navbarData = data?.companii || EMPTY_ARRAY;
   let userData = data?.user || EMPTY_OBJECT;
+  const { data: inventarData, isFetching: inventarFetching } = useInventare();
+  const inventare = inventarData?.items || EMPTY_ARRAY;
 
   // Fetch hierarchical data
   useEffect(() => {
@@ -272,6 +280,7 @@ function Navbar() {
         <FontAwesomeIcon icon={faBars} />
       </button>
       <NotificationBell />
+      <InventarAddDialog open={inventarAddOpen} setOpen={setInventarAddOpen} />
       <div
         ref={navbarRef}
         className={`
@@ -440,6 +449,57 @@ function Navbar() {
                       </span>
                       <span className="group-hover:translate-x-0.5 transition">Utilaje</span>
                     </div>
+                  </div>
+                )}
+
+                <div
+                  className="text-lg cursor-pointer rounded-lg px-3 py-2 hover:bg-accent transition border border-transparent hover:border-border"
+                  onClick={() => setInventarOpen((prev) => !prev)}
+                  aria-expanded={inventarOpen}
+                >
+                  <div className="flex items-center w-full">
+                    <FontAwesomeIcon className={`text-base w-6 mr-1 transition-transform ${inventarOpen ? "rotate-90" : ""}`} icon={faChevronRight} />
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
+                      <div className="w-7 h-7 grid place-items-center rounded-lg text-lime-600">
+                        <FontAwesomeIcon icon={faWarehouse} />
+                      </div>
+                      <div className="font-medium text-foreground">Inventar</div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="group h-7 w-7 shrink-0 bg-lime-600 border-lime-600/40 text-white hover:bg-lime-600 hover:text-white hover:scale-105 transition-all"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setInventarAddOpen(true);
+                      }}
+                    >
+                      <FontAwesomeIcon icon={faPlus} className="text-xs transition-transform group-hover:scale-110" />
+                    </Button>
+                  </div>
+                </div>
+                {inventarOpen && (
+                  <div className="ml-3 pl-3 border-l border-border space-y-1">
+                    {inventarFetching && inventare.length === 0 ? (
+                      <div className="px-3 py-2 text-[0.95rem] font-semibold text-muted-foreground">Se încarcă...</div>
+                    ) : inventare.length > 0 ? (
+                      inventare.map((item) => (
+                        <div
+                          key={item.id}
+                          onClick={() => navigate(`/Inventar/${item.id}/${item.limba || "RO"}`)}
+                          className="text-[0.95rem] px-3 py-2 rounded-lg hover:bg-accent transition flex items-center gap-3 group"
+                        >
+                          <span className="w-6 text-emerald-600">
+                            <FontAwesomeIcon className="text-base" icon={faBoxesStacked} />
+                          </span>
+                          <span className="min-w-0 flex-1 truncate group-hover:translate-x-0.5 transition">{item.denumire}</span>
+                          <span className="rounded border px-1.5 py-0.5 text-[10px] font-black text-muted-foreground">{item.limba || "RO"}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="px-3 py-2 text-[0.95rem] font-semibold text-muted-foreground">Niciun inventar.</div>
+                    )}
                   </div>
                 )}
 

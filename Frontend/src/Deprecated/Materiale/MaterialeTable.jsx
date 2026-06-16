@@ -1,11 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import api from "../../api/axiosAPI";
-import {
-  flexRender,
-  getCoreRowModel,
-  getPaginationRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
+import { flexRender, getCoreRowModel, getPaginationRowModel, useReactTable } from "@tanstack/react-table";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowDownAZ,
@@ -179,7 +174,7 @@ export default function ManoperaTable({
         setCurrentOffset(response.data.currentOffset);
       }
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.log("Error fetching data:", error);
     }
   };
 
@@ -236,13 +231,13 @@ export default function ManoperaTable({
             return item.definitie_id == null;
           }
           return true; // restul itemilor rămân
-        })
+        }),
       );
 
       // Reset selected delete state
       setSelectedDeleteInterior(null);
     } catch (err) {
-      console.error("Error deleting Material:", err);
+      console.log("Error deleting Material:", err);
     }
   };
 
@@ -299,21 +294,21 @@ export default function ManoperaTable({
         prev.map((item) =>
           item.id === row.id && item.definitie_id != null
             ? {
-              ...item,
-              cost_unitar: cost_unitar.toFixed(3),
-              cost_preferential: cost_preferential.toFixed(3),
-              pret_vanzare: pret_vanzare.toFixed(3),
-              cod_material: codMaterial,
-              furnizor,
-              descriere,
-              descriere_fr,
-              photoUrl: newPhoto,
-            }
-            : item
-        )
+                ...item,
+                cost_unitar: cost_unitar.toFixed(3),
+                cost_preferential: cost_preferential.toFixed(3),
+                pret_vanzare: pret_vanzare.toFixed(3),
+                cod_material: codMaterial,
+                furnizor,
+                descriere,
+                descriere_fr,
+                photoUrl: newPhoto,
+              }
+            : item,
+        ),
       );
     } catch (err) {
-      console.error("Error updating Material row:", err);
+      console.log("Error updating Material row:", err);
     } finally {
       setSelectedEditInterior(null);
       setSelectedFileInterior(null); // Reset the selected file after upload
@@ -430,22 +425,11 @@ export default function ManoperaTable({
       // console.log(open, id)
       setOpen((prev) => prev.filter((item) => item !== id));
       const updatedmateriale = [...materiale];
-      const materialIndex = updatedmateriale.findIndex(
-        (item) => item.id === id && item.cod_definitie != null
-      ); // sa fie diferit de materiale/material etc
-      const addButtonIndex = updatedmateriale.findIndex(
-        (item) => item.id === `addButton-${id}`
-      );
+      const materialIndex = updatedmateriale.findIndex((item) => item.id === id && item.cod_definitie != null); // sa fie diferit de materiale/material etc
+      const addButtonIndex = updatedmateriale.findIndex((item) => item.id === `addButton-${id}`);
       // console.log("reteIDX ", materialIndex, "btnIDX ", addButtonIndex);
-      if (
-        addButtonIndex !== -1 &&
-        materialIndex !== -1 &&
-        addButtonIndex > materialIndex
-      ) {
-        updatedmateriale.splice(
-          materialIndex + 1,
-          addButtonIndex - materialIndex
-        );
+      if (addButtonIndex !== -1 && materialIndex !== -1 && addButtonIndex > materialIndex) {
+        updatedmateriale.splice(materialIndex + 1, addButtonIndex - materialIndex);
         setMateriale([...updatedmateriale]);
       }
       return [updatedmateriale, materialIndex];
@@ -454,9 +438,7 @@ export default function ManoperaTable({
 
   const fetchPreviewMaterial = async (id, index, materialeParam, row) => {
     try {
-      const response = await api.get(
-        `/Materiale/api/getSpecificMaterial/${id}`
-      );
+      const response = await api.get(`/Materiale/api/getSpecificMaterial/${id}`);
       const children = response.data.map((item) => ({
         ...item,
         limba: row.limba,
@@ -474,15 +456,13 @@ export default function ManoperaTable({
         definitieIdForFetch: id,
       };
 
-      const updatedMateriale = materialeParam
-        ? [...materialeParam]
-        : [...materiale];
+      const updatedMateriale = materialeParam ? [...materialeParam] : [...materiale];
       updatedMateriale.splice(index + 1, 0, ...children, addButton);
 
       setOpen((prev) => [...prev, id]);
       setMateriale(updatedMateriale);
     } catch (err) {
-      console.error("Failed to fetch children:", err);
+      console.log("Failed to fetch children:", err);
     }
   };
 
@@ -521,10 +501,7 @@ export default function ManoperaTable({
       form.pret_vanzare = data.pret_vanzare || "0.000";
     }
     try {
-
-      const parent = materiale.find(
-        (item) => item.id == parentId && item.cod_definitie != null
-      );
+      const parent = materiale.find((item) => item.id == parentId && item.cod_definitie != null);
       if (!parent) return;
 
       const formData = new FormData();
@@ -543,8 +520,7 @@ export default function ManoperaTable({
         formData.append("poza", file);
         setSelectedFileInterior(file);
         setPreviewInterior(URL.createObjectURL(file));
-      }
-      else {
+      } else {
         setPreviewInterior(`${photoApi}/${parent.photoUrl.replace(/\\/g, "/")}`);
       }
 
@@ -555,7 +531,6 @@ export default function ManoperaTable({
       });
 
       const insertedId = response.data.id;
-
 
       const newChild = {
         id: insertedId,
@@ -579,9 +554,7 @@ export default function ManoperaTable({
       if (!data) updated.splice(row.index, 0, newChild);
       // ⬅️ Insert right before the addButton
       else {
-        const addButtonIndex = updated.findIndex(
-          (item) => item.id === `addButton-${parentId}`
-        );
+        const addButtonIndex = updated.findIndex((item) => item.id === `addButton-${parentId}`);
         if (addButtonIndex !== -1) {
           updated.splice(addButtonIndex, 0, newChild);
         } else {
@@ -600,7 +573,7 @@ export default function ManoperaTable({
       setDescriereMaterialFR(form.descriere_fr);
       //
     } catch (error) {
-      console.error("Upload error:", error);
+      console.log("Upload error:", error);
     }
   };
 
@@ -634,7 +607,6 @@ export default function ManoperaTable({
       fileInputRef.current.click();
     }
   };
-
 
   //copy mechanics
   const [selectedRows, setSelectedRows] = useState({});
@@ -670,9 +642,7 @@ export default function ManoperaTable({
 
   const handleCopy = () => {
     const rows = table.getRowModel().rows; // Access rows directly from the table
-    const selectedRowIds = Object.keys(selectedRows).filter(
-      (rowId) => selectedRows[rowId]
-    );
+    const selectedRowIds = Object.keys(selectedRows).filter((rowId) => selectedRows[rowId]);
 
     if (selectedRowIds.length === 0) {
       return;
@@ -706,7 +676,7 @@ export default function ManoperaTable({
         console.log("Selected rows copied to clipboard!");
       })
       .catch((err) => {
-        console.error("Failed to copy text: ", err);
+        console.log("Failed to copy text: ", err);
       });
   };
 
@@ -752,22 +722,12 @@ export default function ManoperaTable({
         header: "",
         cell: ({ row, getValue, cell }) => (
           <div
-            onClick={(e) =>
-              toggleDropdown(
-                e,
-                cell.row.original.id,
-                cell.row.index,
-                cell.row.original
-              )
-            } // Pass both id and index
+            onClick={(e) => toggleDropdown(e, cell.row.original.id, cell.row.index, cell.row.original)} // Pass both id and index
             className="flex justify-center h-full overflow-hidden w-full cursor-pointer items-center"
           >
             <FontAwesomeIcon
               className={`text-center 
-                                        ${open.includes(cell.row.original.id)
-                  ? "rotate-90"
-                  : ""
-                } text-xl`}
+                                        ${open.includes(cell.row.original.id) ? "rotate-90" : ""} text-xl`}
               icon={faChevronRight}
             />
           </div>
@@ -776,29 +736,18 @@ export default function ManoperaTable({
       {
         accessorKey: "limba",
         header: "Limba",
-        cell: ({ getValue, row }) => (
-          <div className="w-full flex justify-center  font-bold">
-            {" "}
-            {getValue()}
-          </div>
-        ), // Display default value if the value is empty or undefined
+        cell: ({ getValue, row }) => <div className="w-full flex justify-center  font-bold"> {getValue()}</div>, // Display default value if the value is empty or undefined
         size: 30,
       },
       {
         accessorKey: "photoUrl",
         header: "Poză",
         cell: ({ getValue, row }) => {
-          const isEditable =
-            row.original.id == selectedEditInterior &&
-            row.original.definitie_id != null;
+          const isEditable = row.original.id == selectedEditInterior && row.original.definitie_id != null;
 
           return !isEditable ? (
             <div className="flex justify-center overflow-hidden w-full h-full items-center">
-              <img
-                src={`${photoApi}/${getValue()}`}
-                alt="Product"
-                className="h-full w-auto max-h-full max-w-full object-contain"
-              />
+              <img src={`${photoApi}/${getValue()}`} alt="Product" className="h-full w-auto max-h-full max-w-full object-contain" />
             </div>
           ) : (
             <div className="flex justify-center overflow-hidden w-full h-full items-center">
@@ -810,13 +759,7 @@ export default function ManoperaTable({
                 src={previewInterior == null ? "" : previewInterior}
               ></img>
 
-              <input
-                ref={fileInputRef}
-                id="hiddenFileInput"
-                type="file"
-                onChange={handleFileChange}
-                className="hidden"
-              />
+              <input ref={fileInputRef} id="hiddenFileInput" type="file" onChange={handleFileChange} className="hidden" />
             </div>
           );
         },
@@ -827,17 +770,12 @@ export default function ManoperaTable({
       {
         accessorKey: "furnizor",
         header: (
-          <div
-            onClick={() => console.log(materiale)}
-            className="flex items-center w-[95%] justify-between text-black "
-          >
+          <div onClick={() => console.log(materiale)} className="flex items-center w-[95%] justify-between text-black ">
             <span>Furnizor</span>
           </div>
         ),
         cell: ({ getValue, row }) => {
-          const isEditable =
-            row.original.id == selectedEditInterior &&
-            row.original.definitie_id != null;
+          const isEditable = row.original.id == selectedEditInterior && row.original.definitie_id != null;
 
           return (
             <TextAreaCell
@@ -865,9 +803,7 @@ export default function ManoperaTable({
           </div>
         ),
         cell: ({ getValue, row }) => {
-          const isEditable =
-            row.original.id == selectedEditInterior &&
-            row.original.definitie_id != null;
+          const isEditable = row.original.id == selectedEditInterior && row.original.definitie_id != null;
 
           return (
             <TextAreaCell
@@ -890,21 +826,18 @@ export default function ManoperaTable({
           <div className="flex items-center w-[95%] justify-between text-black ">
             <span>Denumire</span>
             <FontAwesomeIcon
-              onClick={() =>
-                setAscendent((prev) => (prev == false ? true : false))
-              }
+              onClick={() => setAscendent((prev) => (prev == false ? true : false))}
               className="text-base border border-black p-2  rounded-full  cursor-pointer"
               icon={!ascendent ? faArrowUpAZ : faArrowDownAZ}
             />
           </div>
         ),
         cell: ({ getValue, row }) =>
-        (
-          row.original.cod_definitie ?
-            <OverflowPopover text={localLimba === 'RO' ? getValue() : row.original.denumire_fr} maxLines={4} />
-            :
-            <OverflowPopover text={localLimba === 'RO' ? getValue() : row.original.denumire_fr} maxLines={3} />
-        ),
+          row.original.cod_definitie ? (
+            <OverflowPopover text={localLimba === "RO" ? getValue() : row.original.denumire_fr} maxLines={4} />
+          ) : (
+            <OverflowPopover text={localLimba === "RO" ? getValue() : row.original.denumire_fr} maxLines={3} />
+          ),
         size: 200,
       },
       {
@@ -912,19 +845,21 @@ export default function ManoperaTable({
         header: (
           <div className="flex items-center w-[95%]  justify-between text-black ">
             <span>Descriere</span>
-            <span className='flex items-center'>Limba:
-              <span onClick={() => setLocalLimba(prev => prev == 'RO' ? 'FR' : 'RO')} className='ml-2 text-green-600 border-2 hover:text-green-500 hover:border-green-500 cursor-pointer border-green-600 rounded-full aspect-square min-w-[2.2rem] flex items-center justify-center'>
+            <span className="flex items-center">
+              Limba:
+              <span
+                onClick={() => setLocalLimba((prev) => (prev == "RO" ? "FR" : "RO"))}
+                className="ml-2 text-green-600 border-2 hover:text-green-500 hover:border-green-500 cursor-pointer border-green-600 rounded-full aspect-square min-w-[2.2rem] flex items-center justify-center"
+              >
                 {localLimba}
               </span>
             </span>
           </div>
         ),
         cell: ({ getValue, row }) => {
-          const isEditable =
-            row.original.id === selectedEditInterior &&
-            row.original.definitie_id != null;
+          const isEditable = row.original.id === selectedEditInterior && row.original.definitie_id != null;
 
-          if (localLimba === 'FR' && !isEditable) {
+          if (localLimba === "FR" && !isEditable) {
             return (
               <div className="flex items-center gap-2">
                 <OverflowPopover text={row.original.descriere_fr || "..."} maxLines={row.original.cod_definitie ? 4 : 3} />
@@ -958,9 +893,7 @@ export default function ManoperaTable({
         accessorKey: "cost_unitar",
         header: "Cost unitar",
         cell: ({ getValue, row }) => {
-          const isEditable =
-            row.original.id == selectedEditInterior &&
-            row.original.definitie_id != null;
+          const isEditable = row.original.id == selectedEditInterior && row.original.definitie_id != null;
 
           return (
             <CostInputCell
@@ -979,9 +912,7 @@ export default function ManoperaTable({
         accessorKey: "cost_preferential",
         header: "Cost Preferențial",
         cell: ({ getValue, row }) => {
-          const isEditable =
-            row.original.id == selectedEditInterior &&
-            row.original.definitie_id != null;
+          const isEditable = row.original.id == selectedEditInterior && row.original.definitie_id != null;
 
           return (
             <CostInputCell
@@ -1000,9 +931,7 @@ export default function ManoperaTable({
         accessorKey: "pret_vanzare",
         header: "Preț Vânzare",
         cell: ({ getValue, row }) => {
-          const isEditable =
-            row.original.id == selectedEditInterior &&
-            row.original.definitie_id != null;
+          const isEditable = row.original.id == selectedEditInterior && row.original.definitie_id != null;
 
           return (
             <CostInputCell
@@ -1024,64 +953,47 @@ export default function ManoperaTable({
           <div className="absolute group w-full">
             {/* Trigger sau Confirm */}
             <div className="w-full select-none flex items-center justify-center">
-              {(selectedDeleteInterior === row.original.id ||
-                selectedEditInterior === row.original.id) &&
-                row.original.definitie_id != null ? (
+              {(selectedDeleteInterior === row.original.id || selectedEditInterior === row.original.id) && row.original.definitie_id != null ? (
                 <button
                   onClick={() => {
-                    if (selectedDeleteInterior === row.original.id)
-                      handleAcceptDelete(row.original);
-                    else if (selectedEditInterior === row.original.id)
-                      handleAcceptEdit(row.original);
+                    if (selectedDeleteInterior === row.original.id) handleAcceptDelete(row.original);
+                    else if (selectedEditInterior === row.original.id) handleAcceptEdit(row.original);
                   }}
                   className="bg-green-500 hover:bg-green-600 text-white font-semibold text-base px-3 py-3 rounded-lg"
                 >
                   Confirm
                 </button>
               ) : (
-                <FontAwesomeIcon
-                  icon={faEllipsis}
-                  className="text-xl text-gray-600"
-                />
+                <FontAwesomeIcon icon={faEllipsis} className="text-xl text-gray-600" />
               )}
             </div>
 
             {/* Dropdown doar dacă NU e în confirm mode */}
-            {selectedDeleteInterior !== row.original.id &&
-              selectedEditInterior !== row.original.id && (
-                <div className="absolute z-10 left-0 -translate-x-[60%] bg-white border shadow-lg rounded-md w-40 p-2 flex flex-col items-center gap-1 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-all duration-200 text-lg font-semibold text-gray-700">
-                  <div
-                    onClick={(e) => handleSelectedForEdit(e, row.original)}
-                    className="cursor-pointer w-full flex justify-start items-center rounded-md px-2 py-2 hover:bg-green-100 hover:bg-opacity-90"
-                  >
-                    <FontAwesomeIcon
-                      icon={faPenToSquare}
-                      className="mr-2 text-green-400"
-                    />
-                    Edit
-                  </div>
-                  <div
-                    onClick={(e) => handleSelectedDouble(e, row.original)}
-                    className="cursor-pointer w-full flex justify-start items-center rounded-md px-2 py-2 hover:bg-amber-100 hover:bg-opacity-90"
-                  >
-                    <FontAwesomeIcon
-                      icon={faFileCirclePlus}
-                      className="mr-2 text-amber-400"
-                    />
-                    Duplicate
-                  </div>
-                  <div
-                    onClick={(e) => handleSelectedForDelete(e, row.original)}
-                    className="cursor-pointer w-full flex justify-start items-center rounded-md px-2 py-2 hover:bg-red-100 hover:bg-opacity-90"
-                  >
-                    <FontAwesomeIcon
-                      icon={faTrashCan}
-                      className="mr-2 text-red-400"
-                    />
-                    Delete
-                  </div>
+            {selectedDeleteInterior !== row.original.id && selectedEditInterior !== row.original.id && (
+              <div className="absolute z-10 left-0 -translate-x-[60%] bg-white border shadow-lg rounded-md w-40 p-2 flex flex-col items-center gap-1 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-all duration-200 text-lg font-semibold text-gray-700">
+                <div
+                  onClick={(e) => handleSelectedForEdit(e, row.original)}
+                  className="cursor-pointer w-full flex justify-start items-center rounded-md px-2 py-2 hover:bg-green-100 hover:bg-opacity-90"
+                >
+                  <FontAwesomeIcon icon={faPenToSquare} className="mr-2 text-green-400" />
+                  Edit
                 </div>
-              )}
+                <div
+                  onClick={(e) => handleSelectedDouble(e, row.original)}
+                  className="cursor-pointer w-full flex justify-start items-center rounded-md px-2 py-2 hover:bg-amber-100 hover:bg-opacity-90"
+                >
+                  <FontAwesomeIcon icon={faFileCirclePlus} className="mr-2 text-amber-400" />
+                  Duplicate
+                </div>
+                <div
+                  onClick={(e) => handleSelectedForDelete(e, row.original)}
+                  className="cursor-pointer w-full flex justify-start items-center rounded-md px-2 py-2 hover:bg-red-100 hover:bg-opacity-90"
+                >
+                  <FontAwesomeIcon icon={faTrashCan} className="mr-2 text-red-400" />
+                  Delete
+                </div>
+              </div>
+            )}
           </div>
         ),
         meta: {
@@ -1092,19 +1004,7 @@ export default function ManoperaTable({
         },
       },
     ],
-    [
-      selectedDelete,
-      selectedDeleteInterior,
-      selectedEdit,
-      selectedEditInterior,
-      selectedDouble,
-      ascendent,
-      open,
-      materiale,
-      selectedFileInterior,
-      previewInterior,
-      localLimba,
-    ]
+    [selectedDelete, selectedDeleteInterior, selectedEdit, selectedEditInterior, selectedDouble, ascendent, open, materiale, selectedFileInterior, previewInterior, localLimba],
   );
 
   const table = useReactTable({
@@ -1125,18 +1025,9 @@ export default function ManoperaTable({
             <table className="w-full border-separate text-sm border-spacing-0 ">
               <thead className="top-0 w-full sticky  z-10 ">
                 <tr className="text-black">
-                  <th
-                    className="border-b border-r border-black bg-white"
-                    colSpan={1}
-                  ></th>
+                  <th className="border-b border-r border-black bg-white" colSpan={1}></th>
                   <th className="border-b border-r bg-white border-black">
-                    <select
-                      id="limba"
-                      name="limba"
-                      value={filters.limba}
-                      onChange={handleInputChange}
-                      className=" p-2 w-full cursor-pointer outline-none py-3"
-                    >
+                    <select id="limba" name="limba" value={filters.limba} onChange={handleInputChange} className=" p-2 w-full cursor-pointer outline-none py-3">
                       <option value="">RO&FR</option>
                       <option value="RO">RO</option>
                       <option value="FR">FR</option>
@@ -1144,20 +1035,12 @@ export default function ManoperaTable({
                   </th>
                   <th className="border-b border-r border-black bg-white"></th>
                   <th className="border-b border-r bg-white border-black">
-                    <select
-                      id="clasa_material"
-                      name="clasa_material"
-                      value={filters.clasa_material}
-                      onChange={handleInputChange}
-                      className=" p-2 w-full cursor-pointer outline-none py-3"
-                    >
+                    <select id="clasa_material" name="clasa_material" value={filters.clasa_material} onChange={handleInputChange} className=" p-2 w-full cursor-pointer outline-none py-3">
                       <option value="">Toate clasele</option>
                       <option value="Organizare de șantier">Organizare de șantier</option>
                       <option value="Regie">Regie</option>
                       <option value="Dezafectare">Dezafectare</option>
-                      <option value="Pregătirea terenului prin terasamente (săpături, nivelări, umpluturi)">
-                        Pregătirea terenului prin terasamente (săpături, nivelări, umpluturi)
-                      </option>
+                      <option value="Pregătirea terenului prin terasamente (săpături, nivelări, umpluturi)">Pregătirea terenului prin terasamente (săpături, nivelări, umpluturi)</option>
                       <option value="Fundații">Fundații</option>
                       <option value="Subsol (Soubassement)">Subsol (Soubassement)</option>
                       <option value="Pereți portanți">Pereți portanți</option>
@@ -1168,9 +1051,7 @@ export default function ManoperaTable({
                       <option value="Racordarea clădirilor la rețelele de alimentare cu apă, electricitate, gaz, telefonie, internet">
                         Racordarea clădirilor la rețelele de alimentare cu apă, electricitate, gaz, telefonie, internet
                       </option>
-                      <option value="Realizarea rețelelor de canalizare și evacuare a apelor uzate și pluviale">
-                        Realizarea rețelelor de canalizare și evacuare a apelor uzate și pluviale
-                      </option>
+                      <option value="Realizarea rețelelor de canalizare și evacuare a apelor uzate și pluviale">Realizarea rețelelor de canalizare și evacuare a apelor uzate și pluviale</option>
                       <option value="Amenajare spații verzi - peisagistică">Amenajare spații verzi - peisagistică</option>
                       <option value="Lucrări de șarpantă - bardaj și acoperiș">Lucrări de șarpantă - bardaj și acoperiș</option>
                       <option value="Lucrări de zincărie - Acoperiș">Lucrări de zincărie - Acoperiș</option>
@@ -1181,30 +1062,18 @@ export default function ManoperaTable({
                       <option value="Instalații de ventilație">Instalații de ventilație</option>
                       <option value="Lucrări de climatizare">Lucrări de climatizare</option>
                       <option value="Instalații electrice">Instalații electrice</option>
-                      <option value="Lucrări de șarpantă și structuri verticale de lemn">
-                        Lucrări de șarpantă și structuri verticale de lemn
-                      </option>
+                      <option value="Lucrări de șarpantă și structuri verticale de lemn">Lucrări de șarpantă și structuri verticale de lemn</option>
                       <option value="Lucrări de tâmplărie exterioară">Lucrări de tâmplărie exterioară</option>
                       <option value="Lucrări de tâmplărie interioară">Lucrări de tâmplărie interioară</option>
                       <option value="Confecții metalice">Confecții metalice</option>
-                      <option value="Lucrări de tâmplărie: Storuri, obloane, placări exterioare">
-                        Lucrări de tâmplărie: Storuri, obloane, placări exterioare
-                      </option>
-                      <option value="Finisaje interioare - lucrări de ipsoserie și zugrăveli">
-                        Finisaje interioare - lucrări de ipsoserie și zugrăveli
-                      </option>
+                      <option value="Lucrări de tâmplărie: Storuri, obloane, placări exterioare">Lucrări de tâmplărie: Storuri, obloane, placări exterioare</option>
+                      <option value="Finisaje interioare - lucrări de ipsoserie și zugrăveli">Finisaje interioare - lucrări de ipsoserie și zugrăveli</option>
                       <option value="Finisaje exterioare - fațade">Finisaje exterioare - fațade</option>
-                      <option value="Confecționarea și montajul elementelor de sticlă/oglinzi">
-                        Confecționarea și montajul elementelor de sticlă/oglinzi
-                      </option>
-                      <option value="Lucrări de placări ceramice/piatră naturală">
-                        Lucrări de placări ceramice/piatră naturală
-                      </option>
+                      <option value="Confecționarea și montajul elementelor de sticlă/oglinzi">Confecționarea și montajul elementelor de sticlă/oglinzi</option>
+                      <option value="Lucrări de placări ceramice/piatră naturală">Lucrări de placări ceramice/piatră naturală</option>
                       <option value="Lucrări de finisare a pardoselilor">Lucrări de finisare a pardoselilor</option>
                       <option value="Dezafectarea azbestului">Dezafectarea azbestului</option>
-                      <option value="Lucrări de renovare și reabilitări energetice">
-                        Lucrări de renovare și reabilitări energetice
-                      </option>
+                      <option value="Lucrări de renovare și reabilitări energetice">Lucrări de renovare și reabilitări energetice</option>
                       <option value="Conservare">Conservare</option>
                       <option value="Reparații capitale">Reparații capitale</option>
                       <option value="Consolidări">Consolidări</option>
@@ -1249,13 +1118,7 @@ export default function ManoperaTable({
                     </select>
                   </th>
                   <th className="border-b bg-white border-r border-black">
-                    <select
-                      id="tip_material"
-                      name="tip_material"
-                      value={filters.tip_material}
-                      onChange={handleInputChange}
-                      className="p-2 w-full cursor-pointer outline-none py-3 "
-                    >
+                    <select id="tip_material" name="tip_material" value={filters.tip_material} onChange={handleInputChange} className="p-2 w-full cursor-pointer outline-none py-3 ">
                       <option value="">Toate</option>
                       <option value="De Bază">De Bază</option>
                       <option value="Auxiliar">Auxiliare</option>
@@ -1266,134 +1129,55 @@ export default function ManoperaTable({
                     </select>
                   </th>
                   <th className="border-b bg-white border-r border-black">
-                    <input
-                      type="text"
-                      name="furnizor"
-                      value={filters.furnizor}
-                      onChange={handleInputChange}
-                      className="p-2 w-full outline-none py-3"
-                      placeholder="Filtru Furnizor "
-                    />
+                    <input type="text" name="furnizor" value={filters.furnizor} onChange={handleInputChange} className="p-2 w-full outline-none py-3" placeholder="Filtru Furnizor " />
                   </th>
 
                   <th className="border-b bg-white border-r border-black">
-                    <input
-                      type="text"
-                      name="cod_definitie"
-                      value={filters.cod_definitie}
-                      onChange={handleInputChange}
-                      className="p-2 w-full outline-none py-3"
-                      placeholder="Filtru Cod "
-                    />
+                    <input type="text" name="cod_definitie" value={filters.cod_definitie} onChange={handleInputChange} className="p-2 w-full outline-none py-3" placeholder="Filtru Cod " />
                   </th>
                   <th className="border-b bg-white border-r border-black">
-                    <input
-                      type="text"
-                      name="denumire"
-                      value={filters.denumire}
-                      onChange={handleInputChange}
-                      className="p-2 w-full outline-none  py-3"
-                      placeholder="Filtru Denumire"
-                    />
+                    <input type="text" name="denumire" value={filters.denumire} onChange={handleInputChange} className="p-2 w-full outline-none  py-3" placeholder="Filtru Denumire" />
                   </th>
                   <th className="bg-white border-b border-r border-black">
-                    <input
-                      type="text"
-                      name="descriere"
-                      value={filters.descriere}
-                      onChange={handleInputChange}
-                      className="p-2 w-full  h-full outline-none  py-3"
-                      placeholder="Filtru Descriere"
-                    />
+                    <input type="text" name="descriere" value={filters.descriere} onChange={handleInputChange} className="p-2 w-full  h-full outline-none  py-3" placeholder="Filtru Descriere" />
                   </th>
-                  <th
-                    className=" bg-white border-b border-r border-black"
-                    colSpan={4}
-                  >
+                  <th className=" bg-white border-b border-r border-black" colSpan={4}>
                     <div className=" flex  justify-evenly items-center">
                       <div className="flex items-center">
                         <p className="px-2">Arată</p>
-                        <input
-                          className="border border-black p-1 w-12 text-center rounded-lg"
-                          type="text"
-                          onChange={(e) => handleLimit(e)}
-                          value={limit}
-                          name=""
-                          id=""
-                        />
+                        <input className="border border-black p-1 w-12 text-center rounded-lg" type="text" onChange={(e) => handleLimit(e)} value={limit} name="" id="" />
                         <p className="px-2">rânduri</p>
                       </div>
                       <div className="flex justify-center  items-center">
                         <div
-                          onClick={() =>
-                            setAscendentTime((prev) =>
-                              prev == null ? true : prev == true ? false : null
-                            )
-                          }
+                          onClick={() => setAscendentTime((prev) => (prev == null ? true : prev == true ? false : null))}
                           className="bg-blue-500 rounded-xl px-4 hover:bg-blue-600 hover:cursor-pointer flex gap-2 p-2 items-center justify-center"
                         >
                           <span className="font-semibold">Data</span>
-                          <FontAwesomeIcon
-                            className="text-white"
-                            icon={
-                              ascendentTime == null
-                                ? faSort
-                                : ascendentTime == true
-                                  ? faSortDown
-                                  : faSortUp
-                            }
-                          />
+                          <FontAwesomeIcon className="text-white" icon={ascendentTime == null ? faSort : ascendentTime == true ? faSortDown : faSortUp} />
                         </div>
                       </div>
                     </div>
                   </th>
-                  <th
-                    className="border-b border-r border-black bg-white"
-                    colSpan={1}
-                  >
-                  </th>
+                  <th className="border-b border-r border-black bg-white" colSpan={1}></th>
                 </tr>
                 {table.getHeaderGroups().map((headerGroup) => (
-                  <tr
-                    key={headerGroup.id}
-                    className="bg-white text-black text-left  font-bold"
-                  >
+                  <tr key={headerGroup.id} className="bg-white text-black text-left  font-bold">
                     {headerGroup.headers.map((header) => (
                       <th
                         key={header.id}
-                        className={`relative border-b-2 border-r border-black   bg-white p-2 py-4 ${header.column.id === "threeDots" ? "text-center" : ""
-                          } `}
+                        className={`relative border-b-2 border-r border-black   bg-white p-2 py-4 ${header.column.id === "threeDots" ? "text-center" : ""} `}
                         style={{
-                          width:
-                            header.column.id === "threeDots"
-                              ? "4rem"
-                              : header.column.id === "Dropdown"
-                                ? "4rem"
-                                : header.column.id === "logo"
-                                  ? "3rem"
-                                  : `${header.getSize()}px`, // Enforce width for "Options"
-                          minWidth:
-                            header.column.id === "threeDots"
-                              ? "4rem"
-                              : header.column.id === "Dropdown"
-                                ? header.column.id === "logo"
-                                  ? "35px"
-                                  : "4rem"
-                                : "", // Ensure no shrinkage
-                          maxWidth:
-                            header.column.id === "threeDots"
-                              ? "4rem"
-                              : header.column.id === "Dropdown"
-                                ? header.column.id === "logo"
-                                  ? "35px"
-                                  : "4rem"
-                                : "", // Ensure no expansion
+                          width: header.column.id === "threeDots" ? "4rem" : header.column.id === "Dropdown" ? "4rem" : header.column.id === "logo" ? "3rem" : `${header.getSize()}px`, // Enforce width for "Options"
+                          minWidth: header.column.id === "threeDots" ? "4rem" : header.column.id === "Dropdown" ? (header.column.id === "logo" ? "35px" : "4rem") : "", // Ensure no shrinkage
+                          maxWidth: header.column.id === "threeDots" ? "4rem" : header.column.id === "Dropdown" ? (header.column.id === "logo" ? "35px" : "4rem") : "", // Ensure no expansion
                         }}
                       >
                         <div
                           onMouseDown={header.getResizeHandler()}
-                          className={`absolute top-0 right-0 h-full w-2 bg-blue-300 cursor-pointer opacity-0 active:opacity-100 hover:opacity-100 transition-opacity duration-200 ${header.column.id === "threeDots" ? "hidden" : ""
-                            }`}
+                          className={`absolute top-0 right-0 h-full w-2 bg-blue-300 cursor-pointer opacity-0 active:opacity-100 hover:opacity-100 transition-opacity duration-200 ${
+                            header.column.id === "threeDots" ? "hidden" : ""
+                          }`}
                         ></div>
                         {header.column.columnDef.header}
                       </th>
@@ -1405,9 +1189,7 @@ export default function ManoperaTable({
                 <tbody className="relative z-0">
                   <tr>
                     <td className="bg-white text-black h-12" colSpan={14}>
-                      <div className=" flex justify-center items-center w-full text-base font-semibold h-full">
-                        Nici un rezultat
-                      </div>
+                      <div className=" flex justify-center items-center w-full text-base font-semibold h-full">Nici un rezultat</div>
                     </td>
                   </tr>
                 </tbody>
@@ -1418,22 +1200,13 @@ export default function ManoperaTable({
                       <tr key={row.original.id}>
                         <td></td>
                         <td
-                          onClick={(e) =>
-                            handleSubmit(
-                              e,
-                              row,
-                              row.original.definitieIdForFetch
-                            )
-                          }
+                          onClick={(e) => handleSubmit(e, row, row.original.definitieIdForFetch)}
                           className="bg-green-400 p-1 px-3 hover:bg-green-500 cursor-pointer border-b border-r border-black  text-black"
                           colSpan={13}
                         >
                           <div className="flex font-bold text-center justify-center items-center gap-2">
                             <p className=" text-center">Adauga Obiecte</p>
-                            <FontAwesomeIcon
-                              className="text-black  text-center text-base"
-                              icon={faPlus}
-                            />
+                            <FontAwesomeIcon className="text-black  text-center text-base" icon={faPlus} />
                           </div>
                         </td>
                       </tr>
@@ -1441,13 +1214,7 @@ export default function ManoperaTable({
                       <React.Fragment key={row.id}>
                         <tr
                           className={` 
-                                                                                                 text-black ${selectedEditInterior ==
-                              row
-                                .original
-                                .id
-                              ? "dropdown-container"
-                              : ""
-                            }`}
+                                                                                                 text-black ${selectedEditInterior == row.original.id ? "dropdown-container" : ""}`}
                         >
                           {row.getVisibleCells().map((cell) =>
                             cell.column.id == "Dropdown" ? (
@@ -1457,25 +1224,16 @@ export default function ManoperaTable({
                                 style={cell.column.columnDef.meta?.style} // Apply the custom style
                                 key={cell.id}
                                 className={` 
-                                                                                                                         ${row
-                                    .original
-                                    .id ===
-                                    selectedDeleteInterior
-                                    ? "bg-red-300"
-                                    : "bg-white"
-                                  }
+                                                                                                                         ${row.original.id === selectedDeleteInterior ? "bg-red-300" : "bg-white"}
                                                                                                                          border-b border-r break-words max-w-72 whitespace-pre-line   relative border-black p-1 px-3 `}
                               >
                                 <div className="h-full w-full overflow-hidden ">
                                   <div className="max-h-[3.7rem] h-[3.7rem]   grid grid-cols-1 items-center  break-words whitespace-pre-line   overflow-auto  scrollbar-webkit">
-                                    {flexRender(
-                                      cell.column.columnDef.cell,
-                                      cell.getContext()
-                                    )}
+                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                   </div>
                                 </div>
                               </td>
-                            )
+                            ),
                           )}
                         </tr>
                       </React.Fragment>
@@ -1489,16 +1247,17 @@ export default function ManoperaTable({
                             }
                           }
                         }}
-                        className={` text-black ${row.original.id === selectedDelete
-                          ? "bg-red-300"
-                          : row.original.id === selectedEdit
-                            ? "bg-green-300"
-                            : row.original.id === selectedDouble
-                              ? "bg-amber-300"
-                              : selectedRows[row.index]
-                                ? "bg-blue-200 hover:bg-blue-300"
-                                : "bg-[rgb(255,255,255,0.80)] hover:bg-[rgb(255,255,255,0.6)]"
-                          }`}
+                        className={` text-black ${
+                          row.original.id === selectedDelete
+                            ? "bg-red-300"
+                            : row.original.id === selectedEdit
+                              ? "bg-green-300"
+                              : row.original.id === selectedDouble
+                                ? "bg-amber-300"
+                                : selectedRows[row.index]
+                                  ? "bg-blue-200 hover:bg-blue-300"
+                                  : "bg-[rgb(255,255,255,0.80)] hover:bg-[rgb(255,255,255,0.6)]"
+                        }`}
                       >
                         {row.getVisibleCells().map((cell) => (
                           <td
@@ -1507,17 +1266,12 @@ export default function ManoperaTable({
                             style={cell.column.columnDef.meta?.style} // Apply the custom style
                           >
                             <div className="h-full w-full overflow-hidden ">
-                              <div className="max-h-20 h-20 w-full   grid grid-cols-1 items-center  overflow-auto  scrollbar-webkit">
-                                {flexRender(
-                                  cell.column.columnDef.cell,
-                                  cell.getContext()
-                                )}
-                              </div>
+                              <div className="max-h-20 h-20 w-full   grid grid-cols-1 items-center  overflow-auto  scrollbar-webkit">{flexRender(cell.column.columnDef.cell, cell.getContext())}</div>
                             </div>
                           </td>
                         ))}
                       </tr>
-                    )
+                    ),
                   )}
                 </tbody>
               )}
@@ -1525,27 +1279,16 @@ export default function ManoperaTable({
           </div>
           {/* Pagination Controls */}
           <div className="mt-4 flex items-center justify-between">
-            <button
-              className="p-2 min-w-24 bg-white text-black  rounded-lg"
-              onClick={() => setPage(-1)}
-              disabled={currentOffset === 0}
-            >
+            <button className="p-2 min-w-24 bg-white text-black  rounded-lg" onClick={() => setPage(-1)} disabled={currentOffset === 0}>
               Înapoi
             </button>
             <span className="">
               Pagina{" "}
               <span className=" font-semibold tracking-widest">
-                {currentOffset + 1}/
-                {Math.ceil(totalItems / limit) == Infinity
-                  ? Math.ceil(totalItems / 10)
-                  : Math.ceil(totalItems / limit)}
+                {currentOffset + 1}/{Math.ceil(totalItems / limit) == Infinity ? Math.ceil(totalItems / 10) : Math.ceil(totalItems / limit)}
               </span>
             </span>
-            <button
-              className="p-2 min-w-24 bg-white text-black m rounded"
-              onClick={() => setPage(1)}
-              disabled={currentOffset + 1 >= Math.ceil(totalItems / limit)}
-            >
+            <button className="p-2 min-w-24 bg-white text-black m rounded" onClick={() => setPage(1)} disabled={currentOffset + 1 >= Math.ceil(totalItems / limit)}>
               Înainte
             </button>
           </div>

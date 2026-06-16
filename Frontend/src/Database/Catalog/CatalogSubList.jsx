@@ -30,7 +30,7 @@ const SubRow = memo(({ sub, config, visibleColumns, displayLang, onEdit, onDupli
         <TableRow className="cursor-pointer data-[state=open]:bg-muted border-b transition-colors group hover:bg-accent hover-row-border">
           {/* COLOANA POZĂ */}
           {config.hasPhoto && showCol("poza") && (
-            <TableCell className="text-center px-4 py-2 w-[6rem] max-w-[6rem]">
+            <TableCell className="text-center px-3 xxxl:px-4 py-1.5 xxxl:py-2 w-[5.5rem] xxxl:w-[6rem] max-w-[5.5rem] xxxl:max-w-[6rem]">
               <ImagePreviewTooltip
                 src={sub.photo_url ? `${photoAPI}/${sub.photo_url}` : null}
                 alt={sub.cod_specific}
@@ -38,29 +38,29 @@ const SubRow = memo(({ sub, config, visibleColumns, displayLang, onEdit, onDupli
                 previewMaxHeight="max-h-[30rem]"
                 previewMaxWidth="max-w-[30rem]"
                 fallback={<img src={NoImage} alt="No Image" className="h-full w-full object-cover opacity-50" />}
-                containerClassName="h-14 w-14 rounded-md border border-border bg-muted flex items-center justify-center overflow-hidden shrink-0"
+                containerClassName="h-12 w-12 xxxl:h-14 xxxl:w-14 rounded-md border border-border bg-muted flex items-center justify-center overflow-hidden shrink-0"
               />
             </TableCell>
           )}
 
-          <TableCell className="text-center px-4 py-4 min-w-[12rem] w-[12rem] max-w-[12rem] whitespace-nowrap">
-            <span className="text-base font-bold text-foreground">{sub.cod_specific}</span>
+          <TableCell className="text-center px-3 xxxl:px-4 py-2 xxxl:py-4 min-w-[10rem] xxxl:min-w-[12rem] w-[10rem] xxxl:w-[12rem] max-w-[10rem] xxxl:max-w-[12rem] whitespace-nowrap">
+            <span className="text-sm xxxl:text-base font-bold text-foreground">{sub.cod_specific}</span>
           </TableCell>
 
           {/* COLOANĂ FURNIZOR */}
           {config.hasFurnizor && showCol("furnizor") && (
-            <TableCell className="text-center px-4 py-2 min-w-[12rem] w-[12rem] max-w-[12rem]">
-              {sub.detalii_extra?.furnizor ? <span className="text-base text-foreground">{sub.detalii_extra.furnizor}</span> : <span className="text-base text-muted-foreground/40 italic">—</span>}
+            <TableCell className="text-center px-3 xxxl:px-4 py-1.5 xxxl:py-2 min-w-[10rem] xxxl:min-w-[12rem] w-[10rem] xxxl:w-[12rem] max-w-[10rem] xxxl:max-w-[12rem]">
+              {sub.detalii_extra?.furnizor ? <span className="text-sm xxxl:text-base text-foreground">{sub.detalii_extra.furnizor}</span> : <span className="text-sm xxxl:text-base text-muted-foreground/40 italic">—</span>}
             </TableCell>
           )}
 
           {showCol("descriere") && (
-            <TableCell className="px-4 py-2 min-w-[35rem]">
+            <TableCell className="px-3 xxxl:px-4 py-1.5 xxxl:py-2 min-w-[28rem] xxxl:min-w-[35rem]">
               <div className="w-full">
                 {afisareDescriere ? (
-                  <OverflowTooltip align="left" text={afisareDescriere} className="text-base leading-normal text-foreground whitespace-pre-wrap" maxLines={2} />
+                  <OverflowTooltip align="left" text={afisareDescriere} className="text-sm xxxl:text-base leading-normal text-foreground whitespace-pre-wrap" maxLines={2} />
                 ) : (
-                  <span className="text-base text-muted-foreground/40 italic">—</span>
+                  <span className="text-sm xxxl:text-base text-muted-foreground/40 italic">—</span>
                 )}
               </div>
             </TableCell>
@@ -68,18 +68,18 @@ const SubRow = memo(({ sub, config, visibleColumns, displayLang, onEdit, onDupli
 
           {/* COLOANĂ STATUS */}
           {config.hasStatus && showCol("status") && (
-            <TableCell className="text-center px-4 py-2 min-w-[12rem] w-[12rem] max-w-[12rem]">
+            <TableCell className="text-center px-3 xxxl:px-4 py-1.5 xxxl:py-2 min-w-[10rem] xxxl:min-w-[12rem] w-[10rem] xxxl:w-[12rem] max-w-[10rem] xxxl:max-w-[12rem]">
               {sub.detalii_extra?.status_utilaj ? (
-                <span className="text-base text-foreground font-medium">{sub.detalii_extra.status_utilaj}</span>
+                <span className="text-sm xxxl:text-base text-foreground font-medium">{sub.detalii_extra.status_utilaj}</span>
               ) : (
-                <span className="text-base text-muted-foreground/40 italic">—</span>
+                <span className="text-sm xxxl:text-base text-muted-foreground/40 italic">—</span>
               )}
             </TableCell>
           )}
 
           {showCol("cost") && (
-            <TableCell className="text-center px-4 py-2 min-w-[12rem] w-[12rem] max-w-[12rem]">
-              <span className="font-bold text-base text-foreground">
+            <TableCell className="text-center px-3 xxxl:px-4 py-1.5 xxxl:py-2 min-w-[10rem] xxxl:min-w-[12rem] w-[10rem] xxxl:w-[12rem] max-w-[10rem] xxxl:max-w-[12rem]">
+              <span className="font-bold text-sm xxxl:text-base text-foreground">
                 {parseFloat(sub.cost || 0)
                   .toFixed(3)
                   .replace(".", ",")}
@@ -89,9 +89,9 @@ const SubRow = memo(({ sub, config, visibleColumns, displayLang, onEdit, onDupli
 
           {/* COLOANA CREAT */}
           {showCol("creat") && (
-            <TableCell className="px-4 py-2 min-w-[16rem] w-[16rem] max-w-[16rem]">
-              <div className="flex items-center gap-2.5 h-10 overflow-hidden text-left">
-                <Avatar className="h-10 w-10 border rounded-md border-border shadow-sm shrink-0">
+            <TableCell className="px-3 xxxl:px-4 py-1.5 xxxl:py-2 min-w-[14rem] xxxl:min-w-[16rem] w-[14rem] xxxl:w-[16rem] max-w-[14rem] xxxl:max-w-[16rem]">
+              <div className="flex items-center gap-2 xxxl:gap-2.5 h-9 xxxl:h-10 overflow-hidden text-left">
+                <Avatar className="h-9 w-9 xxxl:h-10 xxxl:w-10 border rounded-md border-border shadow-sm shrink-0">
                   <AvatarImage src={`${photoAPI}/${sub.created_by_photo_url}`} alt={sub.created_by_name} className="object-cover" />
                   <AvatarFallback className="text-[10px] rounded-md bg-muted font-bold">
                     {sub.created_by_name
@@ -102,8 +102,8 @@ const SubRow = memo(({ sub, config, visibleColumns, displayLang, onEdit, onDupli
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col justify-center min-w-0 leading-tight">
-                  <span className="text-sm font-bold text-foreground truncate block">{sub.created_by_name || "Sistem"}</span>
-                  <span className="text-[11px] text-muted-foreground mt-0.5">
+                  <span className="text-xs xxxl:text-sm font-bold text-foreground truncate block">{sub.created_by_name || "Sistem"}</span>
+                  <span className="text-[10px] xxxl:text-[11px] text-muted-foreground mt-0.5">
                     {new Date(sub.created_at).toLocaleDateString("ro-RO")} {new Date(sub.created_at).toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" })}
                   </span>
                 </div>
@@ -113,9 +113,9 @@ const SubRow = memo(({ sub, config, visibleColumns, displayLang, onEdit, onDupli
 
           {/* COLOANA ACTUALIZAT */}
           {showCol("actualizat") && (
-            <TableCell className="px-4 py-2 min-w-[16rem] w-[16rem] max-w-[16rem]">
-              <div className="flex items-center gap-2.5 h-10 overflow-hidden text-left">
-                <Avatar className="h-10 w-10 border rounded-md border-border shadow-sm shrink-0">
+            <TableCell className="px-3 xxxl:px-4 py-1.5 xxxl:py-2 min-w-[14rem] xxxl:min-w-[16rem] w-[14rem] xxxl:w-[16rem] max-w-[14rem] xxxl:max-w-[16rem]">
+              <div className="flex items-center gap-2 xxxl:gap-2.5 h-9 xxxl:h-10 overflow-hidden text-left">
+                <Avatar className="h-9 w-9 xxxl:h-10 xxxl:w-10 border rounded-md border-border shadow-sm shrink-0">
                   <AvatarImage src={`${photoAPI}/${sub.updated_by_photo_url}`} alt={sub.updated_by_name} className="object-cover" />
                   <AvatarFallback className="text-[10px] rounded-md bg-muted font-bold">
                     {sub.updated_by_name
@@ -126,8 +126,8 @@ const SubRow = memo(({ sub, config, visibleColumns, displayLang, onEdit, onDupli
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col justify-center min-w-0 leading-tight">
-                  <span className="text-sm font-bold text-foreground truncate block">{sub.updated_by_name || "Sistem"}</span>
-                  <span className="text-[11px] text-muted-foreground mt-0.5">
+                  <span className="text-xs xxxl:text-sm font-bold text-foreground truncate block">{sub.updated_by_name || "Sistem"}</span>
+                  <span className="text-[10px] xxxl:text-[11px] text-muted-foreground mt-0.5">
                     {new Date(sub.updated_at).toLocaleDateString("ro-RO")} {new Date(sub.updated_at).toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" })}
                   </span>
                 </div>
@@ -234,21 +234,21 @@ export default function CatalogSubList({ config, open, setOpen, parentItem }) {
           // --- THIS IS THE KEY FIX: kills the open/close animation lag ---
           style={{ animationDuration: "0ms", transitionDuration: "0ms" }}
         >
-          <DialogHeader className="px-6 py-4 rounded-t-md border-b bg-muted flex flex-row items-center justify-between shrink-0">
-            <div className="flex items-center gap-3">
-              <div className={`h-12 w-12 rounded-xl flex items-center justify-center shrink-0 ${config.bgClass}`}>
-                <FontAwesomeIcon icon={config.icon} className={`${config.colorClass} text-xl`} />
+          <DialogHeader className="px-4 xxxl:px-6 py-3 xxxl:py-4 rounded-t-md border-b bg-muted flex flex-row items-center justify-between shrink-0">
+            <div className="flex items-center gap-2.5 xxxl:gap-3">
+              <div className={`h-10 w-10 xxxl:h-12 xxxl:w-12 rounded-xl flex items-center justify-center shrink-0 ${config.bgClass}`}>
+                <FontAwesomeIcon icon={config.icon} className={`${config.colorClass} text-lg xxxl:text-xl`} />
               </div>
               <DialogTitle className="text-left max-w-[25rem]">
-                <p className="text-sm text-muted-foreground">{parentItem.cod_definitie}</p>
-                <OverflowTooltip text={parentItem.denumire} className="text-lg font-bold" maxLines={2} />
+                <p className="text-xs xxxl:text-sm text-muted-foreground">{parentItem.cod_definitie}</p>
+                <OverflowTooltip text={parentItem.denumire} className="text-base xxxl:text-lg font-bold" maxLines={2} />
               </DialogTitle>
             </div>
 
-            <div className="flex items-center gap-3 mr-10">
+            <div className="flex items-center gap-2.5 xxxl:gap-3 mr-10">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="gap-2 h-10 text-foreground">
+                  <Button variant="outline" className="gap-2 h-9 xxxl:h-10 text-sm xxxl:text-base text-foreground">
                     <FontAwesomeIcon icon={faColumns} />
                     <span>Coloane</span>
                   </Button>
@@ -284,30 +284,30 @@ export default function CatalogSubList({ config, open, setOpen, parentItem }) {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              <Button variant="outline" className="gap-2 h-10 text-foreground w-[5rem]" onClick={onDisplayLangToggle}>
+              <Button variant="outline" className="gap-2 h-9 xxxl:h-10 text-sm xxxl:text-base text-foreground w-[4.75rem] xxxl:w-[5rem]" onClick={onDisplayLangToggle}>
                 <FontAwesomeIcon icon={faLanguage} />
                 <span>{displayLang}</span>
               </Button>
-              <Button onClick={handleAddSub} className={`gap-2 h-10 ${buttonColorClass} ${buttonHoverClass} text-white border-transparent`}>
+              <Button onClick={handleAddSub} className={`gap-2 h-9 xxxl:h-10 px-3 xxxl:px-4 text-sm xxxl:text-base ${buttonColorClass} ${buttonHoverClass} text-white border-transparent`}>
                 <FontAwesomeIcon icon={faPlus} /> Adaugă Variantă
               </Button>
             </div>
           </DialogHeader>
 
-          <div className="p-6 overflow-hidden flex-1 flex flex-col">
+          <div className="p-4 xxxl:p-6 overflow-hidden flex-1 flex flex-col">
             {subcategorii.length > 0 ? (
               <div className="rounded-md border bg-card w-full h-full overflow-auto relative">
                 <Table className="min-w-full table-fixed caption-bottom text-left border-collapse">
                   <TableHeader className="bg-background sticky top-0 z-20 shadow-sm">
-                    <TableRow className="h-10 hover:bg-muted-foreground/25 bg-muted-foreground/25 border-b">
-                      {config.hasPhoto && showCol("poza") && <TableHead className="text-center px-4 w-[6rem] max-w-[6rem]">Poză</TableHead>}
-                      <TableHead className="text-center px-4 w-[12rem] max-w-[12rem]">Cod Variantă</TableHead>
-                      {config.hasFurnizor && showCol("furnizor") && <TableHead className="text-center px-4 w-[12rem] max-w-[12rem]">Furnizor</TableHead>}
-                      {showCol("descriere") && <TableHead className="px-4 min-w-[35rem]">Descriere</TableHead>}
-                      {config.hasStatus && showCol("status") && <TableHead className="text-center px-4 w-[12rem] max-w-[12rem]">Status</TableHead>}
-                      {showCol("cost") && <TableHead className="text-center px-4 w-[12rem] max-w-[12rem]">Cost</TableHead>}
-                      {showCol("creat") && <TableHead className="text-left px-4 w-[16rem] max-w-[16rem]">Creat</TableHead>}
-                      {showCol("actualizat") && <TableHead className="text-left px-4 w-[16rem] max-w-[16rem]">Actualizat</TableHead>}
+                    <TableRow className="h-9 xxxl:h-10 hover:bg-muted-foreground/25 bg-muted-foreground/25 border-b">
+                      {config.hasPhoto && showCol("poza") && <TableHead className="text-center px-3 xxxl:px-4 w-[5.5rem] xxxl:w-[6rem] max-w-[5.5rem] xxxl:max-w-[6rem]">Poză</TableHead>}
+                      <TableHead className="text-center px-3 xxxl:px-4 w-[10rem] xxxl:w-[12rem] max-w-[10rem] xxxl:max-w-[12rem]">Cod Variantă</TableHead>
+                      {config.hasFurnizor && showCol("furnizor") && <TableHead className="text-center px-3 xxxl:px-4 w-[10rem] xxxl:w-[12rem] max-w-[10rem] xxxl:max-w-[12rem]">Furnizor</TableHead>}
+                      {showCol("descriere") && <TableHead className="px-3 xxxl:px-4 min-w-[28rem] xxxl:min-w-[35rem]">Descriere</TableHead>}
+                      {config.hasStatus && showCol("status") && <TableHead className="text-center px-3 xxxl:px-4 w-[10rem] xxxl:w-[12rem] max-w-[10rem] xxxl:max-w-[12rem]">Status</TableHead>}
+                      {showCol("cost") && <TableHead className="text-center px-3 xxxl:px-4 w-[10rem] xxxl:w-[12rem] max-w-[10rem] xxxl:max-w-[12rem]">Cost</TableHead>}
+                      {showCol("creat") && <TableHead className="text-left px-3 xxxl:px-4 w-[14rem] xxxl:w-[16rem] max-w-[14rem] xxxl:max-w-[16rem]">Creat</TableHead>}
+                      {showCol("actualizat") && <TableHead className="text-left px-3 xxxl:px-4 w-[14rem] xxxl:w-[16rem] max-w-[14rem] xxxl:max-w-[16rem]">Actualizat</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -328,8 +328,8 @@ export default function CatalogSubList({ config, open, setOpen, parentItem }) {
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-muted-foreground rounded-xl">
-                <FontAwesomeIcon icon={faTags} className="text-4xl mb-4 opacity-60" />
-                <p className="text-lg">Nu există variante definite pentru acest/această {config.title.toLowerCase()}.</p>
+                <FontAwesomeIcon icon={faTags} className="text-3xl xxxl:text-4xl mb-3 xxxl:mb-4 opacity-60" />
+                <p className="text-base xxxl:text-lg">Nu există variante definite pentru acest/această {config.title.toLowerCase()}.</p>
               </div>
             )}
           </div>

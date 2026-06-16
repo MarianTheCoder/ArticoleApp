@@ -127,7 +127,6 @@ export default function PontajeList({
   onExportToggleUser,
 }) {
   const { loading } = useLoading();
-  const containerRef = useRef(null);
 
   const singleDay = useMemo(() => selectedIsoDates.length == 1, [selectedIsoDates]);
   const singleIso = useMemo(() => (singleDay ? selectedIsoDates[0] : null), [singleDay, selectedIsoDates]);
@@ -456,9 +455,8 @@ export default function PontajeList({
   }
 
   return (
-    <div ref={containerRef} className="rounded-xl border-2 bg-card w-full h-full overflow-auto relative">
+    <div className="rounded-xl border bg-card w-full h-full overflow-auto relative">
       <TableVirtuoso
-        customScrollParent={containerRef.current}
         totalCount={filteredData.length}
         data={filteredData}
         style={{ height: "100%", width: "100%" }}

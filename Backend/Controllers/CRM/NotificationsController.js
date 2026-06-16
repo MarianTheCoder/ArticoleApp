@@ -27,7 +27,7 @@ const readNotification = async (req, res) => {
 
     return res.status(200).json({ ok: true, message: "Notification marked as read." });
   } catch (err) {
-    console.error("readNotification error:", err);
+    console.log("readNotification error:", err);
     return res.status(500).json({ message: "Server Error" });
   } finally {
     if (conn) conn.release();
@@ -128,7 +128,7 @@ const getNotifications = async (req, res) => {
       unreadCount: countRows[0].total || 0,
     });
   } catch (err) {
-    console.error("getNotifications error:", err);
+    console.log("getNotifications error:", err);
     return res.status(500).json({ message: "Server Error" });
   }
 };
@@ -154,7 +154,7 @@ const readAllNotifications = async (req, res) => {
 
     return res.status(200).json({ ok: true, message: "All notifications marked as read." });
   } catch (err) {
-    console.error("readAllNotifications error:", err);
+    console.log("readAllNotifications error:", err);
     return res.status(500).json({ message: "Server Error" });
   } finally {
     if (conn) conn.release();
@@ -226,7 +226,7 @@ const getHistoryForContacts = async (req, res) => {
 
     return res.status(200).json(formattedHistory);
   } catch (err) {
-    console.error("getHistoryForContacts error:", err);
+    console.log("getHistoryForContacts error:", err);
     return res.status(500).json({ message: "Server Error" });
   }
 };
@@ -454,7 +454,7 @@ const getHistoryForCompany = async (req, res) => {
 
     return res.status(200).json(formattedHistory);
   } catch (err) {
-    console.error("getHistoryForCompany error:", err);
+    console.log("getHistoryForCompany error:", err);
     return res.status(500).json({ message: "Server Error" });
   }
 };

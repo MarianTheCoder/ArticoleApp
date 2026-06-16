@@ -90,7 +90,7 @@ router.post("/saveWorkLocation", saveWorkLocation);
 //
 //////// PDF Exports
 router.post("/exportPontaje", authenticateToken("pontaje", "v"), exportPontaje);
-// router.post("/exportPontajeSantiere", authenticateToken("pontaje", "v"), exportPontajeSantiere);
+router.post("/exportPontajeSantiere", authenticateToken("pontaje", "v"), exportPontajeSantiere);
 
 //atribuiri activitate
 

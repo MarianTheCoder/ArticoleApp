@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const {
   getResurse,
+  getNextCatalogDefinitionCode,
   addDefinitie,
   editDefinitie,
   addRetetaElement,
@@ -12,8 +13,13 @@ const {
   getRetete,
   editSubcategorie,
   deleteSubcategorie,
+  getReteteClaseCoduri,
+  addRetetaClasaCod,
+  editRetetaClasaCod,
+  deleteRetetaClasaCod,
   addReteta,
   editReteta,
+  bulkSaveRetetaClaseCoduri,
   deleteReteta,
 } = require("../Controllers/CatalogController");
 const multer = require("multer");
@@ -31,6 +37,7 @@ const upload = multer({ dest: tempDir });
 // Rute pentru Catalog (Definiții)
 //
 router.get("/getResurse", authenticateToken(), getResurse);
+router.get("/getNextCatalogDefinitionCode", authenticateToken(), getNextCatalogDefinitionCode);
 router.post("/addDefinitie", authenticateToken(), upload.single("photo"), checkCatalogPermission("c"), addDefinitie);
 router.put("/editDefinitie/:id", authenticateToken(), upload.single("photo"), checkCatalogPermission("e"), editDefinitie);
 router.delete("/deleteDefinitie/:id", authenticateToken(), checkCatalogPermission("s"), deleteDefinitie); // Delete nu are fișier de obicei, deci e ok așa
@@ -42,6 +49,12 @@ router.delete("/deleteSubcategorie/:id", authenticateToken(), checkCatalogPermis
 
 //Rute pentru retete
 //
+router.get("/getReteteClaseCoduri", authenticateToken(), getReteteClaseCoduri);
+router.post("/bulkSaveRetetaClaseCoduri", authenticateToken("retete", "c"), bulkSaveRetetaClaseCoduri);
+// router.post("/addRetetaClasaCod", authenticateToken("retete", "c"), addRetetaClasaCod);
+// router.put("/editRetetaClasaCod/:id", authenticateToken("retete", "e"), editRetetaClasaCod);
+// router.delete("/deleteRetetaClasaCod/:id", authenticateToken("retete", "s"), deleteRetetaClasaCod);
+
 router.get("/getRetete", authenticateToken(), getRetete);
 router.post("/addReteta", authenticateToken("retete", "c"), addReteta);
 router.put("/editReteta/:id", authenticateToken("retete", "e"), editReteta);

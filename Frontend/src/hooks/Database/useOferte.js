@@ -22,6 +22,30 @@ export const useOferte = (santierId) => {
   });
 };
 
+const OFERTE_CHILD_QUERY_KEYS = new Set(["retete", "coeficienti"]);
+
+const invalidateOferteList = (queryClient, santierId = null) => {
+  queryClient.invalidateQueries({
+    predicate: (query) => {
+      const key = query.queryKey;
+
+      if (!Array.isArray(key) || key[0] !== "oferte" || key.length !== 2) return false;
+      if (OFERTE_CHILD_QUERY_KEYS.has(String(key[1]))) return false;
+
+      return santierId ? String(key[1]) === String(santierId) : true;
+    },
+  });
+};
+
+const invalidateOfertaReteteList = (queryClient, lucrareId = null) => {
+  if (lucrareId) {
+    queryClient.invalidateQueries({ queryKey: ["oferte", "retete", String(lucrareId)] });
+    return;
+  }
+
+  queryClient.invalidateQueries({ queryKey: ["oferte", "retete"] });
+};
+
 // ============================================================================
 // 2. MUTATIONS PENTRU OFERTE
 // ============================================================================
@@ -35,8 +59,7 @@ export const useAddOferta = () => {
       return response.data;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries(["oferte", variables.santier_id]);
-      queryClient.invalidateQueries(["oferte"]);
+      invalidateOferteList(queryClient, variables?.santier_id);
     },
   });
 };
@@ -50,11 +73,7 @@ export const useEditOferta = () => {
       return response.data;
     },
     onSuccess: (_, variables) => {
-      if (variables.santier_id) {
-        queryClient.invalidateQueries(["oferte", variables.santier_id]);
-      }
-
-      queryClient.invalidateQueries(["oferte"]);
+      invalidateOferteList(queryClient, variables?.santier_id);
     },
   });
 };
@@ -72,11 +91,7 @@ export const useDeleteOferta = () => {
     onSuccess: (_, variables) => {
       const santierId = typeof variables === "object" ? variables.santier_id : null;
 
-      if (santierId) {
-        queryClient.invalidateQueries(["oferte", santierId]);
-      }
-
-      queryClient.invalidateQueries(["oferte"]);
+      invalidateOferteList(queryClient, santierId);
     },
   });
 };
@@ -94,11 +109,7 @@ export const useAddOfertaLucrare = () => {
       return response.data;
     },
     onSuccess: (_, variables) => {
-      if (variables.santier_id) {
-        queryClient.invalidateQueries(["oferte", variables.santier_id]);
-      }
-
-      queryClient.invalidateQueries(["oferte"]);
+      invalidateOferteList(queryClient, variables?.santier_id);
     },
   });
 };
@@ -112,11 +123,24 @@ export const useEditOfertaLucrare = () => {
       return response.data;
     },
     onSuccess: (_, variables) => {
-      if (variables.santier_id) {
-        queryClient.invalidateQueries(["oferte", variables.santier_id]);
-      }
+      invalidateOferteList(queryClient, variables?.santier_id);
+    },
+  });
+};
 
-      queryClient.invalidateQueries(["oferte"]);
+export const useEditOfertaLucrareStatus = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, status, updated_by_user_id }) => {
+      const response = await api.put(`/Oferte/editOfertaLucrareStatus/${id}`, {
+        status,
+        updated_by_user_id,
+      });
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      invalidateOferteList(queryClient, variables?.santier_id);
     },
   });
 };
@@ -127,18 +151,15 @@ export const useDeleteOfertaLucrare = () => {
   return useMutation({
     mutationFn: async (payload) => {
       const id = typeof payload === "object" ? payload.id : payload;
-
-      const response = await api.delete(`/Oferte/deleteOfertaLucrare/${id}`);
+      const response = await api.delete(`/Oferte/deleteOfertaLucrare/${id}`, {
+        data: payload, // trimite întregul payload pentru validare pe backend (inclusiv santier_id și code, dacă există)
+      });
       return response.data;
     },
     onSuccess: (_, variables) => {
       const santierId = typeof variables === "object" ? variables.santier_id : null;
 
-      if (santierId) {
-        queryClient.invalidateQueries(["oferte", santierId]);
-      }
-
-      queryClient.invalidateQueries(["oferte"]);
+      invalidateOferteList(queryClient, santierId);
     },
   });
 };
@@ -154,8 +175,8 @@ export const useDuplicateOfertaLucrare = () => {
 
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["oferte"] });
+    onSuccess: (_, variables) => {
+      invalidateOferteList(queryClient, variables?.santier_id);
     },
   });
 };
@@ -169,7 +190,7 @@ export const useEditOfertaLucrareColoane = () => {
 
   return useMutation({
     mutationFn: async ({ id, coloane_config, updated_by_user_id }) => {
-      const response = await api.put(`/Oferte/editOfertaLucrareColoane/${id}`, {
+      const response = await api.put(`/Oferte/Retete/editOfertaLucrareColoane/${id}`, {
         coloane_config,
         updated_by_user_id,
       });
@@ -178,17 +199,125 @@ export const useEditOfertaLucrareColoane = () => {
     },
 
     onSuccess: (_, variables) => {
-      if (variables.santier_id) {
-        queryClient.invalidateQueries({ queryKey: ["oferte", variables.santier_id] });
-      }
+      invalidateOferteList(queryClient, variables?.santier_id);
+    },
+  });
+};
 
-      queryClient.invalidateQueries({ queryKey: ["oferte"] });
+export const useEditOfertaLucrareCategoryColors = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, category_colors_config, updated_by_user_id }) => {
+      const response = await api.put(`/Oferte/Retete/editOfertaLucrareCategoryColors/${id}`, {
+        category_colors_config,
+        updated_by_user_id,
+      });
+
+      return response.data;
+    },
+
+    onSuccess: (_, variables) => {
+      invalidateOferteList(queryClient, variables?.santier_id);
     },
   });
 };
 
 // ============================================================================
-// 5. RETETE DIN LUCRAREA OFERTEI
+// 5. COEFICIENȚI PE LUCRARE
+// ============================================================================
+
+export const useOfertaCoeficienti = (lucrareId) => {
+  return useQuery({
+    queryKey: ["oferte", "coeficienti", String(lucrareId)],
+    enabled: !!lucrareId,
+    queryFn: async () => {
+      const response = await api.get("/Oferte/Coeficienti/getOfertaCoeficienti", {
+        params: {
+          lucrare_id: lucrareId,
+        },
+      });
+
+      return response.data;
+    },
+    placeholderData: (previousData) => previousData,
+  });
+};
+
+export const useAddOfertaCoeficient = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data) => {
+      const response = await api.post("/Oferte/Coeficienti/addOfertaCoeficient", data);
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      if (variables?.lucrare_id) {
+        queryClient.invalidateQueries({ queryKey: ["oferte", "coeficienti", String(variables.lucrare_id)] });
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["oferte", "coeficienti"] });
+    },
+  });
+};
+
+export const useEditOfertaCoeficient = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...data }) => {
+      const response = await api.put(`/Oferte/Coeficienti/editOfertaCoeficient/${id}`, data);
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      if (variables?.lucrare_id) {
+        queryClient.invalidateQueries({ queryKey: ["oferte", "coeficienti", String(variables.lucrare_id)] });
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["oferte", "coeficienti"] });
+    },
+  });
+};
+
+export const useSaveOfertaCoeficientTinte = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...data }) => {
+      const response = await api.put(`/Oferte/Coeficienti/saveOfertaCoeficientTinte/${id}`, data);
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      if (variables?.lucrare_id) {
+        queryClient.invalidateQueries({ queryKey: ["oferte", "coeficienti", String(variables.lucrare_id)] });
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["oferte", "coeficienti"] });
+    },
+  });
+};
+
+export const useDeleteOfertaCoeficient = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id }) => {
+      const response = await api.delete(`/Oferte/Coeficienti/deleteOfertaCoeficient/${id}`);
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      if (variables?.lucrare_id) {
+        queryClient.invalidateQueries({ queryKey: ["oferte", "coeficienti", String(variables.lucrare_id)] });
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["oferte", "coeficienti"] });
+    },
+  });
+};
+
+// ============================================================================
+// 6. RETETE DIN LUCRAREA OFERTEI
 // ============================================================================
 
 export const useOferteRetete = (lucrareId) => {
@@ -196,7 +325,7 @@ export const useOferteRetete = (lucrareId) => {
     queryKey: ["oferte", "retete", String(lucrareId)],
     enabled: !!lucrareId,
     queryFn: async () => {
-      const response = await api.get("/Oferte/getOfertaRetete", {
+      const response = await api.get("/Oferte/Retete/getOfertaRetete", {
         params: {
           lucrare_id: lucrareId,
         },
@@ -213,19 +342,11 @@ export const useAddOfertaReteta = () => {
 
   return useMutation({
     mutationFn: async (data) => {
-      const response = await api.post("/Oferte/addOfertaReteta", data);
+      const response = await api.post("/Oferte/Retete/addOfertaReteta", data);
       return response.data;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["oferte"] });
-
-      if (variables?.santier_id) {
-        queryClient.invalidateQueries({ queryKey: ["oferte", variables.santier_id] });
-      }
-
-      if (variables?.lucrare_id) {
-        queryClient.invalidateQueries({ queryKey: ["oferte", "retete", String(variables.lucrare_id)] });
-      }
+      invalidateOfertaReteteList(queryClient, variables?.lucrare_id);
     },
   });
 };
@@ -235,24 +356,12 @@ export const useEditOfertaReteta = () => {
 
   return useMutation({
     mutationFn: async ({ id, ...data }) => {
-      const response = await api.put(`/Oferte/editOfertaReteta/${id}`, data);
+      const response = await api.put(`/Oferte/Retete/editOfertaReteta/${id}`, data);
       return response.data;
     },
 
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["oferte"] });
-
-      if (variables?.santier_id) {
-        queryClient.invalidateQueries({ queryKey: ["oferte", variables.santier_id] });
-      }
-
-      if (variables?.lucrare_id) {
-        queryClient.invalidateQueries({
-          queryKey: ["oferte", "retete", String(variables.lucrare_id)],
-        });
-      }
-
-      queryClient.invalidateQueries({ queryKey: ["oferte", "retete"] });
+      invalidateOfertaReteteList(queryClient, variables?.lucrare_id);
     },
   });
 };
@@ -263,18 +372,12 @@ export const useEditOfertaRetetaElementVariant = () => {
   return useMutation({
     mutationFn: async ({ id, ...data }) => {
       console.log("Editing oferta reteta element variant with data:", { id, ...data });
-      const response = await api.put(`/Oferte/editOfertaRetetaElementVariant/${id}`, data);
+      const response = await api.put(`/Oferte/Retete/editOfertaRetetaElementVariant/${id}`, data);
       return response.data;
     },
 
     onSuccess: (_, variables) => {
-      if (variables?.lucrare_id) {
-        queryClient.invalidateQueries({
-          queryKey: ["oferte", "retete", String(variables.lucrare_id)],
-        });
-      }
-
-      queryClient.invalidateQueries({ queryKey: ["oferte", "retete"] });
+      invalidateOfertaReteteList(queryClient, variables?.lucrare_id);
     },
   });
 };
@@ -284,19 +387,12 @@ export const useReorderOfertaRetete = () => {
 
   return useMutation({
     mutationFn: async (data) => {
-      const response = await api.put("/Oferte/reorderOfertaRetete", data);
+      const response = await api.put("/Oferte/Retete/reorderOfertaRetete", data);
       return response.data;
     },
 
     onSuccess: (_, variables) => {
-      if (variables?.lucrare_id) {
-        queryClient.invalidateQueries({
-          queryKey: ["oferte", "retete", String(variables.lucrare_id)],
-        });
-      }
-
-      queryClient.invalidateQueries({ queryKey: ["oferte", "retete"] });
-      queryClient.invalidateQueries({ queryKey: ["oferte"] });
+      invalidateOfertaReteteList(queryClient, variables?.lucrare_id);
     },
   });
 };
@@ -306,7 +402,7 @@ export const useDeleteOfertaReteta = () => {
 
   return useMutation({
     mutationFn: async ({ ids, ...data }) => {
-      const response = await api.delete("/Oferte/deleteOfertaRetete", {
+      const response = await api.delete("/Oferte/Retete/deleteOfertaRetete", {
         data: {
           ...data,
           ids: Array.isArray(ids) ? ids : [ids],
@@ -317,8 +413,7 @@ export const useDeleteOfertaReteta = () => {
     },
 
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["oferte"] });
-      queryClient.invalidateQueries({ queryKey: ["oferte", "retete"] });
+      invalidateOfertaReteteList(queryClient, variables?.lucrare_id);
     },
   });
 };
@@ -328,11 +423,26 @@ export const useDuplicateOfertaRetete = () => {
 
   return useMutation({
     mutationFn: async (payload) => {
-      const res = await api.post("/Oferte/duplicateOfertaRetete", payload);
+      const res = await api.post("/Oferte/Retete/duplicateOfertaRetete", payload);
       return res.data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries(["oferte-retete"]);
+    onSuccess: (_, variables) => {
+      invalidateOfertaReteteList(queryClient, variables?.target_lucrare_id || variables?.lucrare_id);
+    },
+  });
+};
+
+export const useReplaceOfertaRetete = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload) => {
+      const res = await api.put("/Oferte/Retete/replaceOfertaRetete", payload);
+      return res.data;
+    },
+
+    onSuccess: (_, variables) => {
+      invalidateOfertaReteteList(queryClient, variables?.lucrare_id);
     },
   });
 };
@@ -342,25 +452,12 @@ export const useActualizeazaOfertaRetete = () => {
 
   return useMutation({
     mutationFn: async (payload) => {
-      const res = await api.put("/Oferte/actualizeazaOfertaRetete", payload);
+      const res = await api.put("/Oferte/Retete/actualizeazaOfertaRetete", payload);
       return res.data;
     },
 
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["oferte"] });
-      queryClient.invalidateQueries({ queryKey: ["oferte", "retete"] });
-
-      if (variables?.lucrare_id) {
-        queryClient.invalidateQueries({
-          queryKey: ["oferte", "retete", String(variables.lucrare_id)],
-        });
-      }
-
-      if (variables?.santier_id) {
-        queryClient.invalidateQueries({
-          queryKey: ["oferte", variables.santier_id],
-        });
-      }
+      invalidateOfertaReteteList(queryClient, variables?.lucrare_id);
     },
   });
 };
@@ -368,7 +465,7 @@ export const useActualizeazaOfertaRetete = () => {
 export const useGetOfertaReteteFurnizori = () => {
   return useMutation({
     mutationFn: async (payload) => {
-      const response = await api.post("/Oferte/getOfertaReteteFurnizori", payload);
+      const response = await api.post("/Oferte/Retete/getOfertaReteteFurnizori", payload);
       return response.data;
     },
   });
@@ -379,25 +476,12 @@ export const useApplyOfertaReteteFurnizori = () => {
 
   return useMutation({
     mutationFn: async (payload) => {
-      const response = await api.post("/Oferte/applyOfertaReteteFurnizori", payload);
+      const response = await api.post("/Oferte/Retete/applyOfertaReteteFurnizori", payload);
       return response.data;
     },
 
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["oferte"] });
-      queryClient.invalidateQueries({ queryKey: ["oferte", "retete"] });
-
-      if (variables?.lucrare_id) {
-        queryClient.invalidateQueries({
-          queryKey: ["oferte", "retete", String(variables.lucrare_id)],
-        });
-      }
-
-      if (variables?.santier_id) {
-        queryClient.invalidateQueries({
-          queryKey: ["oferte", variables.santier_id],
-        });
-      }
+      invalidateOfertaReteteList(queryClient, variables?.lucrare_id);
     },
   });
 };

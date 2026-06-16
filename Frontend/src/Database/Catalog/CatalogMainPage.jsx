@@ -43,6 +43,8 @@ export default function CatalogMainPage({ tipResursa, isSelectionMode = false, o
     limba: true,
     variante: true,
     cod: true,
+    clasa1: false,
+    clasa2: false,
     denumire: true,
     descriere: true,
     unitate: true,
@@ -178,7 +180,7 @@ export default function CatalogMainPage({ tipResursa, isSelectionMode = false, o
 
   return (
     <div className="h-full w-full flex justify-center overflow-hidden items-center">
-      <div className={`${!isSelectionMode ? "w-[95%] h-[95%] rounded-lg" : "rounded-t-lg w-full h-full"} flex flex-col p-4 gap-4 overflow-hidden bg-background relative `}>
+      <div className={`${!isSelectionMode ? "w-[95%] h-[95%] rounded-lg" : "rounded-t-lg w-full h-full"} flex flex-col p-3 xxxl:p-4 gap-3 xxxl:gap-4 overflow-hidden bg-background relative `}>
         {/* --- 1. HEADER (FILTRE) --- */}
         <CatalogFilters
           config={config} // Trimitem configuratia dinamica
@@ -204,7 +206,7 @@ export default function CatalogMainPage({ tipResursa, isSelectionMode = false, o
 
         {/* --- 2. LISTA ȘI PAGINAREA --- */}
         <div className="flex-1 w-full bg-card rounded-lg overflow-hidden relative shadow-base border border-border flex flex-col">
-          <div className="flex-1 p-5 overflow-hidden flex flex-col relative">
+          <div className="flex-1 p-3 xxxl:p-5 overflow-hidden flex flex-col relative">
             {resurseList.length > 0 ? (
               <CatalogList
                 config={config} // Trimitem configuratia
@@ -222,7 +224,7 @@ export default function CatalogMainPage({ tipResursa, isSelectionMode = false, o
               />
             ) : (
               <div className="flex-1 w-full flex justify-center items-center rounded-lg border border-border bg-muted/10">
-                <span className="text-xl text-muted-foreground italic">
+                <span className="text-base xxxl:text-xl text-muted-foreground italic">
                   {searchDebounced.trim() === "" && advancedFiltersDebounced.cod === ""
                     ? `Nu am găsit niciun/nicio ${config.title.toLowerCase()} conform criteriilor de căutare.`
                     : `Nu am găsit niciun/nicio ${config.title.toLowerCase()} conform criteriilor de căutare.`}
@@ -234,9 +236,9 @@ export default function CatalogMainPage({ tipResursa, isSelectionMode = false, o
           </div>
 
           {/* PAGINARE BAZĂ */}
-          <div className="shrink-0 border-t border-border bg-muted/10 p-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-base text-foreground font-medium">Arată:</span>
+          <div className="shrink-0 border-t border-border bg-muted/10 p-2.5 xxxl:p-3 flex items-center justify-between">
+            <div className="flex items-center gap-1.5 xxxl:gap-2">
+              <span className="text-sm xxxl:text-base text-foreground font-medium">Arată:</span>
               <Input
                 type="text"
                 value={limitInput}
@@ -247,19 +249,19 @@ export default function CatalogMainPage({ tipResursa, isSelectionMode = false, o
                 onBlur={() => {
                   if (limitInput === "" || parseInt(limitInput) < 1) setLimitInput("50");
                 }}
-                className="w-[60px] h-8 text-center bg-background text-foreground px-2"
+                className="w-[54px] xxxl:w-[60px] h-8 text-sm xxxl:text-base text-center bg-background text-foreground px-2"
               />
-              <span className="text-base text-foreground font-medium">rânduri</span>
+              <span className="text-sm xxxl:text-base text-foreground font-medium">rânduri</span>
             </div>
 
-            <div className="flex items-center gap-4">
-              <Button variant="default" size="lg" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className={config.hoverButton}>
+            <div className="flex items-center gap-3 xxxl:gap-4">
+              <Button variant="default" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className={`h-9 xxxl:h-10 px-3 xxxl:px-4 text-sm xxxl:text-base ${config.hoverButton}`}>
                 <FontAwesomeIcon icon={faChevronLeft} className="text-sm" /> Înapoi
               </Button>
-              <span className="text-base font-semibold text-foreground">
+              <span className="text-sm xxxl:text-base font-semibold text-foreground">
                 Pagina {page} / {totalPages || 1}
               </span>
-              <Button variant="default" size="lg" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= (totalPages || 1)} className={config.hoverButton}>
+              <Button variant="default" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= (totalPages || 1)} className={`h-9 xxxl:h-10 px-3 xxxl:px-4 text-sm xxxl:text-base ${config.hoverButton}`}>
                 Înainte <FontAwesomeIcon icon={faChevronRight} className="text-sm" />
               </Button>
             </div>

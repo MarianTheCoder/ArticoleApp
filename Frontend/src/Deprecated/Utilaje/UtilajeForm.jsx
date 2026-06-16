@@ -1,8 +1,4 @@
-import {
-  faArrowRightArrowLeft,
-  faCancel,
-  faPlus,
-} from "@fortawesome/free-solid-svg-icons";
+import { faArrowRightArrowLeft, faCancel, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React, { useRef, useState } from "react";
 import api from "../../api/axiosAPI";
@@ -42,18 +38,9 @@ export default function UtilajeForm() {
     formDataSend.append("cod_definitie", formData.cod_definitie.trim());
     formDataSend.append("clasa_utilaj", formData.clasa_utilaj.trim());
     formDataSend.append("utilaj", formData.utilaj.trim());
-    formDataSend.append(
-      "utilaj_fr",
-      formData.utilaj_fr ? formData.utilaj_fr.trim() : ""
-    );
-    formDataSend.append(
-      "descriere",
-      formData.descriere ? formData.descriere.trim() : ""
-    );
-    formDataSend.append(
-      "descriere_fr",
-      formData.descriere_fr ? formData.descriere_fr.trim() : ""
-    );
+    formDataSend.append("utilaj_fr", formData.utilaj_fr ? formData.utilaj_fr.trim() : "");
+    formDataSend.append("descriere", formData.descriere ? formData.descriere.trim() : "");
+    formDataSend.append("descriere_fr", formData.descriere_fr ? formData.descriere_fr.trim() : "");
     formDataSend.append("cost_amortizare", formData.cost_amortizare.trim());
     formDataSend.append("pret_utilaj", formData.pret_utilaj.trim());
     formDataSend.append("unitate_masura", formData.unitate_masura.trim());
@@ -69,9 +56,7 @@ export default function UtilajeForm() {
       formData.cost_amortizare.trim() === "" ||
       formData.pret_utilaj.trim() === ""
     ) {
-      alert(
-        "Toate campurile sunt obligatorii (fara FR daca nu e selectata limba FR)"
-      );
+      alert("Toate campurile sunt obligatorii (fara FR daca nu e selectata limba FR)");
       return;
     }
     if (formData.limba === "FR" && formData.utilaj_fr.trim() === "") {
@@ -81,15 +66,11 @@ export default function UtilajeForm() {
     // console.log(formDataSend)
     try {
       if (selectedEdit != null) {
-        await api.put(
-          `/Utilaje/api/editUtilajDef/${selectedEdit}`,
-          formDataSend,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          }
-        );
+        await api.put(`/Utilaje/api/editUtilajDef/${selectedEdit}`, formDataSend, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
         // console.log('Utilaj edited');
         setSelectedEdit(null);
       } else {
@@ -118,7 +99,7 @@ export default function UtilajeForm() {
       setPreview(defaultPhoto);
       handleReload();
     } catch (error) {
-      console.error("Upload error:", error);
+      console.log("Upload error:", error);
       firstInputRef.current.focus();
     }
   };
@@ -203,14 +184,12 @@ export default function UtilajeForm() {
   const deleteRow = async (e) => {
     e.preventDefault();
     try {
-      const response = await api.delete(
-        `/Utilaje/api/deleteUtilajDef/${selectedDelete}`
-      );
+      const response = await api.delete(`/Utilaje/api/deleteUtilajDef/${selectedDelete}`);
       // console.log(response);
       setSelectedDelete(null);
       handleReload();
     } catch (error) {
-      console.error("Error deleting data:", error);
+      console.log("Error deleting data:", error);
     }
   };
 
@@ -245,26 +224,14 @@ export default function UtilajeForm() {
     <>
       <div className="w-full text-sm containerWhiter">
         <div className="flex justify-center items-center text-black  ">
-          <form
-            onSubmit={handleSubmit}
-            className="w-full p-4 px-6 rounded-lg shadow-xl"
-          >
+          <form onSubmit={handleSubmit} className="w-full p-4 px-6 rounded-lg shadow-xl">
             <div className="grid grid-cols-[auto_auto_auto_auto_1fr_auto_auto_auto_auto] xxxl:gap-4 md:gap-2 xl:gap-3 items-center">
               {/* Limba Dropdown */}
               <div className="flex flex-col items-center">
-                <label
-                  htmlFor="unit"
-                  className="col-span-1 font-medium text-black"
-                >
+                <label htmlFor="unit" className="col-span-1 font-medium text-black">
                   Limbă
                 </label>
-                <select
-                  id="limba"
-                  name="limba"
-                  value={formData.limba}
-                  onChange={handleChange}
-                  className=" px-1 py-2 rounded-lg outline-none shadow-sm "
-                >
+                <select id="limba" name="limba" value={formData.limba} onChange={handleChange} className=" px-1 py-2 rounded-lg outline-none shadow-sm ">
                   <option value="RO">RO</option>
                   <option value="FR">FR</option>
                 </select>
@@ -282,135 +249,64 @@ export default function UtilajeForm() {
                       src={preview == null ? "" : preview}
                     ></img>
                   </div>
-                  <input
-                    id="hiddenFileInput"
-                    type="file"
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
+                  <input id="hiddenFileInput" type="file" onChange={handleFileChange} className="hidden" />
                 </div>
               </div>
 
               {/* Clasa Utilaj */}
               {formData.limba == "RO" ? (
                 <div className="flex flex-col items-center">
-                  <label
-                    htmlFor="unit"
-                    className="col-span-1 font-medium text-black"
-                  >
+                  <label htmlFor="unit" className="col-span-1 font-medium text-black">
                     Clasă
                   </label>
-                  <select
-                    id="clasa_utilaj"
-                    name="clasa_utilaj"
-                    value={formData.clasa_utilaj}
-                    onChange={handleChange}
-                    className="py-2 text-center max-w-64 rounded-lg outline-none shadow-sm "
-                  >
+                  <select id="clasa_utilaj" name="clasa_utilaj" value={formData.clasa_utilaj} onChange={handleChange} className="py-2 text-center max-w-64 rounded-lg outline-none shadow-sm ">
                     <option value="Regie">Regie</option>
                     <option value="Dezafectare">Dezafectare</option>
-                    <option value="Amenajări interioare">
-                      Amenajări interioare
-                    </option>
+                    <option value="Amenajări interioare">Amenajări interioare</option>
                     <option value="Electrice">Electrice</option>
                     <option value="Sanitare">Sanitare</option>
                     <option value="Termice">Termice</option>
-                    <option value="Climatizare Ventilație">
-                      Climatizare Ventilație
-                    </option>
-                    <option value="Amenajări exterioare">
-                      Amenajări exterioare
-                    </option>
+                    <option value="Climatizare Ventilație">Climatizare Ventilație</option>
+                    <option value="Amenajări exterioare">Amenajări exterioare</option>
                     <option value="Tâmplărie">Tâmplărie</option>
                     <option value="Mobilă">Mobilă</option>
-                    <option value="Confecții Metalice">
-                      Confecții Metalice
-                    </option>
-                    <option value="Prelucrări Ceramice/Piatră Naturală">
-                      Prelucrări Ceramice/Piatră Naturală
-                    </option>
+                    <option value="Confecții Metalice">Confecții Metalice</option>
+                    <option value="Prelucrări Ceramice/Piatră Naturală">Prelucrări Ceramice/Piatră Naturală</option>
                     <option value="Ofertare/Devizare">Ofertare/Devizare</option>
-                    <option value="Management de proiect">
-                      Management de proiect
-                    </option>
+                    <option value="Management de proiect">Management de proiect</option>
                     <option value="Reparații">Reparații</option>
                   </select>
                 </div>
               ) : (
                 <div className="flex flex-col items-center">
-                  <label
-                    htmlFor="unit"
-                    className="col-span-1 font-medium text-black"
-                  >
+                  <label htmlFor="unit" className="col-span-1 font-medium text-black">
                     Clasă
                   </label>
-                  <select
-                    id="clasa_utilaj"
-                    name="clasa_utilaj"
-                    value={formData.clasa_utilaj}
-                    onChange={handleChange}
-                    className=" px-1 py-2 rounded-lg max-w-64 outline-none shadow-sm "
-                  >
-                    <option value="Gros œuvre - maçonnerie">
-                      Gros œuvre - maçonnerie
-                    </option>
-                    <option value="Plâtrerie (plaque de plâtre)">
-                      Plâtrerie (plaque de plâtre)
-                    </option>
+                  <select id="clasa_utilaj" name="clasa_utilaj" value={formData.clasa_utilaj} onChange={handleChange} className=" px-1 py-2 rounded-lg max-w-64 outline-none shadow-sm ">
+                    <option value="Gros œuvre - maçonnerie">Gros œuvre - maçonnerie</option>
+                    <option value="Plâtrerie (plaque de plâtre)">Plâtrerie (plaque de plâtre)</option>
                     <option value="Vrd">Vrd</option>
-                    <option value="Espace vert - aménagement extérieur">
-                      Espace vert - aménagement extérieur
-                    </option>
-                    <option value="Charpente - bardage et couverture métallique">
-                      Charpente - bardage et couverture métallique
-                    </option>
-                    <option value="Couverture - zinguerie">
-                      Couverture - zinguerie
-                    </option>
+                    <option value="Espace vert - aménagement extérieur">Espace vert - aménagement extérieur</option>
+                    <option value="Charpente - bardage et couverture métallique">Charpente - bardage et couverture métallique</option>
+                    <option value="Couverture - zinguerie">Couverture - zinguerie</option>
                     <option value="Étanchéité">Étanchéité</option>
-                    <option value="Plomberie - sanitaire">
-                      Plomberie - sanitaire
-                    </option>
+                    <option value="Plomberie - sanitaire">Plomberie - sanitaire</option>
                     <option value="Chauffage">Chauffage</option>
                     <option value="Ventilation">Ventilation</option>
                     <option value="Climatisation">Climatisation</option>
                     <option value="Électricité">Électricité</option>
-                    <option value="Charpente et ossature bois">
-                      Charpente et ossature bois
-                    </option>
-                    <option value="Menuiserie extérieure">
-                      Menuiserie extérieure
-                    </option>
-                    <option value="Menuiserie agencement intérieur">
-                      Menuiserie agencement intérieur
-                    </option>
-                    <option value="Métallerie (acier - aluminium)">
-                      Métallerie (acier - aluminium)
-                    </option>
-                    <option value="Store et fermeture">
-                      Store et fermeture
-                    </option>
-                    <option value="Peinture - revêtement intérieur">
-                      Peinture - revêtement intérieur
-                    </option>
-                    <option value="Ravalement peinture - revêtement extérieur">
-                      Ravalement peinture - revêtement extérieur
-                    </option>
-                    <option value="Vitrerie - miroiterie">
-                      Vitrerie - miroiterie
-                    </option>
-                    <option value="Carrelage et revêtement mural">
-                      Carrelage et revêtement mural
-                    </option>
-                    <option value="Revêtement de sol (sauf carrelage)">
-                      Revêtement de sol (sauf carrelage)
-                    </option>
-                    <option value="Ouvrages communs TCE">
-                      Ouvrages communs TCE
-                    </option>
-                    <option value="Rénovation énergétique">
-                      Rénovation énergétique
-                    </option>
+                    <option value="Charpente et ossature bois">Charpente et ossature bois</option>
+                    <option value="Menuiserie extérieure">Menuiserie extérieure</option>
+                    <option value="Menuiserie agencement intérieur">Menuiserie agencement intérieur</option>
+                    <option value="Métallerie (acier - aluminium)">Métallerie (acier - aluminium)</option>
+                    <option value="Store et fermeture">Store et fermeture</option>
+                    <option value="Peinture - revêtement intérieur">Peinture - revêtement intérieur</option>
+                    <option value="Ravalement peinture - revêtement extérieur">Ravalement peinture - revêtement extérieur</option>
+                    <option value="Vitrerie - miroiterie">Vitrerie - miroiterie</option>
+                    <option value="Carrelage et revêtement mural">Carrelage et revêtement mural</option>
+                    <option value="Revêtement de sol (sauf carrelage)">Revêtement de sol (sauf carrelage)</option>
+                    <option value="Ouvrages communs TCE">Ouvrages communs TCE</option>
+                    <option value="Rénovation énergétique">Rénovation énergétique</option>
                   </select>
                 </div>
               )}
@@ -431,23 +327,13 @@ export default function UtilajeForm() {
               {/* div de schimbat unde pun datele!! ro si fr pentru ca spatiul e mic rau */}
               <div className=" grid grid-cols-[auto_1fr_1.5fr] gap-2 border p-2 rounded-lg border-black">
                 <div className="flex  justify-center gap-1 font-medium select-none items-center">
-                  <p
-                    className={`${itIsFR ? "text-green-400 font-bold" : "text-black"
-                      }`}
-                  >
-                    FR
-                  </p>
+                  <p className={`${itIsFR ? "text-green-400 font-bold" : "text-black"}`}>FR</p>
                   <FontAwesomeIcon
                     icon={faArrowRightArrowLeft}
                     onClick={() => setItIsFR((prev) => (prev ? false : true))}
                     className=" text-green-400 border-green-400 hover:text-green-500 hover:border-green-500 cursor-pointer border-2 p-2 rounded-full text-xl"
                   />
-                  <p
-                    className={`${itIsFR ? "text-black" : "text-green-400  font-boold"
-                      }`}
-                  >
-                    RO
-                  </p>
+                  <p className={`${itIsFR ? "text-black" : "text-green-400  font-boold"}`}>RO</p>
                 </div>
                 {/* Denumire Input for RO*/}
                 {!itIsFR ? (
@@ -465,9 +351,7 @@ export default function UtilajeForm() {
                       />
                     </div>
                     <div className="flex flex-col items-center">
-                      <label className=" font-medium text-black">
-                        Descriere
-                      </label>
+                      <label className=" font-medium text-black">Descriere</label>
                       <textarea
                         type="text"
                         rows={3}
@@ -482,9 +366,7 @@ export default function UtilajeForm() {
                 ) : (
                   <>
                     <div className="flex flex-col items-center">
-                      <label className=" font-medium text-black">
-                        Utilaj FR
-                      </label>
+                      <label className=" font-medium text-black">Utilaj FR</label>
                       <textarea
                         rows={3}
                         type="text"
@@ -496,9 +378,7 @@ export default function UtilajeForm() {
                       />
                     </div>
                     <div className="flex flex-col items-center">
-                      <label className=" font-medium text-black">
-                        Descriere FR
-                      </label>
+                      <label className=" font-medium text-black">Descriere FR</label>
                       <textarea
                         type="text"
                         rows={3}
@@ -558,13 +438,7 @@ export default function UtilajeForm() {
                 <label htmlFor="unit" className="font-medium text-black">
                   Unitate
                 </label>
-                <select
-                  id="unitate_masura"
-                  name="unitate_masura"
-                  value={formData.unitate_masura}
-                  onChange={handleChange}
-                  className="px-4 py-2 border  rounded-lg outline-none shadow-sm "
-                >
+                <select id="unitate_masura" name="unitate_masura" value={formData.unitate_masura} onChange={handleChange} className="px-4 py-2 border  rounded-lg outline-none shadow-sm ">
                   <option value="U">U</option>
                   <option value="m">m</option>
                   <option value="m²">m²</option>
@@ -579,9 +453,7 @@ export default function UtilajeForm() {
               </div>
               {/* cost amortizare */}
               <div className="flex flex-col items-center">
-                <label className=" font-medium text-black">
-                  Cost Amortizare
-                </label>
+                <label className=" font-medium text-black">Cost Amortizare</label>
                 <input
                   type="text"
                   id="cost_amortizare"
@@ -611,58 +483,37 @@ export default function UtilajeForm() {
 
               {!selectedDelete && !selectedEdit && !selectedDouble ? (
                 <div className="flex text-base xxxl:text-[0.8rem]  justify-center items-center ">
-                  <button
-                    type="submit"
-                    className="bg-green-500 hover:bg-green-600 text-black  mt-6 px-2 py-2 flex justify-center  items-center rounded-lg"
-                  >
+                  <button type="submit" className="bg-green-500 hover:bg-green-600 text-black  mt-6 px-2 py-2 flex justify-center  items-center rounded-lg">
                     <FontAwesomeIcon icon={faPlus} className="pr-2" /> Încarcă
                   </button>
                 </div>
               ) : selectedDelete ? (
                 <div className="flex gap-2 text-base justify-center xxxl:text-[0.8rem] items-center ">
-                  <button
-                    onClick={(e) => deleteRow(e)}
-                    className="bg-red-500 hover:bg-red-600 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg"
-                  >
+                  <button onClick={(e) => deleteRow(e)} className="bg-red-500 hover:bg-red-600 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg">
                     <FontAwesomeIcon icon={faCancel} className="pr-2" />
                     Șterge
                   </button>
-                  <button
-                    onClick={(e) => cancelDelete(e)}
-                    className="bg-green-500 hover:bg-green-600 text- text mt-6 px-4 py-2 flex  items-center rounded-lg"
-                  >
+                  <button onClick={(e) => cancelDelete(e)} className="bg-green-500 hover:bg-green-600 text- text mt-6 px-4 py-2 flex  items-center rounded-lg">
                     Anulează
                   </button>
                 </div>
               ) : selectedDouble ? (
                 <div className="flex gap-2 items-center ">
-                  <button
-                    type="submit"
-                    className="bg-amber-500 hover:bg-amber-600 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg"
-                  >
+                  <button type="submit" className="bg-amber-500 hover:bg-amber-600 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg">
                     <FontAwesomeIcon icon={faPlus} className="pr-3" />
                     Dublează
                   </button>
-                  <button
-                    onClick={(e) => cancelDouble(e)}
-                    className="bg-red-500 hover:bg-red-600 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg"
-                  >
+                  <button onClick={(e) => cancelDouble(e)} className="bg-red-500 hover:bg-red-600 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg">
                     {" "}
                     Anulează
                   </button>
                 </div>
               ) : (
                 <div className="flex gap-2  text-base justify-center items-center xxxl:text-[0.8rem] ">
-                  <button
-                    type="submit"
-                    className="bg-green-500 hover:bg-green-600 text-black  mt-6 px-2 py-2 flex  items-center rounded-lg"
-                  >
+                  <button type="submit" className="bg-green-500 hover:bg-green-600 text-black  mt-6 px-2 py-2 flex  items-center rounded-lg">
                     <FontAwesomeIcon icon={faPlus} className="pr-2" /> Editează
                   </button>
-                  <button
-                    onClick={(e) => cancelEdit(e)}
-                    className="bg-red-500 hover:bg-red-600 text-black  mt-6 px-2 py-2 flex  items-center rounded-lg"
-                  >
+                  <button onClick={(e) => cancelEdit(e)} className="bg-red-500 hover:bg-red-600 text-black  mt-6 px-2 py-2 flex  items-center rounded-lg">
                     {" "}
                     Anulează
                   </button>

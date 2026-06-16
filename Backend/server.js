@@ -13,17 +13,13 @@ const { verifyMailer } = require("./utils/mailer");
 
 const loginRoute = require("./Routes/LoginRoutes");
 const UsersRoute = require("./Routes/UsersRoutes");
-// const ManoperaRoutes = require("./Routes/ManoperaRoutes");
-// const MaterialeRoutes = require("./Routes/MaterialeRoutes");
-// const UtilajeRoutes = require("./Routes/UtilajeRoutes");
-// const RetetaRoutes = require("./Routes/RetetaRoutes");
-// const TransportRoutes = require("./Routes/TransportRoutes");
-const OferteRoutes = require("./Routes/OferteRoutes");
+const OferteRoutes = require("./Routes/Oferte/OferteRoutes");
 const RezerveRoutes = require("./Routes/RezerveRoutes");
 const FormulareRoutes = require("./Routes/FormulareRoutes");
 // const SarciniRoutes = require("./Routes/SarciniRoutes");
 const CRMRoutes = require("./Routes/CRM/CRMRoutes");
 const CatalogRoutes = require("./Routes/CatalogRoutes");
+const InventarRoutes = require("./Routes/InventarRoutes");
 const initializeDB = require("./utils/InitializeDB");
 const initializeDBforCRM = require("./utils/InitializeDBforCRM");
 
@@ -110,7 +106,7 @@ async function initializeDatabase() {
     console.log("Initializing CRM database...");
     await initializeDBforCRM(global.db);
   } catch (error) {
-    console.error("Error initializing database:", error);
+    console.log("Error initializing database:", error);
     throw error;
   }
 }
@@ -122,17 +118,13 @@ app.get("/ping", (req, res) => {
 // Routes
 app.use("/auth", loginRoute);
 app.use("/users", UsersRoute);
-// app.use("/Manopera", ManoperaRoutes);
-// app.use("/Materiale", MaterialeRoutes);
-// app.use("/Utilaje", UtilajeRoutes);
-// app.use("/Retete", RetetaRoutes);
-// app.use("/Transport", TransportRoutes);
 app.use("/Oferte", OferteRoutes);
 app.use("/Rezerve", RezerveRoutes);
 app.use("/Formulare", FormulareRoutes);
 // app.use("/Sarcini", SarciniRoutes);
 app.use("/CRM", CRMRoutes);
 app.use("/Catalog", CatalogRoutes);
+app.use("/Inventar", InventarRoutes);
 
 // Serve static files from the React app
 app.use(express.static(path.join(__dirname, "../"))); // Adjust the path to your React build folder
@@ -151,7 +143,7 @@ app.listen(port, "0.0.0.0", async () => {
       scheduleCancelSessions(); // Schedule the job to cancel expired sessions
       console.log(`✅ Server is running on http://0.0.0.0:${port}`);
     } catch (err) {
-      console.error("Error initializing database:", err);
+      console.log("Error initializing database:", err);
     }
   }, 2000); // Wait 2 seconds
 });

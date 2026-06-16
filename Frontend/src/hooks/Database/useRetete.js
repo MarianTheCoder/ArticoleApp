@@ -1,6 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/api/axiosAPI";
 
+const invalidateReteteClaseData = (queryClient) =>
+  Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["retete-clase-coduri"] }),
+    queryClient.invalidateQueries({ queryKey: ["retete"] }),
+    queryClient.invalidateQueries({ queryKey: ["oferte", "retete"] }),
+    queryClient.invalidateQueries({ queryKey: ["oferte"] }),
+  ]);
+
 // ============================================================================
 // 1. GET: FETCH REȚETE (PĂRINȚI) + ELEMENTELE LOR (Dacă le returnezi direct din GET)
 // ============================================================================
@@ -59,7 +67,62 @@ export const useDeleteReteta = () => {
 };
 
 // ============================================================================
-// 3. MUTATIONS PENTRU REȚETE ELEMENTE (Dacă vrei să le faci separat, altfel le poți include în editarea rețetei)
+// 3. CATALOG CLASE / CODURI REȚETE
+// ============================================================================
+
+export const useReteteClaseCoduri = (includeInactive = true, scope = "reteta") => {
+  return useQuery({
+    queryKey: ["retete-clase-coduri", scope, includeInactive],
+    queryFn: async () => {
+      const response = await api.get("/Catalog/getReteteClaseCoduri", {
+        params: { scope, includeInactive: includeInactive ? 1 : 0 },
+      });
+      return response.data;
+    },
+  });
+};
+
+export const useBulkSaveRetetaClaseCoduri = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload) => {
+      const response = await api.post("/Catalog/bulkSaveRetetaClaseCoduri", payload);
+      return response.data;
+    },
+
+    onSuccess: async (_data, variables) => {
+      await invalidateReteteClaseData(queryClient);
+    },
+  });
+};
+
+// export const useAddRetetaClasaCod = () => {
+//   const queryClient = useQueryClient();
+//   return useMutation({
+//     mutationFn: async (data) => await api.post("/Catalog/addRetetaClasaCod", data),
+//     onSuccess: () => invalidateReteteClaseData(queryClient),
+//   });
+// };
+
+// export const useEditRetetaClasaCod = () => {
+//   const queryClient = useQueryClient();
+//   return useMutation({
+//     mutationFn: async ({ id, data }) => await api.put(`/Catalog/editRetetaClasaCod/${id}`, data),
+//     onSuccess: () => invalidateReteteClaseData(queryClient),
+//   });
+// };
+
+// export const useDeleteRetetaClasaCod = () => {
+//   const queryClient = useQueryClient();
+//   return useMutation({
+//     mutationFn: async ({ id, scope = "reteta" }) => await api.delete(`/Catalog/deleteRetetaClasaCod/${id}`, { params: { scope } }),
+//     onSuccess: () => invalidateReteteClaseData(queryClient),
+//   });
+// };
+
+// ============================================================================
+// 4. MUTATIONS PENTRU REȚETE ELEMENTE (Dacă vrei să le faci separat, altfel le poți include în editarea rețetei)
 // ============================================================================
 
 export const useAddRetetaElement = () => {

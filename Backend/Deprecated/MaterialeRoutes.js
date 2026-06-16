@@ -29,13 +29,11 @@ router.post("/api/setMaterialDef", authenticateToken("materiale", "c"), upload.s
       cost_preferential,
       pret_vanzare,
       tip_material,
-      childs = null
+      childs = null,
     } = req.body;
 
     if (!clasa_material || !denumire || !unitate_masura) {
-      return res
-        .status(400)
-        .json({ message: "Toate câmpurile obligatorii trebuie completate!" });
+      return res.status(400).json({ message: "Toate câmpurile obligatorii trebuie completate!" });
     }
 
     const uploadsDir = path.join(__dirname, "../uploads/Materiale");
@@ -46,9 +44,7 @@ router.post("/api/setMaterialDef", authenticateToken("materiale", "c"), upload.s
     if (req.file) {
       const allowedMimeTypes = ["image/jpeg", "image/png"];
       if (!allowedMimeTypes.includes(req.file.mimetype)) {
-        return res
-          .status(400)
-          .json({ message: "Fișierul trebuie să fie imagine (JPG sau PNG)." });
+        return res.status(400).json({ message: "Fișierul trebuie să fie imagine (JPG sau PNG)." });
       }
 
       const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
@@ -56,11 +52,9 @@ router.post("/api/setMaterialDef", authenticateToken("materiale", "c"), upload.s
       const finalPath = path.join(uploadsDir, fileName);
 
       const image = await Jimp.fromBuffer(req.file.buffer);
-      const resizedBuffer = await image
-        .resize({ w: 800 })
-        .getBuffer(req.file.mimetype, {
-          quality: req.file.mimetype === "image/jpeg" ? 70 : undefined,
-        });
+      const resizedBuffer = await image.resize({ w: 800 }).getBuffer(req.file.mimetype, {
+        quality: req.file.mimetype === "image/jpeg" ? 70 : undefined,
+      });
 
       await fs.writeFile(finalPath, resizedBuffer);
 
@@ -96,10 +90,7 @@ router.post("/api/setMaterialDef", authenticateToken("materiale", "c"), upload.s
     const newDefinitionId = result.insertId;
 
     if (childs) {
-      const [childRows] = await conn.query(
-        `SELECT * FROM Materiale WHERE definitie_id = ?`,
-        [childs]
-      );
+      const [childRows] = await conn.query(`SELECT * FROM Materiale WHERE definitie_id = ?`, [childs]);
 
       for (const row of childRows) {
         let copiedPhotoPath = row.photoUrl;
@@ -124,7 +115,7 @@ router.post("/api/setMaterialDef", authenticateToken("materiale", "c"), upload.s
               copiedPhotoPath = path.relative(path.join(__dirname, "../"), newPath).replace(/\\/g, "/");
               console.log(`✅ Copiat cu fallback: ${copiedPhotoPath}`);
             } catch (fallbackErr) {
-              console.error(`❌ Fallback read/write failed pentru ${row.photoUrl}:`, fallbackErr);
+              console.log(`❌ Fallback read/write failed pentru ${row.photoUrl}:`, fallbackErr);
               copiedPhotoPath = "uploads/Materiale/no-image-icon.png";
             }
           }
@@ -135,21 +126,10 @@ router.post("/api/setMaterialDef", authenticateToken("materiale", "c"), upload.s
             INSERT INTO Materiale (definitie_id, cod_material, furnizor, descriere, descriere_fr, cost_unitar, cost_preferential, pret_vanzare, photoUrl) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
           `,
-          [
-            newDefinitionId,
-            row.cod_material,
-            row.furnizor,
-            row.descriere,
-            row.descriere_fr,
-            row.cost_unitar,
-            row.cost_preferential,
-            row.pret_vanzare,
-            copiedPhotoPath,
-          ]
+          [newDefinitionId, row.cod_material, row.furnizor, row.descriere, row.descriere_fr, row.cost_unitar, row.cost_preferential, row.pret_vanzare, copiedPhotoPath],
         );
       }
     }
-
 
     await conn.commit(); // ✅ COMMIT dacă totul merge bine
     res.status(201).json({
@@ -158,7 +138,7 @@ router.post("/api/setMaterialDef", authenticateToken("materiale", "c"), upload.s
     });
   } catch (error) {
     await conn.rollback(); // ❌ REVERT dacă apare o eroare
-    console.error("Eroare server:", error);
+    console.log("Eroare server:", error);
     res.status(500).json({ message: "A apărut o eroare internă." });
   } finally {
     conn.release(); // 🧼 Închidem conexiunea la final
@@ -198,9 +178,7 @@ router.post("/api/setMaterial", authenticateToken("materiale", "c"), upload.sing
       // Imagine nouă trimisă => procesăm ca până acum
       const allowedMimeTypes = ["image/jpeg", "image/png"];
       if (!allowedMimeTypes.includes(req.file.mimetype)) {
-        return res
-          .status(400)
-          .json({ message: "Imaginea trebuie să fie JPG sau PNG." });
+        return res.status(400).json({ message: "Imaginea trebuie să fie JPG sau PNG." });
       }
 
       const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
@@ -208,20 +186,15 @@ router.post("/api/setMaterial", authenticateToken("materiale", "c"), upload.sing
       const finalPath = path.join(uploadsDir, fileName);
 
       const image = await Jimp.fromBuffer(req.file.buffer);
-      const resizedBuffer = await image
-        .resize({ w: 800 })
-        .getBuffer(req.file.mimetype, {
-          quality: req.file.mimetype === "image/jpeg" ? 70 : undefined,
-        });
+      const resizedBuffer = await image.resize({ w: 800 }).getBuffer(req.file.mimetype, {
+        quality: req.file.mimetype === "image/jpeg" ? 70 : undefined,
+      });
 
       await fs.writeFile(finalPath, resizedBuffer);
       photoPath = path.relative(path.join(__dirname, "../"), finalPath);
     } else {
       // 🧠 Nicio imagine trimisă → încearcă să iei-o de la părinte
-      const [parentPhotoRows] = await conn.execute(
-        `SELECT photoUrl FROM Materiale_Definition WHERE id = ? LIMIT 1`,
-        [id]
-      );
+      const [parentPhotoRows] = await conn.execute(`SELECT photoUrl FROM Materiale_Definition WHERE id = ? LIMIT 1`, [id]);
 
       const parentPhoto = parentPhotoRows[0]?.photoUrl;
 
@@ -245,7 +218,7 @@ router.post("/api/setMaterial", authenticateToken("materiale", "c"), upload.sing
             photoPath = newRelPath.replace(/\\/g, "/");
             console.log("✅ Fallback copy success!");
           } catch (readWriteErr) {
-            console.error("❌ Fallback read/write also failed:", readWriteErr);
+            console.log("❌ Fallback read/write also failed:", readWriteErr);
             photoPath = "uploads/Materiale/no-image-icon.png";
           }
         }
@@ -262,17 +235,7 @@ router.post("/api/setMaterial", authenticateToken("materiale", "c"), upload.sing
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
-    const [result] = await conn.execute(insertQuery, [
-      id,
-      cod_material,
-      furnizor,
-      descriere || null,
-      descriere_fr || null,
-      photoPath,
-      cost_unitar,
-      cost_preferential || null,
-      pret_vanzare,
-    ]);
+    const [result] = await conn.execute(insertQuery, [id, cod_material, furnizor, descriere || null, descriere_fr || null, photoPath, cost_unitar, cost_preferential || null, pret_vanzare]);
 
     await conn.commit();
     res.status(201).json({
@@ -282,7 +245,7 @@ router.post("/api/setMaterial", authenticateToken("materiale", "c"), upload.sing
     });
   } catch (error) {
     await conn.rollback();
-    console.error("Eroare server:", error);
+    console.log("Eroare server:", error);
     res.status(500).json({ message: "Eroare internă la adăugare material." });
   } finally {
     conn.release();
@@ -295,32 +258,15 @@ router.post("/api/setMaterial", authenticateToken("materiale", "c"), upload.sing
 
 router.get("/api/materialeDef", async (req, res) => {
   try {
-    const {
-      offset = 0,
-      limit = 10,
-      cod = "",
-      denumire = "",
-      descriere = "",
-      tip_material = "",
-      limba = "",
-      furnizor = "",
-      clasa_material = "",
-    } = req.query;
+    const { offset = 0, limit = 10, cod = "", denumire = "", descriere = "", tip_material = "", limba = "", furnizor = "", clasa_material = "" } = req.query;
     const asc_denumire = req.query.asc_denumire === "true";
     const dateOrder = req.query.dateOrder;
 
     const parsedOffset = parseInt(offset, 10);
     const parsedLimit = parseInt(limit, 10);
 
-    if (
-      isNaN(parsedOffset) ||
-      isNaN(parsedLimit) ||
-      parsedOffset < 0 ||
-      parsedLimit <= 0
-    ) {
-      return res
-        .status(400)
-        .json({ message: "Invalid offset or limit values." });
+    if (isNaN(parsedOffset) || isNaN(parsedLimit) || parsedOffset < 0 || parsedLimit <= 0) {
+      return res.status(400).json({ message: "Invalid offset or limit values." });
     }
 
     // Base query
@@ -397,7 +343,7 @@ router.get("/api/materialeDef", async (req, res) => {
       limit: parsedLimit,
     });
   } catch (err) {
-    console.error(err);
+    console.log(err);
     res.status(500).json({ error: "Database error" });
   }
 });
@@ -415,14 +361,14 @@ router.get("/api/getSpecificMaterial/:id", async (req, res) => {
 
     res.json(rows);
   } catch (err) {
-    console.error("Error fetching materiale children:", err);
+    console.log("Error fetching materiale children:", err);
     res.status(500).json({ message: "Internal server error" });
   }
 });
 
-router.get('/api/materialeLight', async (req, res) => {
+router.get("/api/materialeLight", async (req, res) => {
   try {
-    const { cod_definitie = '', denumire = '', clasa = "", tip_material = "", limba = "" } = req.query;
+    const { cod_definitie = "", denumire = "", clasa = "", tip_material = "", limba = "" } = req.query;
 
     // Base query
     let query = `SELECT * FROM Materiale_Definition`;
@@ -455,7 +401,7 @@ router.get('/api/materialeLight', async (req, res) => {
 
     // If filters exist, add them to the query
     if (whereClauses.length > 0) {
-      query += ` WHERE ${whereClauses.join(' AND ')}`;
+      query += ` WHERE ${whereClauses.join(" AND ")}`;
     }
 
     query += ` ORDER BY denumire ASC`;
@@ -467,15 +413,14 @@ router.get('/api/materialeLight', async (req, res) => {
       data: rows,
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Database error' });
+    console.log(err);
+    res.status(500).json({ error: "Database error" });
   }
 });
 
 // DELETE
 //
 //
-
 
 router.delete("/api/deleteMaterialDef/:id", authenticateToken("materiale", "s"), async (req, res) => {
   const { id } = req.params;
@@ -490,36 +435,22 @@ router.delete("/api/deleteMaterialDef/:id", authenticateToken("materiale", "s"),
     await conn.beginTransaction(); // 🔐 start
 
     // 1️⃣ Luăm toate pozele din Materiale
-    const [copiiRows] = await conn.execute(
-      `SELECT photoUrl FROM Materiale WHERE definitie_id = ?`,
-      [id]
-    );
+    const [copiiRows] = await conn.execute(`SELECT photoUrl FROM Materiale WHERE definitie_id = ?`, [id]);
 
     // 2️⃣ Luăm poza de la definiție
-    const [defRows] = await conn.execute(
-      `SELECT photoUrl FROM Materiale_Definition WHERE id = ?`,
-      [id]
-    );
+    const [defRows] = await conn.execute(`SELECT photoUrl FROM Materiale_Definition WHERE id = ?`, [id]);
 
-    const toatePozele = [
-      ...copiiRows.map((r) => r.photoUrl),
-      ...(defRows[0] ? [defRows[0].photoUrl] : []),
-    ];
+    const toatePozele = [...copiiRows.map((r) => r.photoUrl), ...(defRows[0] ? [defRows[0].photoUrl] : [])];
 
     // 3️⃣ Ștergem copiii
     await conn.execute(`DELETE FROM Materiale WHERE definitie_id = ?`, [id]);
 
     // 4️⃣ Ștergem definiția
-    const [deleteDef] = await conn.execute(
-      `DELETE FROM Materiale_Definition WHERE id = ?`,
-      [id]
-    );
+    const [deleteDef] = await conn.execute(`DELETE FROM Materiale_Definition WHERE id = ?`, [id]);
 
     if (deleteDef.affectedRows === 0) {
       await conn.rollback();
-      return res
-        .status(404)
-        .json({ message: "Definiția nu a fost găsită sau deja ștearsă." });
+      return res.status(404).json({ message: "Definiția nu a fost găsită sau deja ștearsă." });
     }
 
     await conn.commit(); // ✅ finalizează tranzacția
@@ -533,7 +464,7 @@ router.delete("/api/deleteMaterialDef/:id", authenticateToken("materiale", "s"),
           console.log("Șters:", imgPath);
         } catch (err) {
           if (err.code !== "ENOENT") {
-            console.error("Eroare la ștergere poză:", err);
+            console.log("Eroare la ștergere poză:", err);
           }
         }
       }
@@ -543,7 +474,7 @@ router.delete("/api/deleteMaterialDef/:id", authenticateToken("materiale", "s"),
       message: "Definiția și toate instanțele au fost șterse cu succes!",
     });
   } catch (err) {
-    console.error("❌ Eroare la ștergere completă:", err);
+    console.log("❌ Eroare la ștergere completă:", err);
     await conn.rollback(); // ⛔ revine dacă ceva crapă
     res.status(500).json({ message: "Eroare internă la ștergere." });
   } finally {
@@ -560,10 +491,7 @@ router.delete("/api/material/:id", authenticateToken("materiale", "s"), async (r
     }
 
     // 1. Găsim imaginea asociată
-    const [rows] = await global.db.execute(
-      `SELECT photoUrl FROM Materiale WHERE id = ?`,
-      [id]
-    );
+    const [rows] = await global.db.execute(`SELECT photoUrl FROM Materiale WHERE id = ?`, [id]);
 
     if (rows.length === 0) {
       return res.status(404).json({ message: "Materialul nu a fost găsit." });
@@ -580,7 +508,7 @@ router.delete("/api/material/:id", authenticateToken("materiale", "s"), async (r
         console.log("Imagine ștearsă:", imagePath);
       } catch (err) {
         if (err.code !== "ENOENT") {
-          console.error("Eroare la ștergerea imaginii:", err);
+          console.log("Eroare la ștergerea imaginii:", err);
         } else {
           console.warn("Imagine deja inexistentă:", absolutePath);
         }
@@ -588,22 +516,15 @@ router.delete("/api/material/:id", authenticateToken("materiale", "s"), async (r
     }
 
     // 3. Ștergem materialul din DB
-    const [result] = await global.db.execute(
-      `DELETE FROM Materiale WHERE id = ?`,
-      [id]
-    );
+    const [result] = await global.db.execute(`DELETE FROM Materiale WHERE id = ?`, [id]);
 
     if (result.affectedRows === 0) {
-      return res
-        .status(404)
-        .json({ message: "Material inexistent sau deja șters." });
+      return res.status(404).json({ message: "Material inexistent sau deja șters." });
     }
 
-    res
-      .status(200)
-      .json({ message: "Materialul și imaginea au fost șterse cu succes!" });
+    res.status(200).json({ message: "Materialul și imaginea au fost șterse cu succes!" });
   } catch (err) {
-    console.error("Eroare la ștergere:", err);
+    console.log("Eroare la ștergere:", err);
     res.status(500).json({ message: "Eroare internă de server." });
   }
 });
@@ -612,170 +533,39 @@ router.delete("/api/material/:id", authenticateToken("materiale", "s"), async (r
 //
 //
 
-router.put(
-  "/api/editMaterialDef/:id",
-  authenticateToken("materiale", "e"),
-  upload.single("poza"),
-  async (req, res) => {
-    const { id } = req.params;
-    const {
-      limba,
-      clasa_material,
-      cod_definitie,
-      denumire,
-      denumire_fr,
-      descriere,
-      descriere_fr,
-      unitate_masura,
-      cost_unitar,
-      cost_preferential,
-      pret_vanzare,
-      tip_material,
-    } = req.body;
-
-    try {
-      if (!id || isNaN(id)) {
-        return res.status(400).json({ message: "ID invalid sau lipsă." });
-      }
-
-      // Găsește doar rânduri principale (definitie)
-      const [rows] = await global.db.execute(
-        `SELECT photoUrl FROM Materiale_Definition WHERE id = ?`,
-        [id]
-      );
-
-      if (rows.length === 0) {
-        return res
-          .status(404)
-          .json({ message: "Definiția materialului nu a fost găsită." });
-      }
-
-      let oldPhotoPath = rows[0].photoUrl;
-      let newPhotoPath = oldPhotoPath;
-
-      // Dacă avem imagine nouă
-      if (req.file) {
-        const allowedMimeTypes = ["image/jpeg", "image/png"];
-        if (!allowedMimeTypes.includes(req.file.mimetype)) {
-          return res
-            .status(400)
-            .json({ message: "Imaginea trebuie să fie JPG sau PNG." });
-        }
-
-        // Șterge imaginea veche dacă nu e fallback
-        if (oldPhotoPath && !oldPhotoPath.includes("no-image-icon")) {
-          const oldFilePath = path.join(__dirname, "..", oldPhotoPath);
-          try {
-            await fs.unlink(oldFilePath);
-          } catch (err) {
-            if (err.code !== "ENOENT")
-              console.error("Eroare la ștergerea imaginii vechi:", err);
-          }
-        }
-
-        const uploadsDir = path.join(__dirname, "../uploads/Materiale");
-        await fs.mkdir(uploadsDir, { recursive: true });
-
-        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-        const fileName = `${uniqueSuffix}-${req.file.originalname}`;
-        const finalPath = path.join(uploadsDir, fileName);
-
-        const image = await Jimp.fromBuffer(req.file.buffer);
-        const resizedBuffer = await image
-          .resize({ w: 800 })
-          .getBuffer(req.file.mimetype, {
-            quality: req.file.mimetype === "image/jpeg" ? 70 : undefined,
-          });
-
-        await fs.writeFile(finalPath, resizedBuffer);
-
-        newPhotoPath = path.relative(path.join(__dirname, "../"), finalPath).replace(/\\/g, "/");
-      }
-
-      const updateQuery = `
-        UPDATE Materiale_Definition SET
-          limba = ?, clasa_material = ?, cod_definitie = ?, denumire = ?, denumire_fr = ?,
-          descriere = ?, descriere_fr = ?, photoUrl = ?, unitate_masura = ?, cost_unitar = ?,
-          cost_preferential = ?, pret_vanzare = ?, tip_material = ?, data = NOW()
-        WHERE id = ?
-      `;
-
-      const [result] = await global.db.execute(updateQuery, [
-        limba,
-        clasa_material,
-        cod_definitie,
-        denumire,
-        denumire_fr,
-        descriere,
-        descriere_fr,
-        newPhotoPath,
-        unitate_masura,
-        cost_unitar,
-        cost_preferential,
-        pret_vanzare,
-        tip_material,
-        id,
-      ]);
-
-      if (result.affectedRows === 0) {
-        return res.status(404).json({
-          message: "Fără modificări sau material inexistent.",
-        });
-      }
-
-      res.status(200).json({ message: "Definiție actualizată cu succes!" });
-    } catch (error) {
-      console.error("Eroare server:", error);
-      res.status(500).json({ message: "Eroare internă la actualizare." });
-    }
-  }
-);
-
-router.put("/api/editMaterial", authenticateToken("materiale", "e"), upload.single("poza"), async (req, res) => {
-  const {
-    id,
-    definitie_id,
-    cod_material,
-    furnizor,
-    descriere,
-    descriere_fr,
-    cost_unitar,
-    cost_preferential,
-    pret_vanzare,
-  } = req.body;
+router.put("/api/editMaterialDef/:id", authenticateToken("materiale", "e"), upload.single("poza"), async (req, res) => {
+  const { id } = req.params;
+  const { limba, clasa_material, cod_definitie, denumire, denumire_fr, descriere, descriere_fr, unitate_masura, cost_unitar, cost_preferential, pret_vanzare, tip_material } = req.body;
 
   try {
     if (!id || isNaN(id)) {
       return res.status(400).json({ message: "ID invalid sau lipsă." });
     }
 
-    const [rows] = await global.db.execute(
-      `SELECT photoUrl FROM Materiale WHERE id = ?`,
-      [id]
-    );
+    // Găsește doar rânduri principale (definitie)
+    const [rows] = await global.db.execute(`SELECT photoUrl FROM Materiale_Definition WHERE id = ?`, [id]);
 
     if (rows.length === 0) {
-      return res.status(404).json({ message: "Materialul nu a fost găsit." });
+      return res.status(404).json({ message: "Definiția materialului nu a fost găsită." });
     }
 
     let oldPhotoPath = rows[0].photoUrl;
     let newPhotoPath = oldPhotoPath;
 
+    // Dacă avem imagine nouă
     if (req.file) {
       const allowedMimeTypes = ["image/jpeg", "image/png"];
       if (!allowedMimeTypes.includes(req.file.mimetype)) {
-        return res
-          .status(400)
-          .json({ message: "Imaginea trebuie să fie JPG sau PNG." });
+        return res.status(400).json({ message: "Imaginea trebuie să fie JPG sau PNG." });
       }
 
+      // Șterge imaginea veche dacă nu e fallback
       if (oldPhotoPath && !oldPhotoPath.includes("no-image-icon")) {
         const oldFilePath = path.join(__dirname, "..", oldPhotoPath);
         try {
           await fs.unlink(oldFilePath);
         } catch (err) {
-          if (err.code !== "ENOENT")
-            console.error("Eroare la ștergerea imaginii vechi:", err);
+          if (err.code !== "ENOENT") console.log("Eroare la ștergerea imaginii vechi:", err);
         }
       }
 
@@ -787,11 +577,96 @@ router.put("/api/editMaterial", authenticateToken("materiale", "e"), upload.sing
       const finalPath = path.join(uploadsDir, fileName);
 
       const image = await Jimp.fromBuffer(req.file.buffer);
-      const resizedBuffer = await image
-        .resize({ w: 800 })
-        .getBuffer(req.file.mimetype, {
-          quality: req.file.mimetype === "image/jpeg" ? 70 : undefined,
-        });
+      const resizedBuffer = await image.resize({ w: 800 }).getBuffer(req.file.mimetype, {
+        quality: req.file.mimetype === "image/jpeg" ? 70 : undefined,
+      });
+
+      await fs.writeFile(finalPath, resizedBuffer);
+
+      newPhotoPath = path.relative(path.join(__dirname, "../"), finalPath).replace(/\\/g, "/");
+    }
+
+    const updateQuery = `
+        UPDATE Materiale_Definition SET
+          limba = ?, clasa_material = ?, cod_definitie = ?, denumire = ?, denumire_fr = ?,
+          descriere = ?, descriere_fr = ?, photoUrl = ?, unitate_masura = ?, cost_unitar = ?,
+          cost_preferential = ?, pret_vanzare = ?, tip_material = ?, data = NOW()
+        WHERE id = ?
+      `;
+
+    const [result] = await global.db.execute(updateQuery, [
+      limba,
+      clasa_material,
+      cod_definitie,
+      denumire,
+      denumire_fr,
+      descriere,
+      descriere_fr,
+      newPhotoPath,
+      unitate_masura,
+      cost_unitar,
+      cost_preferential,
+      pret_vanzare,
+      tip_material,
+      id,
+    ]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        message: "Fără modificări sau material inexistent.",
+      });
+    }
+
+    res.status(200).json({ message: "Definiție actualizată cu succes!" });
+  } catch (error) {
+    console.log("Eroare server:", error);
+    res.status(500).json({ message: "Eroare internă la actualizare." });
+  }
+});
+
+router.put("/api/editMaterial", authenticateToken("materiale", "e"), upload.single("poza"), async (req, res) => {
+  const { id, definitie_id, cod_material, furnizor, descriere, descriere_fr, cost_unitar, cost_preferential, pret_vanzare } = req.body;
+
+  try {
+    if (!id || isNaN(id)) {
+      return res.status(400).json({ message: "ID invalid sau lipsă." });
+    }
+
+    const [rows] = await global.db.execute(`SELECT photoUrl FROM Materiale WHERE id = ?`, [id]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Materialul nu a fost găsit." });
+    }
+
+    let oldPhotoPath = rows[0].photoUrl;
+    let newPhotoPath = oldPhotoPath;
+
+    if (req.file) {
+      const allowedMimeTypes = ["image/jpeg", "image/png"];
+      if (!allowedMimeTypes.includes(req.file.mimetype)) {
+        return res.status(400).json({ message: "Imaginea trebuie să fie JPG sau PNG." });
+      }
+
+      if (oldPhotoPath && !oldPhotoPath.includes("no-image-icon")) {
+        const oldFilePath = path.join(__dirname, "..", oldPhotoPath);
+        try {
+          await fs.unlink(oldFilePath);
+        } catch (err) {
+          if (err.code !== "ENOENT") console.log("Eroare la ștergerea imaginii vechi:", err);
+        }
+      }
+
+      const uploadsDir = path.join(__dirname, "../uploads/Materiale");
+      await fs.mkdir(uploadsDir, { recursive: true });
+
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      const fileName = `${uniqueSuffix}-${req.file.originalname}`;
+      const finalPath = path.join(uploadsDir, fileName);
+
+      const image = await Jimp.fromBuffer(req.file.buffer);
+      const resizedBuffer = await image.resize({ w: 800 }).getBuffer(req.file.mimetype, {
+        quality: req.file.mimetype === "image/jpeg" ? 70 : undefined,
+      });
 
       await fs.writeFile(finalPath, resizedBuffer);
       newPhotoPath = path.relative(path.join(__dirname, "../"), finalPath).replace(/\\/g, "/");
@@ -804,23 +679,10 @@ router.put("/api/editMaterial", authenticateToken("materiale", "e"), upload.sing
         WHERE id = ?
       `;
 
-    const [result] = await global.db.execute(updateQuery, [
-      definitie_id,
-      cod_material,
-      furnizor,
-      descriere,
-      descriere_fr,
-      cost_unitar,
-      cost_preferential,
-      pret_vanzare,
-      newPhotoPath,
-      id,
-    ]);
+    const [result] = await global.db.execute(updateQuery, [definitie_id, cod_material, furnizor, descriere, descriere_fr, cost_unitar, cost_preferential, pret_vanzare, newPhotoPath, id]);
 
     if (result.affectedRows === 0) {
-      return res
-        .status(404)
-        .json({ message: "Materialul nu a fost actualizat." });
+      return res.status(404).json({ message: "Materialul nu a fost actualizat." });
     }
 
     res.status(200).json({
@@ -828,7 +690,7 @@ router.put("/api/editMaterial", authenticateToken("materiale", "e"), upload.sing
       photoUrl: newPhotoPath,
     });
   } catch (error) {
-    console.error("Eroare la update Material:", error);
+    console.log("Eroare la update Material:", error);
     res.status(500).json({ message: "Eroare internă la actualizare." });
   }
 });

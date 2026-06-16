@@ -26,7 +26,7 @@ export default function AssignSantiere() {
         setSantiere(res.data?.santiere || []);
         setAssignments(res.data?.assignments || []);
       } catch (err) {
-        console.error("❌ Eroare la fetch:", err);
+        console.log("❌ Eroare la fetch:", err);
       } finally {
         setLoading(false);
       }
@@ -35,9 +35,7 @@ export default function AssignSantiere() {
   }, []);
 
   const getUserAssignments = (userId) => {
-    return assignments
-      .filter((a) => a.user_id === userId)
-      .map((a) => a.santier_id);
+    return assignments.filter((a) => a.user_id === userId).map((a) => a.santier_id);
   };
 
   const openEditModal = (user) => {
@@ -48,11 +46,7 @@ export default function AssignSantiere() {
   };
 
   const toggleTempSelection = (santierId) => {
-    setTempSelected((prev) =>
-      prev.includes(santierId)
-        ? prev.filter((id) => id !== santierId)
-        : [...prev, santierId],
-    );
+    setTempSelected((prev) => (prev.includes(santierId) ? prev.filter((id) => id !== santierId) : [...prev, santierId]));
   };
 
   const confirmEdit = async () => {
@@ -99,7 +93,7 @@ export default function AssignSantiere() {
       setShowModal(false);
       setEditingUser(null);
     } catch (err) {
-      console.error("❌ Eroare la salvare:", err);
+      console.log("❌ Eroare la salvare:", err);
       setSaveError("Nu s-a putut salva. Încearcă din nou.");
     } finally {
       setSaving(false);
@@ -150,23 +144,14 @@ export default function AssignSantiere() {
                 {users.map((user) => {
                   const assignedIds = getUserAssignments(user.id);
                   return (
-                    <tr
-                      key={user.id}
-                      className="border-t border-gray-300 hover:bg-gray-50 transition-colors"
-                    >
+                    <tr key={user.id} className="border-t border-gray-300 hover:bg-gray-50 transition-colors">
                       {/* Poză */}
                       <td className="p-2">
-                        <img
-                          src={photoAPI + "/" + user.photo_url}
-                          alt="poza"
-                          className="w-12 h-12 rounded-full object-cover border border-gray-400 mx-auto"
-                        />
+                        <img src={photoAPI + "/" + user.photo_url} alt="poza" className="w-12 h-12 rounded-full object-cover border border-gray-400 mx-auto" />
                       </td>
 
                       {/* Utilizator */}
-                      <td className="p-2 text-left font-semibold">
-                        {user.name}
-                      </td>
+                      <td className="p-2 text-left font-semibold">{user.name}</td>
 
                       {/* Santiere asignate */}
                       <td className="p-2">
@@ -189,10 +174,7 @@ export default function AssignSantiere() {
 
                       {/* Acțiuni */}
                       <td className="p-2">
-                        <button
-                          className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                          onClick={() => openEditModal(user)}
-                        >
+                        <button className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors" onClick={() => openEditModal(user)}>
                           Edit
                         </button>
                       </td>
@@ -210,36 +192,21 @@ export default function AssignSantiere() {
           <div className="fixed inset-0 text-black bg-black/50 flex justify-center items-center z-50">
             <div className="bg-white rounded-lg shadow-lg p-6 w-[800px] h-[70vh] flex flex-col">
               <div>
-                <h2 className="text-lg font-bold mb-1">
-                  Editare activitǎți pentru:
-                </h2>
+                <h2 className="text-lg font-bold mb-1">Editare activitǎți pentru:</h2>
                 <div className="text-base mb-4">{editingUser.name} </div>
 
                 {/* 2 columns: RO / FR */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto max-h-[44vh] pr-2">
                   {/* Column RO */}
                   <div>
-                    <div className="font-semibold text-sm uppercase tracking-wide text-gray-600 mb-2">
-                      Santiere – RO
-                    </div>
+                    <div className="font-semibold text-sm uppercase tracking-wide text-gray-600 mb-2">Santiere – RO</div>
                     <div className="flex flex-col gap-2">
                       {santiere
                         .filter((s) => (s.limba || "RO").toUpperCase() === "RO")
-                        .sort((a, b) =>
-                          (a.name || "").localeCompare(b.name || ""),
-                        )
+                        .sort((a, b) => (a.name || "").localeCompare(b.name || ""))
                         .map((s) => (
-                          <label
-                            key={s.id}
-                            className="flex text-base items-center gap-3 px-2 py-1 rounded hover:bg-gray-50"
-                          >
-                            <input
-                              className="w-5 h-5"
-                              type="checkbox"
-                              checked={tempSelected.includes(s.id)}
-                              onChange={() => toggleTempSelection(s.id)}
-                              disabled={saving}
-                            />
+                          <label key={s.id} className="flex text-base items-center gap-3 px-2 py-1 rounded hover:bg-gray-50">
+                            <input className="w-5 h-5" type="checkbox" checked={tempSelected.includes(s.id)} onChange={() => toggleTempSelection(s.id)} disabled={saving} />
                             <span
                               className="inline-block w-3 h-3 rounded-full border"
                               style={{
@@ -256,27 +223,14 @@ export default function AssignSantiere() {
 
                   {/* Column FR */}
                   <div>
-                    <div className="font-semibold text-sm uppercase tracking-wide text-gray-600 mb-2">
-                      Santiere – FR
-                    </div>
+                    <div className="font-semibold text-sm uppercase tracking-wide text-gray-600 mb-2">Santiere – FR</div>
                     <div className="flex flex-col gap-2">
                       {santiere
                         .filter((s) => (s.limba || "RO").toUpperCase() === "FR")
-                        .sort((a, b) =>
-                          (a.name || "").localeCompare(b.name || ""),
-                        )
+                        .sort((a, b) => (a.name || "").localeCompare(b.name || ""))
                         .map((s) => (
-                          <label
-                            key={s.id}
-                            className="flex text-base items-center gap-3 px-2 py-1 rounded hover:bg-gray-50"
-                          >
-                            <input
-                              className="w-5 h-5"
-                              type="checkbox"
-                              checked={tempSelected.includes(s.id)}
-                              onChange={() => toggleTempSelection(s.id)}
-                              disabled={saving}
-                            />
+                          <label key={s.id} className="flex text-base items-center gap-3 px-2 py-1 rounded hover:bg-gray-50">
+                            <input className="w-5 h-5" type="checkbox" checked={tempSelected.includes(s.id)} onChange={() => toggleTempSelection(s.id)} disabled={saving} />
                             <span
                               className="inline-block w-3 h-3 rounded-full border"
                               style={{
@@ -297,18 +251,10 @@ export default function AssignSantiere() {
               <div className="mt-4">
                 <div className="w-full h-px bg-gray-300 mb-4" />
                 <div className="flex justify-end gap-3">
-                  <button
-                    className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded disabled:opacity-60"
-                    onClick={cancelEdit}
-                    disabled={saving}
-                  >
+                  <button className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded disabled:opacity-60" onClick={cancelEdit} disabled={saving}>
                     Anulează
                   </button>
-                  <button
-                    className="px-4 py-2 bg-green-600 hover:bg-green-500 w-48 text-white rounded disabled:opacity-60"
-                    onClick={confirmEdit}
-                    disabled={saving}
-                  >
+                  <button className="px-4 py-2 bg-green-600 hover:bg-green-500 w-48 text-white rounded disabled:opacity-60" onClick={confirmEdit} disabled={saving}>
                     {saving ? "Se salvează..." : "Confirmă"}
                   </button>
                 </div>

@@ -72,7 +72,7 @@ export default function CatalogSubDefDialog({ config, open, setOpen, mode = "add
                   setPhotoDeleted(false);
                 }
               } catch (error) {
-                console.error("Eroare la încărcarea pozei originale:", error);
+                console.log("Eroare la încărcarea pozei originale:", error);
                 if (isMounted) {
                   setPreviewUrl(null);
                   setSelectedFile(null);
@@ -240,25 +240,25 @@ export default function CatalogSubDefDialog({ config, open, setOpen, mode = "add
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="sm:max-w-[70rem] p-0 gap-0 overflow-hidden">
         <form onSubmit={handleSubmit} className="flex flex-col">
-          <div className="px-6 pt-5 pb-4 bg-muted border-b border-border">
-            <div className="flex items-center gap-4">
-              <div className={`h-14 w-14 rounded-lg flex items-center justify-center shrink-0 ${config.bgClass}`}>
-                <FontAwesomeIcon icon={isDuplicateMode ? faCopy : config.icon} className={`text-2xl ${config.colorClass}`} />
+          <div className="px-4 xxxl:px-6 pt-4 xxxl:pt-5 pb-3 xxxl:pb-4 bg-muted border-b border-border">
+            <div className="flex items-center gap-3 xxxl:gap-4">
+              <div className={`h-12 w-12 xxxl:h-14 xxxl:w-14 rounded-lg flex items-center justify-center shrink-0 ${config.bgClass}`}>
+                <FontAwesomeIcon icon={isDuplicateMode ? faCopy : config.icon} className={`text-xl xxxl:text-2xl ${config.colorClass}`} />
               </div>
               <div>
-                <p className={`text-sm font-bold uppercase tracking-widest mb-0.5 ${config.colorClass}`}>Variantă {config.title}</p>
-                <DialogTitle className="text-lg font-bold">{isDuplicateMode ? "Dublează variantă" : actualMode === "edit" ? "Editează variantă" : "Adaugă variantă nouă"}</DialogTitle>
+                <p className={`text-xs xxxl:text-sm font-bold uppercase tracking-widest mb-0.5 ${config.colorClass}`}>Variantă {config.title}</p>
+                <DialogTitle className="text-base xxxl:text-lg font-bold">{isDuplicateMode ? "Dublează variantă" : actualMode === "edit" ? "Editează variantă" : "Adaugă variantă nouă"}</DialogTitle>
               </div>
             </div>
           </div>
 
-          <div className="px-6 py-4 flex flex-col gap-4">
-            <div className="flex gap-5 items-center">
+          <div className="px-4 xxxl:px-6 py-3 xxxl:py-4 flex flex-col gap-3 xxxl:gap-4">
+            <div className="flex gap-4 xxxl:gap-5 items-center">
               {/* DROPZONE PENTRU POZĂ */}
               {config.hasPhoto && (
                 <div className="relative">
                   <div
-                    className={`relative w-24 h-24 shrink-0 border-2 rounded-xl flex items-center justify-center cursor-pointer transition-all overflow-hidden ${
+                    className={`relative w-20 h-20 xxxl:w-24 xxxl:h-24 shrink-0 border-2 rounded-xl flex items-center justify-center cursor-pointer transition-all overflow-hidden ${
                       isDragging ? `border-${config.normalColor} scale-105` : "border-border hover:bg-muted/50"
                     }`}
                     onDragOver={handleDragOver}
@@ -275,7 +275,7 @@ export default function CatalogSubDefDialog({ config, open, setOpen, mode = "add
                       <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" />
                     ) : (
                       <div className="flex flex-col items-center gap-1.5 text-muted-foreground/60">
-                        <FontAwesomeIcon icon={faUpload} className="text-xl" />
+                        <FontAwesomeIcon icon={faUpload} className="text-lg xxxl:text-xl" />
                         <span className="text-[10px] font-bold uppercase tracking-wider text-center px-2 leading-tight">Drop </span>
                       </div>
                     )}
@@ -289,9 +289,9 @@ export default function CatalogSubDefDialog({ config, open, setOpen, mode = "add
               )}
 
               {/* INPUTURILE COD / COST / FURNIZOR / STATUS */}
-              <div className={`flex-1 grid grid-cols-3 ${config.id == "utilaj" ? "grid-cols-4" : ""} gap-4 mb-1`}>
-                <div className="flex flex-col gap-1.5">
-                  <Label className="font-semibold text-sm text-foreground">
+              <div className={`flex-1 grid grid-cols-3 ${config.id == "utilaj" ? "grid-cols-4" : ""} gap-3 xxxl:gap-4 mb-1`}>
+                <div className="flex flex-col gap-1 xxxl:gap-1.5">
+                  <Label className="font-semibold text-xs xxxl:text-sm text-foreground">
                     Cod Specific <span className="text-destructive">*</span>
                   </Label>
                   <Input value={draft.cod_specific} onChange={(e) => setField("cod_specific", e.target.value)} maxLength={15} className="h-9" />
@@ -299,15 +299,15 @@ export default function CatalogSubDefDialog({ config, open, setOpen, mode = "add
 
                 {/* Afișăm Furnizor SAU Status pe baza config-ului */}
                 {config.hasFurnizor && (
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="font-semibold text-sm text-foreground">Furnizor (Opțional)</Label>
+                  <div className="flex flex-col gap-1 xxxl:gap-1.5">
+                    <Label className="font-semibold text-xs xxxl:text-sm text-foreground">Furnizor (Opțional)</Label>
                     <Input value={draft.furnizor} onChange={(e) => setField("furnizor", e.target.value)} placeholder="Ex: Dedeman, Arabesque" className="h-9" />
                   </div>
                 )}
 
                 {config.hasStatus && (
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="font-semibold text-sm text-foreground">Status {config.title}</Label>
+                  <div className="flex flex-col gap-1 xxxl:gap-1.5">
+                    <Label className="font-semibold text-xs xxxl:text-sm text-foreground">Status {config.title}</Label>
                     <Select value={draft.status_utilaj} onValueChange={(v) => setField("status_utilaj", v)}>
                       <SelectTrigger className="h-9">
                         <SelectValue />
@@ -323,8 +323,8 @@ export default function CatalogSubDefDialog({ config, open, setOpen, mode = "add
                   </div>
                 )}
 
-                <div className="flex flex-col gap-1.5">
-                  <Label className="font-semibold text-sm text-foreground">Cost</Label>
+                <div className="flex flex-col gap-1 xxxl:gap-1.5">
+                  <Label className="font-semibold text-xs xxxl:text-sm text-foreground">Cost</Label>
                   <Input
                     type="text"
                     value={draft.cost}
@@ -339,30 +339,30 @@ export default function CatalogSubDefDialog({ config, open, setOpen, mode = "add
             </div>
 
             {/* TEXTE RO / FR */}
-            <div className="grid grid-cols-2 gap-4 mt-2">
-              <div className="flex flex-col gap-2 p-4 rounded-lg border bg-muted/20">
+            <div className="grid grid-cols-2 gap-3 xxxl:gap-4 mt-1 xxxl:mt-2">
+              <div className="flex flex-col gap-1.5 xxxl:gap-2 p-3 xxxl:p-4 rounded-lg border bg-muted/20">
                 <div className="flex items-center gap-2 mb-1">
                   <div className="rounded-md p-1 px-2 bg-cyan-500/5 border border-cyan-500 flex items-center justify-center">
                     <span className="text-sm font-bold text-cyan-600">RO</span>
                   </div>
-                  <span className="text-base text-foreground">Descriere</span>
+                  <span className="text-sm xxxl:text-base text-foreground">Descriere</span>
                 </div>
-                <Textarea value={draft.descriere} onChange={(e) => setField("descriere", e.target.value)} placeholder="Detalii specifice..." className="resize-none h-48 text-sm" />
+                <Textarea value={draft.descriere} onChange={(e) => setField("descriere", e.target.value)} placeholder="Detalii specifice..." className="resize-none h-40 xxxl:h-48 text-sm" />
               </div>
 
-              <div className="flex flex-col gap-2 p-4 rounded-lg border bg-muted/20">
+              <div className="flex flex-col gap-1.5 xxxl:gap-2 p-3 xxxl:p-4 rounded-lg border bg-muted/20">
                 <div className="flex items-center gap-2 mb-1">
                   <div className="rounded-md p-1 px-2 bg-lime-500/5 border border-lime-500 flex items-center justify-center">
                     <span className="text-sm font-bold text-lime-600">FR</span>
                   </div>
-                  <span className="text-base text-foreground">Descriere (FR)</span>
+                  <span className="text-sm xxxl:text-base text-foreground">Descriere (FR)</span>
                 </div>
-                <Textarea value={draft.descriere_fr} onChange={(e) => setField("descriere_fr", e.target.value)} placeholder="Détails spécifiques..." className="resize-none h-48 text-sm" />
+                <Textarea value={draft.descriere_fr} onChange={(e) => setField("descriere_fr", e.target.value)} placeholder="Détails spécifiques..." className="resize-none h-40 xxxl:h-48 text-sm" />
               </div>
             </div>
           </div>
 
-          <DialogFooter className="px-6 py-4 border-t bg-muted/5 gap-2">
+          <DialogFooter className="px-4 xxxl:px-6 py-3 xxxl:py-4 border-t bg-muted/5 gap-2">
             <div>
               {actualMode === "add" && !isDuplicateMode && (
                 <Button
@@ -374,7 +374,7 @@ export default function CatalogSubDefDialog({ config, open, setOpen, mode = "add
                     setSelectedFile(null);
                     setPreviewUrl(null);
                   }}
-                  className="mr-auto text-muted-foreground"
+                  className="h-9 xxxl:h-10 mr-auto text-sm xxxl:text-base text-muted-foreground"
                 >
                   <FontAwesomeIcon icon={faUndo} className="mr-2" /> Resetează
                 </Button>
@@ -382,11 +382,11 @@ export default function CatalogSubDefDialog({ config, open, setOpen, mode = "add
             </div>
             <div className="flex gap-2">
               <DialogClose asChild>
-                <Button variant="outline" type="button">
+                <Button variant="outline" type="button" className="h-9 xxxl:h-10 text-sm xxxl:text-base">
                   Anulează
                 </Button>
               </DialogClose>
-              <Button type="submit" className={`${buttonColorClass} ${buttonHoverClass} text-white`}>
+              <Button type="submit" className={`h-9 xxxl:h-10 text-sm xxxl:text-base ${buttonColorClass} ${buttonHoverClass} text-white`}>
                 <FontAwesomeIcon icon={isDuplicateMode ? faCopy : faSave} className="mr-2" />
                 {isDuplicateMode ? "Dublează" : actualMode === "edit" ? "Salvează" : "Adaugă"}
               </Button>

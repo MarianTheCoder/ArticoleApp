@@ -1,5 +1,36 @@
 const bcrypt = require("bcryptjs");
 
+const addColumnIfMissing = async (pool, tableName, columnName, definition) => {
+  try {
+    await pool.execute(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`);
+  } catch (err) {
+    if (err?.code === "ER_DUP_FIELDNAME" || err?.errno === 1060) return;
+    throw err;
+  }
+};
+
+const dropIndexIfExists = async (pool, tableName, indexName) => {
+  try {
+    await pool.execute(`ALTER TABLE ${tableName} DROP INDEX ${indexName}`);
+  } catch (err) {
+    if (err?.code === "ER_CANT_DROP_FIELD_OR_KEY" || err?.errno === 1091) return;
+    throw err;
+  }
+};
+
+const addIndexIfMissing = async (pool, tableName, indexDefinition) => {
+  try {
+    await pool.execute(`ALTER TABLE ${tableName} ADD ${indexDefinition}`);
+  } catch (err) {
+    if (err?.code === "ER_DUP_KEYNAME" || err?.errno === 1061) return;
+    throw err;
+  }
+};
+
+const modifyColumn = async (pool, tableName, columnName, definition) => {
+  await pool.execute(`ALTER TABLE ${tableName} MODIFY COLUMN ${columnName} ${definition}`);
+};
+
 async function initializeDB(pool) {
   const creatCompaniesTable = `
         CREATE TABLE IF NOT EXISTS S10_Companii (
@@ -273,6 +304,25 @@ async function initializeDB(pool) {
   await pool.execute(catalogSubcategoriiTable);
   console.log("S02_Catalog_Subcategorii table created or already exists.");
 
+  const inventarTable = `
+    CREATE TABLE IF NOT EXISTS S02_Inventar (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        limba VARCHAR(20) NOT NULL DEFAULT 'RO',
+        denumire VARCHAR(255) NOT NULL,
+        descriere TEXT,
+
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_by_user_id INT,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        updated_by_user_id INT,
+
+        INDEX idx_inventar_limba (limba),
+        INDEX idx_inventar_denumire (denumire)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `;
+  await pool.execute(inventarTable);
+  console.log("S02_Inventar table created or already exists.");
+
   ///
   //
   //
@@ -299,6 +349,32 @@ async function initializeDB(pool) {
     `;
   await pool.execute(reteteTable);
   console.log("Retete table created or already exists.");
+
+  const reteteClaseCoduriTable = `
+    CREATE TABLE IF NOT EXISTS S02_Retete_Clase_Coduri (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        scope VARCHAR(50) NOT NULL DEFAULT 'reteta',
+        level_no TINYINT NOT NULL,
+        code_segment VARCHAR(10) NOT NULL,
+        path_code VARCHAR(100) NOT NULL,
+        denumire_ro VARCHAR(255) NOT NULL,
+        denumire_fr VARCHAR(255),
+        descriere TEXT,
+        sort_order INT NOT NULL DEFAULT 0,
+        is_active TINYINT(1) NOT NULL DEFAULT 1,
+
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+        UNIQUE KEY uq_retete_clase_scope_path_code (scope, path_code),
+        INDEX idx_retete_clase_scope (scope),
+        INDEX idx_retete_clase_level (level_no),
+        INDEX idx_retete_clase_code_segment (code_segment),
+        INDEX idx_retete_clase_active (is_active)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `;
+  await pool.execute(reteteClaseCoduriTable);
+  console.log("S02_Retete_Clase_Coduri table created or already exists.");
 
   const reteteElementeTable = `
       CREATE TABLE IF NOT EXISTS S02_Retete_Elemente (
@@ -359,7 +435,9 @@ async function initializeDB(pool) {
 
     nume VARCHAR(255) NOT NULL,
     descriere TEXT,
+    status ENUM('inceput', 'blocat', 'terminat') NULL,
     coloane_config JSON NULL,
+    category_colors_config JSON NULL,
 
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -393,7 +471,8 @@ async function initializeDB(pool) {
     limba VARCHAR(20) NOT NULL DEFAULT 'RO',
 
     cod_reteta VARCHAR(255) NOT NULL,
-    clasa_reteta VARCHAR(255) NOT NULL,
+    class_snapshot JSON NULL,
+    class_path_code VARCHAR(100) NULL,
 
     denumire VARCHAR(255) NOT NULL,
     denumire_fr VARCHAR(255) NULL,
@@ -433,7 +512,6 @@ async function initializeDB(pool) {
     INDEX idx_oferte_retete_original (original_reteta_id),
     INDEX idx_oferte_retete_sort (lucrare_id, sort_order),
     INDEX idx_oferte_retete_cod (cod_reteta),
-    INDEX idx_oferte_retete_clasa (clasa_reteta),
     INDEX idx_oferte_retete_created_at (created_at)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 `;
@@ -454,6 +532,8 @@ async function initializeDB(pool) {
     tip_resursa ENUM('manopera', 'material', 'utilaj', 'transport') NOT NULL,
 
     cod_definitie VARCHAR(100) NOT NULL,
+    catalog_class_snapshot JSON NULL,
+    catalog_class_path_code VARCHAR(100) NULL,
     denumire VARCHAR(255) NOT NULL,
     denumire_fr VARCHAR(255) NULL,
 
@@ -607,6 +687,103 @@ async function initializeDB(pool) {
 
   await pool.execute(oferteReteteElementeTable);
   console.log("S03_Oferte_Retete_Elemente table created or already exists.");
+
+  const oferteCoeficientiTable = `
+  CREATE TABLE IF NOT EXISTS S03_Oferte_Coeficienti (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    lucrare_id INT NOT NULL,
+
+    nume VARCHAR(255) NOT NULL,
+
+    activ TINYINT(1) NOT NULL DEFAULT 1,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by_user_id INT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by_user_id INT NULL,
+
+    CONSTRAINT fk_oferte_coef_lucrare
+      FOREIGN KEY (lucrare_id)
+      REFERENCES S03_Oferte_Lucrari(id)
+      ON DELETE CASCADE
+      ON UPDATE CASCADE,
+
+    INDEX idx_oferte_coef_lucrare (lucrare_id),
+    INDEX idx_oferte_coef_activ (lucrare_id, activ)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+`;
+
+  await pool.execute(oferteCoeficientiTable);
+  console.log("S03_Oferte_Coeficienti table created or already exists.");
+
+  const oferteCoeficientiTinteTable = `
+  CREATE TABLE IF NOT EXISTS S03_Oferte_Coeficienti_Tinte (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    coeficient_id INT NOT NULL,
+
+    tinta_tip ENUM(
+      'reteta',
+      'element',
+      'clasa_reteta',
+      'clasa_catalog',
+      'tip_resursa',
+      'toate_retetele',
+      'toate_elementele'
+    ) NOT NULL,
+
+    actiune ENUM('include', 'exclude') NOT NULL DEFAULT 'include',
+
+    procent DECIMAL(10, 3) NULL DEFAULT NULL,
+
+    oferta_reteta_id INT NULL,
+    oferta_reteta_element_id INT NULL,
+
+    path_code VARCHAR(255) NULL,
+
+    tip_resursa ENUM(
+      'manopera',
+      'material',
+      'utilaj',
+      'transport'
+    ) NULL,
+
+    match_mode ENUM('exact', 'prefix') NOT NULL DEFAULT 'prefix',
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by_user_id INT NULL,
+
+    CONSTRAINT fk_oferte_coef_tinte_coef
+      FOREIGN KEY (coeficient_id)
+      REFERENCES S03_Oferte_Coeficienti(id)
+      ON DELETE CASCADE
+      ON UPDATE CASCADE,
+
+    CONSTRAINT fk_oferte_coef_tinte_reteta
+      FOREIGN KEY (oferta_reteta_id)
+      REFERENCES S03_Oferte_Retete(id)
+      ON DELETE CASCADE
+      ON UPDATE CASCADE,
+
+    CONSTRAINT fk_oferte_coef_tinte_element
+      FOREIGN KEY (oferta_reteta_element_id)
+      REFERENCES S03_Oferte_Retete_Elemente(id)
+      ON DELETE CASCADE
+      ON UPDATE CASCADE,
+
+    INDEX idx_coef_tinte_coef (coeficient_id),
+    INDEX idx_coef_tinte_tip (coeficient_id, tinta_tip),
+    INDEX idx_coef_tinte_actiune (coeficient_id, actiune),
+    INDEX idx_coef_tinte_reteta (oferta_reteta_id),
+    INDEX idx_coef_tinte_element (oferta_reteta_element_id),
+    INDEX idx_coef_tinte_path (tinta_tip, path_code),
+    INDEX idx_coef_tinte_resursa (tinta_tip, tip_resursa)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+`;
+
+  await pool.execute(oferteCoeficientiTinteTable);
+  console.log("S03_Oferte_Coeficienti_Tinte table created or already exists.");
 
   const sesiuniDeLucru = `
       CREATE TABLE IF NOT EXISTS S06_Sesiuni_De_Lucru (
@@ -999,7 +1176,7 @@ async function insertInitialAdminUser(pool) {
 
     console.log("Admin user inserted successfully.");
   } catch (err) {
-    console.error("Error inserting admin user:", err);
+    console.log("Error inserting admin user:", err);
   }
 }
 

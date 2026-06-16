@@ -17,7 +17,7 @@ import OverflowTooltip from "@/components/ui/OverflowTooltip";
 import WarningDialog from "@/components/ui/warning-dialog";
 
 const MAX_COLUMNS = 5;
-const MAX_COLUMN_NAME_LENGTH = 64;
+const MAX_COLUMN_NAME_LENGTH = 255;
 
 const makeColumnId = () => {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();

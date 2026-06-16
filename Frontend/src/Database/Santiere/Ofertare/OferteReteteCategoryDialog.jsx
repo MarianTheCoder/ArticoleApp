@@ -1,20 +1,24 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faLayerGroup, faXmark } from "@fortawesome/free-solid-svg-icons";
 
 import { buildAvailableCategoryFields, CATEGORY_LEVEL_COUNT, normalizeCategoryConfig } from "./helpers/OferteReteteHelpers";
 
-export default function OferteReteteCategoryDialog({ open, setOpen, dynamicColumns = [], value = [], onChange }) {
+export default function OferteReteteCategoryDialog({ open, setOpen, dynamicColumns = [], value = [], showTotals = false, onChange, onShowTotalsChange }) {
   const availableFields = useMemo(() => buildAvailableCategoryFields(dynamicColumns), [dynamicColumns]);
   const [draftConfig, setDraftConfig] = useState(() => normalizeCategoryConfig(value, availableFields));
+  const [draftShowTotals, setDraftShowTotals] = useState(!!showTotals);
 
   useEffect(() => {
     if (!open) return;
 
     setDraftConfig(normalizeCategoryConfig(value, availableFields));
-  }, [availableFields, open, value]);
+    setDraftShowTotals(!!showTotals);
+  }, [availableFields, open, showTotals, value]);
 
   const selectedKeys = useMemo(() => new Set(draftConfig.filter(Boolean)), [draftConfig]);
   const activeCount = draftConfig.filter(Boolean).length;
@@ -33,12 +37,14 @@ export default function OferteReteteCategoryDialog({ open, setOpen, dynamicColum
 
   const handleApply = () => {
     onChange?.(normalizeCategoryConfig(draftConfig, availableFields));
+    onShowTotalsChange?.(draftShowTotals);
     setOpen(false);
   };
 
   const handleClearAll = () => {
     const cleared = Array.from({ length: CATEGORY_LEVEL_COUNT }, () => "");
     setDraftConfig(cleared);
+    setDraftShowTotals(false);
   };
 
   return (
@@ -60,6 +66,11 @@ export default function OferteReteteCategoryDialog({ open, setOpen, dynamicColum
         </DialogHeader>
 
         <div className="grid gap-2 bg-card p-4">
+          <Label className="flex items-center gap-3 rounded-md border bg-muted/10 p-3 text-sm font-bold text-foreground">
+            <Checkbox checked={draftShowTotals} onCheckedChange={(checked) => setDraftShowTotals(!!checked)} className="w-5 h-5" />
+            Afișează costuri și totaluri pe rândurile de categorie
+          </Label>
+
           {Array.from({ length: CATEGORY_LEVEL_COUNT }, (_, levelIndex) => {
             const selectedKey = draftConfig[levelIndex] || "";
 

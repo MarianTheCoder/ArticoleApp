@@ -18,17 +18,11 @@ const generareRasfirat = async (req, res) => {
 
     const santierName = santierRows[0].name;
 
-    const [santiereDetaliiRows] = await global.db.execute(
-      `SELECT * FROM Santiere_detalii WHERE santier_id = ?`,
-      [santierId]
-    );
+    const [santiereDetaliiRows] = await global.db.execute(`SELECT * FROM Santiere_detalii WHERE santier_id = ?`, [santierId]);
     if (!santiereDetaliiRows.length) return res.status(404).json({ message: "Santier details not found" });
     const santiereDetalii = santiereDetaliiRows[0];
 
-    const [reteteRows] = await global.db.execute(
-      `SELECT * FROM Santier_Retete WHERE oferta_parts_id = ? ORDER BY clasa_reteta ASC`,
-      [id]
-    );
+    const [reteteRows] = await global.db.execute(`SELECT * FROM Santier_Retete WHERE oferta_parts_id = ? ORDER BY clasa_reteta ASC`, [id]);
 
     const results = [];
     const costs = {};
@@ -47,20 +41,14 @@ const generareRasfirat = async (req, res) => {
         Material: {},
         Transport: {},
         Utilaj: {},
-        cantitate_reteta: reteta.cantitate
+        cantitate_reteta: reteta.cantitate,
       };
 
       // === MANOPERA ===
-      let [manopera] = await global.db.execute(
-        `SELECT * FROM Santier_Retete_Manopera_Definition WHERE santier_reteta_id = ?`,
-        [santier_reteta_id]
-      );
+      let [manopera] = await global.db.execute(`SELECT * FROM Santier_Retete_Manopera_Definition WHERE santier_reteta_id = ?`, [santier_reteta_id]);
 
       for (const def of manopera) {
-        const [child] = await global.db.execute(
-          `SELECT * FROM Santier_Retete_Manopera WHERE definitie_id = ? LIMIT 1`,
-          [def.id]
-        );
+        const [child] = await global.db.execute(`SELECT * FROM Santier_Retete_Manopera WHERE definitie_id = ? LIMIT 1`, [def.id]);
         const item = child[0] || def;
         const id = child[0]?.id || def.id;
 
@@ -81,16 +69,10 @@ const generareRasfirat = async (req, res) => {
       }
 
       // === MATERIALE ===
-      let [materiale] = await global.db.execute(
-        `SELECT * FROM Santier_Retete_Materiale_Definition WHERE santier_reteta_id = ?`,
-        [santier_reteta_id]
-      );
+      let [materiale] = await global.db.execute(`SELECT * FROM Santier_Retete_Materiale_Definition WHERE santier_reteta_id = ?`, [santier_reteta_id]);
 
       for (const def of materiale) {
-        const [child] = await global.db.execute(
-          `SELECT * FROM Santier_Retete_Materiale WHERE definitie_id = ? LIMIT 1`,
-          [def.id]
-        );
+        const [child] = await global.db.execute(`SELECT * FROM Santier_Retete_Materiale WHERE definitie_id = ? LIMIT 1`, [def.id]);
         const item = child[0] || def;
         const id = child[0]?.id || def.id;
 
@@ -113,16 +95,10 @@ const generareRasfirat = async (req, res) => {
       }
 
       // === TRANSPORT ===
-      let [transport] = await global.db.execute(
-        `SELECT * FROM Santier_Retete_Transport_Definition WHERE santier_reteta_id = ?`,
-        [santier_reteta_id]
-      );
+      let [transport] = await global.db.execute(`SELECT * FROM Santier_Retete_Transport_Definition WHERE santier_reteta_id = ?`, [santier_reteta_id]);
 
       for (const def of transport) {
-        const [child] = await global.db.execute(
-          `SELECT * FROM Santier_Retete_Transport WHERE definitie_id = ? LIMIT 1`,
-          [def.id]
-        );
+        const [child] = await global.db.execute(`SELECT * FROM Santier_Retete_Transport WHERE definitie_id = ? LIMIT 1`, [def.id]);
         const item = child[0] || def;
         const id = child[0]?.id || def.id;
 
@@ -143,16 +119,10 @@ const generareRasfirat = async (req, res) => {
       }
 
       // === UTILAJE ===
-      let [utilaje] = await global.db.execute(
-        `SELECT * FROM Santier_Retete_Utilaje_Definition WHERE santier_reteta_id = ?`,
-        [santier_reteta_id]
-      );
+      let [utilaje] = await global.db.execute(`SELECT * FROM Santier_Retete_Utilaje_Definition WHERE santier_reteta_id = ?`, [santier_reteta_id]);
 
       for (const def of utilaje) {
-        const [child] = await global.db.execute(
-          `SELECT * FROM Santier_Retete_Utilaje WHERE definitie_id = ? LIMIT 1`,
-          [def.id]
-        );
+        const [child] = await global.db.execute(`SELECT * FROM Santier_Retete_Utilaje WHERE definitie_id = ? LIMIT 1`, [def.id]);
         const item = child[0] || def;
         const id = child[0]?.id || def.id;
 
@@ -192,15 +162,11 @@ const generareRasfirat = async (req, res) => {
       totalUtilajePret: totalUtilajePret.toFixed(2),
       totalTransportPret: totalTransportPret.toFixed(2),
     });
-
   } catch (error) {
-    console.error(error);
+    console.log(error);
     res.status(400).json({ message: "Eroare la generare de PDF", error: error.message });
   }
 };
-
-
-
 
 const generareC6 = async (req, res) => {
   const { id } = req.params; // santier_id
@@ -208,50 +174,34 @@ const generareC6 = async (req, res) => {
   // console.log(recapitulatii , TVA);
   try {
     //get name and id_ofert from ofer_part
-    const [partsRows] = await global.db.execute(
-      `SELECT oferta_id, name FROM Oferta_Parts WHERE id = ?`,
-      [id]
-    );
+    const [partsRows] = await global.db.execute(`SELECT oferta_id, name FROM Oferta_Parts WHERE id = ?`, [id]);
     if (!partsRows.length) {
       return res.status(404).json({ message: "Oferta part not found" });
     }
     const ofertaId = partsRows[0].oferta_id;
     const ofertaPartName = partsRows[0].name;
     //get name and id_santier from oferta
-    const [ofertaRows] = await global.db.execute(
-      `SELECT name, santier_id FROM Oferta WHERE id = ?`,
-      [ofertaId]
-    );
+    const [ofertaRows] = await global.db.execute(`SELECT name, santier_id FROM Oferta WHERE id = ?`, [ofertaId]);
     if (!ofertaRows.length) {
       return res.status(404).json({ message: "Oferta not found" });
     }
     const santierId = ofertaRows[0].santier_id;
     const ofertaName = ofertaRows[0].name;
     //get name from santier
-    const [santierRows] = await global.db.execute(
-      `SELECT name FROM Santiere WHERE id = ?`,
-      [santierId]
-    );
+    const [santierRows] = await global.db.execute(`SELECT name FROM Santiere WHERE id = ?`, [santierId]);
     if (!santierRows.length) {
       return res.status(404).json({ message: "Santier not found" });
     }
     const santierName = santierRows[0].name;
 
-    const [santiereDetaliiRows] = await global.db.execute(
-      `SELECT * FROM Santiere_detalii WHERE santier_id = ?`,
-      [santierId]
-    );
+    const [santiereDetaliiRows] = await global.db.execute(`SELECT * FROM Santiere_detalii WHERE santier_id = ?`, [santierId]);
     if (!santiereDetaliiRows.length) {
       return res.status(404).json({ message: "Santier not found" });
     }
     const santiereDetalii = santiereDetaliiRows[0];
 
-
     // Get all retete for the santier
-    const [reteteRows] = await global.db.execute(
-      `SELECT * FROM Santier_retete WHERE oferta_parts_id = ? ORDER BY clasa_reteta ASC`,
-      [id]
-    );
+    const [reteteRows] = await global.db.execute(`SELECT * FROM Santier_retete WHERE oferta_parts_id = ? ORDER BY clasa_reteta ASC`, [id]);
 
     const results = [];
     const costs = {};
@@ -271,18 +221,15 @@ const generareC6 = async (req, res) => {
         Material: {},
         Transport: {},
         Utilaj: {},
-        cantitate_reteta: reteta.cantitate
+        cantitate_reteta: reteta.cantitate,
       };
 
       // === MANOPERA ===
-      const [manopera] = await global.db.execute(
-        `SELECT id, cost_unitar, cantitate FROM Santier_retete_manopera WHERE santier_reteta_id = ?`,
-        [santier_reteta_id]
-      );
+      const [manopera] = await global.db.execute(`SELECT id, cost_unitar, cantitate FROM Santier_retete_manopera WHERE santier_reteta_id = ?`, [santier_reteta_id]);
       let cantitateManopere = 0;
       let totalMaoperePretReteta = 0;
 
-      manopera.forEach(item => {
+      manopera.forEach((item) => {
         totalCost += item.cost_unitar * item.cantitate;
         totalMaoperePretReteta += item.cost_unitar * item.cantitate;
 
@@ -298,13 +245,10 @@ const generareC6 = async (req, res) => {
       totalManoperaPret += totalMaoperePretReteta * reteta.cantitate;
 
       // === MATERIALE ===
-      const [materiale] = await global.db.execute(
-        `SELECT id, cost_unitar, cantitate FROM Santier_retete_materiale WHERE santier_reteta_id = ?`,
-        [santier_reteta_id]
-      );
+      const [materiale] = await global.db.execute(`SELECT id, cost_unitar, cantitate FROM Santier_retete_materiale WHERE santier_reteta_id = ?`, [santier_reteta_id]);
 
       let totalMaterialePretReteta = 0;
-      materiale.forEach(item => {
+      materiale.forEach((item) => {
         totalCost += item.cost_unitar * item.cantitate;
         totalMaterialePretReteta += item.cost_unitar * item.cantitate;
         costs[santier_reteta_id].Material[item.id] = {
@@ -315,14 +259,10 @@ const generareC6 = async (req, res) => {
       //total pret manopera
       totalMaterialePret += totalMaterialePretReteta * reteta.cantitate;
 
-
       // === TRANSPORT ===
-      const [transport] = await global.db.execute(
-        `SELECT id, cost_unitar, cantitate FROM Santier_retete_transport WHERE santier_reteta_id = ?`,
-        [santier_reteta_id]
-      );
+      const [transport] = await global.db.execute(`SELECT id, cost_unitar, cantitate FROM Santier_retete_transport WHERE santier_reteta_id = ?`, [santier_reteta_id]);
       let totalTransportPretReteta = 0;
-      transport.forEach(item => {
+      transport.forEach((item) => {
         totalCost += item.cost_unitar * item.cantitate;
         totalTransportPretReteta += item.cost_unitar * item.cantitate;
         costs[santier_reteta_id].Transport[item.id] = {
@@ -334,13 +274,10 @@ const generareC6 = async (req, res) => {
       totalTransportPret += totalTransportPretReteta * reteta.cantitate;
 
       // === UTILAJE ===
-      const [utilaje] = await global.db.execute(
-        `SELECT id, cost_unitar, cantitate FROM Santier_retete_utilaje WHERE santier_reteta_id = ?`,
-        [santier_reteta_id]
-      );
+      const [utilaje] = await global.db.execute(`SELECT id, cost_unitar, cantitate FROM Santier_retete_utilaje WHERE santier_reteta_id = ?`, [santier_reteta_id]);
 
       let totalUtilajePretReteta = 0;
-      utilaje.forEach(item => {
+      utilaje.forEach((item) => {
         totalCost += item.cost_unitar * item.cantitate;
         totalUtilajePretReteta += item.cost_unitar * item.cantitate;
         costs[santier_reteta_id].Utilaj[item.id] = {
@@ -371,23 +308,17 @@ const generareC6 = async (req, res) => {
       totalUtilajePret: totalUtilajePret.toFixed(2),
       totalTransportPret: totalTransportPret.toFixed(2),
     });
-
   } catch (error) {
     res.status(400).json({ message: "Eroare la generare de PDF", error: error.message });
   }
-}
-
-
+};
 
 const generareC8 = async (req, res) => {
   const { id } = req.params; // santier_id
 
   try {
     // Get all retete for the santier
-    const [reteteRows] = await global.db.execute(
-      `SELECT * FROM Santier_retete WHERE oferta_parts_id = ?`,
-      [id]
-    );
+    const [reteteRows] = await global.db.execute(`SELECT * FROM Santier_retete WHERE oferta_parts_id = ?`, [id]);
 
     const utilajeGlobal = {}; // Store all utilaje here
     let totalCost = 0;
@@ -396,12 +327,9 @@ const generareC8 = async (req, res) => {
       const santier_reteta_id = reteta.id;
 
       // === UTILAJE ===
-      const [utilaje] = await global.db.execute(
-        `SELECT id, cost_unitar, cantitate, utilaj FROM Santier_retete_utilaje WHERE santier_reteta_id = ?`,
-        [santier_reteta_id]
-      );
+      const [utilaje] = await global.db.execute(`SELECT id, cost_unitar, cantitate, utilaj FROM Santier_retete_utilaje WHERE santier_reteta_id = ?`, [santier_reteta_id]);
 
-      utilaje.forEach(item => {
+      utilaje.forEach((item) => {
         const name = item.utilaj;
         const cost = item.cost_unitar;
         const cantitate = item.cantitate;
@@ -423,9 +351,8 @@ const generareC8 = async (req, res) => {
       data: utilajeGlobal,
       total: totalCost.toFixed(2),
     });
-
   } catch (error) {
-    console.error("Eroare la generare de PDF:", error);
+    console.log("Eroare la generare de PDF:", error);
     res.status(400).json({ message: "Eroare la generare de PDF", error: error.message });
   }
 };
@@ -434,7 +361,6 @@ const generareMaterialeCantitate = async (req, res) => {
   const { id } = req.params; // oferta_parts_id
 
   try {
-
     // === INFO OFERTA & SANTIER ===
     const [partsRows] = await global.db.execute(`SELECT oferta_id, name FROM Oferta_Parts WHERE id = ?`, [id]);
     if (!partsRows.length) return res.status(404).json({ message: "Oferta part not found" });
@@ -453,17 +379,11 @@ const generareMaterialeCantitate = async (req, res) => {
 
     const santierName = santierRows[0].name;
 
-    const [santiereDetaliiRows] = await global.db.execute(
-      `SELECT * FROM Santiere_detalii WHERE santier_id = ?`,
-      [santierId]
-    );
+    const [santiereDetaliiRows] = await global.db.execute(`SELECT * FROM Santiere_detalii WHERE santier_id = ?`, [santierId]);
     if (!santiereDetaliiRows.length) return res.status(404).json({ message: "Santier details not found" });
     const santiereDetalii = santiereDetaliiRows[0];
 
-    const [reteteRows] = await global.db.execute(
-      `SELECT * FROM Santier_Retete WHERE oferta_parts_id = ?`,
-      [id]
-    );
+    const [reteteRows] = await global.db.execute(`SELECT * FROM Santier_Retete WHERE oferta_parts_id = ?`, [id]);
 
     const materialeMap = {};
     let total = 0;
@@ -471,28 +391,22 @@ const generareMaterialeCantitate = async (req, res) => {
     for (const reteta of reteteRows) {
       const santier_reteta_id = reteta.id;
 
-      const [materialeDefs] = await global.db.execute(
-        `SELECT * FROM Santier_Retete_Materiale_Definition WHERE santier_reteta_id = ?`,
-        [santier_reteta_id]
-      );
+      const [materialeDefs] = await global.db.execute(`SELECT * FROM Santier_Retete_Materiale_Definition WHERE santier_reteta_id = ?`, [santier_reteta_id]);
 
       for (const def of materialeDefs) {
-        const [child] = await global.db.execute(
-          `SELECT * FROM Santier_Retete_Materiale WHERE definitie_id = ? LIMIT 1`,
-          [def.id]
-        );
+        const [child] = await global.db.execute(`SELECT * FROM Santier_Retete_Materiale WHERE definitie_id = ? LIMIT 1`, [def.id]);
 
         const item = child[0] || def;
 
-        const cod = item.cod_definitie || item.cod_material || '';
-        const articol = def.denumire || '';
-        const photoUrl = item.photoUrl || '';
-        const articol_fr = def.denumire_fr || '';
-        const descriere = item.descriere || '';
-        const descriere_fr = item.descriere_fr || '';
-        const clasa = def.clasa_material || '';
-        const unit = def.unitate_masura || '';
-        const furnizor = item.furnizor || '';
+        const cod = item.cod_definitie || item.cod_material || "";
+        const articol = def.denumire || "";
+        const photoUrl = item.photoUrl || "";
+        const articol_fr = def.denumire_fr || "";
+        const descriere = item.descriere || "";
+        const descriere_fr = item.descriere_fr || "";
+        const clasa = def.clasa_material || "";
+        const unit = def.unitate_masura || "";
+        const furnizor = item.furnizor || "";
         const costUnit = parseFloat(item.pret_vanzare || 0);
         const cantitate = parseFloat(def.cantitate || 0) * parseFloat(reteta.cantitate);
 
@@ -511,7 +425,7 @@ const generareMaterialeCantitate = async (req, res) => {
             furnizor,
             cantitate: 0,
             cost_unitar: costUnit,
-            pret_total: 0
+            pret_total: 0,
           };
         }
 
@@ -530,8 +444,8 @@ const generareMaterialeCantitate = async (req, res) => {
       total: total.toFixed(2),
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Eroare la generare cantități materiale', error: err.message });
+    console.log(err);
+    res.status(500).json({ message: "Eroare la generare cantități materiale", error: err.message });
   }
 };
 
@@ -540,26 +454,17 @@ const generareRasfiratByOferta = async (req, res) => {
 
   try {
     // ---- Oferta, șantier, meta ----
-    const [ofertaRows] = await global.db.execute(
-      `SELECT id, name, santier_id FROM Oferta WHERE id = ?`,
-      [ofertaId]
-    );
+    const [ofertaRows] = await global.db.execute(`SELECT id, name, santier_id FROM Oferta WHERE id = ?`, [ofertaId]);
     if (!ofertaRows.length) return res.status(404).json({ message: "Oferta not found" });
 
     const ofertaName = ofertaRows[0].name;
     const santierId = ofertaRows[0].santier_id;
 
-    const [[santierRow]] = await global.db.execute(
-      `SELECT name FROM Santiere WHERE id = ?`,
-      [santierId]
-    );
+    const [[santierRow]] = await global.db.execute(`SELECT name FROM Santiere WHERE id = ?`, [santierId]);
     if (!santierRow) return res.status(404).json({ message: "Santier not found" });
     const santierName = santierRow.name;
 
-    const [[santiereDetalii]] = await global.db.execute(
-      `SELECT * FROM Santiere_detalii WHERE santier_id = ? LIMIT 1`,
-      [santierId]
-    );
+    const [[santiereDetalii]] = await global.db.execute(`SELECT * FROM Santiere_detalii WHERE santier_id = ? LIMIT 1`, [santierId]);
     if (!santiereDetalii) return res.status(404).json({ message: "Santier details not found" });
 
     // ---- Toate parts (lucrări) din ofertă ----
@@ -568,7 +473,7 @@ const generareRasfiratByOferta = async (req, res) => {
          FROM Oferta_Parts
         WHERE oferta_id = ?
         ORDER BY id ASC`,
-      [ofertaId]
+      [ofertaId],
     );
     if (!partsRows.length) {
       return res.status(200).json({
@@ -599,7 +504,7 @@ const generareRasfiratByOferta = async (req, res) => {
         `SELECT * FROM Santier_Retete
           WHERE oferta_parts_id = ?
           ORDER BY clasa_reteta ASC`,
-        [part.id]
+        [part.id],
       );
 
       const reteteOut = [];
@@ -618,15 +523,9 @@ const generareRasfiratByOferta = async (req, res) => {
         };
 
         // ==== MANOPERA ====
-        const [manoDefs] = await global.db.execute(
-          `SELECT * FROM Santier_Retete_Manopera_Definition WHERE santier_reteta_id = ?`,
-          [santier_reteta_id]
-        );
+        const [manoDefs] = await global.db.execute(`SELECT * FROM Santier_Retete_Manopera_Definition WHERE santier_reteta_id = ?`, [santier_reteta_id]);
         for (const def of manoDefs) {
-          const [child] = await global.db.execute(
-            `SELECT * FROM Santier_Retete_Manopera WHERE definitie_id = ? LIMIT 1`,
-            [def.id]
-          );
+          const [child] = await global.db.execute(`SELECT * FROM Santier_Retete_Manopera WHERE definitie_id = ? LIMIT 1`, [def.id]);
           const item = child[0] || def;
           const id = child[0]?.id || def.id;
 
@@ -650,15 +549,9 @@ const generareRasfiratByOferta = async (req, res) => {
         }
 
         // ==== MATERIALE ====
-        const [matDefs] = await global.db.execute(
-          `SELECT * FROM Santier_Retete_Materiale_Definition WHERE santier_reteta_id = ?`,
-          [santier_reteta_id]
-        );
+        const [matDefs] = await global.db.execute(`SELECT * FROM Santier_Retete_Materiale_Definition WHERE santier_reteta_id = ?`, [santier_reteta_id]);
         for (const def of matDefs) {
-          const [child] = await global.db.execute(
-            `SELECT * FROM Santier_Retete_Materiale WHERE definitie_id = ? LIMIT 1`,
-            [def.id]
-          );
+          const [child] = await global.db.execute(`SELECT * FROM Santier_Retete_Materiale WHERE definitie_id = ? LIMIT 1`, [def.id]);
           const item = child[0] || def;
           const id = child[0]?.id || def.id;
 
@@ -681,15 +574,9 @@ const generareRasfiratByOferta = async (req, res) => {
         }
 
         // ==== TRANSPORT ====
-        const [trDefs] = await global.db.execute(
-          `SELECT * FROM Santier_Retete_Transport_Definition WHERE santier_reteta_id = ?`,
-          [santier_reteta_id]
-        );
+        const [trDefs] = await global.db.execute(`SELECT * FROM Santier_Retete_Transport_Definition WHERE santier_reteta_id = ?`, [santier_reteta_id]);
         for (const def of trDefs) {
-          const [child] = await global.db.execute(
-            `SELECT * FROM Santier_Retete_Transport WHERE definitie_id = ? LIMIT 1`,
-            [def.id]
-          );
+          const [child] = await global.db.execute(`SELECT * FROM Santier_Retete_Transport WHERE definitie_id = ? LIMIT 1`, [def.id]);
           const item = child[0] || def;
           const id = child[0]?.id || def.id;
 
@@ -710,15 +597,9 @@ const generareRasfiratByOferta = async (req, res) => {
         }
 
         // ==== UTILAJE ====
-        const [utDefs] = await global.db.execute(
-          `SELECT * FROM Santier_Retete_Utilaje_Definition WHERE santier_reteta_id = ?`,
-          [santier_reteta_id]
-        );
+        const [utDefs] = await global.db.execute(`SELECT * FROM Santier_Retete_Utilaje_Definition WHERE santier_reteta_id = ?`, [santier_reteta_id]);
         for (const def of utDefs) {
-          const [child] = await global.db.execute(
-            `SELECT * FROM Santier_Retete_Utilaje WHERE definitie_id = ? LIMIT 1`,
-            [def.id]
-          );
+          const [child] = await global.db.execute(`SELECT * FROM Santier_Retete_Utilaje WHERE definitie_id = ? LIMIT 1`, [def.id]);
           const item = child[0] || def;
           const id = child[0]?.id || def.id;
 
@@ -750,7 +631,7 @@ const generareRasfiratByOferta = async (req, res) => {
         partId: part.id,
         partName: part.name,
         reper: { reper1: part.reper1, reper2: part.reper2 },
-        retete: reteteOut,     // ⬅️ fiecare retetă are acum `cost`
+        retete: reteteOut, // ⬅️ fiecare retetă are acum `cost`
         detailedCosts,
       });
     } // end for parts
@@ -766,28 +647,27 @@ const generareRasfiratByOferta = async (req, res) => {
         totalMaterialePret: totalMaterialePret.toFixed(2),
         totalUtilajePret: totalUtilajePret.toFixed(2),
         totalTransportPret: totalTransportPret.toFixed(2),
-      }
+      },
     });
-
   } catch (error) {
-    console.error(error);
+    console.log(error);
     res.status(400).json({ message: "Eroare la generare rasfirat pe ofertă", error: error.message });
   }
 };
 
-
-
-
-const norm = (v) => String(v ?? '').trim().toLowerCase();
+const norm = (v) =>
+  String(v ?? "")
+    .trim()
+    .toLowerCase();
 
 function buildRetetaKey(r) {
   return [
     norm(r.cod_reteta),
-    norm(r.articol_client || ''),    // nou
-    norm(r.articol || r.articol_fr || ''),
-    norm(r.descriere_reteta || r.descriere_reteta_fr || ''),       // nou
-    String(r.cost ?? '').trim()
-  ].join('|');
+    norm(r.articol_client || ""), // nou
+    norm(r.articol || r.articol_fr || ""),
+    norm(r.descriere_reteta || r.descriere_reteta_fr || ""), // nou
+    String(r.cost ?? "").trim(),
+  ].join("|");
 }
 
 function aggregateRetete(retete) {
@@ -813,26 +693,17 @@ const generareRasfiratByOfertaSUM = async (req, res) => {
 
   try {
     // ---- Oferta, șantier, meta ----
-    const [ofertaRows] = await global.db.execute(
-      `SELECT id, name, santier_id FROM Oferta WHERE id = ?`,
-      [ofertaId]
-    );
+    const [ofertaRows] = await global.db.execute(`SELECT id, name, santier_id FROM Oferta WHERE id = ?`, [ofertaId]);
     if (!ofertaRows.length) return res.status(404).json({ message: "Oferta not found" });
 
     const ofertaName = ofertaRows[0].name;
     const santierId = ofertaRows[0].santier_id;
 
-    const [[santierRow]] = await global.db.execute(
-      `SELECT name FROM Santiere WHERE id = ?`,
-      [santierId]
-    );
+    const [[santierRow]] = await global.db.execute(`SELECT name FROM Santiere WHERE id = ?`, [santierId]);
     if (!santierRow) return res.status(404).json({ message: "Santier not found" });
     const santierName = santierRow.name;
 
-    const [[santiereDetalii]] = await global.db.execute(
-      `SELECT * FROM Santiere_detalii WHERE santier_id = ? LIMIT 1`,
-      [santierId]
-    );
+    const [[santiereDetalii]] = await global.db.execute(`SELECT * FROM Santiere_detalii WHERE santier_id = ? LIMIT 1`, [santierId]);
     if (!santiereDetalii) return res.status(404).json({ message: "Santier details not found" });
 
     // ---- Toate parts (lucrări) din ofertă ----
@@ -841,7 +712,7 @@ const generareRasfiratByOfertaSUM = async (req, res) => {
          FROM Oferta_Parts
         WHERE oferta_id = ?
         ORDER BY id ASC`,
-      [ofertaId]
+      [ofertaId],
     );
     if (!partsRows.length) {
       return res.status(200).json({
@@ -872,7 +743,7 @@ const generareRasfiratByOfertaSUM = async (req, res) => {
         `SELECT * FROM Santier_Retete
           WHERE oferta_parts_id = ?
           ORDER BY articol_client ASC`,
-        [part.id]
+        [part.id],
       );
 
       const reteteOut = [];
@@ -891,15 +762,9 @@ const generareRasfiratByOfertaSUM = async (req, res) => {
         };
 
         // ==== MANOPERA ====
-        const [manoDefs] = await global.db.execute(
-          `SELECT * FROM Santier_Retete_Manopera_Definition WHERE santier_reteta_id = ?`,
-          [santier_reteta_id]
-        );
+        const [manoDefs] = await global.db.execute(`SELECT * FROM Santier_Retete_Manopera_Definition WHERE santier_reteta_id = ?`, [santier_reteta_id]);
         for (const def of manoDefs) {
-          const [child] = await global.db.execute(
-            `SELECT * FROM Santier_Retete_Manopera WHERE definitie_id = ? LIMIT 1`,
-            [def.id]
-          );
+          const [child] = await global.db.execute(`SELECT * FROM Santier_Retete_Manopera WHERE definitie_id = ? LIMIT 1`, [def.id]);
           const item = child[0] || def;
           const id = child[0]?.id || def.id;
 
@@ -923,15 +788,9 @@ const generareRasfiratByOfertaSUM = async (req, res) => {
         }
 
         // ==== MATERIALE ====
-        const [matDefs] = await global.db.execute(
-          `SELECT * FROM Santier_Retete_Materiale_Definition WHERE santier_reteta_id = ?`,
-          [santier_reteta_id]
-        );
+        const [matDefs] = await global.db.execute(`SELECT * FROM Santier_Retete_Materiale_Definition WHERE santier_reteta_id = ?`, [santier_reteta_id]);
         for (const def of matDefs) {
-          const [child] = await global.db.execute(
-            `SELECT * FROM Santier_Retete_Materiale WHERE definitie_id = ? LIMIT 1`,
-            [def.id]
-          );
+          const [child] = await global.db.execute(`SELECT * FROM Santier_Retete_Materiale WHERE definitie_id = ? LIMIT 1`, [def.id]);
           const item = child[0] || def;
           const id = child[0]?.id || def.id;
 
@@ -954,15 +813,9 @@ const generareRasfiratByOfertaSUM = async (req, res) => {
         }
 
         // ==== TRANSPORT ====
-        const [trDefs] = await global.db.execute(
-          `SELECT * FROM Santier_Retete_Transport_Definition WHERE santier_reteta_id = ?`,
-          [santier_reteta_id]
-        );
+        const [trDefs] = await global.db.execute(`SELECT * FROM Santier_Retete_Transport_Definition WHERE santier_reteta_id = ?`, [santier_reteta_id]);
         for (const def of trDefs) {
-          const [child] = await global.db.execute(
-            `SELECT * FROM Santier_Retete_Transport WHERE definitie_id = ? LIMIT 1`,
-            [def.id]
-          );
+          const [child] = await global.db.execute(`SELECT * FROM Santier_Retete_Transport WHERE definitie_id = ? LIMIT 1`, [def.id]);
           const item = child[0] || def;
           const id = child[0]?.id || def.id;
 
@@ -983,15 +836,9 @@ const generareRasfiratByOfertaSUM = async (req, res) => {
         }
 
         // ==== UTILAJE ====
-        const [utDefs] = await global.db.execute(
-          `SELECT * FROM Santier_Retete_Utilaje_Definition WHERE santier_reteta_id = ?`,
-          [santier_reteta_id]
-        );
+        const [utDefs] = await global.db.execute(`SELECT * FROM Santier_Retete_Utilaje_Definition WHERE santier_reteta_id = ?`, [santier_reteta_id]);
         for (const def of utDefs) {
-          const [child] = await global.db.execute(
-            `SELECT * FROM Santier_Retete_Utilaje WHERE definitie_id = ? LIMIT 1`,
-            [def.id]
-          );
+          const [child] = await global.db.execute(`SELECT * FROM Santier_Retete_Utilaje WHERE definitie_id = ? LIMIT 1`, [def.id]);
           const item = child[0] || def;
           const id = child[0]?.id || def.id;
 
@@ -1020,17 +867,14 @@ const generareRasfiratByOfertaSUM = async (req, res) => {
       }
       const reteteAgregate = aggregateRetete(reteteOut);
 
-      const partTotal = reteteAgregate.reduce(
-        (s, r) => s + Number(r.cost || 0) * Number(r.cantitate || 0),
-        0
-      );
+      const partTotal = reteteAgregate.reduce((s, r) => s + Number(r.cost || 0) * Number(r.cantitate || 0), 0);
 
       partsOut.push({
         partId: part.id,
         partName: part.name,
         reper: { reper1: part.reper1, reper2: part.reper2 },
-        retete: reteteAgregate,     // ⬅️ fiecare retetă are acum `cost`
-        partTotal: Number(partTotal.toFixed(2))
+        retete: reteteAgregate, // ⬅️ fiecare retetă are acum `cost`
+        partTotal: Number(partTotal.toFixed(2)),
       });
     } // end for parts
 
@@ -1047,9 +891,8 @@ const generareRasfiratByOfertaSUM = async (req, res) => {
         totalTransportPret: totalTransportPret.toFixed(2),
       },
     });
-
   } catch (error) {
-    console.error(error);
+    console.log(error);
     res.status(400).json({ message: "Eroare la generare rasfirat pe ofertă", error: error.message });
   }
 };
@@ -1063,33 +906,24 @@ const generareRasfiratByPartSUM = async (req, res) => {
       `SELECT id, oferta_id, name, COALESCE(reper1,'') AS reper1, COALESCE(reper2,'') AS reper2
        FROM Oferta_Parts
        WHERE id = ?`,
-      [partId]
+      [partId],
     );
     if (!partRows.length) return res.status(404).json({ message: "Oferta part not found" });
     const part = partRows[0];
 
     // ---- Oferta ----
-    const [[ofertaRow]] = await global.db.execute(
-      `SELECT name, santier_id FROM Oferta WHERE id = ?`,
-      [part.oferta_id]
-    );
+    const [[ofertaRow]] = await global.db.execute(`SELECT name, santier_id FROM Oferta WHERE id = ?`, [part.oferta_id]);
     if (!ofertaRow) return res.status(404).json({ message: "Oferta not found" });
 
     const ofertaName = ofertaRow.name;
     const santierId = ofertaRow.santier_id;
 
     // ---- Santier ----
-    const [[santierRow]] = await global.db.execute(
-      `SELECT name FROM Santiere WHERE id = ?`,
-      [santierId]
-    );
+    const [[santierRow]] = await global.db.execute(`SELECT name FROM Santiere WHERE id = ?`, [santierId]);
     if (!santierRow) return res.status(404).json({ message: "Santier not found" });
     const santierName = santierRow.name;
 
-    const [[santiereDetalii]] = await global.db.execute(
-      `SELECT * FROM Santiere_detalii WHERE santier_id = ? LIMIT 1`,
-      [santierId]
-    );
+    const [[santiereDetalii]] = await global.db.execute(`SELECT * FROM Santiere_detalii WHERE santier_id = ? LIMIT 1`, [santierId]);
     if (!santiereDetalii) return res.status(404).json({ message: "Santier details not found" });
 
     // ---- Rețete pentru part ----
@@ -1097,7 +931,7 @@ const generareRasfiratByPartSUM = async (req, res) => {
       `SELECT * FROM Santier_Retete
        WHERE oferta_parts_id = ?
        ORDER BY articol_client ASC`,
-      [part.id]
+      [part.id],
     );
 
     const reteteOut = [];
@@ -1112,15 +946,9 @@ const generareRasfiratByPartSUM = async (req, res) => {
       let totalCost = 0;
 
       // ==== MANOPERA ====
-      const [manoDefs] = await global.db.execute(
-        `SELECT * FROM Santier_Retete_Manopera_Definition WHERE santier_reteta_id = ?`,
-        [santier_reteta_id]
-      );
+      const [manoDefs] = await global.db.execute(`SELECT * FROM Santier_Retete_Manopera_Definition WHERE santier_reteta_id = ?`, [santier_reteta_id]);
       for (const def of manoDefs) {
-        const [child] = await global.db.execute(
-          `SELECT * FROM Santier_Retete_Manopera WHERE definitie_id = ? LIMIT 1`,
-          [def.id]
-        );
+        const [child] = await global.db.execute(`SELECT * FROM Santier_Retete_Manopera WHERE definitie_id = ? LIMIT 1`, [def.id]);
         const item = child[0] || def;
         totalManoperaOre += Number(def.cantitate || 0) * Number(reteta.cantitate || 0);
         totalManoperaPret += Number(item.cost_unitar || 0) * Number(def.cantitate || 0) * Number(reteta.cantitate || 0);
@@ -1128,45 +956,27 @@ const generareRasfiratByPartSUM = async (req, res) => {
       }
 
       // ==== MATERIALE ====
-      const [matDefs] = await global.db.execute(
-        `SELECT * FROM Santier_Retete_Materiale_Definition WHERE santier_reteta_id = ?`,
-        [santier_reteta_id]
-      );
+      const [matDefs] = await global.db.execute(`SELECT * FROM Santier_Retete_Materiale_Definition WHERE santier_reteta_id = ?`, [santier_reteta_id]);
       for (const def of matDefs) {
-        const [child] = await global.db.execute(
-          `SELECT * FROM Santier_Retete_Materiale WHERE definitie_id = ? LIMIT 1`,
-          [def.id]
-        );
+        const [child] = await global.db.execute(`SELECT * FROM Santier_Retete_Materiale WHERE definitie_id = ? LIMIT 1`, [def.id]);
         const item = child[0] || def;
         totalMaterialePret += Number(item.pret_vanzare || 0) * Number(def.cantitate || 0) * Number(reteta.cantitate || 0);
         totalCost += Number(item.pret_vanzare || 0) * Number(def.cantitate || 0);
       }
 
       // ==== TRANSPORT ====
-      const [trDefs] = await global.db.execute(
-        `SELECT * FROM Santier_Retete_Transport_Definition WHERE santier_reteta_id = ?`,
-        [santier_reteta_id]
-      );
+      const [trDefs] = await global.db.execute(`SELECT * FROM Santier_Retete_Transport_Definition WHERE santier_reteta_id = ?`, [santier_reteta_id]);
       for (const def of trDefs) {
-        const [child] = await global.db.execute(
-          `SELECT * FROM Santier_Retete_Transport WHERE definitie_id = ? LIMIT 1`,
-          [def.id]
-        );
+        const [child] = await global.db.execute(`SELECT * FROM Santier_Retete_Transport WHERE definitie_id = ? LIMIT 1`, [def.id]);
         const item = child[0] || def;
         totalTransportPret += Number(item.cost_unitar || 0) * Number(def.cantitate || 0) * Number(reteta.cantitate || 0);
         totalCost += Number(item.cost_unitar || 0) * Number(def.cantitate || 0);
       }
 
       // ==== UTILAJE ====
-      const [utDefs] = await global.db.execute(
-        `SELECT * FROM Santier_Retete_Utilaje_Definition WHERE santier_reteta_id = ?`,
-        [santier_reteta_id]
-      );
+      const [utDefs] = await global.db.execute(`SELECT * FROM Santier_Retete_Utilaje_Definition WHERE santier_reteta_id = ?`, [santier_reteta_id]);
       for (const def of utDefs) {
-        const [child] = await global.db.execute(
-          `SELECT * FROM Santier_Retete_Utilaje WHERE definitie_id = ? LIMIT 1`,
-          [def.id]
-        );
+        const [child] = await global.db.execute(`SELECT * FROM Santier_Retete_Utilaje WHERE definitie_id = ? LIMIT 1`, [def.id]);
         const item = child[0] || def;
         totalUtilajePret += Number(item.pret_utilaj || 0) * Number(def.cantitate || 0) * Number(reteta.cantitate || 0);
         totalCost += Number(item.pret_utilaj || 0) * Number(def.cantitate || 0);
@@ -1182,10 +992,7 @@ const generareRasfiratByPartSUM = async (req, res) => {
     // agregare pe baza cod + articol + articol_client + cost
     const reteteAgregate = aggregateRetete(reteteOut);
 
-    const partTotal = reteteAgregate.reduce(
-      (s, r) => s + Number(r.cost || 0) * Number(r.cantitate || 0),
-      0
-    );
+    const partTotal = reteteAgregate.reduce((s, r) => s + Number(r.cost || 0) * Number(r.cantitate || 0), 0);
 
     return res.status(200).json({
       ofertaPartName: part.name,
@@ -1197,7 +1004,7 @@ const generareRasfiratByPartSUM = async (req, res) => {
         partName: part.name,
         reper: { reper1: part.reper1, reper2: part.reper2 },
         retete: reteteAgregate,
-        partTotal: Number(partTotal.toFixed(2))
+        partTotal: Number(partTotal.toFixed(2)),
       },
       totals: {
         totalManoperaOre: totalManoperaOre.toFixed(2),
@@ -1207,9 +1014,8 @@ const generareRasfiratByPartSUM = async (req, res) => {
         totalTransportPret: totalTransportPret.toFixed(2),
       },
     });
-
   } catch (error) {
-    console.error(error);
+    console.log(error);
     res.status(400).json({ message: "Eroare la generare rasfirat pe ofertă_part", error: error.message });
   }
 };

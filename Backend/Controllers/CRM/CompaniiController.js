@@ -557,7 +557,7 @@ const deleteCompany = async (req, res) => {
           await fs.rm(folderPath, { recursive: true, force: true });
         }
       } catch (err) {
-        console.error("Eroare la ștergerea fișierelor (dar continuăm ștergerea din DB):", err);
+        console.log("Eroare la ștergerea fișierelor (dar continuăm ștergerea din DB):", err);
       }
     }
 
@@ -911,7 +911,7 @@ const deleteCompanieInterna = async (req, res) => {
           await fs.rm(folderPath, { recursive: true, force: true });
         }
       } catch (err) {
-        console.error("Eroare la ștergerea fișierelor (dar continuăm ștergerea din DB):", err);
+        console.log("Eroare la ștergerea fișierelor (dar continuăm ștergerea din DB):", err);
       }
     }
 

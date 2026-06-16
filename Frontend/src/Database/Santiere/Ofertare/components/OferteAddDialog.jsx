@@ -17,9 +17,10 @@ import OverflowTooltip from "@/components/ui/OverflowTooltip";
 
 import ReteteMainPage from "@/Database/Retete/ReteteMainPage";
 import { Separator } from "@/components/ui/separator";
+import { OferteRetetaClassValue, OferteRetetaCodeValue } from "./OferteRetetaCodeClassDisplay";
 
 const MAX_DYNAMIC_COLUMNS = 5;
-const MAX_COLUMN_VALUE_LENGTH = 64;
+const MAX_COLUMN_VALUE_LENGTH = 255;
 
 const parseMaybeJson = (value, fallback = []) => {
   if (!value) return fallback;
@@ -56,7 +57,7 @@ const normalizeColumns = (value) => {
     .slice(0, MAX_DYNAMIC_COLUMNS);
 };
 
-export default function OferteAddDialog({ open, setOpen, selectedOferta, selectedLucrare, onConfirm }) {
+export default function OferteAddDialog({ open, setOpen, selectedOferta, selectedLucrare, displayLang = "RO", onConfirm }) {
   const { limbaUser } = useParams();
 
   const [selectedReteta, setSelectedReteta] = useState(null);
@@ -171,8 +172,12 @@ export default function OferteAddDialog({ open, setOpen, selectedOferta, selecte
             {selectedReteta ? (
               <div className="min-w-0 flex flex-col gap-2">
                 <div className="flex items-center gap-2 min-w-0 w-full">
-                  <Badge variant="outline" className="font-bold bg-background shrink-0">
-                    {selectedReteta.cod_reteta}
+                  <Badge variant="outline" className="max-w-[12rem] font-bold bg-background shrink-0">
+                    <OferteRetetaCodeValue reteta={selectedReteta} displayLang={displayLang} className="text-center text-xs" withTooltip={false} />
+                  </Badge>
+
+                  <Badge variant="secondary" className="max-w-[13rem] bg-card border-border font-medium shrink-0">
+                    <OferteRetetaClassValue reteta={selectedReteta} displayLang={displayLang} align="center" className="text-center text-xs" />
                   </Badge>
 
                   <div className="flex-1 min-w-0">

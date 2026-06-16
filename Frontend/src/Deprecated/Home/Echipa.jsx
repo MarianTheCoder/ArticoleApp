@@ -1,14 +1,15 @@
-import React, { useEffect, useState } from 'react';
-import api from '../../api/axiosAPI';
-import photoAPI from '../../api/photoAPI';
+import React, { useEffect, useState } from "react";
+import api from "../../api/axiosAPI";
+import photoAPI from "../../api/photoAPI";
 
 export default function ListaEchipa() {
   const [team, setTeam] = useState([]);
 
   useEffect(() => {
-    api.get('/Echipa/api/team')
-      .then(res => setTeam(res.data))
-      .catch(err => console.error('Eroare la preluarea echipei:', err));
+    api
+      .get("/Echipa/api/team")
+      .then((res) => setTeam(res.data))
+      .catch((err) => console.log("Eroare la preluarea echipei:", err));
   }, []);
 
   return (
@@ -34,7 +35,7 @@ export default function ListaEchipa() {
     gap-5 mt-20 ml-20 max-w-[1200px]
   "
       >
-        {team.map(member => (
+        {team.map((member) => (
           <div
             key={member.id}
             className="
@@ -61,9 +62,7 @@ export default function ListaEchipa() {
               />
             </div>
 
-            <h3 className="mt-4 text-xl font-semibold text-white text-center">
-              {member.name}
-            </h3>
+            <h3 className="mt-4 text-xl font-semibold text-white text-center">{member.name}</h3>
 
             <p
               className="

@@ -1,8 +1,4 @@
-import {
-  faArrowRightArrowLeft,
-  faCancel,
-  faPlus,
-} from "@fortawesome/free-solid-svg-icons";
+import { faArrowRightArrowLeft, faCancel, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React, { useRef, useState } from "react";
 import api from "../../api/axiosAPI";
@@ -41,17 +37,8 @@ export default function TransportForm() {
       cost_unitar: formData.cost_unitar.trim(),
       unitate_masura: formData.unitate_masura.trim(),
     };
-    if (
-      form.limba === "" ||
-      form.cod_definitie === "" ||
-      form.transport === "" ||
-      form.cost_unitar === "" ||
-      form.clasa_transport === "" ||
-      form.unitate_masura === ""
-    ) {
-      alert(
-        "Toate campurile sunt obligatorii (fara FR daca nu e selectata limba FR)"
-      );
+    if (form.limba === "" || form.cod_definitie === "" || form.transport === "" || form.cost_unitar === "" || form.clasa_transport === "" || form.unitate_masura === "") {
+      alert("Toate campurile sunt obligatorii (fara FR daca nu e selectata limba FR)");
       return;
     }
     if (form.limba === "FR" && form.transport_fr === "") {
@@ -87,7 +74,7 @@ export default function TransportForm() {
       firstInputRef.current.focus();
       handleReload();
     } catch (error) {
-      console.error("Upload error:", error);
+      console.log("Upload error:", error);
       firstInputRef.current.focus();
     }
   };
@@ -149,14 +136,12 @@ export default function TransportForm() {
   const deleteRow = async (e) => {
     e.preventDefault();
     try {
-      const response = await api.delete(
-        `/Transport/DeleteTransportDef/${selectedDelete}`
-      );
+      const response = await api.delete(`/Transport/DeleteTransportDef/${selectedDelete}`);
       // console.log(response);
       setSelectedDelete(null);
       handleReload();
     } catch (error) {
-      console.error("Error deleting data:", error);
+      console.log("Error deleting data:", error);
     }
   };
 
@@ -167,25 +152,13 @@ export default function TransportForm() {
     <>
       <div className="w-full containerWhiter">
         <div className="flex justify-center items-center text-black  ">
-          <form
-            onSubmit={handleSubmit}
-            className="w-full p-6 pt-4 px-12 rounded-xl shadow-xl"
-          >
+          <form onSubmit={handleSubmit} className="w-full p-6 pt-4 px-12 rounded-xl shadow-xl">
             <div className="grid grid-cols-[auto_auto_auto_1fr_auto_auto_auto] xxxl:gap-8 md:gap-4 xl:gap-6 items-center">
               <div className="flex flex-col items-center">
-                <label
-                  htmlFor="unit"
-                  className="col-span-1 font-medium text-black"
-                >
+                <label htmlFor="unit" className="col-span-1 font-medium text-black">
                   Limbă
                 </label>
-                <select
-                  id="limba"
-                  name="limba"
-                  value={formData.limba}
-                  onChange={handleChange}
-                  className=" px-2 py-2 rounded-lg outline-none shadow-sm "
-                >
+                <select id="limba" name="limba" value={formData.limba} onChange={handleChange} className=" px-2 py-2 rounded-lg outline-none shadow-sm ">
                   <option value="RO">RO</option>
                   <option value="FR">FR</option>
                 </select>
@@ -225,31 +198,19 @@ export default function TransportForm() {
               {/* container smecher pentru RO/FR */}
               <div className=" grid grid-cols-[auto_1fr_2fr] gap-4 border p-2 rounded-lg border-black">
                 <div className="flex  justify-center gap-1 font-medium select-none items-center">
-                  <p
-                    className={`${itIsFR ? "text-green-400 font-bold" : "text-black"
-                      }`}
-                  >
-                    FR
-                  </p>
+                  <p className={`${itIsFR ? "text-green-400 font-bold" : "text-black"}`}>FR</p>
                   <FontAwesomeIcon
                     icon={faArrowRightArrowLeft}
                     onClick={() => setItIsFR((prev) => (prev ? false : true))}
                     className=" text-green-400 border-green-400 hover:text-green-500 hover:border-green-500 cursor-pointer border-2 p-2 rounded-full text-xl"
                   />
-                  <p
-                    className={`${itIsFR ? "text-black" : "text-green-400  font-boold"
-                      }`}
-                  >
-                    RO
-                  </p>
+                  <p className={`${itIsFR ? "text-black" : "text-green-400  font-boold"}`}>RO</p>
                 </div>
                 {/* Denumire Input for RO*/}
                 {!itIsFR ? (
                   <>
                     <div className="flex flex-col items-center">
-                      <label className=" font-medium text-black">
-                        Transport
-                      </label>
+                      <label className=" font-medium text-black">Transport</label>
                       <textarea
                         rows={1}
                         type="text"
@@ -261,9 +222,7 @@ export default function TransportForm() {
                       />
                     </div>
                     <div className="flex flex-col items-center">
-                      <label className=" font-medium text-black">
-                        Descriere
-                      </label>
+                      <label className=" font-medium text-black">Descriere</label>
                       <textarea
                         type="text"
                         rows={1}
@@ -278,9 +237,7 @@ export default function TransportForm() {
                 ) : (
                   <>
                     <div className="flex flex-col items-center">
-                      <label className=" font-medium text-black">
-                        Transport FR
-                      </label>
+                      <label className=" font-medium text-black">Transport FR</label>
                       <textarea
                         type="text"
                         rows={1}
@@ -292,9 +249,7 @@ export default function TransportForm() {
                       />
                     </div>
                     <div className="flex flex-col items-center">
-                      <label className=" font-medium text-black">
-                        Descriere FR
-                      </label>
+                      <label className=" font-medium text-black">Descriere FR</label>
                       <textarea
                         type="text"
                         rows={1}
@@ -310,19 +265,10 @@ export default function TransportForm() {
               </div>
               <div className="flex flex-col items-center">
                 {/* Unit Dropdown */}
-                <label
-                  htmlFor="unit"
-                  className="col-span-1 font-medium text-black"
-                >
+                <label htmlFor="unit" className="col-span-1 font-medium text-black">
                   Unitate
                 </label>
-                <select
-                  id="unitate_masura"
-                  name="unitate_masura"
-                  value={formData.unitate_masura}
-                  onChange={handleChange}
-                  className="px-4 py-2 border  rounded-lg outline-none shadow-sm "
-                >
+                <select id="unitate_masura" name="unitate_masura" value={formData.unitate_masura} onChange={handleChange} className="px-4 py-2 border  rounded-lg outline-none shadow-sm ">
                   <option value="h">h</option>
                   <option value="m³">m³</option>
                   <option value="kg">kg</option>
@@ -332,10 +278,7 @@ export default function TransportForm() {
                 </select>
               </div>
               <div className="flex flex-col items-center">
-                <label
-                  htmlFor="description"
-                  className=" font-medium text-black"
-                >
+                <label htmlFor="description" className=" font-medium text-black">
                   Cost Unitar
                 </label>
                 <input
@@ -350,60 +293,39 @@ export default function TransportForm() {
               </div>
               {!selectedDelete && !selectedEdit && !selectedDouble ? (
                 <div className="flex gap-2 items-center ">
-                  <button
-                    type="submit"
-                    className="bg-green-400 hover:bg-green-500 text-black text-lg mt-6 px-6 py-2 flex  items-center rounded-lg"
-                  >
+                  <button type="submit" className="bg-green-400 hover:bg-green-500 text-black text-lg mt-6 px-6 py-2 flex  items-center rounded-lg">
                     <FontAwesomeIcon icon={faPlus} className="pr-3" />
                     Încarcă
                   </button>
                 </div>
               ) : selectedDelete ? (
                 <div className="flex gap-2 items-center ">
-                  <button
-                    onClick={(e) => deleteRow(e)}
-                    className="bg-red-500 hover:bg-red-500 text-black text-lg mt-6 px-4 py-2 flex  items-center rounded-lg"
-                  >
+                  <button onClick={(e) => deleteRow(e)} className="bg-red-500 hover:bg-red-500 text-black text-lg mt-6 px-4 py-2 flex  items-center rounded-lg">
                     <FontAwesomeIcon icon={faCancel} className="pr-3" />
                     Șterge
                   </button>
-                  <button
-                    onClick={(e) => cancelDelete(e)}
-                    className="bg-green-400 hover:bg-green-500 text-black text-lg mt-6 px-4 py-2 flex  items-center rounded-lg"
-                  >
+                  <button onClick={(e) => cancelDelete(e)} className="bg-green-400 hover:bg-green-500 text-black text-lg mt-6 px-4 py-2 flex  items-center rounded-lg">
                     Anulează
                   </button>
                 </div>
               ) : selectedDouble ? (
                 <div className="flex gap-2 items-center ">
-                  <button
-                    type="submit"
-                    className="bg-amber-400 hover:bg-amber-500 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg"
-                  >
+                  <button type="submit" className="bg-amber-400 hover:bg-amber-500 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg">
                     <FontAwesomeIcon icon={faPlus} className="pr-3" />
                     Dublează
                   </button>
-                  <button
-                    onClick={(e) => cancelDouble(e)}
-                    className="bg-red-400 hover:bg-red-500 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg"
-                  >
+                  <button onClick={(e) => cancelDouble(e)} className="bg-red-400 hover:bg-red-500 text-black  mt-6 px-4 py-2 flex  items-center rounded-lg">
                     {" "}
                     Anulează
                   </button>
                 </div>
               ) : (
                 <div className="flex gap-2 items-center ">
-                  <button
-                    type="submit"
-                    className="bg-green-400 hover:bg-green-500 text-black text-lg mt-6 px-6 py-2 flex  items-center rounded-lg"
-                  >
+                  <button type="submit" className="bg-green-400 hover:bg-green-500 text-black text-lg mt-6 px-6 py-2 flex  items-center rounded-lg">
                     <FontAwesomeIcon icon={faPlus} className="pr-3" />
                     Editează
                   </button>
-                  <button
-                    onClick={(e) => cancelEdit(e)}
-                    className="bg-red-400 hover:bg-red-500 text-black text-lg mt-6 px-6 py-2 flex  items-center rounded-lg"
-                  >
+                  <button onClick={(e) => cancelEdit(e)} className="bg-red-400 hover:bg-red-500 text-black text-lg mt-6 px-6 py-2 flex  items-center rounded-lg">
                     {" "}
                     Anulează
                   </button>

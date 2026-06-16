@@ -84,9 +84,11 @@ export const getColoanaValue = (coloaneValori, col) => {
   return found?.value || "";
 };
 
-export const formatNumber = (value) => {
+export const formatNumber = (value, decimalPlaces = 3) => {
+  const digits = [1, 2, 3].includes(Number(decimalPlaces)) ? Number(decimalPlaces) : 3;
+
   return parseFloat(value || 0)
-    .toFixed(3)
+    .toFixed(digits)
     .replace(".", ",");
 };
 
@@ -230,7 +232,7 @@ export const getPercentNumber = (value) => {
 
   if (!Number.isFinite(parsed)) return 0;
 
-  return Math.min(100, Math.max(0, parsed));
+  return Math.min(1000, Math.max(0, parsed));
 };
 
 export const normalizePercentInput = (value) => {
@@ -238,11 +240,11 @@ export const normalizePercentInput = (value) => {
 
   if (next === "") return "";
 
-  if (!/^\d{0,3}(\.\d{0,2})?$/.test(next)) return null;
+  if (!/^\d{0,4}(\.\d{0,2})?$/.test(next)) return null;
 
   const parsed = Number(next);
 
-  if (!Number.isFinite(parsed) || parsed > 100) return null;
+  if (!Number.isFinite(parsed) || parsed > 1000) return null;
 
   return next;
 };
@@ -281,8 +283,92 @@ export const reorderSelectedBlock = ({ items, selectedIds, activeId, overId }) =
   return [...remainingItems.slice(0, insertIndex), ...movingItems, ...remainingItems.slice(insertIndex)];
 };
 
-export const CATEGORY_LEVEL_COUNT = 7;
+export const CATEGORY_LEVEL_COUNT = 5;
 export const EMPTY_CATEGORY_VALUE = "Fără valoare";
+export const CATEGORY_COLOR_PRESETS = ["#c4c4ce", "#f59e0b", "#10b981", "#3b82f6", "#8b5cf6", "#ec4899", "#ef4444", "#14b8a6", "#f97316", "#64748b"];
+
+export const normalizeHexColor = (value) => {
+  const color = String(value || "").trim();
+
+  if (!/^#[0-9a-fA-F]{6}$/.test(color)) return "";
+
+  return color.toLowerCase();
+};
+
+export const normalizeCategoryColorsConfig = (value) => {
+  const parsed = parseMaybeJson(value, {});
+
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+
+  return Object.entries(parsed).reduce((acc, [fieldKey, colors]) => {
+    const normalizedFieldKey = String(fieldKey || "").trim().slice(0, 128);
+
+    if (!normalizedFieldKey || !colors || typeof colors !== "object" || Array.isArray(colors)) return acc;
+
+    const normalizedColors = Object.entries(colors).reduce((colorAcc, [categoryValue, color]) => {
+      const normalizedValue = String(categoryValue || "").trim().slice(0, 255);
+      const normalizedColor = normalizeHexColor(color);
+
+      if (!normalizedValue || !normalizedColor) return colorAcc;
+
+      colorAcc[normalizedValue] = normalizedColor;
+      return colorAcc;
+    }, {});
+
+    if (Object.keys(normalizedColors).length > 0) {
+      acc[normalizedFieldKey] = normalizedColors;
+    }
+
+    return acc;
+  }, {});
+};
+
+export const getCategoryColor = (categoryColorsConfig, fieldKey, value) => {
+  const normalizedConfig = normalizeCategoryColorsConfig(categoryColorsConfig);
+  return normalizedConfig?.[String(fieldKey || "")]?.[String(value || "").trim()] || "";
+};
+
+export const setCategoryColor = (categoryColorsConfig, fieldKey, value, color) => {
+  const normalizedConfig = normalizeCategoryColorsConfig(categoryColorsConfig);
+  const normalizedFieldKey = String(fieldKey || "").trim().slice(0, 128);
+  const normalizedValue = String(value || "").trim().slice(0, 255);
+  const normalizedColor = normalizeHexColor(color);
+
+  if (!normalizedFieldKey || !normalizedValue) return normalizedConfig;
+
+  const next = {
+    ...normalizedConfig,
+    [normalizedFieldKey]: {
+      ...(normalizedConfig[normalizedFieldKey] || {}),
+    },
+  };
+
+  if (normalizedColor) {
+    next[normalizedFieldKey][normalizedValue] = normalizedColor;
+  } else {
+    delete next[normalizedFieldKey][normalizedValue];
+  }
+
+  if (Object.keys(next[normalizedFieldKey]).length === 0) {
+    delete next[normalizedFieldKey];
+  }
+
+  return next;
+};
+
+export const getReadableTextColor = (hexColor) => {
+  const color = normalizeHexColor(hexColor);
+
+  if (!color) return "";
+
+  const red = parseInt(color.slice(1, 3), 16) / 255;
+  const green = parseInt(color.slice(3, 5), 16) / 255;
+  const blue = parseInt(color.slice(5, 7), 16) / 255;
+  const normalize = (channel) => (channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4);
+  const luminance = 0.2126 * normalize(red) + 0.7152 * normalize(green) + 0.0722 * normalize(blue);
+
+  return luminance > 0.42 ? "#111827" : "#ffffff";
+};
 
 export const buildAvailableCategoryFields = (dynamicColumns = []) => {
   const dynamicFields = (dynamicColumns || []).slice(0, 5).map((col) => ({
@@ -301,11 +387,36 @@ export const buildAvailableCategoryFields = (dynamicColumns = []) => {
       type: "denumire",
     },
     {
-      key: "clasa",
-      label: "Clasa",
-      type: "clasa",
+      key: "clasa1",
+      label: "Clasă 1",
+      type: "class_level",
+      levelNo: 1,
     },
-  ].slice(0, CATEGORY_LEVEL_COUNT);
+    {
+      key: "clasa2",
+      label: "Clasă 2",
+      type: "class_level",
+      levelNo: 2,
+    },
+    {
+      key: "clasa3",
+      label: "Clasă 3",
+      type: "class_level",
+      levelNo: 3,
+    },
+    {
+      key: "clasa4",
+      label: "Clasă 4",
+      type: "class_level",
+      levelNo: 4,
+    },
+    {
+      key: "clasa5",
+      label: "Clasă 5",
+      type: "class_level",
+      levelNo: 5,
+    },
+  ];
 };
 
 export const normalizeCategoryConfig = (config = [], availableFields = []) => {
@@ -325,7 +436,7 @@ export const normalizeCategoryConfig = (config = [], availableFields = []) => {
   });
 };
 
-export const getCategoryValue = ({ reteta, field, dynamicColumns = [], displayLang = "RO" }) => {
+export const getCategoryValue = ({ reteta, field, dynamicColumns = [], displayLang = "RO", getClassDisplay }) => {
   if (!field) return EMPTY_CATEGORY_VALUE;
 
   if (field.type === "dynamic") {
@@ -339,16 +450,60 @@ export const getCategoryValue = ({ reteta, field, dynamicColumns = [], displayLa
     return String(value || "").trim() || EMPTY_CATEGORY_VALUE;
   }
 
-  if (field.type === "clasa") {
-    return String(reteta?.clasa_reteta || "").trim() || EMPTY_CATEGORY_VALUE;
+  if (field.type === "class_level") {
+    const value = getRetetaClassLevelDisplay(reteta, field.levelNo, displayLang);
+    return String(value || "").trim() || EMPTY_CATEGORY_VALUE;
   }
 
   return EMPTY_CATEGORY_VALUE;
 };
 
+const getRetetaClassLevels = (reteta) => {
+  const snapshotLevels = parseMaybeJson(reteta?.class_snapshot, []);
+  if (Array.isArray(snapshotLevels) && snapshotLevels.some((level) => level && !level.is_empty)) {
+    return snapshotLevels;
+  }
+
+  return Array.isArray(reteta?.cod_reteta_meta?.classLevels) ? reteta.cod_reteta_meta.classLevels : [];
+};
+
+export const getRetetaClassLevelDisplay = (reteta, levelNo, displayLang = "RO") => {
+  const level = getRetetaClassLevels(reteta)[Number(levelNo) - 1];
+  if (!level || level.is_empty) return "";
+
+  const denumire = displayLang === "FR" ? level.denumire_fr || level.denumire_ro : level.denumire_ro;
+  return `${level.code_segment}. ${level.is_defined && denumire ? denumire : "Nedefinit"}`;
+};
+
 const getCategoryCountKey = (values, levelIndex) => JSON.stringify(values.slice(0, levelIndex + 1));
 
-export const buildDisplayRowsWithCategories = ({ retete = [], expandedRetetaIds = new Set(), categoryConfig = [], dynamicColumns = [], displayLang = "RO" }) => {
+export const getCategoryTotals = (retete = []) => {
+  return (retete || []).reduce(
+    (acc, reteta) => {
+      const cantitateLucrare = Number(reteta?.cantitate_lucrare || 0);
+
+      acc.cost += getRetetaCost(reteta);
+      acc.cantitate += cantitateLucrare;
+      acc.total += getRetetaTotalLucrare(reteta);
+
+      (reteta?.elemente || []).forEach((element) => {
+        if (element?.tip_resursa !== "manopera") return;
+
+        acc.totalManoperaHours += Number(element.cantitate_in_reteta ?? element.cantitate ?? 0) * cantitateLucrare;
+      });
+
+      return acc;
+    },
+    {
+      cost: 0,
+      cantitate: 0,
+      total: 0,
+      totalManoperaHours: 0,
+    },
+  );
+};
+
+export const buildDisplayRowsWithCategories = ({ retete = [], expandedRetetaIds = new Set(), categoryConfig = [], dynamicColumns = [], displayLang = "RO", getClassDisplay }) => {
   const availableFields = buildAvailableCategoryFields(dynamicColumns);
   const normalizedConfig = normalizeCategoryConfig(categoryConfig, availableFields);
   const activeFields = normalizedConfig
@@ -415,6 +570,7 @@ export const buildDisplayRowsWithCategories = ({ retete = [], expandedRetetaIds 
         field,
         dynamicColumns,
         displayLang,
+        getClassDisplay,
       });
 
       if (!groupedMap.has(value)) {
@@ -442,6 +598,7 @@ export const buildDisplayRowsWithCategories = ({ retete = [], expandedRetetaIds 
         fieldLabel: field.label,
         value: group.value,
         count: group.items.length,
+        totals: getCategoryTotals(group.items),
         parentPath: parentValues,
         categoryPath: pathValues,
       });

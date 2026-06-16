@@ -116,7 +116,7 @@ export default function FilialeMainCompany({ companyId = null }) {
       setOpen(false);
       resetDraft();
     } catch (error) {
-      console.error(error);
+      console.log(error);
       const msg = error?.response?.data?.message || "A apărut o eroare la salvare.";
       toast.error(msg);
     } finally {

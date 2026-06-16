@@ -737,7 +737,7 @@ const savePontaj = async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     await conn.rollback();
-    console.error("❌ savePontaj:", err);
+    console.log("❌ savePontaj:", err);
     res.status(500).json({ error: "Failed to save pontaj" });
   } finally {
     conn.release();
@@ -955,7 +955,7 @@ const switchWorkSession = async (req, res) => {
 const saveWorkLocation = async (req, res) => {
   try {
     const { user_id, lat, lng, accuracy = null, ts = null } = req.body;
-    console.log("saveWorkLocation called with:", user_id, ts);
+    console.log("\n saveWorkLocation called with:", user_id, ts, "\n");
 
     // 0) Validate
     if (!user_id || lat == null || lng == null) {
@@ -1153,180 +1153,239 @@ const exportPontaje = async (req, res) => {
 
 // POST /Pontaje/exportPontajeSantiere
 const exportPontajeSantiere = async (req, res) => {
-  let { dates, santier_ids, include_unassigned_workers } = req.body || {};
-  include_unassigned_workers = include_unassigned_workers !== false; // default: true
+  let { dates, santier_ids, mode = "all", company_id, include_unassigned_workers } = req.body || {};
+
+  include_unassigned_workers = include_unassigned_workers !== false;
 
   try {
     if (!Array.isArray(dates) || dates.length === 0) {
       return res.status(400).json({ error: "Invalid dates" });
     }
+
     if (!Array.isArray(santier_ids)) santier_ids = [];
-    santier_ids = [...new Set(santier_ids)].filter((v) => v != null);
-    if (santier_ids.length === 0) {
+
+    santier_ids = [...new Set(santier_ids)].map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0);
+
+    const isAllMode = mode === "all";
+
+    if (!isAllMode && santier_ids.length === 0) {
       return res.status(400).json({ error: "santier_ids is required" });
     }
 
-    // 1) S01_Santiere selectate
-    const [santiere] = await global.db.query(
-      `SELECT id, name, color_hex
-         FROM S01_Santiere
-        WHERE id IN (?)
-        ORDER BY name ASC`,
-      [santier_ids],
-    );
-    if (!santiere.length) return res.json({ dates, santier_ids, santiere: [] });
-
-    // 2) asignări curente (fără beneficiari)
-    const [assignments] = await global.db.query(
-      `SELECT a.user_id, a.santier_id,
-              u.name, u.photo_url, u.email
-         FROM S01_Atribuire_Activitate a
-         JOIN S00_Utilizatori u ON u.id = a.user_id
-        WHERE a.santier_id IN (?)
-       `,
-      [santier_ids],
+    const [companie] = await global.db.query(
+      `SELECT 
+          id,
+          nume,
+          culoare_hex,
+          logo_url
+       FROM S00_Companii_Interne
+       WHERE id = ?`,
+      [company_id],
     );
 
-    // 3) sesiuni pentru datele & santierele cerute
-    const [rows] = await global.db.query(
-      `SELECT
-          sl.id, sl.user_id, sl.santier_id,
-          DATE_FORMAT(sl.start_time, '%Y-%m-%dT%H:%i:%sZ') AS start_time,
-          DATE_FORMAT(sl.end_time,   '%Y-%m-%dT%H:%i:%sZ') AS end_time,
-          sl.status, sl.edited,
-          DATE_FORMAT(sl.session_date, '%Y-%m-%d') AS session_date
-        FROM S06_Sesiuni_De_Lucru sl
-       WHERE sl.session_date IN (?)
-         AND sl.santier_id   IN (?)
-       ORDER BY sl.santier_id, sl.session_date, sl.user_id, sl.start_time`,
-      [dates, santier_ids],
-    );
+    let exportSantierIds = [];
 
-    // helpers
-    const emptyCell = () => ({
-      minutes_total: 0,
-      minutes_cancelled: 0,
-      has_active: false,
-    });
-    const zeroByDate = (datesArr) => Object.fromEntries(datesArr.map((d) => [d, emptyCell()]));
-    const minutesBetween = (isoStart, isoEnd) => {
-      if (!isoStart || !isoEnd) return 0;
-      const a = new Date(isoStart).getTime();
-      const b = new Date(isoEnd).getTime();
-      if (!(a > 0 && b > 0) || b <= a) return 0;
-      return Math.floor((b - a) / 60000);
-    };
-    const norm = (s) => (s || "").toLowerCase();
-    const isCompleted = (s) => norm(s) === "completed";
-    const isCancelled = (s) => ["cancelled", "canceled", "anulat", "anulata"].includes(norm(s));
-    const isActive = (s, end_time) => norm(s) === "active" || norm(s) === "started" || (!end_time && !isCancelled(s) && !isCompleted(s));
+    if (isAllMode) {
+      const [siteIdsRows] = await global.db.query(
+        `SELECT DISTINCT sl.santier_id
+           FROM S06_Sesiuni_De_Lucru sl
+          WHERE sl.session_date IN (?)
+            AND sl.santier_id IS NOT NULL
+          ORDER BY sl.santier_id ASC`,
+        [dates],
+      );
 
-    // 4) schelet payload
-    const santierMap = new Map();
-    for (const s of santiere) {
-      santierMap.set(s.id, {
-        id: s.id,
-        name: s.nume,
-        color_hex: s.culoare_hex,
-        // per zi pentru santier
-        by_date: zeroByDate(dates),
-        // utilizatori asignați (îi punem cu 0)
+      exportSantierIds = siteIdsRows.map((row) => Number(row.santier_id)).filter((id) => Number.isFinite(id) && id > 0);
+    } else {
+      exportSantierIds = santier_ids;
+    }
+
+    exportSantierIds = [...new Set(exportSantierIds)];
+
+    if (exportSantierIds.length === 0) {
+      return res.json({
+        dates,
+        santier_ids: [],
         users: [],
-        // utilizatori neasignați dar cu pontaj (opțional)
-        extra_users: [],
+        assignments: [],
+        santiere_all: [],
+        santiere: [],
+        sites: [],
+        companie: companie[0] || null,
       });
     }
 
-    // map utilizatori asignați per santier
-    const assignedBySantier = new Map(); // santier_id -> Map(user_id -> refUser)
+    const [santiere_all] = await global.db.query(
+      `SELECT 
+          id,
+          nume AS name,
+          culoare_hex AS color_hex
+       FROM S01_Santiere
+       WHERE id IN (?)
+       ORDER BY nume ASC`,
+      [exportSantierIds],
+    );
+
+    const validSantierIds = santiere_all.map((s) => Number(s.id)).filter((id) => Number.isFinite(id) && id > 0);
+
+    if (validSantierIds.length === 0) {
+      return res.json({
+        dates,
+        santier_ids: [],
+        users: [],
+        assignments: [],
+        santiere_all: [],
+        santiere: [],
+        sites: [],
+        companie: companie[0] || null,
+      });
+    }
+
+    const [assignments] = await global.db.query(
+      `SELECT 
+          a.user_id,
+          a.santier_id,
+
+          u.id AS id,
+          u.name AS name,
+          u.email AS email,
+          u.photo_url AS photo_url,
+
+          s.nume AS santier_name,
+          s.culoare_hex AS santier_color
+       FROM S01_Atribuire_Activitate a
+       JOIN S00_Utilizatori u ON u.id = a.user_id
+       JOIN S01_Santiere s ON s.id = a.santier_id
+       WHERE a.santier_id IN (?)
+       ORDER BY s.nume ASC, u.name ASC`,
+      [validSantierIds],
+    );
+
+    const assignedKeySet = new Set();
+
     for (const a of assignments) {
-      if (!assignedBySantier.has(a.santier_id)) assignedBySantier.set(a.santier_id, new Map());
-      const uRef = {
-        id: a.user_id,
+      assignedKeySet.add(`${Number(a.santier_id)}:${Number(a.user_id)}`);
+    }
+
+    let [sessionRows] = await global.db.query(
+      `SELECT
+          sl.id,
+          sl.user_id,
+          sl.santier_id,
+
+          DATE_FORMAT(sl.start_time, '%Y-%m-%dT%H:%i:%sZ') AS start_time,
+          DATE_FORMAT(sl.end_time,   '%Y-%m-%dT%H:%i:%sZ') AS end_time,
+          DATE_FORMAT(sl.session_date, '%Y-%m-%d') AS session_date,
+
+          sl.status,
+          sl.note,
+          sl.edited,
+
+          u.name AS user_name,
+          u.email AS user_email,
+          u.photo_url AS user_photo_url,
+
+          s.nume AS santier_name,
+          s.culoare_hex AS santier_color
+       FROM S06_Sesiuni_De_Lucru sl
+       JOIN S00_Utilizatori u ON u.id = sl.user_id
+       LEFT JOIN S01_Santiere s ON s.id = sl.santier_id
+       WHERE sl.session_date IN (?)
+         AND sl.santier_id IN (?)
+       ORDER BY sl.santier_id ASC, sl.session_date ASC, u.name ASC, sl.start_time ASC`,
+      [dates, validSantierIds],
+    );
+
+    if (!include_unassigned_workers) {
+      sessionRows = sessionRows.filter((r) => assignedKeySet.has(`${Number(r.santier_id)}:${Number(r.user_id)}`));
+    }
+
+    const usersById = new Map();
+    const sessionsByUser = new Map();
+
+    for (const a of assignments) {
+      const userId = Number(a.user_id);
+      if (!userId) continue;
+
+      usersById.set(userId, {
+        id: userId,
         name: a.name,
         email: a.email,
         photo_url: a.photo_url,
-        by_date: zeroByDate(dates), // doar pe acest santier
+      });
+    }
+
+    for (const r of sessionRows) {
+      const userId = Number(r.user_id);
+      if (!userId) continue;
+
+      usersById.set(userId, {
+        id: userId,
+        name: r.user_name,
+        email: r.user_email,
+        photo_url: r.user_photo_url,
+      });
+
+      const session = {
+        id: r.id,
+        user_id: userId,
+        santier_id: r.santier_id,
+
+        session_date: r.session_date,
+        start_time: r.start_time,
+        end_time: r.end_time,
+
+        status: r.status,
+        note: r.note,
+        edited: r.edited,
+
+        santier_name: r.santier_name,
+        santier_color: r.santier_color,
       };
-      assignedBySantier.get(a.santier_id).set(a.user_id, uRef);
-      santierMap.get(a.santier_id)?.users.push(uRef);
+
+      if (!sessionsByUser.has(userId)) {
+        sessionsByUser.set(userId, []);
+      }
+
+      sessionsByUser.get(userId).push(session);
     }
 
-    // 5) agregare: completed + cancelled (în total), active => flag
-    for (const r of rows) {
-      const sObj = santierMap.get(r.santier_id);
-      if (!sObj) continue;
-      const cell = sObj.by_date[r.session_date];
-      if (!cell) continue;
+    const users = [...usersById.values()]
+      .map((u) => ({
+        ...u,
+        sessions: sessionsByUser.get(u.id) || [],
+      }))
+      .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "ro"));
 
-      const status = norm(r.status);
-      if (isActive(status, r.end_time)) {
-        cell.has_active = true;
-      }
+    const santiere_map = {};
 
-      const mins = minutesBetween(r.start_time, r.end_time);
-      if (mins > 0 && (isCompleted(status) || isCancelled(status))) {
-        cell.minutes_total += mins;
-        if (isCancelled(status)) cell.minutes_cancelled += mins;
-      }
-
-      // pe utilizator
-      const mapForS = assignedBySantier.get(r.santier_id);
-      let uRef = mapForS?.get(r.user_id);
-      if (!uRef && include_unassigned_workers) {
-        uRef = {
-          id: r.user_id,
-          name: undefined,
-          email: undefined,
-          photo_url: undefined,
-          by_date: zeroByDate(dates),
-        };
-        if (!assignedBySantier.has(r.santier_id)) assignedBySantier.set(r.santier_id, new Map());
-        assignedBySantier.get(r.santier_id).set(r.user_id, uRef);
-        sObj.extra_users.push(uRef);
-      }
-      if (!uRef) continue;
-
-      const uCell = uRef.by_date[r.session_date];
-      if (isActive(status, r.end_time)) uCell.has_active = true;
-      if (mins > 0 && (isCompleted(status) || isCancelled(status))) {
-        uCell.minutes_total += mins;
-        if (isCancelled(status)) uCell.minutes_cancelled += mins;
-      }
+    for (const s of santiere_all) {
+      santiere_map[s.id] = {
+        id: s.id,
+        name: s.name,
+        color_hex: s.color_hex,
+      };
     }
 
-    // 6) backfill identități pentru extra S00_Utilizatori (o singură interogare)
-    const extraIds = [];
-    for (const s of santierMap.values()) {
-      for (const u of s.extra_users) if (!u.name) extraIds.push(u.id);
-    }
-    if (extraIds.length) {
-      const [ux] = await global.db.query(`SELECT id, name, email, photo_url FROM S00_Utilizatori WHERE id IN (?)`, [Array.from(new Set(extraIds))]);
-      const info = new Map(ux.map((x) => [x.id, x]));
-      for (const s of santierMap.values()) {
-        for (const u of s.extra_users) {
-          const i = info.get(u.id);
-          if (i) {
-            u.name = i.name;
-            u.email = i.email;
-            u.photo_url = i.photo_url;
-          }
-        }
-      }
-    }
-
-    // 7) livrare
-    res.json({
+    return res.json({
       dates,
-      santier_ids,
-      santiere: Array.from(santierMap.values()),
+      santier_ids: validSantierIds,
+
+      users,
+      assignments,
+
+      santiere_all,
+      santiere: santiere_all,
+      sites: santiere_all,
+      santiere_map,
+
+      companie: companie[0] || null,
     });
   } catch (err) {
     console.log("exportPontajeSantiere error:", err);
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
-
 const getContData = async (req, res) => {
   const { id } = req.params;
   try {

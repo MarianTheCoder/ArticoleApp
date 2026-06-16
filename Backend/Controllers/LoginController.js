@@ -68,7 +68,7 @@ const login = async (req, res) => {
       token,
     });
   } catch (err) {
-    console.error("Eroare la autentificare utilizator:", err);
+    console.log("Eroare la autentificare utilizator:", err);
     res.status(500).json({ message: "Eroare la baza de date." });
   }
 };

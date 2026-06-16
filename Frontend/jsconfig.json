@@ -1,13 +1,18 @@
 {
   "compilerOptions": {
     "baseUrl": ".",
-    "paths": { "@/*": ["./src/*"] },
+    "paths": {
+      "@/*": ["src/*"]
+    },
     "module": "ESNext",
-    "target": "ESNext",
-    "jsx": "react",
+    "moduleResolution": "Bundler",
+    "target": "ES2020",
+    "jsx": "react-jsx",
     "checkJs": false,
     "skipLibCheck": true,
-    "maxNodeModuleJsDepth": 0 // <--- ADD THIS. It stops VS Code from indexing inside node_modules
+    "allowSyntheticDefaultImports": true,
+    "maxNodeModuleJsDepth": 0
   },
-  "exclude": ["node_modules"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "build"]
 }

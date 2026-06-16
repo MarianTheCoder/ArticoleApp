@@ -232,7 +232,7 @@ function checkConnectionPorts(state, pendingItemsById, a, b) {
   const d = distance(pointA, pointB);
 
   if (d > 0.001) {
-    console.error("PlanDrawer connection port mismatch", { a, b, pointA, pointB, distancePx: d });
+    console.log("PlanDrawer connection port mismatch", { a, b, pointA, pointB, distancePx: d });
   }
 }
 
@@ -281,15 +281,7 @@ function createNextDraft({ startPoint, previewEndPoint = startPoint, tool, meter
 function connectPreviousTo(actions, state, pendingItemsById, draft, nextItemId, nextPortId) {
   if (!draft.previousItemId || !draft.previousPortId) return;
 
-  pushAction(
-    actions,
-    connectionAction(
-      state,
-      pendingItemsById,
-      { itemId: draft.previousItemId, portId: draft.previousPortId },
-      { itemId: nextItemId, portId: nextPortId },
-    ),
-  );
+  pushAction(actions, connectionAction(state, pendingItemsById, { itemId: draft.previousItemId, portId: draft.previousPortId }, { itemId: nextItemId, portId: nextPortId }));
 }
 
 // Connects a pipe end to a snapped target port.

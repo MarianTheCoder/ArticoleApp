@@ -51,7 +51,7 @@ const getSantiereByCompany = async (req, res) => {
     const [rows] = await conn.execute(sql, params);
     return res.status(200).json({ santiere: rows });
   } catch (err) {
-    console.error("getSantiereByCompany error:", err);
+    console.log("getSantiereByCompany error:", err);
     return res.status(500).json({ message: "Eroare la preluarea șantierelor." });
   } finally {
     if (conn) conn.release();
@@ -95,7 +95,7 @@ const getSantier = async (req, res) => {
     const [rows] = await conn.execute(sql, params);
     return res.status(200).json({ santier: rows[0] });
   } catch (err) {
-    console.error("getSantier error:", err);
+    console.log("getSantier error:", err);
     return res.status(500).json({ message: "Eroare la preluarea șantierului." });
   } finally {
     if (conn) conn.release();
@@ -153,7 +153,7 @@ const getAllSantiere = async (req, res) => {
 
     return res.status(200).json({ santiere: rows });
   } catch (err) {
-    console.error("getAllSantiere error:", err);
+    console.log("getAllSantiere error:", err);
     return res.status(500).json({ message: "Eroare la preluarea șantierelor." });
   } finally {
     if (conn) conn.release();
@@ -345,7 +345,7 @@ const postSantier = async (req, res) => {
   } catch (err) {
     if (conn) await conn.rollback();
 
-    console.error("postSantier error:", err);
+    console.log("postSantier error:", err);
     return res.status(500).json({ message: "Eroare server la salvarea șantierului." });
   } finally {
     if (conn) conn.release();

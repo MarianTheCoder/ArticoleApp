@@ -89,12 +89,12 @@ export default function ToolPanel({ tool, setTool, pipeWidthPx, metersPerPx }) {
         <div className="rounded-lg border border-slate-700 bg-slate-800 p-3 text-xs text-slate-300">
           <div className="flex justify-between">
             <span>meters/px</span>
-            <span className="font-mono">{metersPerPx || "—"}</span>
+            <span className="">{metersPerPx || "—"}</span>
           </div>
 
           <div className="mt-1 flex justify-between">
             <span>real pipe width</span>
-            <span className="font-mono">{formatPx(pipeWidthPx)}</span>
+            <span className="">{formatPx(pipeWidthPx)}</span>
           </div>
         </div>
       </div>
