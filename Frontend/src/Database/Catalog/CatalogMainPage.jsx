@@ -21,7 +21,16 @@ import SpinnerElement from "@/MainElements/SpinnerElement";
 import DeleteDialog from "@/components/ui/delete-dialog";
 import { toast } from "sonner";
 
-export default function CatalogMainPage({ tipResursa, isSelectionMode = false, onSelectElement, selectedItemId = null, lockedLang = null }) {
+const TEXT_ALIGN_STORAGE_KEY = "catalog_text_align";
+
+export default function CatalogMainPage({
+  tipResursa,
+  isSelectionMode = false,
+  onSelectElement,
+  selectedItemId = null,
+  selectedItemIds = [],
+  lockedLang = null,
+}) {
   const { loading, show, hide } = useLoading();
   const { user } = useContext(AuthContext);
   const effectiveLockedLang = isSelectionMode && lockedLang ? lockedLang : null;
@@ -46,7 +55,7 @@ export default function CatalogMainPage({ tipResursa, isSelectionMode = false, o
     clasa1: false,
     clasa2: false,
     denumire: true,
-    descriere: true,
+    descriere: false,
     unitate: true,
     cost: true,
     creat: false,
@@ -66,7 +75,22 @@ export default function CatalogMainPage({ tipResursa, isSelectionMode = false, o
   const [limitInput, setLimitInput] = useState("50");
   const [limitDebounced, setLimitDebounced] = useState(50);
 
-  const [displayLang, setDisplayLang] = useState("RO");
+  const [displayLang, setDisplayLang] = useState(effectiveLockedLang || "RO");
+  const [decimalPlaces, setDecimalPlaces] = useState(3);
+  const [textAlign, setTextAlign] = useState(() => {
+    try {
+      const saved = localStorage.getItem(TEXT_ALIGN_STORAGE_KEY);
+      if (saved === "left" || saved === "center" || saved === "right") return saved;
+    } catch {}
+    return "center";
+  });
+  const [columnResetKey, setColumnResetKey] = useState(0);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(TEXT_ALIGN_STORAGE_KEY, textAlign);
+    } catch {}
+  }, [textAlign]);
 
   // STATE FILTRE AVANSATE
   const getDefaultAdvancedFilters = useCallback(
@@ -90,7 +114,7 @@ export default function CatalogMainPage({ tipResursa, isSelectionMode = false, o
   useEffect(() => {
     setSearch("");
     const defaults = getDefaultAdvancedFilters();
-    setDisplayLang("RO");
+    setDisplayLang(effectiveLockedLang || "RO");
     setAdvancedFilters(defaults);
     setAdvancedFiltersDebounced(defaults);
     setPage(1);
@@ -180,7 +204,7 @@ export default function CatalogMainPage({ tipResursa, isSelectionMode = false, o
 
   return (
     <div className="h-full w-full flex justify-center overflow-hidden items-center">
-      <div className={`${!isSelectionMode ? "w-[95%] h-[95%] rounded-lg" : "rounded-t-lg w-full h-full"} flex flex-col p-3 xxxl:p-4 gap-3 xxxl:gap-4 overflow-hidden bg-background relative `}>
+      <div className={`${!isSelectionMode ? "w-[95%] h-[95%] rounded-lg" : "rounded-t-lg w-full h-full"} flex flex-col p-2 xxxl:p-3 gap-2 xxxl:gap-3 overflow-hidden bg-background relative `}>
         {/* --- 1. HEADER (FILTRE) --- */}
         <CatalogFilters
           config={config} // Trimitem configuratia dinamica
@@ -189,9 +213,12 @@ export default function CatalogMainPage({ tipResursa, isSelectionMode = false, o
           totalItems={totalItems}
           onAddClick={handleAddClick}
           displayLang={displayLang}
-          onDisplayLangToggle={() => {
-            setDisplayLang((prev) => (prev === "RO" ? "FR" : "RO"));
-          }}
+          onDisplayLangToggle={() => setDisplayLang((prev) => (prev === "RO" ? "FR" : "RO"))}
+          decimalPlaces={decimalPlaces}
+          setDecimalPlaces={setDecimalPlaces}
+          textAlign={textAlign}
+          setTextAlign={setTextAlign}
+          onResetColumnWidths={() => setColumnResetKey((prev) => prev + 1)}
           visibleColumns={visibleColumns}
           toggleCol={toggleCol}
           advancedFilters={advancedFilters}
@@ -206,7 +233,7 @@ export default function CatalogMainPage({ tipResursa, isSelectionMode = false, o
 
         {/* --- 2. LISTA ȘI PAGINAREA --- */}
         <div className="flex-1 w-full bg-card rounded-lg overflow-hidden relative shadow-base border border-border flex flex-col">
-          <div className="flex-1 p-3 xxxl:p-5 overflow-hidden flex flex-col relative">
+          <div className="flex-1 p-2 xxxl:p-3 overflow-hidden flex flex-col relative">
             {resurseList.length > 0 ? (
               <CatalogList
                 config={config} // Trimitem configuratia
@@ -220,7 +247,21 @@ export default function CatalogMainPage({ tipResursa, isSelectionMode = false, o
                 // selectie
                 isSelectionMode={isSelectionMode}
                 selectedItemId={selectedItemId}
+                selectedItemIds={selectedItemIds}
                 onSelectElement={onSelectElement}
+                // sortare / afisare
+                sortBy={advancedFilters.sortBy}
+                sortOrder={advancedFilters.sortOrder}
+                decimalPlaces={decimalPlaces}
+                textAlign={textAlign}
+                columnResetKey={columnResetKey}
+                onSortChange={(sortBy, sortOrder) => {
+                  setAdvancedFilters((prev) => ({
+                    ...prev,
+                    sortBy,
+                    sortOrder,
+                  }));
+                }}
               />
             ) : (
               <div className="flex-1 w-full flex justify-center items-center rounded-lg border border-border bg-muted/10">
@@ -236,7 +277,7 @@ export default function CatalogMainPage({ tipResursa, isSelectionMode = false, o
           </div>
 
           {/* PAGINARE BAZĂ */}
-          <div className="shrink-0 border-t border-border bg-muted/10 p-2.5 xxxl:p-3 flex items-center justify-between">
+          <div className="shrink-0 border-t border-border bg-muted/10 p-2 xxxl:p-2.5 flex items-center justify-between">
             <div className="flex items-center gap-1.5 xxxl:gap-2">
               <span className="text-sm xxxl:text-base text-foreground font-medium">Arată:</span>
               <Input

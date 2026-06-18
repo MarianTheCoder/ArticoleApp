@@ -25,7 +25,7 @@ const LAST_COLUMNS = [
   { key: "denumire", label: "Denumire" },
   { key: "descriere", label: "Descriere" },
   { key: "unitate", label: "U.M." },
-  { key: "cantitate", label: "Qty" },
+  { key: "cantitate", label: "Qty unitar" },
   { key: "qtyTotal", label: "Qty total" },
   { key: "cost", label: "Cost" },
   { key: "costTotal", label: "Cost total" },
@@ -38,6 +38,7 @@ const BASE_COLUMNS = [...FIRST_COLUMNS, ...LAST_COLUMNS];
 const CATEGORY_LEVEL_COUNT = 5;
 const DEFAULT_COLUMN_VISIBILITY = {
   clasa: false,
+  cantitate: false,
   coefPret: false,
 };
 
@@ -50,15 +51,31 @@ const DEFAULT_OPTIONS = {
   density: "normal",
   fontSize: 8,
   decimalPlaces: 3,
+  textAlign: "left",
+  priceCurrency: "",
+  conversionRate: "5.22",
   logoCompanyId: "",
   recapitulatiiPercent: "0",
+  discountPercent: "0",
   tvaPercent: "0",
   showRecapitulatii: true,
+  showReducere: true,
   showTva: true,
   creatDe: "",
   aprobatDe: "",
   categoryConfig: Array.from({ length: CATEGORY_LEVEL_COUNT }, () => ""),
   showCategoryTotals: false,
+};
+
+const normalizePdfCurrency = (value, fallback = "RON") => {
+  const currency = String(value || "")
+    .trim()
+    .toUpperCase();
+  return ["RON", "EUR"].includes(currency) ? currency : fallback;
+};
+
+const getOppositeCurrency = (value) => {
+  return normalizePdfCurrency(value) === "RON" ? "EUR" : "RON";
 };
 
 const PDF_TYPE_FILENAME_LABELS = {
@@ -74,7 +91,7 @@ const buildInitialColumns = (visibleColumns = {}, dynamicColumns = []) => {
   const next = {};
 
   BASE_COLUMNS.forEach((col) => {
-    if (col.key === "clasa") {
+    if (col.key === "clasa" || col.key === "cantitate") {
       next[col.key] = false;
       return;
     }
@@ -102,6 +119,19 @@ const normalizeExportPercentInput = (value) => {
   return next;
 };
 
+const normalizeConversionRateInput = (value) => {
+  const next = String(value || "").replace(",", ".");
+
+  if (next === "") return "";
+  if (!/^\d{0,4}(\.\d{0,4})?$/.test(next)) return null;
+
+  const parsed = Number(next);
+
+  if (!Number.isFinite(parsed) || parsed > 10000) return null;
+
+  return next;
+};
+
 const buildCategoryFields = (dynamicColumns = []) => {
   return [
     ...(dynamicColumns || []).slice(0, 5).map((col) => ({
@@ -109,11 +139,11 @@ const buildCategoryFields = (dynamicColumns = []) => {
       label: col.nume,
     })),
     { key: "denumire", label: "Denumire" },
-    { key: "clasa1", label: "Clasă 1" },
-    { key: "clasa2", label: "Clasă 2" },
-    { key: "clasa3", label: "Clasă 3" },
-    { key: "clasa4", label: "Clasă 4" },
-    { key: "clasa5", label: "Clasă 5" },
+    { key: "clasa1", label: "Specialitate" },
+    { key: "clasa2", label: "Capitol de lucrări" },
+    { key: "clasa3", label: "Familie de lucrări" },
+    { key: "clasa4", label: "Subfamilie de lucrări" },
+    { key: "clasa5", label: "Articol de lucrare" },
   ];
 };
 
@@ -150,7 +180,8 @@ const sanitizeFileNamePart = (value, fallback) => {
 };
 
 const getPdfFileName = ({ selectedOferta, selectedLucrare, options }) => {
-  const santierName = selectedOferta?.santier_nume || selectedOferta?.nume_santier || selectedLucrare?.santier_nume || (selectedOferta?.santier_id ? `Santier_${selectedOferta.santier_id}` : "Santier");
+  const santierName =
+    selectedOferta?.santier_nume || selectedOferta?.nume_santier || selectedLucrare?.santier_nume || (selectedOferta?.santier_id ? `Santier_${selectedOferta.santier_id}` : "Santier");
   const ofertaName = selectedOferta?.nume || selectedOferta?.oferta_nume || selectedLucrare?.oferta_nume || "Oferta";
   const lucrareName = selectedLucrare?.nume || selectedLucrare?.lucrare_nume || "Lucrare";
   const pdfType = PDF_TYPE_FILENAME_LABELS[options?.formType] || "PDF";
@@ -168,18 +199,26 @@ export default function OferteExportPdfDialog({
   visibleColumns,
   dynamicColumns = [],
   decimalPlaces = 3,
+  textAlign = "left",
+  currency = "RON",
   recapitulatiiPercent = "0",
+  discountPercent = "0",
   tvaPercent = "0",
   onRecapitulatiiPercentChange,
+  onDiscountPercentChange,
   onTvaPercentChange,
 }) {
   const { data: companiiInterneData } = useCompaniiInterne();
   const companiiInterne = companiiInterneData?.companies || [];
+  const defaultCurrency = normalizePdfCurrency(currency, displayLang === "FR" ? "EUR" : "RON");
+  const oppositeCurrency = getOppositeCurrency(defaultCurrency);
 
   const [options, setOptions] = useState(() => ({
     ...DEFAULT_OPTIONS,
     displayLang,
     decimalPlaces,
+    textAlign,
+    priceCurrency: defaultCurrency,
   }));
   const [pdfColumns, setPdfColumns] = useState(() => buildInitialColumns(visibleColumns, dynamicColumns));
   const [recapOpen, setRecapOpen] = useState(true);
@@ -209,10 +248,12 @@ export default function OferteExportPdfDialog({
       ...prev,
       displayLang,
       decimalPlaces,
+      textAlign,
+      priceCurrency: normalizePdfCurrency(prev.priceCurrency, defaultCurrency),
       categoryConfig: normalizeCategoryConfig(prev.categoryConfig, buildCategoryFields(dynamicColumns)),
     }));
     setPdfColumns(buildInitialColumns(visibleColumns, dynamicColumns));
-  }, [decimalPlaces, displayLang, dynamicColumns, open, visibleColumns]);
+  }, [decimalPlaces, defaultCurrency, displayLang, textAlign, dynamicColumns, open, visibleColumns]);
 
   useEffect(() => {
     return () => {
@@ -247,6 +288,17 @@ export default function OferteExportPdfDialog({
     [onRecapitulatiiPercentChange],
   );
 
+  const handleDiscountPercentChange = useCallback(
+    (value) => {
+      const next = normalizeExportPercentInput(value);
+
+      if (next !== null) {
+        onDiscountPercentChange?.(next);
+      }
+    },
+    [onDiscountPercentChange],
+  );
+
   const handleTvaPercentChange = useCallback(
     (value) => {
       const next = normalizeExportPercentInput(value);
@@ -257,6 +309,20 @@ export default function OferteExportPdfDialog({
     },
     [onTvaPercentChange],
   );
+
+  const handleConversionRateChange = useCallback(
+    (value) => {
+      const next = normalizeConversionRateInput(value);
+
+      if (next !== null) {
+        updateOption("conversionRate", next);
+      }
+    },
+    [updateOption],
+  );
+
+  const selectedPriceCurrency = normalizePdfCurrency(options.priceCurrency, defaultCurrency);
+  const isCurrencyConverted = selectedPriceCurrency !== defaultCurrency;
 
   const updateCategoryLevel = useCallback(
     (levelIndex, fieldKey) => {
@@ -294,7 +360,11 @@ export default function OferteExportPdfDialog({
         options: {
           ...options,
           recapitulatiiPercent,
+          discountPercent,
           tvaPercent,
+          sourceCurrency: defaultCurrency,
+          currency: selectedPriceCurrency,
+          conversionRate: options.conversionRate,
           visibleColumns: pdfColumns,
         },
       },
@@ -304,7 +374,7 @@ export default function OferteExportPdfDialog({
     );
 
     return response.data;
-  }, [options, pdfColumns, recapitulatiiPercent, selectedLucrare?.id, tvaPercent]);
+  }, [defaultCurrency, options, pdfColumns, recapitulatiiPercent, discountPercent, selectedPriceCurrency, selectedLucrare?.id, tvaPercent]);
 
   const handleRefreshPreview = useCallback(async () => {
     setLoadingPreview(true);
@@ -369,7 +439,7 @@ export default function OferteExportPdfDialog({
           </div>
         </DialogHeader>
 
-        <div className="grid min-h-0 flex-1 grid-cols-[18rem_minmax(0,1fr)] xxxl:grid-cols-[20rem_minmax(0,1fr)]">
+        <div className="grid min-h-0 flex-1 grid-cols-[20rem_minmax(0,1fr)] xxxl:grid-cols-[24rem_minmax(0,1fr)]">
           <aside className="min-h-0 overflow-auto border-r p-2 xxxl:p-3">
             <div className="grid gap-2 xxxl:gap-3">
               <div className="rounded-md border bg-card p-2 xxxl:p-3">
@@ -405,94 +475,137 @@ export default function OferteExportPdfDialog({
                     </div>
                   </div>
 
+                  <div className="grid gap-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label className="text-xs font-bold text-foreground">Prețuri</Label>
+                      <span className="text-[11px] font-black text-muted-foreground">Standard: {defaultCurrency}</span>
+                    </div>
+
+                    <div className="grid grid-cols-[minmax(0,1fr)_4.5rem] gap-1">
+                      <Select value={selectedPriceCurrency} onValueChange={(value) => updateOption("priceCurrency", normalizePdfCurrency(value, defaultCurrency))}>
+                        <SelectTrigger className="h-8 bg-background text-xs font-semibold">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={defaultCurrency}>{defaultCurrency} fără conversie</SelectItem>
+                          <SelectItem value={oppositeCurrency}>Conversie în {oppositeCurrency}</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      <Input
+                        value={options.conversionRate}
+                        onChange={(e) => handleConversionRateChange(e.target.value)}
+                        disabled={!isCurrencyConverted}
+                        className="h-8 bg-background text-center text-xs font-semibold disabled:opacity-50"
+                        inputMode="decimal"
+                      />
+                    </div>
+                  </div>
+
                   <div className="my-1 border-t" />
 
-                  <div className="grid gap-1">
-                    <Label className="text-xs font-bold text-foreground">Format foaie</Label>
-                    <Select value={options.pageSize} onValueChange={(value) => updateOption("pageSize", value)}>
-                      <SelectTrigger className="h-8 bg-background text-xs font-semibold">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="A4">A4</SelectItem>
-                        <SelectItem value="A3">A3</SelectItem>
-                        <SelectItem value="A2">A2</SelectItem>
-                        <SelectItem value="A1">A1</SelectItem>
-                        <SelectItem value="A0">A0</SelectItem>
-                        <SelectItem value="A5">A5</SelectItem>
-                        <SelectItem value="LETTER">Letter</SelectItem>
-                        <SelectItem value="LEGAL">Legal</SelectItem>
-                        <SelectItem value="TABLOID">Tabloid</SelectItem>
-                        <SelectItem value="EXECUTIVE">Executive</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="grid gap-1">
+                      <Label className="text-xs font-bold text-foreground">Format foaie</Label>
+                      <Select value={options.pageSize} onValueChange={(value) => updateOption("pageSize", value)}>
+                        <SelectTrigger className="h-8 bg-background text-xs font-semibold">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="A4">A4</SelectItem>
+                          <SelectItem value="A3">A3</SelectItem>
+                          <SelectItem value="A2">A2</SelectItem>
+                          <SelectItem value="A1">A1</SelectItem>
+                          <SelectItem value="A0">A0</SelectItem>
+                          <SelectItem value="A5">A5</SelectItem>
+                          <SelectItem value="LETTER">Letter</SelectItem>
+                          <SelectItem value="LEGAL">Legal</SelectItem>
+                          <SelectItem value="TABLOID">Tabloid</SelectItem>
+                          <SelectItem value="EXECUTIVE">Executive</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="grid gap-1">
+                      <Label className="text-xs font-bold text-foreground">Margini</Label>
+                      <Select value={options.marginPreset} onValueChange={(value) => updateOption("marginPreset", value)}>
+                        <SelectTrigger className="h-8 text-xs bg-background  font-semibold">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="very_small">Foarte mici</SelectItem>
+                          <SelectItem value="small">Mici</SelectItem>
+                          <SelectItem value="normal">Normale</SelectItem>
+                          <SelectItem value="large">Mari</SelectItem>
+                          <SelectItem value="very_large">Foarte mari</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="grid gap-1">
+                      <Label className="text-xs font-bold text-foreground">Logo</Label>
+                      <Select value={options.logoCompanyId ? String(options.logoCompanyId) : "none"} onValueChange={(value) => updateOption("logoCompanyId", value === "none" ? "" : value)}>
+                        <SelectTrigger className="h-8 text-xs bg-background  font-semibold">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Fără logo</SelectItem>
+                          {companiiInterne.map((company) => (
+                            <SelectItem key={company.id} value={String(company.id)}>
+                              {company.nume}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="grid gap-1">
+                      <Label className="text-xs font-bold text-foreground">Orientare</Label>
+                      <Select value={options.orientation} onValueChange={(value) => updateOption("orientation", value)}>
+                        <SelectTrigger className="h-8 bg-background   text-xs font-semibold">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="landscape">Landscape</SelectItem>
+                          <SelectItem value="portrait">Portrait</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="grid gap-1">
+                      <Label className="text-xs font-bold text-foreground">Font tabel</Label>
+                      <Input value={options.fontSize} onChange={(e) => updateOption("fontSize", e.target.value)} className="h-8 bg-background  text-xs font-semibold" inputMode="numeric" />
+                    </div>
+
+                    <div className="grid gap-1">
+                      <Label className="text-xs font-bold text-foreground">Zecimale</Label>
+                      <Select value={String(options.decimalPlaces || 3)} onValueChange={(value) => updateOption("decimalPlaces", Number(value))}>
+                        <SelectTrigger className="h-8 bg-background text-xs font-semibold">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">1 zecimală</SelectItem>
+                          <SelectItem value="2">2 zecimale</SelectItem>
+                          <SelectItem value="3">3 zecimale</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
                   <div className="grid gap-1">
-                    <Label className="text-xs font-bold text-foreground">Margini</Label>
-                    <Select value={options.marginPreset} onValueChange={(value) => updateOption("marginPreset", value)}>
-                      <SelectTrigger className="h-8 text-xs bg-background  font-semibold">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="very_small">Foarte mici</SelectItem>
-                        <SelectItem value="small">Mici</SelectItem>
-                        <SelectItem value="normal">Normale</SelectItem>
-                        <SelectItem value="large">Mari</SelectItem>
-                        <SelectItem value="very_large">Foarte mari</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label className="text-xs font-bold text-foreground">Aliniere text</Label>
+                    <div className="grid grid-cols-3 gap-1">
+                      <Button type="button" variant={options.textAlign === "left" ? "default" : "outline"} className="h-8 text-xs font-black" onClick={() => updateOption("textAlign", "left")}>
+                        Stânga
+                      </Button>
+                      <Button type="button" variant={options.textAlign === "center" ? "default" : "outline"} className="h-8 text-xs font-black" onClick={() => updateOption("textAlign", "center")}>
+                        Centru
+                      </Button>
+                      <Button type="button" variant={options.textAlign === "right" ? "default" : "outline"} className="h-8 text-xs font-black" onClick={() => updateOption("textAlign", "right")}>
+                        Dreapta
+                      </Button>
+                    </div>
                   </div>
-
-                  <div className="grid gap-1">
-                    <Label className="text-xs font-bold text-foreground">Logo</Label>
-                    <Select value={options.logoCompanyId ? String(options.logoCompanyId) : "none"} onValueChange={(value) => updateOption("logoCompanyId", value === "none" ? "" : value)}>
-                      <SelectTrigger className="h-8 text-xs bg-background  font-semibold">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Fără logo</SelectItem>
-                        {companiiInterne.map((company) => (
-                          <SelectItem key={company.id} value={String(company.id)}>
-                            {company.nume}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="grid gap-1">
-                    <Label className="text-xs font-bold text-foreground">Orientare</Label>
-                    <Select value={options.orientation} onValueChange={(value) => updateOption("orientation", value)}>
-                      <SelectTrigger className="h-8 bg-background   text-xs font-semibold">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="landscape">Landscape</SelectItem>
-                        <SelectItem value="portrait">Portrait</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="grid gap-1">
-                    <Label className="text-xs font-bold text-foreground">Font tabel</Label>
-                    <Input value={options.fontSize} onChange={(e) => updateOption("fontSize", e.target.value)} className="h-8 bg-background  text-xs font-semibold" inputMode="numeric" />
-                  </div>
-
-                  <div className="grid gap-1">
-                    <Label className="text-xs font-bold text-foreground">Zecimale</Label>
-                    <Select value={String(options.decimalPlaces || 3)} onValueChange={(value) => updateOption("decimalPlaces", Number(value))}>
-                      <SelectTrigger className="h-8 bg-background text-xs font-semibold">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">1 zecimală</SelectItem>
-                        <SelectItem value="2">2 zecimale</SelectItem>
-                        <SelectItem value="3">3 zecimale</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
                 </div>
               </div>
 
@@ -516,7 +629,20 @@ export default function OferteExportPdfDialog({
                           <span>Recapitulații %</span>
                           <Checkbox className="h-4 w-4" checked={options.showRecapitulatii} onCheckedChange={(checked) => updateOption("showRecapitulatii", !!checked)} />
                         </Label>
-                        <Input value={recapitulatiiPercent} onChange={(e) => handleRecapitulatiiPercentChange(e.target.value)} className="h-8 bg-background text-xs font-semibold" inputMode="decimal" />
+                        <Input
+                          value={recapitulatiiPercent}
+                          onChange={(e) => handleRecapitulatiiPercentChange(e.target.value)}
+                          className="h-8 bg-background text-xs font-semibold"
+                          inputMode="decimal"
+                        />
+                      </div>
+
+                      <div className="grid gap-1">
+                        <Label className="flex items-center justify-between gap-2 text-xs font-bold text-foreground">
+                          <span>Reducere %</span>
+                          <Checkbox className="h-4 w-4" checked={options.showReducere} onCheckedChange={(checked) => updateOption("showReducere", !!checked)} />
+                        </Label>
+                        <Input value={discountPercent} onChange={(e) => handleDiscountPercentChange(e.target.value)} className="h-8 bg-background text-xs font-semibold" inputMode="decimal" />
                       </div>
 
                       <div className="grid gap-1">

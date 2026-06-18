@@ -4,17 +4,16 @@ import { useParams } from "react-router-dom";
 import SpinnerElement from "@/MainElements/SpinnerElement";
 import { useInventar } from "@/hooks/Database/useInventar";
 import InventarSumar from "./Sumar/InventarSumar";
-import InventarMateriale from "./Materiale/InventarMateriale";
 import InventarUtilaje from "./Utilaje/InventarUtilaje";
 import InventarTransport from "./Transport/InventarTransport";
+import InventarResursePage from "./InventarResursePage";
 
 export default function InventarMainPage() {
   const { idInventar } = useParams();
-  const { data, isFetching } = useInventar(idInventar);
+  const { data } = useInventar(idInventar);
   const inventar = data?.item || null;
 
   const [selectedButton, setSelectedButton] = useState(1);
-
   const getBtnClass = (index) => {
     const isActive = selectedButton === index;
     const base = "relative w-40 text-foreground font-semibold tracking-wide transition-all duration-[150ms] px-6 p-3 xxxl:px-4 rounded-tr-[4rem] rounded-tl-2xl hover:-translate-y-1";
@@ -44,22 +43,12 @@ export default function InventarMainPage() {
         </div>
 
         <div className="bg-background relative z-50 w-full h-full flex flex-col items-center rounded-lg overflow-hidden">
-          {isFetching ? (
-            <div className="h-full w-full flex items-center justify-center">
-              <SpinnerElement text={2} />
-            </div>
-          ) : !inventar ? (
-            <div className="h-full w-full flex items-center justify-center text-center">
-              <p className="text-lg font-black text-foreground">Inventarul nu a fost găsit.</p>
-            </div>
-          ) : (
-            <>
-              {selectedButton === 1 && <InventarSumar />}
-              {selectedButton === 2 && <InventarMateriale />}
-              {selectedButton === 3 && <InventarUtilaje />}
-              {selectedButton === 4 && <InventarTransport />}
-            </>
-          )}
+          <>
+            {selectedButton === 1 && <InventarSumar />}
+            {selectedButton === 2 && <InventarResursePage inventar={inventar} tipResursa="material" />}
+            {selectedButton === 3 && <InventarUtilaje inventar={inventar} />}
+            {selectedButton === 4 && <InventarTransport inventar={inventar} />}
+          </>
         </div>
       </div>
     </div>

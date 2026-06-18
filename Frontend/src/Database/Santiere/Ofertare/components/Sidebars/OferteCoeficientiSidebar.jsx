@@ -24,6 +24,10 @@ const emptyDraft = {
 };
 
 const EMPTY_ARRAY = [];
+const RETETA_CLASS_LEVEL_LABELS = ["Specialitate", "Capitol de lucrări", "Familie de lucrări", "Subfamilie de lucrări", "Articol de lucrare"];
+const CATALOG_CLASS_LEVEL_LABELS = ["Clasă", "Subclasă"];
+const getRetetaClassLevelLabel = (levelNo) => RETETA_CLASS_LEVEL_LABELS[levelNo - 1] || `Nivel ${levelNo}`;
+const getCatalogClassLevelLabel = (levelNo) => CATALOG_CLASS_LEVEL_LABELS[levelNo - 1] || `Nivel ${levelNo}`;
 
 const sortByName = (items = []) => {
   return [...items].sort((a, b) =>
@@ -510,13 +514,13 @@ function CoeficientRuleInlineEditor({ rule, index, selectorOptions, onChange, on
 
               return (
                 <div key={`recipe-class-${levelNo}`} className="flex min-w-0 flex-col gap-1">
-                  <Label className={compactLabelClass}>Clasă {levelNo}</Label>
+                  <Label className={compactLabelClass}>{getRetetaClassLevelLabel(levelNo)}</Label>
                   <select
                     value={Number(selectedLevelNo) === Number(levelNo) ? rule.recipe_class_path || "" : ""}
                     onChange={(event) => onChange(rule.id, { recipe_class_path: event.target.value })}
                     className={compactSelectClass}
                   >
-                    <option value="">Alege nivel {levelNo}</option>
+                    <option value="">Alege {getRetetaClassLevelLabel(levelNo).toLowerCase()}</option>
                     {levelOptions.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
@@ -569,13 +573,13 @@ function CoeficientRuleInlineEditor({ rule, index, selectorOptions, onChange, on
 
               return (
                 <div key={`catalog-class-${levelNo}`} className="flex min-w-0 flex-col gap-1">
-                  <Label className={compactLabelClass}>{levelNo === 1 ? "Clasă catalog" : "Subclasă catalog"}</Label>
+                  <Label className={compactLabelClass}>{getCatalogClassLevelLabel(levelNo)}</Label>
                   <select
                     value={Number(selectedLevelNo) === Number(levelNo) ? rule.catalog_class_path || "" : ""}
                     onChange={(event) => onChange(rule.id, { catalog_class_path: event.target.value })}
                     className={compactSelectClass}
                   >
-                    <option value="">Alege nivel {levelNo}</option>
+                    <option value="">Alege {getCatalogClassLevelLabel(levelNo).toLowerCase()}</option>
                     {levelOptions.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}

@@ -289,20 +289,7 @@ const getIssueGroups = ({ priceChanged, quantityChanged, otherChanged, syncStatu
   return groups;
 };
 
-const getChildTypeBgClass = (element) => {
-  switch (element?.tip_resursa) {
-    case "manopera":
-      return "bg-indigo-500/30 group-hover:bg-indigo-500/40 dark:bg-indigo-500/30 dark:group-hover:bg-indigo-500/40";
-    case "material":
-      return "bg-amber-600/30 group-hover:bg-amber-600/40 dark:bg-amber-600/30 dark:group-hover:bg-amber-600/40";
-    case "utilaj":
-      return "bg-rose-600/30 group-hover:bg-rose-600/40 dark:bg-rose-600/30 dark:group-hover:bg-rose-600/40";
-    case "transport":
-      return "bg-emerald-600/30 group-hover:bg-emerald-600/40 dark:bg-emerald-600/30 dark:group-hover:bg-emerald-600/40";
-    default:
-      return "bg-background group-hover:bg-muted dark:bg-muted/60 dark:group-hover:bg-muted";
-  }
-};
+const getChildTypeBgClass = () => "bg-zinc-300 group-hover:bg-zinc-400/50 dark:bg-zinc-800 dark:group-hover:bg-zinc-700/70";
 
 const getChildCellClass = (element) => `border-r border-b border-border p-1 align-middle text-xs xxxl:text-sm transition-colors ${getChildTypeBgClass(element)}`;
 
@@ -320,7 +307,7 @@ const IssueTooltipGroup = memo(function IssueTooltipGroup({ group }) {
 
       <div className="flex flex-col gap-1">
         {group.items.map((item, index) => (
-          <div key={`${group.title}-${index}`} className="flex items-start gap-2 text-popover-foreground">
+          <div key={`${group.title}-${index}`} className="flex items-start gap-2 text-popover-foreground"> 
             <span className="text-muted-foreground">-</span>
             <span className="leading-snug">{item}</span>
           </div>
@@ -365,6 +352,21 @@ const ResourceTypeIcon = memo(function ResourceTypeIcon({ config }) {
   );
 });
 
+const getPriceTextColorClass = (tipResursa) => {
+  switch (tipResursa) {
+    case "manopera":
+      return "text-indigo-700 dark:text-indigo-300";
+    case "material":
+      return "text-amber-700 dark:text-amber-300";
+    case "utilaj":
+      return "text-rose-700 dark:text-rose-300";
+    case "transport":
+      return "text-emerald-700 dark:text-emerald-300";
+    default:
+      return "text-primary";
+  }
+};
+
 const OferteRetetaSubList = memo(function OferteRetetaSubList({
   element,
   parentItem,
@@ -380,6 +382,7 @@ const OferteRetetaSubList = memo(function OferteRetetaSubList({
   coeficientImpact = null,
 }) {
   const config = getResourceConfig(element);
+  const priceTextColorClass = getPriceTextColorClass(element?.tip_resursa);
 
   const afisareCod = getDisplayedCode(element);
   const afisareDescriere = getDisplayedDescription(element, displayLang);
@@ -419,7 +422,7 @@ const OferteRetetaSubList = memo(function OferteRetetaSubList({
 
   return (
     <>
-      <TableCell style={getColumnStyle("tree")} className={`${isLastElement ? "border-b border-border" : "border-0"} dark:bg-[#08090b] p-0 align-middle ${coeficientHighlightClass}`}>
+      <TableCell style={getColumnStyle("tree")} className={`${isLastElement ? "border-b border-border" : "border-0"} bg-transparent dark:bg-[#08090b] p-0 align-middle ${coeficientHighlightClass}`}>
         <div className="relative h-8 w-full">
           <span className={`absolute left-1/2 top-0 w-[2px] -translate-x-1/2 bg-border ${isLastElement ? "bottom-1/2" : "bottom-0"}`} />
           <span className="absolute left-1/2 right-0 top-1/2 h-[2px] bg-border" />
@@ -497,9 +500,9 @@ const OferteRetetaSubList = memo(function OferteRetetaSubList({
       )}
 
       {showCol("descriere") && (
-        <TableCell style={getColumnStyle("descriere")} className={childCellClass}>
+        <TableCell style={getColumnStyle("descriere")} className={`${childCellClass} ${textAlignClass}`}>
           {afisareDescriere ? (
-            <OverflowTooltip align="left" text={afisareDescriere} className="font-normal whitespace-nowrap text-foreground leading-none" maxLines={1} textSize="sm" />
+            <OverflowTooltip align={tooltipAlign} text={afisareDescriere} className={`font-normal whitespace-nowrap text-foreground leading-none ${textAlignClass}`} maxLines={1} textSize="sm" />
           ) : (
             <span className="text-xs xxxl:text-sm text-muted-foreground/40 italic">{EMPTY}</span>
           )}
@@ -525,13 +528,13 @@ const OferteRetetaSubList = memo(function OferteRetetaSubList({
       )}
 
       {showCol("cost") && (
-        <TableCell style={getColumnStyle("cost")} className={`${childCellClass} text-center`}>
+        <TableCell style={getColumnStyle("cost")} className={`${childCellClass} text-right`}>
           <span className={`text-xs xxxl:text-sm whitespace-nowrap ${priceChanged ? "text-high font-black" : "text-foreground font-semibold"}`}>{formatNumber(unitCost, decimalPlaces)}</span>
         </TableCell>
       )}
 
       {showCol("costTotal") && (
-        <TableCell style={getColumnStyle("costTotal")} className={`${childCellClass} text-center`}>
+        <TableCell style={getColumnStyle("costTotal")} className={`${childCellClass} text-right`}>
           <span className="text-xs xxxl:text-sm font-bold text-foreground whitespace-nowrap">{formatNumber(totalElementInLucrare, decimalPlaces)}</span>
         </TableCell>
       )}
@@ -547,7 +550,7 @@ const OferteRetetaSubList = memo(function OferteRetetaSubList({
       )}
 
       {showCol("coefPret") && (
-        <TableCell style={getColumnStyle("coefPret")} className={`${childCellClass} text-center`}>
+        <TableCell style={getColumnStyle("coefPret")} className={`${childCellClass} text-right`}>
           <span className={`text-xs xxxl:text-sm font-black whitespace-nowrap ${coeficientExcluded ? "text-red-600" : getCoefTextClass(coeficientAddedValue, "text-primary")}`}>
             {formatNumber(coeficientAddedValue, decimalPlaces)}
           </span>
@@ -555,8 +558,8 @@ const OferteRetetaSubList = memo(function OferteRetetaSubList({
       )}
 
       {showCol("pret") && (
-        <TableCell style={getColumnStyle("pret")} className={`${childCellClass} text-center`}>
-          <span className={`text-xs xxxl:text-sm font-black whitespace-nowrap ${coeficientExcluded ? "text-red-600" : "text-primary"}`}>
+        <TableCell style={getColumnStyle("pret")} className={`${childCellClass} text-right`}>
+          <span className={`text-xs xxxl:text-sm font-black whitespace-nowrap ${coeficientExcluded ? "text-red-600" : priceTextColorClass}`}>
             {formatNumber(coeficientPriceValue, decimalPlaces)}
           </span>
         </TableCell>

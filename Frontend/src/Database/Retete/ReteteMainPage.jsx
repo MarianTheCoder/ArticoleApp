@@ -18,6 +18,8 @@ import SpinnerElement from "@/MainElements/SpinnerElement";
 import DeleteDialog from "@/components/ui/delete-dialog";
 import { toast } from "sonner";
 
+const TEXT_ALIGN_STORAGE_KEY = "retete_text_align";
+
 export default function ReteteMainPage({ isEmbedded = false, isSelectionMode = false, selectedRetetaId = null, onSelectReteta, lockedLang = null }) {
   const { loading, show, hide } = useLoading();
   const { user } = useContext(AuthContext);
@@ -59,8 +61,20 @@ export default function ReteteMainPage({ isEmbedded = false, isSelectionMode = f
 
   const [displayLang, setDisplayLang] = useState("RO");
   const [decimalPlaces, setDecimalPlaces] = useState(3);
-  const [textAlign, setTextAlign] = useState("center");
+  const [textAlign, setTextAlign] = useState(() => {
+    try {
+      const saved = localStorage.getItem(TEXT_ALIGN_STORAGE_KEY);
+      if (saved === "left" || saved === "center" || saved === "right") return saved;
+    } catch {}
+    return "center";
+  });
   const [columnResetKey, setColumnResetKey] = useState(0);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(TEXT_ALIGN_STORAGE_KEY, textAlign);
+    } catch {}
+  }, [textAlign]);
 
   // STATE FILTRE AVANSATE
   const [advancedFilters, setAdvancedFilters] = useState({

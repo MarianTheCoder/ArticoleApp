@@ -15,7 +15,7 @@ export const useGetNotifications = () => {
         },
         enabled: !!user?.id,
         refetchInterval: 60000, // Refetch every 60s
-        refetchOnWindowFocus: false,
+        refetchOnWindowFocus: true,
         retry: false,
     });
 };

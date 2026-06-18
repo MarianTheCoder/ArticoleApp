@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator } from "@/components/ui/context-menu";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPenToSquare, faTrash, faCopy, faQuestion, faArrowRight } from "@fortawesome/free-solid-svg-icons";
+import { faPenToSquare, faTrash, faCopy, faQuestion, faArrowRight, faSort, faSortDown, faSortUp } from "@fortawesome/free-solid-svg-icons";
 import { Tooltip, TooltipArrow, TooltipContent, TooltipTrigger } from "@radix-ui/react-tooltip";
 import { TableVirtuoso } from "react-virtuoso";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -15,6 +15,68 @@ import NoImage from "@/assets/no-image-icon.png";
 import ImagePreviewTooltip from "@/components/ui/ImagePreviewTooltip";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
+const COLUMN_WIDTHS_STORAGE_KEY = "catalog_column_widths";
+
+const DEFAULT_COLUMN_WIDTHS = {
+  poza: 96,
+  limba: 90,
+  variante: 110,
+  cod: 220,
+  clasa1: 180,
+  clasa2: 180,
+  denumire: 360,
+  descriere: 480,
+  unitate: 130,
+  cost: 150,
+  creat: 210,
+  actualizat: 210,
+};
+
+const MIN_COLUMN_WIDTHS = {
+  poza: 70,
+  limba: 70,
+  variante: 80,
+  cod: 130,
+  clasa1: 110,
+  clasa2: 110,
+  denumire: 200,
+  descriere: 240,
+  unitate: 90,
+  cost: 110,
+  creat: 150,
+  actualizat: 150,
+};
+
+const SORT_FIELD_BY_COLUMN = {
+  cod: "cod_definitie",
+  denumire: "denumire",
+  cost: "cost",
+  creat: "created_at",
+  actualizat: "updated_at",
+};
+
+const normalizeDecimalPlaces = (value) => ([1, 2, 3].includes(Number(value)) ? Number(value) : 3);
+
+const getTextAlignClasses = (textAlign) => {
+  if (textAlign === "left") return { cell: "text-left", flex: "justify-start", tooltip: "left" };
+  if (textAlign === "right") return { cell: "text-right", flex: "justify-end", tooltip: "right" };
+  return { cell: "text-center", flex: "justify-center", tooltip: "center" };
+};
+
+const ResizableTableHead = ({ colKey, style, className = "", children, onResizeStart }) => {
+  return (
+    <TableHead style={style} className={`relative px-0 select-none ${className}`}>
+      {children}
+      <span
+        onPointerDown={(event) => onResizeStart(event, colKey)}
+        className="absolute right-0 top-0 z-30 flex h-full w-3 cursor-col-resize touch-none select-none items-center justify-center hover:bg-primary/20"
+      >
+        <span className="h-6 w-[2px] rounded-full bg-foreground" />
+      </span>
+    </TableHead>
+  );
+};
 
 const getCatalogClassLevelDisplay = (item, levelNo, displayLang = "RO") => {
   const level = item?.cod_definitie_meta?.classLevels?.[Number(levelNo) - 1];
@@ -43,11 +105,11 @@ const getCatalogCodeTooltipParts = (item, displayLang = "RO") => {
   return [...classParts, ...specificParts].length > 0 ? [...classParts, ...specificParts] : [{ key: "fallback", label: item?.cod_definitie || "Cod nedefinit" }];
 };
 
-const CatalogCodeValue = ({ item, displayLang }) => {
+const CatalogCodeValue = ({ item, displayLang, flexClass = "justify-center" }) => {
   const parts = getCatalogCodeTooltipParts(item, displayLang);
 
   return (
-    <div className="flex min-w-0 items-center justify-center gap-1.5">
+    <div className={`flex min-w-0 items-center gap-1.5 ${flexClass}`}>
       <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-sm xxxl:text-base font-bold text-foreground">{String(item.cod_definitie)}</span>
 
       <Popover>
@@ -106,12 +168,19 @@ const componentsCatalog = {
 
     if (!parent) return <TableRow {...props} />;
 
+    const isSelected = props.context?.selectedItemIds?.includes(parent.id) || props.context?.selectedItemId === parent.id;
+
     return (
       <ContextMenu key={parent.id}>
         <ContextMenuTrigger asChild>
           <TableRow
             {...props}
-            className={`cursor-pointer data-[state=open]:bg-muted border-b transition-colors group hover:bg-accent  ${props.context?.selectedItemId === parent.id ? "bg-primary/10 hover:bg-primary/15" : " hover-row-border"}`}
+            className={`cursor-pointer data-[state=open]:bg-muted border-b transition-colors group hover:bg-accent  ${isSelected ? "bg-primary/10 hover:bg-primary/15" : " hover-row-border"}`}
+            onMouseDownCapture={(e) => {
+              if (!props.context?.isSelectionMode || !e.shiftKey) return;
+              e.preventDefault();
+              window.getSelection?.()?.removeAllRanges?.();
+            }}
             onClick={(e) => props.context?.handleRowClick(e, parent)}
           >
             {props.children}
@@ -135,13 +204,45 @@ const componentsCatalog = {
 };
 
 const CatalogList = memo(
-  ({ selectedItemId, config, catalogItems = [], visibleColumns, setDraft, setOpen, handleDeleteClick, displayLang = "RO", handleDuplicateClick, isSelectionMode = false, onSelectElement }) => {
+  ({
+    selectedItemId,
+    selectedItemIds = [],
+    config,
+    catalogItems = [],
+    visibleColumns,
+    setDraft,
+    setOpen,
+    handleDeleteClick,
+    displayLang = "RO",
+    handleDuplicateClick,
+    isSelectionMode = false,
+    onSelectElement,
+    sortBy = "updated_at",
+    sortOrder = "desc",
+    decimalPlaces = 3,
+    textAlign = "center",
+    columnResetKey = 0,
+    onSortChange,
+  }) => {
     const containerRef = useRef(null);
     const scrollPosRef = useRef(0);
     const selectedParentIdRef = useRef(null);
 
     const [subDialogOpen, setSubDialogOpen] = useState(false);
     const [selectedParent, setSelectedParent] = useState(null);
+    const [columnWidths, setColumnWidths] = useState(() => {
+      try {
+        const saved = localStorage.getItem(COLUMN_WIDTHS_STORAGE_KEY);
+        if (saved) {
+          return {
+            ...DEFAULT_COLUMN_WIDTHS,
+            ...JSON.parse(saved),
+          };
+        }
+      } catch {}
+
+      return DEFAULT_COLUMN_WIDTHS;
+    });
 
     useEffect(() => {
       if (!selectedParentIdRef.current || !subDialogOpen) return;
@@ -165,7 +266,125 @@ const CatalogList = memo(
       }
     }, [catalogItems]);
 
+    useEffect(() => {
+      try {
+        localStorage.setItem(COLUMN_WIDTHS_STORAGE_KEY, JSON.stringify(columnWidths));
+      } catch {}
+    }, [columnWidths]);
+
+    useEffect(() => {
+      if (!columnResetKey) return;
+
+      setColumnWidths(DEFAULT_COLUMN_WIDTHS);
+      try {
+        localStorage.removeItem(COLUMN_WIDTHS_STORAGE_KEY);
+      } catch {}
+    }, [columnResetKey]);
+
     const showCol = (colKey) => (visibleColumns ? visibleColumns[colKey] : true);
+    const safeDecimalPlaces = normalizeDecimalPlaces(decimalPlaces);
+    const textAlignClasses = getTextAlignClasses(textAlign);
+
+    const getColumnStyle = useCallback(
+      (key) => {
+        const width = columnWidths[key] || DEFAULT_COLUMN_WIDTHS[key] || 120;
+        return {
+          width,
+          minWidth: width,
+          maxWidth: width,
+        };
+      },
+      [columnWidths],
+    );
+
+    const handleColumnResizeStart = useCallback(
+      (event, key) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const startX = event.clientX;
+        const startWidth = columnWidths[key] || DEFAULT_COLUMN_WIDTHS[key] || 120;
+        const minWidth = MIN_COLUMN_WIDTHS[key] || 80;
+        let frame = null;
+
+        const onMove = (moveEvent) => {
+          const delta = moveEvent.clientX - startX;
+          const nextWidth = Math.max(minWidth, startWidth + delta);
+
+          if (frame) window.cancelAnimationFrame(frame);
+          frame = window.requestAnimationFrame(() => {
+            setColumnWidths((prev) => ({
+              ...prev,
+              [key]: nextWidth,
+            }));
+          });
+        };
+
+        const onUp = () => {
+          if (frame) window.cancelAnimationFrame(frame);
+          window.removeEventListener("pointermove", onMove);
+          window.removeEventListener("pointerup", onUp);
+          document.body.style.cursor = "";
+          document.body.style.userSelect = "";
+        };
+
+        document.body.style.cursor = "col-resize";
+        document.body.style.userSelect = "none";
+        window.addEventListener("pointermove", onMove);
+        window.addEventListener("pointerup", onUp);
+      },
+      [columnWidths],
+    );
+
+    const handleSortColumn = useCallback(
+      (columnKey) => {
+        const sortField = SORT_FIELD_BY_COLUMN[columnKey];
+        if (!sortField || !onSortChange) return;
+
+        if (sortBy === sortField) {
+          if (sortOrder === "asc") {
+            onSortChange(sortField, "desc");
+            return;
+          }
+
+          onSortChange("updated_at", "desc");
+          return;
+        }
+
+        onSortChange(sortField, "asc");
+      },
+      [onSortChange, sortBy, sortOrder],
+    );
+
+    const renderSortHeaderContent = useCallback(
+      (columnKey, label, align = "center") => {
+        const sortField = SORT_FIELD_BY_COLUMN[columnKey];
+        const active = sortField && sortBy === sortField;
+        const icon = !active ? faSort : sortOrder === "asc" ? faSortDown : faSortUp;
+        const justifyClass = align === "left" ? "justify-start text-left" : align === "right" ? "justify-end text-right" : "justify-center text-center";
+
+        return (
+          <button
+            type="button"
+            className={`flex h-full w-full items-center gap-1 px-2 xxxl:px-2.5 text-sm xxxl:text-base font-bold text-foreground ${justifyClass}`}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              handleSortColumn(columnKey);
+            }}
+          >
+            <span className="min-w-0 truncate">{label}</span>
+            <FontAwesomeIcon icon={icon} className={`text-base xxxl:text-lg ${active ? "!text-primary" : "text-muted-foreground"}`} />
+          </button>
+        );
+      },
+      [handleSortColumn, sortBy, sortOrder],
+    );
+
+    const renderPlainHeader = useCallback((label, align = "center") => {
+      const justifyClass = align === "left" ? "justify-start text-left" : align === "right" ? "justify-end text-right" : "justify-center text-center";
+      return <div className={`flex h-full w-full items-center px-2 xxxl:px-2.5 text-sm xxxl:text-base font-bold text-foreground ${justifyClass}`}>{label}</div>;
+    }, []);
 
     const handleOpenSubs = useCallback((parent) => {
       selectedParentIdRef.current = parent.id;
@@ -179,13 +398,13 @@ const CatalogList = memo(
 
         // Dacă suntem în modul selecție, click-ul simplu pe rând SELECTEAZĂ.
         if (isSelectionMode && onSelectElement) {
-          onSelectElement(parent);
+          onSelectElement(parent, e, catalogItems);
         } else {
           // În modul normal de catalog, deschide sublista.
           handleOpenSubs(parent);
         }
       },
-      [handleOpenSubs, isSelectionMode, onSelectElement],
+      [catalogItems, handleOpenSubs, isSelectionMode, onSelectElement],
     );
 
     const handleClickEdit = useCallback(
@@ -204,13 +423,21 @@ const CatalogList = memo(
         handleDuplicateClick,
         catalogItems,
         selectedItemId,
+        selectedItemIds,
+        isSelectionMode,
       };
-    }, [handleRowClick, handleClickEdit, handleDeleteClick, handleDuplicateClick, catalogItems, selectedItemId]);
+    }, [handleRowClick, handleClickEdit, handleDeleteClick, handleDuplicateClick, catalogItems, selectedItemId, selectedItemIds, isSelectionMode]);
 
     return (
       <>
-        <div ref={containerRef} onScroll={handleScroll} className="rounded-md border bg-card w-full h-full overflow-auto relative">
+        <div
+          ref={containerRef}
+          data-catalog-selection-table={isSelectionMode ? "true" : undefined}
+          onScroll={handleScroll}
+          className={`rounded-md ${isSelectionMode ? "select-none" : ""} border bg-card w-full h-full overflow-auto relative`}
+        >
           <TableVirtuoso
+            customScrollParent={containerRef.current}
             overscan={5}
             totalCount={catalogItems.length}
             data={catalogItems}
@@ -218,18 +445,66 @@ const CatalogList = memo(
             fixedHeaderContent={() => (
               <TableRow className="h-9 xxxl:h-10 hover:bg-muted-foreground/25 bg-muted-foreground/25 border-b">
                 {/* Afișăm Header-ul de Poză doar dacă resursa o suportă (din config) ȘI e selectată în visibleColumns */}
-                {config.hasPhoto && showCol("poza") && <TableHead className="text-center px-3 xxxl:px-4 w-[5.5rem] xxxl:w-[6rem] max-w-[5.5rem] xxxl:max-w-[6rem]">Poză</TableHead>}
-                {showCol("limba") && <TableHead className="text-center px-3 xxxl:px-4 w-[7rem] xxxl:w-[8rem] max-w-[7rem] xxxl:max-w-[8rem]">Limba</TableHead>}
-                {showCol("variante") && <TableHead className="text-center px-3 xxxl:px-4 w-[7rem] xxxl:w-[8rem] max-w-[7rem] xxxl:max-w-[8rem]">Variante</TableHead>}
-                {showCol("cod") && <TableHead className="text-center px-3 xxxl:px-4 w-[12rem] xxxl:w-[14rem] max-w-[12rem] xxxl:max-w-[14rem]">Cod</TableHead>}
-                {showCol("clasa1") && <TableHead className="text-center px-3 xxxl:px-4 w-[10rem] xxxl:w-[12rem] max-w-[10rem] xxxl:max-w-[12rem]">Clasă</TableHead>}
-                {showCol("clasa2") && <TableHead className="text-center px-3 xxxl:px-4 w-[10rem] xxxl:w-[12rem] max-w-[10rem] xxxl:max-w-[12rem]">Subclasă</TableHead>}
-                {showCol("denumire") && <TableHead className="px-3 xxxl:px-4 w-[19rem] xxxl:w-[22rem] max-w-[19rem] xxxl:max-w-[22rem]">Denumire</TableHead>}
-                {showCol("descriere") && <TableHead className="px-3 xxxl:px-4 min-w-[28rem] xxxl:min-w-[35rem]">Descriere</TableHead>}
-                {showCol("unitate") && <TableHead className="text-center px-3 xxxl:px-4 w-[8rem] xxxl:w-[10rem] max-w-[8rem] xxxl:max-w-[10rem]">Unitate</TableHead>}
-                {showCol("cost") && <TableHead className="text-center px-3 xxxl:px-4 w-[10rem] xxxl:w-[12rem] max-w-[10rem] xxxl:max-w-[12rem]">Cost</TableHead>}
-                {showCol("creat") && <TableHead className="text-left px-3 xxxl:px-4 w-[12.5rem] xxxl:w-[14rem] max-w-[12.5rem] xxxl:max-w-[14rem]">Creat</TableHead>}
-                {showCol("actualizat") && <TableHead className="text-left px-3 xxxl:px-4 w-[12.5rem] xxxl:w-[14rem] max-w-[12.5rem] xxxl:max-w-[14rem]">Actualizat</TableHead>}
+                {config.hasPhoto && showCol("poza") && (
+                  <ResizableTableHead colKey="poza" style={getColumnStyle("poza")} onResizeStart={handleColumnResizeStart} className="text-center">
+                    {renderPlainHeader("Poză")}
+                  </ResizableTableHead>
+                )}
+                {showCol("limba") && (
+                  <ResizableTableHead colKey="limba" style={getColumnStyle("limba")} onResizeStart={handleColumnResizeStart} className="text-center">
+                    {renderPlainHeader("Limba")}
+                  </ResizableTableHead>
+                )}
+                {showCol("variante") && (
+                  <ResizableTableHead colKey="variante" style={getColumnStyle("variante")} onResizeStart={handleColumnResizeStart} className="text-center">
+                    {renderPlainHeader("Variante")}
+                  </ResizableTableHead>
+                )}
+                {showCol("cod") && (
+                  <ResizableTableHead colKey="cod" style={getColumnStyle("cod")} onResizeStart={handleColumnResizeStart}>
+                    {renderSortHeaderContent("cod", "Cod", textAlign)}
+                  </ResizableTableHead>
+                )}
+                {showCol("clasa1") && (
+                  <ResizableTableHead colKey="clasa1" style={getColumnStyle("clasa1")} onResizeStart={handleColumnResizeStart}>
+                    {renderPlainHeader("Clasă", textAlign)}
+                  </ResizableTableHead>
+                )}
+                {showCol("clasa2") && (
+                  <ResizableTableHead colKey="clasa2" style={getColumnStyle("clasa2")} onResizeStart={handleColumnResizeStart}>
+                    {renderPlainHeader("Subclasă", textAlign)}
+                  </ResizableTableHead>
+                )}
+                {showCol("denumire") && (
+                  <ResizableTableHead colKey="denumire" style={getColumnStyle("denumire")} onResizeStart={handleColumnResizeStart}>
+                    {renderSortHeaderContent("denumire", "Denumire", textAlign)}
+                  </ResizableTableHead>
+                )}
+                {showCol("descriere") && (
+                  <ResizableTableHead colKey="descriere" style={getColumnStyle("descriere")} onResizeStart={handleColumnResizeStart}>
+                    {renderPlainHeader("Descriere", textAlign)}
+                  </ResizableTableHead>
+                )}
+                {showCol("unitate") && (
+                  <ResizableTableHead colKey="unitate" style={getColumnStyle("unitate")} onResizeStart={handleColumnResizeStart} className="text-center">
+                    {renderPlainHeader("Unitate")}
+                  </ResizableTableHead>
+                )}
+                {showCol("cost") && (
+                  <ResizableTableHead colKey="cost" style={getColumnStyle("cost")} onResizeStart={handleColumnResizeStart} className="text-center">
+                    {renderSortHeaderContent("cost", "Cost")}
+                  </ResizableTableHead>
+                )}
+                {showCol("creat") && (
+                  <ResizableTableHead colKey="creat" style={getColumnStyle("creat")} onResizeStart={handleColumnResizeStart}>
+                    {renderSortHeaderContent("creat", "Creat", "left")}
+                  </ResizableTableHead>
+                )}
+                {showCol("actualizat") && (
+                  <ResizableTableHead colKey="actualizat" style={getColumnStyle("actualizat")} onResizeStart={handleColumnResizeStart}>
+                    {renderSortHeaderContent("actualizat", "Actualizat", "left")}
+                  </ResizableTableHead>
+                )}
               </TableRow>
             )}
             components={componentsCatalog}
@@ -242,19 +517,21 @@ const CatalogList = memo(
                 <>
                   {/* COLOANA POZĂ NOUĂ */}
                   {config.hasPhoto && showCol("poza") && (
-                    <TableCell onContextMenu={(e) => e.stopPropagation()} className="text-center px-3 xxxl:px-4 py-1.5 xxxl:py-2 w-[5.5rem] xxxl:w-[6rem] max-w-[5.5rem] xxxl:max-w-[6rem]">
-                      <ImagePreviewTooltip
-                        src={parent.photo_url ? `${photoAPI}/${parent.photo_url}` : null}
-                        alt={parent.cod_definitie}
-                        ringColor={`hover:ring-${config.normalColor}`} // Folosim culoarea inelului din config (ex: hover:ring-amber-600)
-                        fallback={<img src={NoImage} alt="No Image" className="h-full w-full object-cover opacity-50" />}
-                        containerClassName="h-14 w-14 xxxl:h-16 xxxl:w-16 rounded-md border border-border bg-muted flex items-center justify-center overflow-hidden shrink-0"
-                      />
+                    <TableCell onContextMenu={(e) => e.stopPropagation()} style={getColumnStyle("poza")} className="text-center px-3 xxxl:px-4 py-1.5 xxxl:py-2">
+                      <div className="flex w-full justify-center">
+                        <ImagePreviewTooltip
+                          src={parent.photo_url ? `${photoAPI}/${parent.photo_url}` : null}
+                          alt={parent.cod_definitie}
+                          ringColor={`hover:ring-${config.normalColor}`} // Folosim culoarea inelului din config (ex: hover:ring-amber-600)
+                          fallback={<img src={NoImage} alt="No Image" className="h-full w-full object-cover opacity-50" />}
+                          containerClassName="h-14 w-14 xxxl:h-16 xxxl:w-16 rounded-md border border-border bg-muted flex items-center justify-center overflow-hidden shrink-0"
+                        />
+                      </div>
                     </TableCell>
                   )}
 
                   {showCol("limba") && (
-                    <TableCell className="text-center px-3 xxxl:px-4 py-1.5 xxxl:py-2 min-w-[7rem] xxxl:min-w-[8rem] w-[7rem] xxxl:w-[8rem] max-w-[7rem] xxxl:max-w-[8rem]">
+                    <TableCell style={getColumnStyle("limba")} className="text-center px-3 xxxl:px-4 py-1.5 xxxl:py-2">
                       <div className="flex justify-center">
                         <div className={`rounded-md border ${parent.limba !== "FR" ? "bg-cyan-500/5 border-cyan-500" : "bg-lime-500/5 border-lime-500"} flex items-center justify-center`}>
                           <span className={`text-sm xxxl:text-base w-10 xxxl:w-12 py-1.5 xxxl:py-2 font-bold ${parent.limba !== "FR" ? "text-cyan-600 " : "text-lime-600"}`}>{parent.limba}</span>
@@ -264,7 +541,7 @@ const CatalogList = memo(
                   )}
 
                   {showCol("variante") && (
-                    <TableCell className="text-center px-3 xxxl:px-4 py-1.5 xxxl:py-2 min-w-[7rem] xxxl:min-w-[8rem] w-[7rem] xxxl:w-[8rem] max-w-[7rem] xxxl:max-w-[8rem]">
+                    <TableCell style={getColumnStyle("variante")} className="text-center px-3 xxxl:px-4 py-1.5 xxxl:py-2">
                       <Badge
                         variant="outline"
                         onClick={(e) => {
@@ -280,18 +557,18 @@ const CatalogList = memo(
                   )}
 
                   {showCol("cod") && (
-                    <TableCell className="text-center px-3 xxxl:px-4 py-1.5 xxxl:py-2 min-w-[12rem] xxxl:min-w-[14rem] w-[12rem] xxxl:w-[14rem] max-w-[12rem] xxxl:max-w-[14rem] whitespace-nowrap">
-                      <CatalogCodeValue item={parent} displayLang={displayLang} />
+                    <TableCell style={getColumnStyle("cod")} className={`${textAlignClasses.cell} px-3 xxxl:px-4 py-1.5 xxxl:py-2 whitespace-nowrap`}>
+                      <CatalogCodeValue item={parent} displayLang={displayLang} flexClass={textAlignClasses.flex} />
                     </TableCell>
                   )}
 
                   {showCol("clasa1") && (
-                    <TableCell className="text-center px-3 xxxl:px-4 py-1.5 xxxl:py-2 min-w-[10rem] xxxl:min-w-[12rem] w-[10rem] xxxl:w-[12rem] max-w-[10rem] xxxl:max-w-[12rem]">
+                    <TableCell style={getColumnStyle("clasa1")} className={`${textAlignClasses.cell} px-3 xxxl:px-4 py-1.5 xxxl:py-2`}>
                       {getCatalogClassLevelDisplay(parent, 1, displayLang) ? (
                         <OverflowTooltip
-                          align="center"
+                          align={textAlignClasses.tooltip}
                           text={getCatalogClassLevelDisplay(parent, 1, displayLang)}
-                          className="text-sm xxxl:text-base truncate whitespace-pre-wrap text-foreground leading-normal"
+                          className={`text-sm xxxl:text-base truncate whitespace-pre-wrap text-foreground leading-normal ${textAlignClasses.cell}`}
                           maxLines={1}
                         />
                       ) : (
@@ -301,12 +578,12 @@ const CatalogList = memo(
                   )}
 
                   {showCol("clasa2") && (
-                    <TableCell className="text-center px-3 xxxl:px-4 py-1.5 xxxl:py-2 min-w-[10rem] xxxl:min-w-[12rem] w-[10rem] xxxl:w-[12rem] max-w-[10rem] xxxl:max-w-[12rem]">
+                    <TableCell style={getColumnStyle("clasa2")} className={`${textAlignClasses.cell} px-3 xxxl:px-4 py-1.5 xxxl:py-2`}>
                       {getCatalogClassLevelDisplay(parent, 2, displayLang) ? (
                         <OverflowTooltip
-                          align="center"
+                          align={textAlignClasses.tooltip}
                           text={getCatalogClassLevelDisplay(parent, 2, displayLang)}
-                          className="text-sm xxxl:text-base truncate whitespace-pre-wrap text-foreground leading-normal"
+                          className={`text-sm xxxl:text-base truncate whitespace-pre-wrap text-foreground leading-normal ${textAlignClasses.cell}`}
                           maxLines={1}
                         />
                       ) : (
@@ -316,9 +593,14 @@ const CatalogList = memo(
                   )}
 
                   {showCol("denumire") && (
-                    <TableCell className="px-3 xxxl:px-4 py-1.5 xxxl:py-2 min-w-[19rem] xxxl:min-w-[22rem] w-[19rem] xxxl:w-[22rem] max-w-[19rem] xxxl:max-w-[22rem]">
+                    <TableCell style={getColumnStyle("denumire")} className={`${textAlignClasses.cell} px-3 xxxl:px-4 py-1.5 xxxl:py-2`}>
                       {afisareDenumire ? (
-                        <OverflowTooltip align="left" text={afisareDenumire} className="text-sm xxxl:text-base truncate whitespace-pre-wrap text-foreground leading-normal" maxLines={2} />
+                        <OverflowTooltip
+                          align={textAlignClasses.tooltip}
+                          text={afisareDenumire}
+                          className={`text-sm xxxl:text-base truncate whitespace-pre-wrap text-foreground leading-normal ${textAlignClasses.cell}`}
+                          maxLines={2}
+                        />
                       ) : (
                         <span className="text-sm xxxl:text-base text-muted-foreground/40 italic">—</span>
                       )}
@@ -326,10 +608,15 @@ const CatalogList = memo(
                   )}
 
                   {showCol("descriere") && (
-                    <TableCell className="px-3 xxxl:px-4 py-1.5 xxxl:py-2 min-w-[28rem] xxxl:min-w-[35rem]">
+                    <TableCell style={getColumnStyle("descriere")} className={`${textAlignClasses.cell} px-3 xxxl:px-4 py-1.5 xxxl:py-2`}>
                       <div className="w-full">
                         {afisareDescriere ? (
-                          <OverflowTooltip align="left" text={afisareDescriere} className="text-sm xxxl:text-base whitespace-pre-wrap text-foreground leading-normal" maxLines={2} />
+                          <OverflowTooltip
+                            align={textAlignClasses.tooltip}
+                            text={afisareDescriere}
+                            className={`text-sm xxxl:text-base whitespace-pre-wrap text-foreground leading-normal ${textAlignClasses.cell}`}
+                            maxLines={2}
+                          />
                         ) : (
                           <span className="text-sm xxxl:text-base text-muted-foreground/40 italic">—</span>
                         )}
@@ -338,7 +625,7 @@ const CatalogList = memo(
                   )}
 
                   {showCol("unitate") && (
-                    <TableCell className="text-center px-3 xxxl:px-4 py-1.5 xxxl:py-2 min-w-[8rem] xxxl:min-w-[10rem] w-[8rem] xxxl:w-[10rem] max-w-[8rem] xxxl:max-w-[10rem]">
+                    <TableCell style={getColumnStyle("unitate")} className="text-center px-3 xxxl:px-4 py-1.5 xxxl:py-2">
                       <Badge variant="outline" className="text-sm xxxl:text-base px-3 xxxl:px-4 py-1.5 xxxl:py-2 shadow-none whitespace-nowrap">
                         {parent.unitate_masura}
                       </Badge>
@@ -346,13 +633,17 @@ const CatalogList = memo(
                   )}
 
                   {showCol("cost") && (
-                    <TableCell className="text-center px-3 xxxl:px-4 py-1.5 xxxl:py-2 min-w-[10rem] xxxl:min-w-[12rem] w-[10rem] xxxl:w-[12rem] max-w-[10rem] xxxl:max-w-[12rem]">
-                      <span className="font-bold text-sm xxxl:text-base text-foreground">{parseFloat(parent.cost).toFixed(3).replace(".", ",")}</span>
+                    <TableCell style={getColumnStyle("cost")} className="text-center px-3 xxxl:px-4 py-1.5 xxxl:py-2">
+                      <span className="font-bold text-sm xxxl:text-base text-foreground">
+                        {parseFloat(parent.cost || 0)
+                          .toFixed(safeDecimalPlaces)
+                          .replace(".", ",")}
+                      </span>
                     </TableCell>
                   )}
 
                   {showCol("creat") && (
-                    <TableCell className="text-left px-3 xxxl:px-4 py-1.5 xxxl:py-2 min-w-[12.5rem] xxxl:min-w-[14rem] w-[12.5rem] xxxl:w-[14rem] max-w-[12.5rem] xxxl:max-w-[14rem]">
+                    <TableCell style={getColumnStyle("creat")} className="text-left px-3 xxxl:px-4 py-1.5 xxxl:py-2">
                       <div className="flex items-center gap-2 xxxl:gap-2.5 h-10 xxxl:h-12 overflow-hidden">
                         <Avatar className="h-9 w-9 xxxl:h-10 xxxl:w-10 border rounded-md border-border shrink-0">
                           <AvatarImage src={`${photoAPI}/${parent.created_by_photo_url}`} alt={parent.created_by_name} className="object-cover" />
@@ -376,7 +667,7 @@ const CatalogList = memo(
                   )}
 
                   {showCol("actualizat") && (
-                    <TableCell className="text-left px-3 xxxl:px-4 py-1.5 xxxl:py-2 min-w-[12.5rem] xxxl:min-w-[14rem] w-[12.5rem] xxxl:w-[14rem] max-w-[12.5rem] xxxl:max-w-[14rem]">
+                    <TableCell style={getColumnStyle("actualizat")} className="text-left px-3 xxxl:px-4 py-1.5 xxxl:py-2">
                       <div className="flex items-center gap-2 xxxl:gap-2.5 h-10 xxxl:h-12 overflow-hidden">
                         <Avatar className="h-9 w-9 xxxl:h-10 xxxl:w-10 border rounded-md border-border shrink-0">
                           <AvatarImage src={`${photoAPI}/${parent.updated_by_photo_url}`} alt={parent.updated_by_name} className="object-cover" />

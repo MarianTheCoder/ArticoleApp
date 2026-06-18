@@ -17,6 +17,17 @@ const formatNumber = (value, decimalPlaces = 3) => {
     .replace(".", ",");
 };
 
+const formatFormulaNumber = (value) => {
+  const number = Number(value || 0);
+
+  if (!Number.isFinite(number)) return "0";
+
+  return number
+    .toFixed(3)
+    .replace(/\.?0+$/, "")
+    .replace(".", ",");
+};
+
 const cleanFormula = (value) => {
   return String(value || "").replace(/[^\d+\-*/().,\s]/g, "");
 };
@@ -155,7 +166,7 @@ export default function OferteQtyFormulaCell({ value, formula, decimalPlaces = 3
   useEffect(() => {
     if (!open) return;
 
-    const nextFormulaText = formula || formatNumber(value);
+    const nextFormulaText = formula || formatFormulaNumber(value);
 
     setFormulaText(nextFormulaText);
     setStepText("1");
@@ -232,7 +243,7 @@ export default function OferteQtyFormulaCell({ value, formula, decimalPlaces = 3
 
   const appendStep = (operator) => {
     const step = cleanFormula(stepText).trim() || "1";
-    const base = formulaText.trim() || formatNumber(value);
+    const base = formulaText.trim() || formatFormulaNumber(value);
 
     setFormulaText(`${base} ${operator} ${step}`);
     setFormulaError(false);
@@ -240,14 +251,14 @@ export default function OferteQtyFormulaCell({ value, formula, decimalPlaces = 3
   };
 
   const handleSave = async () => {
-    const clean = formulaText.trim() || formatNumber(value);
+    const clean = formulaText.trim() || formatFormulaNumber(value);
 
     let nextValue;
 
     try {
       nextValue = evalFormula(clean);
 
-      if (!Number.isFinite(nextValue) || nextValue <= 0) {
+      if (!Number.isFinite(nextValue) || nextValue < 0) {
         throw new Error("Formula greșită.");
       }
     } catch {
@@ -275,7 +286,7 @@ export default function OferteQtyFormulaCell({ value, formula, decimalPlaces = 3
     setOpen(nextOpen);
 
     if (!nextOpen) {
-      setFormulaText(formula || formatNumber(value));
+      setFormulaText(formula || formatFormulaNumber(value));
       setStepText("1");
       setFormulaError(false);
       setFormulaInputWidth(MIN_FORMULA_WIDTH);

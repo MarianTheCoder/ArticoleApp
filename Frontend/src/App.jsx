@@ -10,7 +10,7 @@ import { ThemeProvider } from "./context/ThemeContext";
 import { Toaster } from "./components/ui/sonner";
 
 // 1. IMPORTURILE NECESARE
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { focusManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { TooltipProvider } from "./components/ui/tooltip";
 
@@ -21,12 +21,23 @@ const queryClient = new QueryClient({
       // Datele sunt considerate "proaspete" timp de 1 minut.
       // Daca userul schimba tab-ul si revine in < 1 min, nu face request la server (ia din cache).
       staleTime: 1000 * 60 * 1,
-      // Daca vrei sa nu faca refetch cand dai click inapoi pe fereastra (optional, bun in dev)
-      refetchOnWindowFocus: false,
+      // La revenirea în fereastră, refetch doar pentru query-urile care au devenit stale.
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
       // Reincearca de 1 data daca pica netul, nu de 3 ori (default)
       retry: 1,
     },
   },
+});
+
+focusManager.setEventListener((handleFocus) => {
+  window.addEventListener("visibilitychange", handleFocus, false);
+  window.addEventListener("focus", handleFocus, false);
+
+  return () => {
+    window.removeEventListener("visibilitychange", handleFocus);
+    window.removeEventListener("focus", handleFocus);
+  };
 });
 
 function App() {

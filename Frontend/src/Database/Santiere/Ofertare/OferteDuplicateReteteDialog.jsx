@@ -343,10 +343,10 @@ export default function OferteDuplicateReteteDialog({
       };
     });
 
-    const invalid = payload.find((item) => !Number.isFinite(item.cantitate_lucrare) || item.cantitate_lucrare <= 0);
+    const invalid = payload.find((item) => !Number.isFinite(item.cantitate_lucrare) || item.cantitate_lucrare < 0);
 
     if (invalid) {
-      toast.warning("Cantitatea trebuie să fie mai mare de 0.", { position: "top-right" });
+      toast.warning("Cantitatea trebuie să fie minim 0.", { position: "top-right" });
       return;
     }
 

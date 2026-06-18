@@ -119,10 +119,11 @@ export default function OferteAddDialog({ open, setOpen, selectedOferta, selecte
       return;
     }
 
-    const parsedQuantity = parseFloat(String(quantity).replace(",", "."));
+    const quantityText = String(quantity).trim();
+    const parsedQuantity = quantityText === "" ? 0 : parseFloat(quantityText.replace(",", "."));
 
-    if (isNaN(parsedQuantity) || parsedQuantity <= 0) {
-      toast.warning("Introdu o cantitate validă mai mare de 0.", {
+    if (!Number.isFinite(parsedQuantity) || parsedQuantity < 0) {
+      toast.warning("Introdu o cantitate validă, minim 0.", {
         position: "top-right",
       });
       return;

@@ -1,5 +1,6 @@
 import React from "react";
+import InventarResursePage from "../InventarResursePage";
 
-export default function InventarUtilaje() {
-  return <div>InventarUtilaje</div>;
+export default function InventarUtilaje({ inventar }) {
+  return <InventarResursePage inventar={inventar} tipResursa="utilaj" />;
 }

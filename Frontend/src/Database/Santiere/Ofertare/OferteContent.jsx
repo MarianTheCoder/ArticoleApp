@@ -16,6 +16,7 @@ import {
   faHashtag,
   faPercent,
   faFilePdf,
+  faTableList,
 } from "@fortawesome/free-solid-svg-icons";
 
 import { Button } from "@/components/ui/button";
@@ -117,9 +118,27 @@ const DEFAULT_RETETE_COLUMNS = {
 
 const RETETE_TEXT_ALIGN_STORAGE_KEY = "oferte_retete_text_align";
 const RETETE_DECIMAL_PLACES_STORAGE_KEY = "oferte_retete_decimal_places";
+const RETETE_VISIBLE_COLUMNS_STORAGE_KEY = "oferte_retete_visible_columns";
 const TEXT_ALIGN_VALUES = ["left", "center", "right"];
 const DECIMAL_PLACE_VALUES = [1, 2, 3];
 const CATEGORY_COLOR_SAVE_DELAY_MS = 300;
+
+const getStoredVisibleReteteColumns = () => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(RETETE_VISIBLE_COLUMNS_STORAGE_KEY) || "{}");
+
+    if (!saved || typeof saved !== "object" || Array.isArray(saved)) {
+      return DEFAULT_RETETE_COLUMNS;
+    }
+
+    return {
+      ...DEFAULT_RETETE_COLUMNS,
+      ...saved,
+    };
+  } catch {
+    return DEFAULT_RETETE_COLUMNS;
+  }
+};
 
 const ToolbarTooltip = ({ text, children }) => (
   <Tooltip>
@@ -220,6 +239,7 @@ export default function OferteContent({
   coeficientEditorState = null,
 }) {
   const { limbaUser } = useParams();
+  const currency = String(limbaUser || "").toUpperCase() === "FR" ? "EUR" : "RON";
   const { show, hide } = useLoading();
   const [openAddReteta, setOpenAddReteta] = useState(false);
   const [exportPdfOpen, setExportPdfOpen] = useState(false);
@@ -235,6 +255,7 @@ export default function OferteContent({
   const categoryColorsDebounceRef = useRef(null);
   const categoryColorsPendingRef = useRef({});
   const [recapitulatiiPercent, setRecapitulatiiPercent] = useState("0");
+  const [discountPercent, setDiscountPercent] = useState("0");
   const [tvaPercent, setTvaPercent] = useState("0");
   const [reteteSearch, setReteteSearch] = useState("");
   const [debouncedReteteSearch, setDebouncedReteteSearch] = useState("");
@@ -265,7 +286,7 @@ export default function OferteContent({
   const [deleteRetetaOpen, setDeleteRetetaOpen] = useState(false);
   const [reteteToDelete, setReteteToDelete] = useState([]);
 
-  const [visibleReteteColumns, setVisibleReteteColumns] = useState(DEFAULT_RETETE_COLUMNS);
+  const [visibleReteteColumns, setVisibleReteteColumns] = useState(getStoredVisibleReteteColumns);
 
   const { user } = useContext(AuthContext);
 
@@ -341,6 +362,12 @@ export default function OferteContent({
       localStorage.setItem(RETETE_DECIMAL_PLACES_STORAGE_KEY, String(decimalPlaces));
     } catch {}
   }, [decimalPlaces]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(RETETE_VISIBLE_COLUMNS_STORAGE_KEY, JSON.stringify(visibleReteteColumns || DEFAULT_RETETE_COLUMNS));
+    } catch {}
+  }, [visibleReteteColumns]);
 
   const dynamicColumns = useMemo(() => {
     return normalizeColumns(selectedLucrare?.coloane_config);
@@ -822,7 +849,7 @@ export default function OferteContent({
               </Button>
 
               <Button variant="outline" className={`${COMPACT.toolbarBadgeBtn} ${getToolbarPressedClass(hasActiveCategories)}`} onClick={() => setOpenCategorii(true)}>
-                <FontAwesomeIcon icon={faLayerGroup} className={`text-sm ${hasActiveCategories ? "text-primary" : "text-foreground"}`} />
+                <FontAwesomeIcon icon={faTableList} className={`text-sm ${hasActiveCategories ? "text-primary" : "text-foreground"}`} />
                 <span className="whitespace-nowrap text-sm font-semibold text-foreground">Categorii</span>
               </Button>
 
@@ -911,11 +938,11 @@ export default function OferteContent({
                         Cod
                       </DropdownMenuCheckboxItem>
 
-                      {Array.from({ length: 5 }, (_, index) => {
+                      {["Specialitate", "Capitol de lucrări", "Familie de lucrări", "Subfamilie de lucrări", "Articol de lucrare"].map((label, index) => {
                         const key = `clasa${index + 1}`;
                         return (
                           <DropdownMenuCheckboxItem key={key} className={COMPACT.menuItem} checked={showTableCol(key)} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol(key)}>
-                            Clasă {index + 1}
+                            {label}
                           </DropdownMenuCheckboxItem>
                         );
                       })}
@@ -946,13 +973,8 @@ export default function OferteContent({
                         Cantitate
                       </DropdownMenuCheckboxItem>
 
-                      <DropdownMenuCheckboxItem
-                        className={COMPACT.menuItem}
-                        checked={showTableCol("qtyTotal")}
-                        onSelect={(e) => e.preventDefault()}
-                        onCheckedChange={() => toggleTableCol("qtyTotal")}
-                      >
-                        Qty total
+                      <DropdownMenuCheckboxItem className={COMPACT.menuItem} checked={showTableCol("qtyTotal")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("qtyTotal")}>
+                        Cantitate totala
                       </DropdownMenuCheckboxItem>
 
                       <DropdownMenuCheckboxItem className={COMPACT.menuItem} checked={showTableCol("cost")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("cost")}>
@@ -1061,7 +1083,9 @@ export default function OferteContent({
               showCategoryTotals={reteteCategoryShowTotals}
               categoryColorsConfig={reteteCategoryColors}
               recapitulatiiPercent={recapitulatiiPercent}
+              discountPercent={discountPercent}
               tvaPercent={tvaPercent}
+              currency={currency}
               searchQuery={debouncedReteteSearch}
               onEditReteta={handleOpenEditReteta}
               onDeleteReteta={handleOpenDeleteReteta}
@@ -1079,6 +1103,7 @@ export default function OferteContent({
               onSelectedCountChange={setSelectedReteteCount}
               onCategoryColorChange={handleSaveCategoryColor}
               onRecapitulatiiPercentChange={setRecapitulatiiPercent}
+              onDiscountPercentChange={setDiscountPercent}
               onTvaPercentChange={setTvaPercent}
               coeficientEditorState={coeficientEditorState}
               oferteOptions={oferteOptions}
@@ -1118,9 +1143,13 @@ export default function OferteContent({
             visibleColumns={visibleReteteColumns}
             dynamicColumns={dynamicColumns}
             decimalPlaces={decimalPlaces}
+            textAlign={textAlign}
+            currency={currency}
             recapitulatiiPercent={recapitulatiiPercent}
+            discountPercent={discountPercent}
             tvaPercent={tvaPercent}
             onRecapitulatiiPercentChange={setRecapitulatiiPercent}
+            onDiscountPercentChange={setDiscountPercent}
             onTvaPercentChange={setTvaPercent}
           />
 

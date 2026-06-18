@@ -38,6 +38,12 @@ const isCatalogScope = (scope) => scope === "catalog" || String(scope || "").sta
 const normalizeDialogScope = (scope) => (isCatalogScope(scope) ? String(scope || "catalog") : "reteta");
 const getScopeLevelCount = (scope) => (isCatalogScope(scope) ? CATALOG_LEVEL_COUNT : RETETA_LEVEL_COUNT);
 const getScopeStorageKey = (scope) => (isCatalogScope(scope) ? `${CATALOG_SAVED_SELECTED_PATH_KEY}_${scope}` : SAVED_SELECTED_PATH_KEY);
+const RETETA_LEVEL_LABELS = ["Specialitate", "Capitol de lucrări", "Familie de lucrări", "Subfamilie de lucrări", "Articol de lucrare"];
+const CATALOG_LEVEL_LABELS = ["Clasă", "Subclasă"];
+const getScopeLevelLabel = (scope, level) => {
+  const labels = isCatalogScope(scope) ? CATALOG_LEVEL_LABELS : RETETA_LEVEL_LABELS;
+  return labels[level - 1] || `Nivel ${level}`;
+};
 
 const parseCodeValue = (value, scope = "reteta") => {
   const levelCount = getScopeLevelCount(scope);
@@ -653,7 +659,7 @@ export default function ReteteClaseCoduriDialog({ open, setOpen, value, onApply,
 
             return (
               <div key={level} className="min-h-0 border-r  flex flex-col">
-                <div className="px-2 py-1.5 border-b  text-sm b bg-muted font-bold uppercase text-foreground">Nivel {level}</div>
+                <div className="px-2 py-1.5 border-b  text-sm b bg-muted font-bold uppercase text-foreground">{getScopeLevelLabel(normalizedScope, level)}</div>
 
                 <div className="flex-1 overflow-auto">
                   {isFetching ? (

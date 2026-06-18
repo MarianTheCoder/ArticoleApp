@@ -95,11 +95,11 @@ const getClassLevelInfo = (meta, levelNo, displayLang = "RO") => {
 };
 
 const CLASS_LEVEL_COLUMNS = [
-  { key: "clasa1", levelNo: 1, label: "Clasă 1" },
-  { key: "clasa2", levelNo: 2, label: "Clasă 2" },
-  { key: "clasa3", levelNo: 3, label: "Clasă 3" },
-  { key: "clasa4", levelNo: 4, label: "Clasă 4" },
-  { key: "clasa5", levelNo: 5, label: "Clasă 5" },
+  { key: "clasa1", levelNo: 1, label: "Specialitate" },
+  { key: "clasa2", levelNo: 2, label: "Capitol de lucrări" },
+  { key: "clasa3", levelNo: 3, label: "Familie de lucrări" },
+  { key: "clasa4", levelNo: 4, label: "Subfamilie de lucrări" },
+  { key: "clasa5", levelNo: 5, label: "Articol de lucrare" },
 ];
 
 const COLUMN_WIDTHS_STORAGE_KEY = "retete_column_widths";

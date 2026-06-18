@@ -41,7 +41,7 @@ const getResurse = async (req, res) => {
     const variante = req.query.variante ? (req.query.variante.trim() == "1" ? true : false) : false;
 
     // Sortare securizată
-    const allowedSortColumns = ["updated_at", "created_at", "cod_definitie", "cost"];
+    const allowedSortColumns = ["updated_at", "created_at", "cod_definitie", "denumire", "cost"];
     const sortBy = allowedSortColumns.includes(req.query.sortBy) ? req.query.sortBy : "updated_at";
     const sortOrder = req.query.sortOrder === "asc" ? "ASC" : "DESC";
 

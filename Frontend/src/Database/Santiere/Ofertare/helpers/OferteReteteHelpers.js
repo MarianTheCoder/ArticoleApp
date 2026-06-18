@@ -388,31 +388,31 @@ export const buildAvailableCategoryFields = (dynamicColumns = []) => {
     },
     {
       key: "clasa1",
-      label: "Clasă 1",
+      label: "Specialitate",
       type: "class_level",
       levelNo: 1,
     },
     {
       key: "clasa2",
-      label: "Clasă 2",
+      label: "Capitol de lucrări",
       type: "class_level",
       levelNo: 2,
     },
     {
       key: "clasa3",
-      label: "Clasă 3",
+      label: "Familie de lucrări",
       type: "class_level",
       levelNo: 3,
     },
     {
       key: "clasa4",
-      label: "Clasă 4",
+      label: "Subfamilie de lucrări",
       type: "class_level",
       levelNo: 4,
     },
     {
       key: "clasa5",
-      label: "Clasă 5",
+      label: "Articol de lucrare",
       type: "class_level",
       levelNo: 5,
     },
@@ -485,6 +485,7 @@ export const getCategoryTotals = (retete = []) => {
       acc.cost += getRetetaCost(reteta);
       acc.cantitate += cantitateLucrare;
       acc.total += getRetetaTotalLucrare(reteta);
+      acc.pret += Number(reteta?.pret_total_lucrare ?? reteta?.cost_total_lucrare ?? getRetetaTotalLucrare(reteta) ?? 0);
 
       (reteta?.elemente || []).forEach((element) => {
         if (element?.tip_resursa !== "manopera") return;
@@ -498,6 +499,7 @@ export const getCategoryTotals = (retete = []) => {
       cost: 0,
       cantitate: 0,
       total: 0,
+      pret: 0,
       totalManoperaHours: 0,
     },
   );

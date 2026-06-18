@@ -1,5 +1,6 @@
 import React from "react";
+import InventarResursePage from "../InventarResursePage";
 
-export default function InventarTransport() {
-  return <div>InventarTransport</div>;
+export default function InventarTransport({ inventar }) {
+  return <InventarResursePage inventar={inventar} tipResursa="transport" />;
 }

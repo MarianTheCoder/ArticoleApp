@@ -1373,8 +1373,8 @@ const addOfertaReteta = async (req, res) => {
 
     const cantitateLucrare = Number(cantitate_lucrare);
 
-    if (!Number.isFinite(cantitateLucrare) || cantitateLucrare <= 0) {
-      return res.status(400).json({ message: "Cantitatea trebuie să fie mai mare de 0." });
+    if (!Number.isFinite(cantitateLucrare) || cantitateLucrare < 0) {
+      return res.status(400).json({ message: "Cantitatea trebuie să fie minim 0." });
     }
 
     const createdBy = req.user?.id || created_by_user_id || null;
@@ -1604,8 +1604,8 @@ const editOfertaReteta = async (req, res) => {
 
     const cantitateLucrare = Number(cantitate_lucrare);
 
-    if (!Number.isFinite(cantitateLucrare) || cantitateLucrare <= 0) {
-      return res.status(400).json({ message: "Cantitatea trebuie să fie mai mare de 0." });
+    if (!Number.isFinite(cantitateLucrare) || cantitateLucrare < 0) {
+      return res.status(400).json({ message: "Cantitatea trebuie să fie minim 0." });
     }
 
     const cantitateLucrareFormula =
@@ -1849,7 +1849,7 @@ const duplicateOfertaRetete = async (req, res) => {
     }));
 
     const invalidItem = duplicateItems.find(
-      (item) => !Number.isInteger(item.source_oferta_reteta_id) || item.source_oferta_reteta_id <= 0 || !Number.isFinite(item.cantitate_lucrare) || item.cantitate_lucrare <= 0,
+      (item) => !Number.isInteger(item.source_oferta_reteta_id) || item.source_oferta_reteta_id <= 0 || !Number.isFinite(item.cantitate_lucrare) || item.cantitate_lucrare < 0,
     );
 
     if (invalidItem) {
@@ -2274,7 +2274,7 @@ const replaceOfertaRetete = async (req, res) => {
       coloane_valori: item.coloane_valori || [],
     }));
 
-    const invalidItem = replaceItems.find((item) => !Number.isInteger(item.oferta_reteta_id) || item.oferta_reteta_id <= 0 || !Number.isFinite(item.cantitate_lucrare) || item.cantitate_lucrare <= 0);
+    const invalidItem = replaceItems.find((item) => !Number.isInteger(item.oferta_reteta_id) || item.oferta_reteta_id <= 0 || !Number.isFinite(item.cantitate_lucrare) || item.cantitate_lucrare < 0);
 
     if (invalidItem) {
       return res.status(400).json({ message: "Datele pentru înlocuire nu sunt valide." });
