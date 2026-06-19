@@ -84,8 +84,8 @@ export const getColoanaValue = (coloaneValori, col) => {
   return found?.value || "";
 };
 
-export const formatNumber = (value, decimalPlaces = 3) => {
-  const digits = [1, 2, 3].includes(Number(decimalPlaces)) ? Number(decimalPlaces) : 3;
+export const formatNumber = (value, decimalPlaces = 2) => {
+  const digits = [1, 2].includes(Number(decimalPlaces)) ? Number(decimalPlaces) : 2;
 
   return parseFloat(value || 0)
     .toFixed(digits)

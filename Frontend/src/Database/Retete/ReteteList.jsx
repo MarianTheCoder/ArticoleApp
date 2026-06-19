@@ -106,14 +106,14 @@ const COLUMN_WIDTHS_STORAGE_KEY = "retete_column_widths";
 
 const DEFAULT_COLUMN_WIDTHS = {
   limba: 60,
-  elemente: 100,
-  cod: 160,
+  elemente: 82,
+  cod: 110,
   clasa1: 150,
   clasa2: 150,
   clasa3: 150,
   clasa4: 150,
   clasa5: 150,
-  denumire: 400,
+  denumire: 560,
   unitate: 120,
   cost: 160,
   creat: 210,
@@ -122,14 +122,14 @@ const DEFAULT_COLUMN_WIDTHS = {
 
 const MIN_COLUMN_WIDTHS = {
   limba: 80,
-  elemente: 80,
-  cod: 120,
+  elemente: 70,
+  cod: 90,
   clasa1: 110,
   clasa2: 110,
   clasa3: 110,
   clasa4: 110,
   clasa5: 110,
-  denumire: 220,
+  denumire: 260,
   unitate: 80,
   cost: 110,
   creat: 150,
@@ -145,7 +145,7 @@ const SORT_FIELD_BY_COLUMN = {
   creat: "created_at",
 };
 
-const normalizeDecimalPlaces = (value) => ([1, 2, 3].includes(Number(value)) ? Number(value) : 3);
+const normalizeDecimalPlaces = (value) => ([1, 2].includes(Number(value)) ? Number(value) : 2);
 
 const getTextAlignClasses = (textAlign) => {
   if (textAlign === "left") return { cell: "text-left", flex: "justify-start", tooltip: "left" };
@@ -222,7 +222,7 @@ const ReteteList = memo(
     onSelectReteta,
     sortBy = "updated_at",
     sortOrder = "desc",
-    decimalPlaces = 3,
+    decimalPlaces = 2,
     textAlign = "center",
     columnResetKey = 0,
     onSortChange,
@@ -443,7 +443,7 @@ const ReteteList = memo(
                 {/* COLOANA NOUĂ PENTRU VARIANTE/ELEMENTE */}
                 {showCol("elemente") && (
                   <ResizableTableHead colKey="elemente" style={getColumnStyle("elemente")} onResizeStart={handleColumnResizeStart} className="text-center">
-                    <div className="px-3 xxxl:px-4">Elemente</div>
+                    <div className="px-2 xxxl:px-2.5 text-sm xxxl:text-base font-bold">Elemente</div>
                   </ResizableTableHead>
                 )}
 
@@ -467,13 +467,13 @@ const ReteteList = memo(
                 )}
                 {showCol("unitate") && (
                   <ResizableTableHead colKey="unitate" style={getColumnStyle("unitate")} onResizeStart={handleColumnResizeStart} className="text-center">
-                    <div className="px-3 xxxl:px-4">Unitate</div>
+                    <div className="px-2 xxxl:px-2.5 text-sm xxxl:text-base font-bold">Unitate</div>
                   </ResizableTableHead>
                 )}
 
                 {showCol("cost") && (
                   <ResizableTableHead colKey="cost" style={getColumnStyle("cost")} onResizeStart={handleColumnResizeStart} className="text-center">
-                    {renderSortHeaderContent("cost", "Cost", textAlign)}
+                    {renderSortHeaderContent("cost", "Cost")}
                   </ResizableTableHead>
                 )}
 

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, memo, useMemo } from "react";
+import React, { useState, useCallback, memo, useMemo, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,45 @@ import DeleteDialog from "@/components/ui/delete-dialog";
 import { toast } from "sonner";
 import NoImage from "@/assets/no-image-icon.png";
 import ImagePreviewTooltip from "@/components/ui/ImagePreviewTooltip";
+
+const VISIBLE_COLUMNS_STORAGE_PREFIX = "catalog_sub_visible_columns";
+
+const getDefaultVisibleColumns = (config) => ({
+  poza: config.hasPhoto,
+  furnizor: config.hasFurnizor,
+  status: config.hasStatus,
+  descriere: true,
+  cost: true,
+  creat: false,
+  actualizat: false,
+});
+
+const getVisibleColumnsStorageKey = (config) => `${VISIBLE_COLUMNS_STORAGE_PREFIX}_${config?.id || "default"}`;
+
+const readVisibleColumns = (config) => {
+  const defaults = getDefaultVisibleColumns(config);
+
+  try {
+    const saved = JSON.parse(localStorage.getItem(getVisibleColumnsStorageKey(config)) || "null");
+    if (saved && typeof saved === "object") {
+      return {
+        ...defaults,
+        ...saved,
+        poza: config.hasPhoto ? Boolean(saved.poza ?? defaults.poza) : false,
+        furnizor: config.hasFurnizor ? Boolean(saved.furnizor ?? defaults.furnizor) : false,
+        status: config.hasStatus ? Boolean(saved.status ?? defaults.status) : false,
+      };
+    }
+  } catch {}
+
+  return defaults;
+};
+
+const saveVisibleColumns = (config, value) => {
+  try {
+    localStorage.setItem(getVisibleColumnsStorageKey(config), JSON.stringify(value));
+  } catch {}
+};
 
 // --- MEMOIZED ROW ---
 const SubRow = memo(({ sub, config, visibleColumns, displayLang, onEdit, onDuplicate, onDelete }) => {
@@ -81,7 +120,7 @@ const SubRow = memo(({ sub, config, visibleColumns, displayLang, onEdit, onDupli
             <TableCell className="text-center px-3 xxxl:px-4 py-1.5 xxxl:py-2 min-w-[10rem] xxxl:min-w-[12rem] w-[10rem] xxxl:w-[12rem] max-w-[10rem] xxxl:max-w-[12rem]">
               <span className="font-bold text-sm xxxl:text-base text-foreground">
                 {parseFloat(sub.cost || 0)
-                  .toFixed(3)
+                  .toFixed(2)
                   .replace(".", ",")}
               </span>
             </TableCell>
@@ -163,21 +202,24 @@ export default function CatalogSubList({ config, open, setOpen, parentItem }) {
   const [itemToDelete, setItemToDelete] = useState(null);
   const [displayLang, setDisplayLang] = useState("RO");
 
-  const [visibleColumns, setVisibleColumns] = useState({
-    poza: config.hasPhoto,
-    furnizor: config.hasFurnizor,
-    status: config.hasStatus,
-    descriere: true,
-    cost: true,
-    creat: false,
-    actualizat: false,
-  });
+  const [visibleColumns, setVisibleColumns] = useState(() => readVisibleColumns(config));
+
+  useEffect(() => {
+    setVisibleColumns(readVisibleColumns(config));
+  }, [config.id, config.hasPhoto, config.hasFurnizor, config.hasStatus]);
 
   const { mutateAsync: deleteSubDefinitie } = useDeleteCatalogSubDef();
 
   const toggleCol = useCallback((key) => {
-    setVisibleColumns((prev) => ({ ...prev, [key]: !prev[key] }));
-  }, []);
+    setVisibleColumns((prev) => {
+      const next = {
+        ...prev,
+        [key]: !prev[key],
+      };
+      saveVisibleColumns(config, next);
+      return next;
+    });
+  }, [config]);
 
   const showCol = useCallback((colKey) => visibleColumns[colKey], [visibleColumns]);
 

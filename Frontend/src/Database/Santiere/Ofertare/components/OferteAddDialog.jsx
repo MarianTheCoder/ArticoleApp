@@ -227,13 +227,13 @@ export default function OferteAddDialog({ open, setOpen, selectedOferta, selecte
 
               <Input
                 className="w-32 h-11 font-black text-center border-2"
-                placeholder="0,000"
+                placeholder="0,00"
                 value={quantity}
                 ref={QtyRef}
                 onChange={(e) => {
                   const val = e.target.value.replace(".", ",");
 
-                  if (/^\d{0,7}\,?\d{0,3}$/.test(val)) {
+                  if (/^\d{0,7}\,?\d{0,2}$/.test(val)) {
                     setQuantity(val);
                   }
                 }}

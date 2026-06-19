@@ -120,7 +120,7 @@ const RETETE_TEXT_ALIGN_STORAGE_KEY = "oferte_retete_text_align";
 const RETETE_DECIMAL_PLACES_STORAGE_KEY = "oferte_retete_decimal_places";
 const RETETE_VISIBLE_COLUMNS_STORAGE_KEY = "oferte_retete_visible_columns";
 const TEXT_ALIGN_VALUES = ["left", "center", "right"];
-const DECIMAL_PLACE_VALUES = [1, 2, 3];
+const DECIMAL_PLACE_VALUES = [1, 2];
 const CATEGORY_COLOR_SAVE_DELAY_MS = 300;
 
 const getStoredVisibleReteteColumns = () => {

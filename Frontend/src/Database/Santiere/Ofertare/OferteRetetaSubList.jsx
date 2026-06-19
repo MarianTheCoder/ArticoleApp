@@ -15,8 +15,8 @@ import { RecipeCodeTooltip } from "./components/OferteRetetaCodeClassDisplay";
 const EMPTY = "—";
 const CLASS_LEVEL_COLUMN_KEYS = ["clasa1", "clasa2", "clasa3", "clasa4", "clasa5"];
 
-const formatNumber = (value, decimalPlaces = 3) => {
-  const digits = [1, 2, 3].includes(Number(decimalPlaces)) ? Number(decimalPlaces) : 3;
+const formatNumber = (value, decimalPlaces = 2) => {
+  const digits = [1, 2].includes(Number(decimalPlaces)) ? Number(decimalPlaces) : 2;
 
   return parseFloat(value || 0)
     .toFixed(digits)
@@ -372,7 +372,7 @@ const OferteRetetaSubList = memo(function OferteRetetaSubList({
   parentItem,
   displayLang = "RO",
   textAlign = "left",
-  decimalPlaces = 3,
+  decimalPlaces = 2,
   dynamicColumns = [],
   showCol,
   getColumnStyle,
@@ -412,6 +412,7 @@ const OferteRetetaSubList = memo(function OferteRetetaSubList({
   const totalElementInLucrare = totalElement * cantitateLucrare;
   const coeficientPriceValue = totalElementInLucrare + coeficientAddedValue;
   const coeficientExcluded = !!coeficientImpact?.excluded;
+  const coeficientInactive = !!coeficientImpact?.inactive && Math.abs(coeficientAddedValue) < 0.000001;
   const safeTextAlign = ["left", "center", "right"].includes(textAlign) ? textAlign : "left";
   const textAlignClass = {
     left: "text-left",
@@ -544,14 +545,16 @@ const OferteRetetaSubList = memo(function OferteRetetaSubList({
           {coeficientExcluded ? (
             <span className="text-xs xxxl:text-sm font-black text-red-600 whitespace-nowrap">Exclude</span>
           ) : (
-            <span className={`text-xs xxxl:text-sm font-black whitespace-nowrap ${getCoefTextClass(coeficientPercent, "text-teal-700 dark:text-teal-300")}`}>{formatNumber(coeficientPercent, 2)}%</span>
+            <span className={`text-xs xxxl:text-sm font-black whitespace-nowrap ${coeficientInactive ? "text-red-600 dark:text-red-400" : getCoefTextClass(coeficientPercent, "text-teal-700 dark:text-teal-300")}`}>
+              {formatNumber(coeficientPercent, 2)}%
+            </span>
           )}
         </TableCell>
       )}
 
       {showCol("coefPret") && (
         <TableCell style={getColumnStyle("coefPret")} className={`${childCellClass} text-right`}>
-          <span className={`text-xs xxxl:text-sm font-black whitespace-nowrap ${coeficientExcluded ? "text-red-600" : getCoefTextClass(coeficientAddedValue, "text-primary")}`}>
+          <span className={`text-xs xxxl:text-sm font-black whitespace-nowrap ${coeficientExcluded || coeficientInactive ? "text-red-600 dark:text-red-400" : getCoefTextClass(coeficientAddedValue, "text-primary")}`}>
             {formatNumber(coeficientAddedValue, decimalPlaces)}
           </span>
         </TableCell>

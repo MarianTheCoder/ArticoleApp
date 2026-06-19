@@ -111,7 +111,7 @@ const getColoanaValue = (coloaneValori, col) => {
 
 const formatNumber = (value) => {
   return parseFloat(value || 0)
-    .toFixed(3)
+    .toFixed(2)
     .replace(".", ",");
 };
 
@@ -633,7 +633,7 @@ export default function OferteDuplicateReteteDialog({
                             onChange={(e) => {
                               const val = normalizeDecimalInput(e.target.value);
 
-                              if (/^\d{0,9},?\d{0,3}$/.test(val)) {
+                              if (/^\d{0,9},?\d{0,2}$/.test(val)) {
                                 updateRow(row.id, (current) => ({
                                   ...current,
                                   cantitate: val,

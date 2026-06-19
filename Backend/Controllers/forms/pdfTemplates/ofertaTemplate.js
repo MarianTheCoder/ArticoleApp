@@ -238,7 +238,7 @@ const clampFontSize = (value) => {
 const clampDecimalPlaces = (value) => {
   const parsed = Number(value);
 
-  return [1, 2, 3].includes(parsed) ? parsed : 3;
+  return [1, 2].includes(parsed) ? parsed : 2;
 };
 
 const parsePercentOption = (value) => {
@@ -739,7 +739,7 @@ const getHeaderRow = (columns) =>
     noWrap: ["tipParent", "tipChild", "poza", "cod", "clasa", "unitate", "cantitate", "qtyTotal", "coefProcent"].includes(col.key),
   }));
 
-const buildRetetaCell = ({ col, reteta, displayLang, fillColor, decimalPlaces = 3 }) => {
+const buildRetetaCell = ({ col, reteta, displayLang, fillColor, decimalPlaces = 2 }) => {
   if (col.key === "tipParent") return getImageCell(folderImage, fillColor, 13);
   if (col.key === "tipChild") return { text: "", style: "tableCellCenter", fillColor, verticalAlignment: "middle" };
   if (col.key === "poza") return getBaseCell("-", "tableCellCenter", fillColor);
@@ -768,13 +768,14 @@ const buildRetetaCell = ({ col, reteta, displayLang, fillColor, decimalPlaces = 
   return getBaseCell("", "tableCell", fillColor);
 };
 
-const buildElementCell = ({ col, element, displayLang, isLastElement, fillColor, text, retetaQuantity = 0, decimalPlaces = 3 }) => {
+const buildElementCell = ({ col, element, displayLang, isLastElement, fillColor, text, retetaQuantity = 0, decimalPlaces = 2 }) => {
   const resourceConfig = getResourceConfig(element.tip_resursa);
   const qtyInReteta = Number(element.cantitate_in_reteta || 0);
   const qtyTotalLucrare = Number(element.qty_total_lucrare ?? qtyInReteta * retetaQuantity);
   const costTotalLucrare = Number(element.cost_total_lucrare ?? Number(element.cost_total || 0) * retetaQuantity);
   const coefAddedValue = Number(element.coeficient_added_value || 0);
   const pretTotalLucrare = Number(element.pret_total_lucrare ?? costTotalLucrare + coefAddedValue);
+  const coefInactive = !!element.coeficient_inactive && !element.coeficient_excluded && Math.abs(coefAddedValue) < 0.000001;
 
   if (col.key === "tipParent") {
     return {
@@ -798,14 +799,16 @@ const buildElementCell = ({ col, element, displayLang, isLastElement, fillColor,
   if (col.key === "qtyTotal") return getBaseCell(formatNumber(qtyTotalLucrare, decimalPlaces), element.has_qty_diff ? "tableCellRightDiff" : "tableCellRight", fillColor, { noWrap: true });
   if (col.key === "cost") return getBaseCell(formatNumber(element.cost_unitar, decimalPlaces), element.has_cost_diff ? "tableCellRightDiff" : "tableCellRight", fillColor, { noWrap: true });
   if (col.key === "costTotal") return getBaseCell(formatNumber(costTotalLucrare, decimalPlaces), "tableCellRight", fillColor, { noWrap: true });
-  if (col.key === "coefProcent") return getBaseCell(formatPercent(element.coeficient_percent, 2), element.coeficient_percent ? "tableCellRight" : "tableCellMuted", fillColor, { noWrap: true });
-  if (col.key === "coefPret") return getBaseCell(formatNumber(coefAddedValue, decimalPlaces), coefAddedValue ? "tableCellRight" : "tableCellMuted", fillColor, { noWrap: true });
+  if (col.key === "coefProcent")
+    return getBaseCell(formatPercent(element.coeficient_percent, 2), coefInactive ? "tableCellRightDanger" : element.coeficient_percent ? "tableCellRight" : "tableCellMuted", fillColor, { noWrap: true });
+  if (col.key === "coefPret")
+    return getBaseCell(formatNumber(coefAddedValue, decimalPlaces), coefInactive ? "tableCellRightDanger" : coefAddedValue ? "tableCellRight" : "tableCellMuted", fillColor, { noWrap: true });
   if (col.key === "pret") return getBaseCell(formatNumber(pretTotalLucrare, decimalPlaces), "tableCellRightBold", fillColor, { noWrap: true });
 
   return getBaseCell("", "tableCell", fillColor);
 };
 
-const buildCategoryRow = ({ columns, value, level, count, totals, showTotals, text, fieldKey, categoryColorsConfig, decimalPlaces = 3 }) => {
+const buildCategoryRow = ({ columns, value, level, count, totals, showTotals, text, fieldKey, categoryColorsConfig, decimalPlaces = 2 }) => {
   const savedColor = getCategoryColor(categoryColorsConfig, fieldKey, value);
   const fillColor = savedColor || ["#c4c4ce", "#d1d5db", "#e5e7eb", "#f3f4f6"][Math.min(3, Math.max(0, level - 1))];
   const color = savedColor ? getReadableTextColor(savedColor) : "#111827";
@@ -985,7 +988,7 @@ const buildSummaryTable = ({ columns, totals, options, text, padding }) => ({
   layout: getOfferTableLayout(padding),
 });
 
-const buildRetetaRows = ({ columns, reteta, displayLang, includeElements, text, decimalPlaces = 3 }) => {
+const buildRetetaRows = ({ columns, reteta, displayLang, includeElements, text, decimalPlaces = 2 }) => {
   const rows = [];
 
   const parentFill = "#e5e7eb";
@@ -1011,7 +1014,7 @@ const buildRetetaRows = ({ columns, reteta, displayLang, includeElements, text, 
   return rows;
 };
 
-const buildGroupedRows = ({ columns, retete, displayLang, includeElements, text, categoryConfig, dynamicColumns, showCategoryTotals, categoryColorsConfig, decimalPlaces = 3 }) => {
+const buildGroupedRows = ({ columns, retete, displayLang, includeElements, text, categoryConfig, dynamicColumns, showCategoryTotals, categoryColorsConfig, decimalPlaces = 2 }) => {
   const availableFields = buildAvailableCategoryFields(dynamicColumns);
   const activeFields = normalizeCategoryConfig(categoryConfig, dynamicColumns)
     .map((key) => availableFields.find((field) => field.key === key))
@@ -1066,7 +1069,7 @@ const buildGroupedRows = ({ columns, retete, displayLang, includeElements, text,
   return rows;
 };
 
-const buildTableBody = ({ columns, retete, displayLang, includeElements, text, categoryConfig, dynamicColumns, showCategoryTotals, categoryColorsConfig, options, decimalPlaces = 3 }) => {
+const buildTableBody = ({ columns, retete, displayLang, includeElements, text, categoryConfig, dynamicColumns, showCategoryTotals, categoryColorsConfig, options, decimalPlaces = 2 }) => {
   const body = [getHeaderRow(columns)];
   const hasCategories = normalizeCategoryConfig(categoryConfig, dynamicColumns).some(Boolean);
 
@@ -1109,9 +1112,10 @@ const getResourceRows = (retete = [], displayLang, resourceKey) => {
       const totalCantitate = cantitateInReteta * retetaQuantity;
       const coefPercent = Number(element.coeficient_percent || 0);
       const coefAdded = Number(element.coeficient_added_value || 0);
+      const coefInactive = !!element.coeficient_inactive && !element.coeficient_excluded && Math.abs(coefAdded) < 0.000001;
       const coefUnitAdded = totalCantitate > 0 ? coefAdded / totalCantitate : 0;
       const pretUnitar = cost + coefUnitAdded;
-      const key = JSON.stringify([cod, denumire, descriere, unitate, cost, coefPercent.toFixed(8), pretUnitar.toFixed(8)]);
+      const key = JSON.stringify([cod, denumire, descriere, unitate, cost, coefInactive ? "inactive" : "active", coefPercent.toFixed(8), pretUnitar.toFixed(8)]);
 
       if (!grouped.has(key)) {
         const resourceLabel = {
@@ -1132,6 +1136,8 @@ const getResourceRows = (retete = [], displayLang, resourceKey) => {
           cantitate: 0,
           total: 0,
           coefPret: 0,
+          coefInactive,
+          inactiveCoefPercent: 0,
           pret: 0,
         });
       }
@@ -1140,13 +1146,17 @@ const getResourceRows = (retete = [], displayLang, resourceKey) => {
       row.cantitate += totalCantitate;
       row.total += totalCantitate * cost;
       row.coefPret += coefAdded;
+      if (coefInactive) {
+        row.coefInactive = true;
+        row.inactiveCoefPercent = coefPercent;
+      }
       row.pret += totalCantitate * cost + coefAdded;
     });
   });
 
   return [...grouped.values()].map((row) => ({
     ...row,
-    coefProcent: row.total > 0 ? (row.coefPret / row.total) * 100 : 0,
+    coefProcent: row.coefPret ? (row.total > 0 ? (row.coefPret / row.total) * 100 : 0) : Number(row.inactiveCoefPercent || 0),
     pret: row.pret || row.total + row.coefPret,
   }));
 };
@@ -1182,7 +1192,7 @@ const getManoperaColumns = (text, visibleColumns = DEFAULT_VISIBLE_COLUMNS, text
   return columns;
 };
 
-const buildManoperaCell = (row, col, decimalPlaces = 3) => {
+const buildManoperaCell = (row, col, decimalPlaces = 2) => {
   if (col.key === "tip") return getBaseCell(row.tip, "tableCell", row.fill || "#dbeafe", { noWrap: true });
   if (col.key === "cod") return getBaseCell(row.cod, "tableCell", null, { noWrap: true });
   if (col.key === "denumire") return getBaseCell(row.denumire, "tableCell", null);
@@ -1192,8 +1202,8 @@ const buildManoperaCell = (row, col, decimalPlaces = 3) => {
   if (col.key === "qtyTotal") return getBaseCell(formatNumber(row.qtyTotal ?? row.cantitate, decimalPlaces), "tableCellRight", null, { noWrap: true });
   if (col.key === "cost") return getBaseCell(formatNumber(row.cost, decimalPlaces), "tableCellRight", null, { noWrap: true });
   if (col.key === "total") return getBaseCell(formatNumber(row.total, decimalPlaces), "tableCellRight", null, { noWrap: true });
-  if (col.key === "coefProcent") return getBaseCell(formatPercent(row.coefProcent, 2), row.coefProcent ? "tableCellRight" : "tableCellMuted", null, { noWrap: true });
-  if (col.key === "coefPret") return getBaseCell(formatNumber(row.coefPret, decimalPlaces), row.coefPret ? "tableCellRight" : "tableCellMuted", null, { noWrap: true });
+  if (col.key === "coefProcent") return getBaseCell(formatPercent(row.coefProcent, 2), row.coefInactive ? "tableCellRightDanger" : row.coefProcent ? "tableCellRight" : "tableCellMuted", null, { noWrap: true });
+  if (col.key === "coefPret") return getBaseCell(formatNumber(row.coefPret, decimalPlaces), row.coefInactive ? "tableCellRightDanger" : row.coefPret ? "tableCellRight" : "tableCellMuted", null, { noWrap: true });
   if (col.key === "pret") return getBaseCell(formatNumber(row.pret || row.total, decimalPlaces), "tableCellRightStrong", null, { noWrap: true });
 
   return getBaseCell("", "tableCell", null);
@@ -1221,7 +1231,7 @@ const getResourceTableTotals = (rows = []) =>
     },
   );
 
-const buildManoperaTableBody = ({ rows, columns, text, options, emptyText = text.emptyManopera, decimalPlaces = 3 }) => {
+const buildManoperaTableBody = ({ rows, columns, text, options, emptyText = text.emptyManopera, decimalPlaces = 2 }) => {
   const body = [getHeaderRow(columns)];
 
   rows.forEach((row) => {
@@ -1537,6 +1547,7 @@ const createOfertaDocDefinition = ({ lucrare, retete, totals, options }) => {
       tableCellRightBold: { fontSize: normalizedOptions.fontSize, color: "#111827", alignment: "left", bold: true },
       tableCellRightStrong: { fontSize: normalizedOptions.fontSize, color: "#111827", alignment: "left", bold: true },
       tableCellRightDiff: { fontSize: normalizedOptions.fontSize, color: "#b91c1c", alignment: "left" },
+      tableCellRightDanger: { fontSize: normalizedOptions.fontSize, color: "#dc2626", alignment: "left", bold: true },
       tableCellMuted: { fontSize: normalizedOptions.fontSize, color: "#6b7280", alignment: "left" },
       variantCell: { fontSize: normalizedOptions.fontSize, color: "#1d4ed8", alignment: "left", bold: true },
       tableSummaryLabel: { fontSize: normalizedOptions.fontSize + 1, color: "#111827", bold: true },

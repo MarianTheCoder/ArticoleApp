@@ -288,7 +288,7 @@ const RetetaInfoIcons = memo(function RetetaInfoIcons({ reteta }) {
   );
 });
 
-const SummaryBox = memo(function SummaryBox({ label, value, children, strong = false, tone = null, decimalPlaces = 3 }) {
+const SummaryBox = memo(function SummaryBox({ label, value, children, strong = false, tone = null, decimalPlaces = 2 }) {
   const toneClass = tone === "manopera" ? "border-emerald-600/50 bg-emerald-600/10" : strong ? "border-primary" : "border-border";
 
   const valueClass = tone === "manopera" ? "font-black text-emerald-600" : strong ? "font-black text-primary" : "font-extrabold text-foreground";
@@ -660,7 +660,7 @@ const OferteReteteList = memo(function OferteReteteList({
   displayLang = "RO",
   visibleColumns,
   textAlign = "left",
-  decimalPlaces = 3,
+  decimalPlaces = 2,
   columnResetKey = 0,
   sortResetKey = 0,
   toggleAllKey = 0,
@@ -1121,7 +1121,7 @@ const OferteReteteList = memo(function OferteReteteList({
   );
 
   const safeTextAlign = ["left", "center", "right"].includes(textAlign) ? textAlign : "left";
-  const safeDecimalPlaces = [1, 2, 3].includes(Number(decimalPlaces)) ? Number(decimalPlaces) : 3;
+  const safeDecimalPlaces = [1, 2].includes(Number(decimalPlaces)) ? Number(decimalPlaces) : 2;
 
   const textAlignClass = {
     left: "text-left",

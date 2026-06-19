@@ -14,6 +14,11 @@ import { useAddCatalogSubDef, useEditCatalogSubDef } from "@/hooks/Database/useC
 import photoAPI from "@/api/photoAPI";
 import imageCompression from "browser-image-compression";
 
+const formatDecimalInputValue = (value) => {
+  const numberValue = Number(value || 0);
+  return Number.isFinite(numberValue) ? numberValue.toFixed(2).replace(".", ",") : "0,00";
+};
+
 export default function CatalogSubDefDialog({ config, open, setOpen, mode = "add", initialData = null, definitieId, tipResursa }) {
   const { show, hide } = useLoading();
   const { user } = useContext(AuthContext);
@@ -27,7 +32,7 @@ export default function CatalogSubDefDialog({ config, open, setOpen, mode = "add
     cod_specific: "",
     descriere: "",
     descriere_fr: "",
-    cost: "0,000",
+    cost: "0,00",
     furnizor: "", // Preluat doar dacă config.hasFurnizor este true
     status_utilaj: "Nou", // Preluat doar dacă config.hasStatus este true
   };
@@ -51,7 +56,7 @@ export default function CatalogSubDefDialog({ config, open, setOpen, mode = "add
             cod_specific: initialData.cod_specific || "",
             descriere: initialData.descriere || "",
             descriere_fr: initialData.descriere_fr || "",
-            cost: initialData.cost?.toString().replace(".", ",") || "0,000",
+            cost: initialData.cost != null ? formatDecimalInputValue(initialData.cost) : "0,00",
             furnizor: config.hasFurnizor ? initialData.detalii_extra?.furnizor || "" : "",
             status_utilaj: config.hasStatus ? initialData.detalii_extra?.status_utilaj || "Nou" : "Nou",
           });
@@ -193,6 +198,7 @@ export default function CatalogSubDefDialog({ config, open, setOpen, mode = "add
 
     const fd = new FormData();
     fd.append("definitie_id", definitieId);
+    fd.append("tip_resursa", tipResursa);
     fd.append("cod_specific", draft.cod_specific.trim());
     fd.append("descriere", draft.descriere.trim());
     fd.append("descriere_fr", draft.descriere_fr.trim());
@@ -330,7 +336,7 @@ export default function CatalogSubDefDialog({ config, open, setOpen, mode = "add
                     value={draft.cost}
                     onChange={(e) => {
                       const val = e.target.value;
-                      if (/^\d{0,7}\,?\d{0,3}$/.test(val)) setField("cost", val);
+                      if (/^\d{0,7}\,?\d{0,2}$/.test(val)) setField("cost", val);
                     }}
                     className="h-9"
                   />

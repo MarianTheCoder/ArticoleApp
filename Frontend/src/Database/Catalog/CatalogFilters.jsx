@@ -37,7 +37,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Badge } from "@/components/ui/badge";
 import ReteteClaseCoduriDialog from "@/Database/Retete/ReteteClaseCoduriDialog";
 
-const DECIMAL_PLACE_VALUES = [1, 2, 3];
+const DECIMAL_PLACE_VALUES = [1, 2];
 
 const COLUMN_LABELS = {
   poza: "Poză",
@@ -50,6 +50,8 @@ const COLUMN_LABELS = {
   descriere: "Descriere",
   unitate: "Unitate",
   cost: "Cost",
+  stocTotal: "Stoc total",
+  stocInventar: "Stoc inventar",
   creat: "Creat",
   actualizat: "Actualizat",
 };
@@ -84,7 +86,7 @@ export default function CatalogFilters({
   onAddClick,
   displayLang,
   onDisplayLangToggle,
-  decimalPlaces = 3,
+  decimalPlaces = 2,
   setDecimalPlaces,
   textAlign = "center",
   setTextAlign,

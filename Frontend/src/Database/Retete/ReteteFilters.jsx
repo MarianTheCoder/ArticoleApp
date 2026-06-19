@@ -50,7 +50,7 @@ const formatCodFilter = (value) => {
   return [...classSegments, ...(recipeDigits ? [recipeDigits] : [])].join(" ");
 };
 
-const DECIMAL_PLACE_VALUES = [1, 2, 3];
+const DECIMAL_PLACE_VALUES = [1, 2];
 
 const COLUMN_LABELS = {
   limba: "Limba",
@@ -76,7 +76,7 @@ export default function ReteteFilters({
   onAddClick,
   displayLang,
   onDisplayLangToggle,
-  decimalPlaces = 3,
+  decimalPlaces = 2,
   setDecimalPlaces,
   textAlign = "center",
   setTextAlign,

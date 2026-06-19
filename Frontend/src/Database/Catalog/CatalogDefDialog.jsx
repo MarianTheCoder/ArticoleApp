@@ -104,6 +104,11 @@ const buildCatalogClassBadgesFromCode = (codDefinitie, classItems = [], displayL
 
 const getCatalogClassScope = (tipResursa) => `catalog_${tipResursa || "material"}`;
 
+const formatDecimalInputValue = (value) => {
+  const numberValue = Number(value || 0);
+  return Number.isFinite(numberValue) ? numberValue.toFixed(2).replace(".", ",") : "0,00";
+};
+
 export default function CatalogDefDialog({ open, setOpen, mode = "add", initialData = null, config, tipResursa }) {
   const { show, hide } = useLoading();
   const { user } = useContext(AuthContext);
@@ -124,7 +129,7 @@ export default function CatalogDefDialog({ open, setOpen, mode = "add", initialD
     descriere: "",
     descriere_fr: "",
     unitate_masura: config.defaultUnit,
-    cost: "0,000",
+    cost: "0,00",
     duplicateSubs: false,
   };
 
@@ -156,7 +161,7 @@ export default function CatalogDefDialog({ open, setOpen, mode = "add", initialD
         descriere: initialData.descriere || "",
         descriere_fr: initialData.descriere_fr || "",
         unitate_masura: initialData.unitate_masura || config.defaultUnit,
-        cost: initialData.cost != null ? String(initialData.cost).replace(".", ",") : "0,000",
+        cost: initialData.cost != null ? formatDecimalInputValue(initialData.cost) : "0,00",
         duplicateSubs: isDuplicateMode ? true : false,
         originalId: isDuplicateMode ? initialData.id : null,
       });
@@ -551,7 +556,7 @@ export default function CatalogDefDialog({ open, setOpen, mode = "add", initialD
                         value={draft.cost}
                         onChange={(e) => {
                           const val = e.target.value;
-                          if (/^\d{0,7}\,?\d{0,3}$/.test(val)) setField("cost", val);
+                          if (/^\d{0,7}\,?\d{0,2}$/.test(val)) setField("cost", val);
                         }}
                         className="h-9"
                       />

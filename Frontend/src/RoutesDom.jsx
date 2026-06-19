@@ -75,7 +75,7 @@ export default function RoutesDom() {
           <Route path="addMateriale" element={<ProtectedRoute module="materiale" friendlyName="a accesa materiale"><CatalogMainPage tipResursa="material" /></ProtectedRoute>} />
           <Route path="addUtilaje" element={<ProtectedRoute module="utilaje" friendlyName="a accesa utilaje"><CatalogMainPage tipResursa="utilaj" /></ProtectedRoute>} />
           <Route path="addTransport" element={<ProtectedRoute module="transport" friendlyName="a accesa transport"><CatalogMainPage tipResursa="transport" /></ProtectedRoute>} />
-          <Route path="Inventar/:idInventar/:limba" element={<ProtectedRoute friendlyName="a accesa inventarul"><InventarMainPage /></ProtectedRoute>} />
+          <Route path="Inventar/:idInventar/:limba" element={<ProtectedRoute module="inventar"  friendlyName="a accesa inventarul"><InventarMainPage /></ProtectedRoute>} />
           {/* Admin & Pontaj */}
           <Route path="Pontaje" element={<ProtectedRoute module="pontaje" friendlyName="a accesa Pontaje"><Pontaje /></ProtectedRoute>} />
           <Route path="ManageConturi" element={<ProtectedRoute module="conturi" friendlyName="a gestiona conturile"><UtilizatoriMainPage /></ProtectedRoute>} />

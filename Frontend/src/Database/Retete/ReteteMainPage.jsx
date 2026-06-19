@@ -19,6 +19,43 @@ import DeleteDialog from "@/components/ui/delete-dialog";
 import { toast } from "sonner";
 
 const TEXT_ALIGN_STORAGE_KEY = "retete_text_align";
+const VISIBLE_COLUMNS_STORAGE_KEY = "retete_visible_columns";
+
+const DEFAULT_VISIBLE_COLUMNS = {
+  limba: true,
+  elemente: true,
+  cod: true,
+  clasa1: false,
+  clasa2: false,
+  clasa3: false,
+  clasa4: false,
+  clasa5: false,
+  denumire: true,
+  unitate: true,
+  cost: true,
+  creat: false,
+  actualizat: false,
+};
+
+const readVisibleColumns = () => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(VISIBLE_COLUMNS_STORAGE_KEY) || "null");
+    if (saved && typeof saved === "object") {
+      return {
+        ...DEFAULT_VISIBLE_COLUMNS,
+        ...saved,
+      };
+    }
+  } catch {}
+
+  return DEFAULT_VISIBLE_COLUMNS;
+};
+
+const saveVisibleColumns = (value) => {
+  try {
+    localStorage.setItem(VISIBLE_COLUMNS_STORAGE_KEY, JSON.stringify(value));
+  } catch {}
+};
 
 export default function ReteteMainPage({ isEmbedded = false, isSelectionMode = false, selectedRetetaId = null, onSelectReteta, lockedLang = null }) {
   const { loading, show, hide } = useLoading();
@@ -35,21 +72,7 @@ export default function ReteteMainPage({ isEmbedded = false, isSelectionMode = f
   const [itemToDelete, setItemToDelete] = useState(null);
 
   // --- VISIBILITY STATE (COLOANE - potrivite 1:1 cu DB-ul) ---
-  const [visibleColumns, setVisibleColumns] = useState({
-    limba: true,
-    elemente: true,
-    cod: true,
-    clasa1: false,
-    clasa2: false,
-    clasa3: false,
-    clasa4: false,
-    clasa5: false,
-    denumire: true,
-    unitate: true,
-    cost: true,
-    creat: false,
-    actualizat: false,
-  });
+  const [visibleColumns, setVisibleColumns] = useState(() => readVisibleColumns());
 
   // --- STATE FILTRE & PAGINARE ---
   const [search, setSearch] = useState("");
@@ -60,7 +83,7 @@ export default function ReteteMainPage({ isEmbedded = false, isSelectionMode = f
   const [limitDebounced, setLimitDebounced] = useState(50);
 
   const [displayLang, setDisplayLang] = useState("RO");
-  const [decimalPlaces, setDecimalPlaces] = useState(3);
+  const [decimalPlaces, setDecimalPlaces] = useState(2);
   const [textAlign, setTextAlign] = useState(() => {
     try {
       const saved = localStorage.getItem(TEXT_ALIGN_STORAGE_KEY);
@@ -104,7 +127,14 @@ export default function ReteteMainPage({ isEmbedded = false, isSelectionMode = f
   }, [search, limitInput, advancedFilters]);
 
   const toggleCol = useCallback((key, val) => {
-    setVisibleColumns((prev) => ({ ...prev, [key]: val }));
+    setVisibleColumns((prev) => {
+      const next = {
+        ...prev,
+        [key]: val,
+      };
+      saveVisibleColumns(next);
+      return next;
+    });
   }, []);
 
   // --- DATA FETCHING (GET) DIN BACKEND ---

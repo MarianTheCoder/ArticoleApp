@@ -307,18 +307,25 @@ const calculateCoeficientImpactForRules = ({ retete, rules }) => {
           percent: 0,
           addedValue: 0,
           excluded: true,
+          inactive: false,
         };
         return;
       }
 
       const percent = getPercentValue(elementRule.percent);
-      const addedValue = getElementTotalInLucrare(element, reteta) * (percent / 100);
+      const rawAddedValue = getElementTotalInLucrare(element, reteta) * (percent / 100);
+      const addedValue = recipeExcluded ? 0 : rawAddedValue;
 
-      interiorAdded += addedValue;
+      if (!recipeExcluded) {
+        interiorAdded += addedValue;
+      }
       elementImpactById[elementId] = {
         percent,
         addedValue,
+        rawAddedValue,
         excluded: false,
+        inactive: recipeExcluded,
+        inactiveReason: recipeExcluded ? "recipe_excluded" : null,
       };
     });
 
@@ -379,9 +386,18 @@ const calculateAppliedCoeficienti = ({ retete, coeficienti }) => {
         if (!elementImpactById[elementId]) {
           elementImpactById[elementId] = {
             percent: 0,
+            inactivePercent: 0,
             addedValue: 0,
             excluded: false,
+            inactive: false,
           };
+        }
+
+        if (rowImpact?.inactive) {
+          elementImpactById[elementId].inactive = true;
+          elementImpactById[elementId].inactiveReason = rowImpact.inactiveReason || null;
+          elementImpactById[elementId].inactivePercent += toNumber(rowImpact.percent);
+          return;
         }
 
         elementImpactById[elementId].addedValue += toNumber(rowImpact.addedValue);
@@ -406,7 +422,9 @@ const calculateAppliedCoeficienti = ({ retete, coeficienti }) => {
   Object.entries(elementImpactById).forEach(([elementId, impact]) => {
     const item = elementsById.get(String(elementId));
     const elementTotal = item ? getElementTotalInLucrare(item.element, item.reteta) : 0;
-    impact.percent = elementTotal > 0 ? (impact.addedValue / elementTotal) * 100 : 0;
+    const activePercent = elementTotal > 0 ? (impact.addedValue / elementTotal) * 100 : 0;
+
+    impact.percent = activePercent || toNumber(impact.inactivePercent);
   });
 
   return {
@@ -743,6 +761,8 @@ const fetchOfertaPdfData = async (lucrareId) => {
       element.coeficient_percent = toNumber(elementImpact?.percent);
       element.coeficient_added_value = addedValue;
       element.coeficient_added_value_in_reteta = addedValueInReteta;
+      element.coeficient_inactive = !!elementImpact?.inactive;
+      element.coeficient_excluded = !!elementImpact?.excluded;
       element.qty_total_lucrare = qtyTotalLucrare;
       element.cost_total_lucrare = costTotalLucrare;
       element.pret_total = toNumber(element.cost_total) + addedValueInReteta;

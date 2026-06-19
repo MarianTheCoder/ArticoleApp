@@ -40,6 +40,7 @@ export const useAddCatalogDef = () => {
       // 2. Extragem corect valoarea dintr-un obiect FormData
       const tipResursa = variables.get("tip_resursa");
       queryClient.invalidateQueries(["catalog", tipResursa]);
+      queryClient.invalidateQueries({ queryKey: ["inventar", "resurse"] });
       queryClient.invalidateQueries(["retete"]); // Dacă adăugăm o definiție nouă, e bine să refacem și lista de rețete pentru a prinde eventualele legături noi
     },
   });
@@ -58,6 +59,7 @@ export const useEditCatalogDef = () => {
       // variables are formele { id, data: FormData }
       const tipResursa = variables.data.get("tip_resursa");
       queryClient.invalidateQueries(["catalog", tipResursa]);
+      queryClient.invalidateQueries({ queryKey: ["inventar", "resurse"] });
       queryClient.invalidateQueries(["retete"]); // Dacă edităm o definiție, e bine să refacem și lista de rețete pentru a prinde eventualele modificări în legături
     },
   });
@@ -71,6 +73,7 @@ export const useDeleteCatalogDef = () => {
     mutationFn: async ({ id }) => await api.delete(`/Catalog/deleteDefinitie/${id}`),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries(["catalog", variables.tip_resursa]);
+      queryClient.invalidateQueries({ queryKey: ["inventar", "resurse"] });
       queryClient.invalidateQueries(["retete"]); // Dacă ștergem o definiție, e bine să refacem și lista de rețete pentru a prinde eventualele modificări în legături
     },
   });
@@ -94,6 +97,7 @@ export const useAddCatalogSubDef = () => {
       // Refresh la catalog
       const tipResursa = variables.get("tip_resursa");
       queryClient.invalidateQueries(["catalog", tipResursa]);
+      queryClient.invalidateQueries({ queryKey: ["inventar", "resurse"] });
       queryClient.invalidateQueries(["retete"]); // Dacă adăugăm o subcategorie nouă, e bine să refacem și lista de rețete pentru a prinde eventualele legături noi
     },
   });
@@ -112,6 +116,7 @@ export const useEditCatalogSubDef = () => {
     onSuccess: (_, variables) => {
       const tipResursa = variables.data.get("tip_resursa");
       queryClient.invalidateQueries(["catalog", tipResursa]);
+      queryClient.invalidateQueries({ queryKey: ["inventar", "resurse"] });
       queryClient.invalidateQueries(["retete"]); // Dacă edităm o subcategorie, e bine să refacem și lista de rețete pentru a prinde eventualele modificări în legături
     },
   });
@@ -124,6 +129,7 @@ export const useDeleteCatalogSubDef = () => {
     mutationFn: async ({ id }) => await api.delete(`/Catalog/deleteSubcategorie/${id}`),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries(["catalog", variables.tip_resursa]);
+      queryClient.invalidateQueries({ queryKey: ["inventar", "resurse"] });
       queryClient.invalidateQueries(["retete"]); // Dacă ștergem o subcategorie, e bine să refacem și lista de rețete pentru a prinde eventualele modificări în legături
     },
   });

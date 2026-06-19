@@ -21,7 +21,7 @@ const EMPTY = "—";
 
 const formatNumber = (value) => {
   return parseFloat(value || 0)
-    .toFixed(3)
+    .toFixed(2)
     .replace(".", ",");
 };
 
@@ -323,7 +323,7 @@ export default function OferteElementVariantDialog({ open, setOpen, config, elem
   const handleCostChange = useCallback((e) => {
     const val = normalizeInputDecimal(e.target.value);
 
-    if (/^\d{0,9}\,?\d{0,3}$/.test(val)) {
+    if (/^\d{0,9}\,?\d{0,2}$/.test(val)) {
       setCostInput(val);
     }
   }, []);
@@ -331,7 +331,7 @@ export default function OferteElementVariantDialog({ open, setOpen, config, elem
   const handleQuantityChange = useCallback((e) => {
     const val = normalizeInputDecimal(e.target.value);
 
-    if (/^\d{0,9}\,?\d{0,3}$/.test(val)) {
+    if (/^\d{0,9}\,?\d{0,2}$/.test(val)) {
       setQuantityInput(val);
     }
   }, []);
@@ -495,7 +495,7 @@ export default function OferteElementVariantDialog({ open, setOpen, config, elem
                 <Label className="font-bold">Cost:</Label>
 
                 <div className="flex items-center gap-1">
-                  <Input value={costInput} onChange={handleCostChange} className="h-10 w-32 font-black text-center border-2" placeholder="0,000" />
+                  <Input value={costInput} onChange={handleCostChange} className="h-10 w-32 font-black text-center border-2" placeholder="0,00" />
 
                   {costChanged && <FontAwesomeIcon icon={faExclamationCircle} className="text-high text-lg" title={`Cost modificat față de live: ${formatNumber(selectedLiveCost)}`} />}
                 </div>
@@ -505,7 +505,7 @@ export default function OferteElementVariantDialog({ open, setOpen, config, elem
                 <Label className="font-bold">Cantitate:</Label>
 
                 <div className="flex items-center gap-1">
-                  <Input value={quantityInput} onChange={handleQuantityChange} className="h-10 w-32 font-black text-center border-2" placeholder="0,000" />
+                  <Input value={quantityInput} onChange={handleQuantityChange} className="h-10 w-32 font-black text-center border-2" placeholder="0,00" />
 
                   {quantityChanged && <FontAwesomeIcon icon={faExclamationCircle} className="text-high text-lg" title={`Cantitate modificată față de rețetă: ${formatNumber(defaultQuantity)}`} />}
                 </div>

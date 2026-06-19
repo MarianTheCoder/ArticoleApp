@@ -22,6 +22,47 @@ import DeleteDialog from "@/components/ui/delete-dialog";
 import { toast } from "sonner";
 
 const TEXT_ALIGN_STORAGE_KEY = "catalog_text_align";
+const VISIBLE_COLUMNS_STORAGE_PREFIX = "catalog_visible_columns";
+
+const getDefaultVisibleColumns = (config) => ({
+  poza: config.hasPhoto,
+  limba: true,
+  variante: true,
+  cod: true,
+  clasa1: false,
+  clasa2: false,
+  denumire: true,
+  descriere: false,
+  unitate: true,
+  cost: true,
+  creat: false,
+  actualizat: false,
+});
+
+const getVisibleColumnsStorageKey = (tipResursa) => `${VISIBLE_COLUMNS_STORAGE_PREFIX}_${tipResursa || "default"}`;
+
+const readVisibleColumns = (tipResursa, config) => {
+  const defaults = getDefaultVisibleColumns(config);
+
+  try {
+    const saved = JSON.parse(localStorage.getItem(getVisibleColumnsStorageKey(tipResursa)) || "null");
+    if (saved && typeof saved === "object") {
+      return {
+        ...defaults,
+        ...saved,
+        poza: config.hasPhoto ? Boolean(saved.poza ?? defaults.poza) : false,
+      };
+    }
+  } catch {}
+
+  return defaults;
+};
+
+const saveVisibleColumns = (tipResursa, value) => {
+  try {
+    localStorage.setItem(getVisibleColumnsStorageKey(tipResursa), JSON.stringify(value));
+  } catch {}
+};
 
 export default function CatalogMainPage({
   tipResursa,
@@ -47,24 +88,10 @@ export default function CatalogMainPage({
   const [itemToDelete, setItemToDelete] = useState(null);
 
   // --- VISIBILITY STATE (COLOANE) ---
-  const [visibleColumns, setVisibleColumns] = useState({
-    poza: config.hasPhoto, // Se activează doar dacă resursa suportă poză (ex: materiale, utilaje)
-    limba: true,
-    variante: true,
-    cod: true,
-    clasa1: false,
-    clasa2: false,
-    denumire: true,
-    descriere: false,
-    unitate: true,
-    cost: true,
-    creat: false,
-    actualizat: false,
-  });
+  const [visibleColumns, setVisibleColumns] = useState(() => readVisibleColumns(tipResursa, config));
 
-  // Când schimbăm resursa din router, updatăm automat dacă afișăm sau nu poza
   useEffect(() => {
-    setVisibleColumns((prev) => ({ ...prev, poza: config.hasPhoto }));
+    setVisibleColumns(readVisibleColumns(tipResursa, config));
   }, [tipResursa, config.hasPhoto]);
 
   // --- STATE FILTRE & PAGINARE ---
@@ -76,7 +103,7 @@ export default function CatalogMainPage({
   const [limitDebounced, setLimitDebounced] = useState(50);
 
   const [displayLang, setDisplayLang] = useState(effectiveLockedLang || "RO");
-  const [decimalPlaces, setDecimalPlaces] = useState(3);
+  const [decimalPlaces, setDecimalPlaces] = useState(2);
   const [textAlign, setTextAlign] = useState(() => {
     try {
       const saved = localStorage.getItem(TEXT_ALIGN_STORAGE_KEY);
@@ -138,9 +165,19 @@ export default function CatalogMainPage({
     return () => clearTimeout(handler);
   }, [search, limitInput, advancedFilters, effectiveLockedLang]);
 
-  const toggleCol = (key, val) => {
-    setVisibleColumns((prev) => ({ ...prev, [key]: val }));
-  };
+  const toggleCol = useCallback(
+    (key, val) => {
+      setVisibleColumns((prev) => {
+        const next = {
+          ...prev,
+          [key]: val,
+        };
+        saveVisibleColumns(tipResursa, next);
+        return next;
+      });
+    },
+    [tipResursa],
+  );
 
   // --- DATA FETCHING (GET) DIN BACKEND ---
   const { data, isFetching } = useCatalog(tipResursa, {

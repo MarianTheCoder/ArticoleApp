@@ -9,8 +9,8 @@ import { faCheckCircle, faXmarkCircle } from "@fortawesome/free-regular-svg-icon
 const MIN_FORMULA_WIDTH = 112;
 const MAX_FORMULA_WIDTH = 520;
 
-const formatNumber = (value, decimalPlaces = 3) => {
-  const digits = [1, 2, 3].includes(Number(decimalPlaces)) ? Number(decimalPlaces) : 3;
+const formatNumber = (value, decimalPlaces = 2) => {
+  const digits = [1, 2].includes(Number(decimalPlaces)) ? Number(decimalPlaces) : 2;
 
   return parseFloat(value || 0)
     .toFixed(digits)
@@ -23,7 +23,7 @@ const formatFormulaNumber = (value) => {
   if (!Number.isFinite(number)) return "0";
 
   return number
-    .toFixed(3)
+    .toFixed(2)
     .replace(/\.?0+$/, "")
     .replace(".", ",");
 };
@@ -32,7 +32,11 @@ const cleanFormula = (value) => {
   return String(value || "").replace(/[^\d+\-*/().,\s]/g, "");
 };
 
-const round3 = (value) => Math.round((Number(value || 0) + Number.EPSILON) * 1000) / 1000;
+const cleanFormulaWithMaxDecimals = (value) => {
+  return cleanFormula(value).replace(/(\d+[.,]\d{0,2})\d+/g, "$1");
+};
+
+const round2 = (value) => Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
 
 const evalFormula = (rawValue) => {
   const expr = String(rawValue || "")
@@ -150,10 +154,10 @@ const evalFormula = (rawValue) => {
     throw new Error("Rezultat greșit.");
   }
 
-  return round3(result);
+  return round2(result);
 };
 
-export default function OferteQtyFormulaCell({ value, formula, decimalPlaces = 3, onSave }) {
+export default function OferteQtyFormulaCell({ value, formula, decimalPlaces = 2, onSave }) {
   const [open, setOpen] = useState(false);
   const [formulaText, setFormulaText] = useState("");
   const [stepText, setStepText] = useState("1");
@@ -334,7 +338,7 @@ export default function OferteQtyFormulaCell({ value, formula, decimalPlaces = 3
               autoFocus
               value={formulaText}
               onChange={(e) => {
-                setFormulaText(cleanFormula(e.target.value));
+                setFormulaText(cleanFormulaWithMaxDecimals(e.target.value));
                 setFormulaError(false);
               }}
               onKeyDown={(e) => {
@@ -360,7 +364,7 @@ export default function OferteQtyFormulaCell({ value, formula, decimalPlaces = 3
 
             <Input
               value={stepText}
-              onChange={(e) => setStepText(cleanFormula(e.target.value))}
+              onChange={(e) => setStepText(cleanFormulaWithMaxDecimals(e.target.value))}
               onKeyDown={(e) => e.stopPropagation()}
               className="h-9 rounded-none border-0 border-r-2 bg-card px-1 text-center text-base font-black outline-none focus-visible:ring-0"
               inputMode="decimal"

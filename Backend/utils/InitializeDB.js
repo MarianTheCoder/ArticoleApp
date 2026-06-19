@@ -266,7 +266,7 @@ async function initializeDB(pool) {
         descriere_fr TEXT,
         photo_url VARCHAR(255),
         unitate_masura VARCHAR(50) NOT NULL,
-        cost DECIMAL(10, 3) NOT NULL DEFAULT 0.000,
+        cost DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
         
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         created_by_user_id INT,
@@ -289,7 +289,7 @@ async function initializeDB(pool) {
         descriere_fr TEXT,
         photo_url VARCHAR(255),
         
-        cost DECIMAL(10, 3) NOT NULL DEFAULT 0.000,
+        cost DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
         detalii_extra JSON, 
         
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -359,7 +359,7 @@ async function initializeDB(pool) {
         catalog_subcategorie_id INT NULL,
         santier_id INT NULL,
         user_id INT NULL,
-        cantitate DECIMAL(12, 3) NOT NULL DEFAULT 0.000,
+        cantitate DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
 
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         created_by_user_id INT,
@@ -453,7 +453,7 @@ async function initializeDB(pool) {
         id INT AUTO_INCREMENT PRIMARY KEY,
         reteta_id INT NOT NULL,
         definitie_id INT NOT NULL,
-        cantitate DECIMAL(10, 3) NOT NULL DEFAULT 0.000,
+        cantitate DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
         
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         created_by_user_id INT,
@@ -555,7 +555,7 @@ async function initializeDB(pool) {
     unitate_masura VARCHAR(50) NOT NULL,
 
     -- cantitatea rețetei în lucrarea ofertei
-    cantitate_lucrare DECIMAL(10, 3) NOT NULL DEFAULT 0.000,
+    cantitate_lucrare DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
     cantitate_lucrare_formula VARCHAR(511) NULL,
 
     -- valorile pentru coloanele dinamice ale lucrării
@@ -614,7 +614,7 @@ async function initializeDB(pool) {
     photo_url VARCHAR(255) NULL,
 
     unitate_masura VARCHAR(50) NOT NULL,
-    cost DECIMAL(10, 3) NOT NULL DEFAULT 0.000,
+    cost DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by_user_id INT NULL,
@@ -657,7 +657,7 @@ async function initializeDB(pool) {
     descriere_fr TEXT NULL,
     photo_url VARCHAR(255) NULL,
 
-    cost DECIMAL(10, 3) NOT NULL DEFAULT 0.000,
+    cost DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
     detalii_extra JSON NULL,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -705,7 +705,7 @@ async function initializeDB(pool) {
     original_definitie_id INT NULL,
     original_subcategorie_id INT NULL,
 
-    cantitate_in_reteta DECIMAL(10, 3) NOT NULL DEFAULT 0.000,
+    cantitate_in_reteta DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by_user_id INT NULL,
@@ -807,7 +807,7 @@ async function initializeDB(pool) {
 
     actiune ENUM('include', 'exclude') NOT NULL DEFAULT 'include',
 
-    procent DECIMAL(10, 3) NULL DEFAULT NULL,
+    procent DECIMAL(10, 2) NULL DEFAULT NULL,
 
     oferta_reteta_id INT NULL,
     oferta_reteta_element_id INT NULL,

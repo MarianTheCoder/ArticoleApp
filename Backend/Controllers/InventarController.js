@@ -247,6 +247,14 @@ const getInventarResurse = async (req, res) => {
     const baseFrom = `
       FROM S04_Inventar_Resurse ir
       INNER JOIN S02_Catalog_Definitii d ON d.id = ir.catalog_definitie_id
+      LEFT JOIN (
+        SELECT
+          inventar_resursa_id,
+          SUM(cantitate) AS stoc_total,
+          SUM(CASE WHEN catalog_subcategorie_id IS NULL THEN cantitate ELSE 0 END) AS stoc_inventar
+        FROM S04_Inventar_Stoc
+        GROUP BY inventar_resursa_id
+      ) st ON st.inventar_resursa_id = ir.id
     `;
 
     const [countRows] = await conn.execute(`SELECT COUNT(*) AS total ${baseFrom} ${whereClause}`, queryParams);
@@ -262,6 +270,8 @@ const getInventarResurse = async (req, res) => {
       SELECT
         d.*,
         ir.id AS inventar_resursa_id,
+        COALESCE(st.stoc_total, 0) AS stoc_total,
+        COALESCE(st.stoc_inventar, 0) AS stoc_inventar,
         DATE_FORMAT(d.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at,
         DATE_FORMAT(d.updated_at, '%Y-%m-%dT%H:%i:%sZ') AS updated_at,
         u1.name AS created_by_name,
@@ -290,6 +300,8 @@ const getInventarResurse = async (req, res) => {
       `
       SELECT
         s.*,
+        COALESCE(st_sub.stoc_total, 0) AS stoc_total,
+        COALESCE(st_sub.stoc_total, 0) AS stoc_inventar,
         DATE_FORMAT(s.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at,
         DATE_FORMAT(s.updated_at, '%Y-%m-%dT%H:%i:%sZ') AS updated_at,
         u1.name AS created_by_name,
@@ -297,12 +309,21 @@ const getInventarResurse = async (req, res) => {
         u2.name AS updated_by_name,
         u2.photo_url AS updated_by_photo_url
       FROM S02_Catalog_Subcategorii s
+      LEFT JOIN (
+        SELECT
+          catalog_subcategorie_id,
+          SUM(cantitate) AS stoc_total
+        FROM S04_Inventar_Stoc
+        WHERE inventar_id = ?
+          AND catalog_subcategorie_id IS NOT NULL
+        GROUP BY catalog_subcategorie_id
+      ) st_sub ON st_sub.catalog_subcategorie_id = s.id
       LEFT JOIN S00_Utilizatori u1 ON s.created_by_user_id = u1.id
       LEFT JOIN S00_Utilizatori u2 ON s.updated_by_user_id = u2.id
       WHERE s.definitie_id IN (${parentPlaceholders})
       ORDER BY s.updated_at DESC
       `,
-      parentIds,
+      [inventarId, ...parentIds],
     );
 
     const items = parents.map((parent) => ({

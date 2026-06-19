@@ -302,19 +302,26 @@ const calculateAffectedRows = ({ retete, rules }) => {
           percent: 0,
           addedValue: 0,
           excluded: true,
+          inactive: false,
         };
         return;
       }
 
       const percent = getPercentValue(elementRule.percent);
-      const addedValue = getElementTotalInLucrare(element, reteta) * (percent / 100);
+      const rawAddedValue = getElementTotalInLucrare(element, reteta) * (percent / 100);
+      const addedValue = recipeExcluded ? 0 : rawAddedValue;
 
-      interiorAdded += addedValue;
+      if (!recipeExcluded) {
+        interiorAdded += addedValue;
+      }
       elementIds.add(elementId);
       elementImpactById[elementId] = {
         percent,
         addedValue,
+        rawAddedValue,
         excluded: false,
+        inactive: recipeExcluded,
+        inactiveReason: recipeExcluded ? "recipe_excluded" : null,
       };
     });
 
@@ -379,9 +386,18 @@ const calculateAppliedCoefficientRows = ({ retete, coeficienti }) => {
         if (!elementImpactById[elementId]) {
           elementImpactById[elementId] = {
             percent: 0,
+            inactivePercent: 0,
             addedValue: 0,
             excluded: false,
+            inactive: false,
           };
+        }
+
+        if (rowImpact?.inactive) {
+          elementImpactById[elementId].inactive = true;
+          elementImpactById[elementId].inactiveReason = rowImpact.inactiveReason || null;
+          elementImpactById[elementId].inactivePercent += Number(rowImpact.percent || 0);
+          return;
         }
 
         elementImpactById[elementId].addedValue += Number(rowImpact.addedValue || 0);
@@ -406,7 +422,9 @@ const calculateAppliedCoefficientRows = ({ retete, coeficienti }) => {
   Object.entries(elementImpactById).forEach(([elementId, impact]) => {
     const item = elementsById.get(String(elementId));
     const elementTotal = item ? getElementTotalInLucrare(item.element, item.reteta) : 0;
-    impact.percent = elementTotal > 0 ? (impact.addedValue / elementTotal) * 100 : 0;
+    const activePercent = elementTotal > 0 ? (impact.addedValue / elementTotal) * 100 : 0;
+
+    impact.percent = activePercent || Number(impact.inactivePercent || 0);
   });
 
   return {

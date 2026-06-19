@@ -50,7 +50,7 @@ const DEFAULT_OPTIONS = {
   marginPreset: "normal",
   density: "normal",
   fontSize: 8,
-  decimalPlaces: 3,
+  decimalPlaces: 2,
   textAlign: "left",
   priceCurrency: "",
   conversionRate: "5.22",
@@ -123,7 +123,7 @@ const normalizeConversionRateInput = (value) => {
   const next = String(value || "").replace(",", ".");
 
   if (next === "") return "";
-  if (!/^\d{0,4}(\.\d{0,4})?$/.test(next)) return null;
+  if (!/^\d{0,4}(\.\d{0,2})?$/.test(next)) return null;
 
   const parsed = Number(next);
 
@@ -198,7 +198,7 @@ export default function OferteExportPdfDialog({
   displayLang = "RO",
   visibleColumns,
   dynamicColumns = [],
-  decimalPlaces = 3,
+  decimalPlaces = 2,
   textAlign = "left",
   currency = "RON",
   recapitulatiiPercent = "0",
@@ -579,14 +579,13 @@ export default function OferteExportPdfDialog({
 
                     <div className="grid gap-1">
                       <Label className="text-xs font-bold text-foreground">Zecimale</Label>
-                      <Select value={String(options.decimalPlaces || 3)} onValueChange={(value) => updateOption("decimalPlaces", Number(value))}>
+                      <Select value={String(options.decimalPlaces || 2)} onValueChange={(value) => updateOption("decimalPlaces", Number(value))}>
                         <SelectTrigger className="h-8 bg-background text-xs font-semibold">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="1">1 zecimală</SelectItem>
                           <SelectItem value="2">2 zecimale</SelectItem>
-                          <SelectItem value="3">3 zecimale</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

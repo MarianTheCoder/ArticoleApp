@@ -19,31 +19,31 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 const COLUMN_WIDTHS_STORAGE_KEY = "catalog_column_widths";
 
 const DEFAULT_COLUMN_WIDTHS = {
-  poza: 96,
-  limba: 90,
-  variante: 110,
-  cod: 220,
-  clasa1: 180,
-  clasa2: 180,
-  denumire: 360,
-  descriere: 480,
-  unitate: 130,
-  cost: 150,
-  creat: 210,
-  actualizat: 210,
+  poza: 64,
+  limba: 64,
+  variante: 64,
+  cod: 110,
+  clasa1: 130,
+  clasa2: 130,
+  denumire: 620,
+  descriere: 320,
+  unitate: 110,
+  cost: 130,
+  creat: 180,
+  actualizat: 180,
 };
 
 const MIN_COLUMN_WIDTHS = {
-  poza: 70,
-  limba: 70,
-  variante: 80,
-  cod: 130,
-  clasa1: 110,
-  clasa2: 110,
-  denumire: 200,
-  descriere: 240,
-  unitate: 90,
-  cost: 110,
+  poza: 56,
+  limba: 56,
+  variante: 56,
+  cod: 90,
+  clasa1: 100,
+  clasa2: 100,
+  denumire: 260,
+  descriere: 220,
+  unitate: 80,
+  cost: 100,
   creat: 150,
   actualizat: 150,
 };
@@ -56,7 +56,7 @@ const SORT_FIELD_BY_COLUMN = {
   actualizat: "updated_at",
 };
 
-const normalizeDecimalPlaces = (value) => ([1, 2, 3].includes(Number(value)) ? Number(value) : 3);
+const normalizeDecimalPlaces = (value) => ([1, 2].includes(Number(value)) ? Number(value) : 2);
 
 const getTextAlignClasses = (textAlign) => {
   if (textAlign === "left") return { cell: "text-left", flex: "justify-start", tooltip: "left" };
@@ -86,6 +86,10 @@ const getCatalogClassLevelDisplay = (item, levelNo, displayLang = "RO") => {
   return `${level.code_segment}. ${level.is_defined && denumire ? denumire : "Nedefinit"}`;
 };
 
+const tableCellClass = "px-2 py-1 text-xs xxxl:text-sm";
+const tableCellCenterClass = `${tableCellClass} text-center`;
+const tableCellLeftClass = `${tableCellClass} text-left`;
+
 const getCatalogCodeTooltipParts = (item, displayLang = "RO") => {
   const meta = item?.cod_definitie_meta || {};
   const classParts = meta.levels
@@ -110,7 +114,7 @@ const CatalogCodeValue = ({ item, displayLang, flexClass = "justify-center" }) =
 
   return (
     <div className={`flex min-w-0 items-center gap-1.5 ${flexClass}`}>
-      <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-sm xxxl:text-base font-bold text-foreground">{String(item.cod_definitie)}</span>
+      <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-xs xxxl:text-sm font-bold text-foreground">{String(item.cod_definitie)}</span>
 
       <Popover>
         <PopoverTrigger asChild>
@@ -118,7 +122,7 @@ const CatalogCodeValue = ({ item, displayLang, flexClass = "justify-center" }) =
             type="button"
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
-            className="inline-flex h-6 w-6 shrink-0 cursor-help items-center justify-center rounded-full border border-border bg-card text-xs font-black text-foreground hover:border-foreground"
+            className="inline-flex h-5 w-5 shrink-0 cursor-help items-center justify-center rounded-full border border-border bg-card text-[10px] font-black text-foreground hover:border-foreground"
           >
             <FontAwesomeIcon icon={faQuestion} />
           </button>
@@ -130,7 +134,7 @@ const CatalogCodeValue = ({ item, displayLang, flexClass = "justify-center" }) =
           sideOffset={8}
           onPointerDown={(event) => event.stopPropagation()}
           onClick={(event) => event.stopPropagation()}
-          className="z-[100] max-w-[70rem] w-auto rounded-md border-2 border-border bg-popover p-3 text-sm text-popover-foreground shadow-md"
+          className="z-[100] max-w-[70rem] w-auto rounded-md border-2 border-border bg-popover p-2 text-xs xxxl:text-sm text-popover-foreground shadow-md"
         >
           <div className="flex max-w-[68rem] flex-wrap items-center gap-1">
             {parts.map((part, index) => (
@@ -144,7 +148,7 @@ const CatalogCodeValue = ({ item, displayLang, flexClass = "justify-center" }) =
                 </span>
 
                 {index < parts.length - 1 && (
-                  <span className="text-base">
+                  <span className="text-sm xxxl:text-base">
                     <FontAwesomeIcon icon={faArrowRight} />
                   </span>
                 )}
@@ -219,7 +223,7 @@ const CatalogList = memo(
     onSelectElement,
     sortBy = "updated_at",
     sortOrder = "desc",
-    decimalPlaces = 3,
+    decimalPlaces = 2,
     textAlign = "center",
     columnResetKey = 0,
     onSortChange,
@@ -366,7 +370,7 @@ const CatalogList = memo(
         return (
           <button
             type="button"
-            className={`flex h-full w-full items-center gap-1 px-2 xxxl:px-2.5 text-sm xxxl:text-base font-bold text-foreground ${justifyClass}`}
+            className={`flex h-full w-full items-center gap-1 px-1.5 xxxl:px-2 text-xs xxxl:text-sm font-bold text-foreground ${justifyClass}`}
             onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();
@@ -374,7 +378,7 @@ const CatalogList = memo(
             }}
           >
             <span className="min-w-0 truncate">{label}</span>
-            <FontAwesomeIcon icon={icon} className={`text-base xxxl:text-lg ${active ? "!text-primary" : "text-muted-foreground"}`} />
+            <FontAwesomeIcon icon={icon} className={`text-sm xxxl:text-base ${active ? "!text-primary" : "text-muted-foreground"}`} />
           </button>
         );
       },
@@ -383,7 +387,7 @@ const CatalogList = memo(
 
     const renderPlainHeader = useCallback((label, align = "center") => {
       const justifyClass = align === "left" ? "justify-start text-left" : align === "right" ? "justify-end text-right" : "justify-center text-center";
-      return <div className={`flex h-full w-full items-center px-2 xxxl:px-2.5 text-sm xxxl:text-base font-bold text-foreground ${justifyClass}`}>{label}</div>;
+      return <div className={`flex h-full w-full items-center px-1.5 xxxl:px-2 text-xs xxxl:text-sm font-bold text-foreground ${justifyClass}`}>{label}</div>;
     }, []);
 
     const handleOpenSubs = useCallback((parent) => {
@@ -443,7 +447,7 @@ const CatalogList = memo(
             data={catalogItems}
             style={{ height: "100%", width: "100%" }}
             fixedHeaderContent={() => (
-              <TableRow className="h-9 xxxl:h-10 hover:bg-muted-foreground/25 bg-muted-foreground/25 border-b">
+              <TableRow className="h-8 xxxl:h-9 hover:bg-muted-foreground/25 bg-muted-foreground/25 border-b">
                 {/* Afișăm Header-ul de Poză doar dacă resursa o suportă (din config) ȘI e selectată în visibleColumns */}
                 {config.hasPhoto && showCol("poza") && (
                   <ResizableTableHead colKey="poza" style={getColumnStyle("poza")} onResizeStart={handleColumnResizeStart} className="text-center">
@@ -517,124 +521,126 @@ const CatalogList = memo(
                 <>
                   {/* COLOANA POZĂ NOUĂ */}
                   {config.hasPhoto && showCol("poza") && (
-                    <TableCell onContextMenu={(e) => e.stopPropagation()} style={getColumnStyle("poza")} className="text-center px-3 xxxl:px-4 py-1.5 xxxl:py-2">
+                    <TableCell onContextMenu={(e) => e.stopPropagation()} style={getColumnStyle("poza")} className={tableCellCenterClass}>
                       <div className="flex w-full justify-center">
                         <ImagePreviewTooltip
                           src={parent.photo_url ? `${photoAPI}/${parent.photo_url}` : null}
                           alt={parent.cod_definitie}
                           ringColor={`hover:ring-${config.normalColor}`} // Folosim culoarea inelului din config (ex: hover:ring-amber-600)
                           fallback={<img src={NoImage} alt="No Image" className="h-full w-full object-cover opacity-50" />}
-                          containerClassName="h-14 w-14 xxxl:h-16 xxxl:w-16 rounded-md border border-border bg-muted flex items-center justify-center overflow-hidden shrink-0"
+                          containerClassName="h-8 w-8 xxxl:h-9 xxxl:w-9 rounded-md border border-border bg-muted flex items-center justify-center overflow-hidden shrink-0"
                         />
                       </div>
                     </TableCell>
                   )}
 
                   {showCol("limba") && (
-                    <TableCell style={getColumnStyle("limba")} className="text-center px-3 xxxl:px-4 py-1.5 xxxl:py-2">
+                    <TableCell style={getColumnStyle("limba")} className={tableCellCenterClass}>
                       <div className="flex justify-center">
                         <div className={`rounded-md border ${parent.limba !== "FR" ? "bg-cyan-500/5 border-cyan-500" : "bg-lime-500/5 border-lime-500"} flex items-center justify-center`}>
-                          <span className={`text-sm xxxl:text-base w-10 xxxl:w-12 py-1.5 xxxl:py-2 font-bold ${parent.limba !== "FR" ? "text-cyan-600 " : "text-lime-600"}`}>{parent.limba}</span>
+                          <span className={`text-xs xxxl:text-sm w-8 xxxl:w-10 py-1 font-bold ${parent.limba !== "FR" ? "text-cyan-600 " : "text-lime-600"}`}>{parent.limba}</span>
                         </div>
                       </div>
                     </TableCell>
                   )}
 
                   {showCol("variante") && (
-                    <TableCell style={getColumnStyle("variante")} className="text-center px-3 xxxl:px-4 py-1.5 xxxl:py-2">
-                      <Badge
-                        variant="outline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenSubs(parent); // <-- Accesăm direct funcția, fără props.context
-                        }}
-                        className={`text-sm xxxl:text-base px-3 xxxl:px-4 py-1.5 xxxl:py-2 shadow-none whitespace-nowrap ${isSelectionMode ? "cursor-pointer transition-all hover:scale-110" : ""}
+                    <TableCell style={getColumnStyle("variante")} className={tableCellCenterClass}>
+                      <div className="flex justify-center items-center">
+                        <Badge
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenSubs(parent); // <-- Accesăm direct funcția, fără props.context
+                          }}
+                          className={`h-8 w-8 px-2 text-center flex justify-center items-center text-xs xxxl:text-sm shadow-none whitespace-nowrap ${isSelectionMode ? "cursor-pointer transition-all hover:scale-110" : ""}
                         ${parent.subcategorii.length > 0 ? (parent.limba !== "FR" ? "text-cyan-600 border-cyan-500" : "text-lime-600 border-lime-500") : "text-muted-foreground "}`}
-                      >
-                        {parent.subcategorii.length}
-                      </Badge>
+                        >
+                          {parent.subcategorii.length}
+                        </Badge>
+                      </div>
                     </TableCell>
                   )}
 
                   {showCol("cod") && (
-                    <TableCell style={getColumnStyle("cod")} className={`${textAlignClasses.cell} px-3 xxxl:px-4 py-1.5 xxxl:py-2 whitespace-nowrap`}>
+                    <TableCell style={getColumnStyle("cod")} className={`${textAlignClasses.cell} ${tableCellClass} whitespace-nowrap`}>
                       <CatalogCodeValue item={parent} displayLang={displayLang} flexClass={textAlignClasses.flex} />
                     </TableCell>
                   )}
 
                   {showCol("clasa1") && (
-                    <TableCell style={getColumnStyle("clasa1")} className={`${textAlignClasses.cell} px-3 xxxl:px-4 py-1.5 xxxl:py-2`}>
+                    <TableCell style={getColumnStyle("clasa1")} className={`${textAlignClasses.cell} ${tableCellClass}`}>
                       {getCatalogClassLevelDisplay(parent, 1, displayLang) ? (
                         <OverflowTooltip
                           align={textAlignClasses.tooltip}
                           text={getCatalogClassLevelDisplay(parent, 1, displayLang)}
-                          className={`text-sm xxxl:text-base truncate whitespace-pre-wrap text-foreground leading-normal ${textAlignClasses.cell}`}
+                          className={`truncate whitespace-pre-wrap text-foreground leading-normal ${textAlignClasses.cell}`}
                           maxLines={1}
                         />
                       ) : (
-                        <span className="text-sm xxxl:text-base text-muted-foreground/40 italic">—</span>
+                        <span className="text-muted-foreground/40 italic">—</span>
                       )}
                     </TableCell>
                   )}
 
                   {showCol("clasa2") && (
-                    <TableCell style={getColumnStyle("clasa2")} className={`${textAlignClasses.cell} px-3 xxxl:px-4 py-1.5 xxxl:py-2`}>
+                    <TableCell style={getColumnStyle("clasa2")} className={`${textAlignClasses.cell} ${tableCellClass}`}>
                       {getCatalogClassLevelDisplay(parent, 2, displayLang) ? (
                         <OverflowTooltip
                           align={textAlignClasses.tooltip}
                           text={getCatalogClassLevelDisplay(parent, 2, displayLang)}
-                          className={`text-sm xxxl:text-base truncate whitespace-pre-wrap text-foreground leading-normal ${textAlignClasses.cell}`}
+                          className={`truncate whitespace-pre-wrap text-foreground leading-normal ${textAlignClasses.cell}`}
                           maxLines={1}
                         />
                       ) : (
-                        <span className="text-sm xxxl:text-base text-muted-foreground/40 italic">—</span>
+                        <span className="text-muted-foreground/40 italic">—</span>
                       )}
                     </TableCell>
                   )}
 
                   {showCol("denumire") && (
-                    <TableCell style={getColumnStyle("denumire")} className={`${textAlignClasses.cell} px-3 xxxl:px-4 py-1.5 xxxl:py-2`}>
+                    <TableCell style={getColumnStyle("denumire")} className={`${textAlignClasses.cell} ${tableCellClass}`}>
                       {afisareDenumire ? (
                         <OverflowTooltip
                           align={textAlignClasses.tooltip}
                           text={afisareDenumire}
-                          className={`text-sm xxxl:text-base truncate whitespace-pre-wrap text-foreground leading-normal ${textAlignClasses.cell}`}
+                          className={`truncate whitespace-pre-wrap text-foreground leading-normal ${textAlignClasses.cell}`}
                           maxLines={2}
                         />
                       ) : (
-                        <span className="text-sm xxxl:text-base text-muted-foreground/40 italic">—</span>
+                        <span className="text-muted-foreground/40 italic">—</span>
                       )}
                     </TableCell>
                   )}
 
                   {showCol("descriere") && (
-                    <TableCell style={getColumnStyle("descriere")} className={`${textAlignClasses.cell} px-3 xxxl:px-4 py-1.5 xxxl:py-2`}>
+                    <TableCell style={getColumnStyle("descriere")} className={`${textAlignClasses.cell} ${tableCellClass}`}>
                       <div className="w-full">
                         {afisareDescriere ? (
                           <OverflowTooltip
                             align={textAlignClasses.tooltip}
                             text={afisareDescriere}
-                            className={`text-sm xxxl:text-base whitespace-pre-wrap text-foreground leading-normal ${textAlignClasses.cell}`}
+                            className={`whitespace-pre-wrap text-foreground leading-normal ${textAlignClasses.cell}`}
                             maxLines={2}
                           />
                         ) : (
-                          <span className="text-sm xxxl:text-base text-muted-foreground/40 italic">—</span>
+                          <span className="text-muted-foreground/40 italic">—</span>
                         )}
                       </div>
                     </TableCell>
                   )}
 
                   {showCol("unitate") && (
-                    <TableCell style={getColumnStyle("unitate")} className="text-center px-3 xxxl:px-4 py-1.5 xxxl:py-2">
-                      <Badge variant="outline" className="text-sm xxxl:text-base px-3 xxxl:px-4 py-1.5 xxxl:py-2 shadow-none whitespace-nowrap">
+                    <TableCell style={getColumnStyle("unitate")} className={tableCellCenterClass}>
+                      <Badge variant="outline" className="h-8 px-2 text-xs xxxl:text-sm shadow-none whitespace-nowrap">
                         {parent.unitate_masura}
                       </Badge>
                     </TableCell>
                   )}
 
                   {showCol("cost") && (
-                    <TableCell style={getColumnStyle("cost")} className="text-center px-3 xxxl:px-4 py-1.5 xxxl:py-2">
-                      <span className="font-bold text-sm xxxl:text-base text-foreground">
+                    <TableCell style={getColumnStyle("cost")} className={tableCellCenterClass}>
+                      <span className="font-bold text-foreground">
                         {parseFloat(parent.cost || 0)
                           .toFixed(safeDecimalPlaces)
                           .replace(".", ",")}
@@ -643,11 +649,11 @@ const CatalogList = memo(
                   )}
 
                   {showCol("creat") && (
-                    <TableCell style={getColumnStyle("creat")} className="text-left px-3 xxxl:px-4 py-1.5 xxxl:py-2">
-                      <div className="flex items-center gap-2 xxxl:gap-2.5 h-10 xxxl:h-12 overflow-hidden">
-                        <Avatar className="h-9 w-9 xxxl:h-10 xxxl:w-10 border rounded-md border-border shrink-0">
+                    <TableCell style={getColumnStyle("creat")} className={tableCellLeftClass}>
+                      <div className="flex items-center gap-1.5 h-8 overflow-hidden">
+                        <Avatar className="h-7 w-7 border rounded-md border-border shrink-0">
                           <AvatarImage src={`${photoAPI}/${parent.created_by_photo_url}`} alt={parent.created_by_name} className="object-cover" />
-                          <AvatarFallback className="text-xs xxxl:text-sm rounded-md bg-muted font-bold">
+                          <AvatarFallback className="text-[10px] rounded-md bg-muted font-bold">
                             {parent.created_by_name
                               ?.split(" ")
                               .map((n) => n[0])
@@ -657,8 +663,8 @@ const CatalogList = memo(
                         </Avatar>
 
                         <div className="flex flex-col justify-center min-w-0 leading-tight">
-                          <span className="text-xs xxxl:text-sm font-bold text-foreground truncate block">{parent.created_by_name || "Sistem"}</span>
-                          <span className="text-[10px] xxxl:text-[11px] text-muted-foreground mt-0.5">
+                          <span className="text-xs font-bold text-foreground truncate block">{parent.created_by_name || "Sistem"}</span>
+                          <span className="text-[10px] text-muted-foreground">
                             {new Date(parent.created_at).toLocaleDateString("ro-RO")} {new Date(parent.created_at).toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" })}
                           </span>
                         </div>
@@ -667,11 +673,11 @@ const CatalogList = memo(
                   )}
 
                   {showCol("actualizat") && (
-                    <TableCell style={getColumnStyle("actualizat")} className="text-left px-3 xxxl:px-4 py-1.5 xxxl:py-2">
-                      <div className="flex items-center gap-2 xxxl:gap-2.5 h-10 xxxl:h-12 overflow-hidden">
-                        <Avatar className="h-9 w-9 xxxl:h-10 xxxl:w-10 border rounded-md border-border shrink-0">
+                    <TableCell style={getColumnStyle("actualizat")} className={tableCellLeftClass}>
+                      <div className="flex items-center gap-1.5 h-8 overflow-hidden">
+                        <Avatar className="h-7 w-7 border rounded-md border-border shrink-0">
                           <AvatarImage src={`${photoAPI}/${parent.updated_by_photo_url}`} alt={parent.updated_by_name} className="object-cover" />
-                          <AvatarFallback className="text-xs xxxl:text-sm rounded-md bg-muted font-bold">
+                          <AvatarFallback className="text-[10px] rounded-md bg-muted font-bold">
                             {parent.updated_by_name
                               ?.split(" ")
                               .map((n) => n[0])
@@ -681,8 +687,8 @@ const CatalogList = memo(
                         </Avatar>
 
                         <div className="flex flex-col justify-center min-w-0 leading-tight">
-                          <span className="text-xs xxxl:text-sm font-bold text-foreground truncate block">{parent.updated_by_name || "Sistem"}</span>
-                          <span className="text-[10px] xxxl:text-[11px] text-muted-foreground mt-0.5">
+                          <span className="text-xs font-bold text-foreground truncate block">{parent.updated_by_name || "Sistem"}</span>
+                          <span className="text-[10px] text-muted-foreground">
                             {new Date(parent.updated_at).toLocaleDateString("ro-RO")} {new Date(parent.updated_at).toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" })}
                           </span>
                         </div>

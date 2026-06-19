@@ -25,6 +25,42 @@ import { useAddRetetaElement, useDeleteRetetaElement, useEditRetetaElement } fro
 import { resurseConfig } from "../Catalog/resurseConfig"; // ajustează path-ul dacă fișierul este în alt folder
 import CatalogDefDialog from "../Catalog/CatalogDefDialog";
 
+const VISIBLE_COLUMNS_STORAGE_KEY = "retete_sub_visible_columns";
+
+const DEFAULT_VISIBLE_COLUMNS = {
+  poza: true,
+  variante: true,
+  cod: true,
+  denumire: true,
+  descriere: true,
+  unitate: true,
+  costUnitar: true,
+  cantitate: true,
+  costTotal: true,
+  creat: false,
+  actualizat: false,
+};
+
+const readVisibleColumns = () => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(VISIBLE_COLUMNS_STORAGE_KEY) || "null");
+    if (saved && typeof saved === "object") {
+      return {
+        ...DEFAULT_VISIBLE_COLUMNS,
+        ...saved,
+      };
+    }
+  } catch {}
+
+  return DEFAULT_VISIBLE_COLUMNS;
+};
+
+const saveVisibleColumns = (value) => {
+  try {
+    localStorage.setItem(VISIBLE_COLUMNS_STORAGE_KEY, JSON.stringify(value));
+  } catch {}
+};
+
 const buildCatalogParentFromRetetaElement = (el) => ({
   id: el.definitie_id,
 
@@ -179,7 +215,7 @@ const ResourceRows = memo(({ elements, config, onEdit, onEditDef, onDelete, onOp
               <TableCell className="text-center px-3 xxxl:px-4 whitespace-nowrap">
                 <span className="text-sm xxxl:text-base text-muted-foreground">
                   {parseFloat(el.cost_unitar || 0)
-                    .toFixed(3)
+                    .toFixed(2)
                     .replace(".", ",")}
                 </span>
               </TableCell>
@@ -189,7 +225,7 @@ const ResourceRows = memo(({ elements, config, onEdit, onEditDef, onDelete, onOp
             {showCol("cantitate") && (
               <TableCell className="text-center px-3 xxxl:px-4 whitespace-nowrap text-sm xxxl:text-base font-bold text-foreground">
                 {parseFloat(el.cantitate || 0)
-                  .toFixed(3)
+                  .toFixed(2)
                   .replace(".", ",")}
               </TableCell>
             )}
@@ -199,7 +235,7 @@ const ResourceRows = memo(({ elements, config, onEdit, onEditDef, onDelete, onOp
               <TableCell className="text-center px-3 xxxl:px-4 whitespace-nowrap">
                 <span className={`font-bold text-sm xxxl:text-base ${config.colorClass}`}>
                   {parseFloat(el.cost_total_element || 0)
-                    .toFixed(3)
+                    .toFixed(2)
                     .replace(".", ",")}
                 </span>
               </TableCell>
@@ -358,22 +394,17 @@ export default function ReteteSubList({ open, setOpen, parentItem }) {
 
   // --- GLOBAL UI STATE (Limba + Coloane pt toate tabelele) ---
   const [localDisplayLang, setLocalDisplayLang] = useState("RO");
-  const [visibleColumns, setVisibleColumns] = useState({
-    poza: true,
-    variante: true,
-    cod: true,
-    denumire: true,
-    descriere: true,
-    unitate: true,
-    costUnitar: true,
-    cantitate: true,
-    costTotal: true,
-    creat: false,
-    actualizat: false,
-  });
+  const [visibleColumns, setVisibleColumns] = useState(() => readVisibleColumns());
 
   const toggleCol = useCallback((key) => {
-    setVisibleColumns((prev) => ({ ...prev, [key]: !prev[key] }));
+    setVisibleColumns((prev) => {
+      const next = {
+        ...prev,
+        [key]: !prev[key],
+      };
+      saveVisibleColumns(next);
+      return next;
+    });
   }, []);
 
   const { mutateAsync: addElement } = useAddRetetaElement();
@@ -432,7 +463,7 @@ export default function ReteteSubList({ open, setOpen, parentItem }) {
     setItemToEdit(el);
     setEditQuantity(
       parseFloat(el.cantitate || 0)
-        .toFixed(3)
+        .toFixed(2)
         .replace(".", ","),
     );
     setEditDialogOpen(true);
@@ -632,7 +663,7 @@ export default function ReteteSubList({ open, setOpen, parentItem }) {
                 <div className="flex items-baseline gap-1 xxxl:gap-1.5 bg-card px-2.5 xxxl:px-3 py-1 rounded-md border border-foreground/40">
                   <span className="text-base xxxl:text-lg font-extrabold ">
                     {parseFloat(parentItem.cost || 0)
-                      .toFixed(3)
+                      .toFixed(2)
                       .replace(".", ",")}
                   </span>
                   <span className="text-xs xxxl:text-sm font-bold ">/ {parentItem.unitate_masura}</span>
@@ -699,11 +730,11 @@ export default function ReteteSubList({ open, setOpen, parentItem }) {
 
                 <Input
                   className="w-28 xxxl:w-32 h-10 xxxl:h-11 text-sm xxxl:text-base font-black text-center border-2"
-                  placeholder="0,000"
+                  placeholder="0,00"
                   value={quantity}
                   onChange={(e) => {
                     const val = e.target.value.replace(".", ",");
-                    if (/^\d{0,7}\,?\d{0,3}$/.test(val)) setQuantity(val);
+                    if (/^\d{0,7}\,?\d{0,2}$/.test(val)) setQuantity(val);
                   }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
@@ -766,11 +797,11 @@ export default function ReteteSubList({ open, setOpen, parentItem }) {
               <Input
                 id="edit-reteta-element-quantity"
                 className="h-10 xxxl:h-11 text-sm xxxl:text-base font-black text-center border-2"
-                placeholder="0,000"
+                placeholder="0,00"
                 value={editQuantity}
                 onChange={(e) => {
                   const val = e.target.value.replace(".", ",");
-                  if (/^\d{0,7}\,?\d{0,3}$/.test(val)) setEditQuantity(val);
+                  if (/^\d{0,7}\,?\d{0,2}$/.test(val)) setEditQuantity(val);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
