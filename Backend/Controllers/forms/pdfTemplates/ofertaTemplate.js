@@ -7,7 +7,11 @@ const DEFAULT_VISIBLE_COLUMNS = {
   clasa: false,
   denumire: true,
   descriere: false,
+  furnizor: false,
+  marca: false,
   unitate: true,
+  greutateUnitara: true,
+  greutateTotala: true,
   cantitate: false,
   qtyTotal: true,
   cost: true,
@@ -123,8 +127,12 @@ const PDF_TEXT = {
       clasa: "Clasă",
       denumire: "Denumire",
       descriere: "Descriere",
+      furnizor: "Furnizor",
+      marca: "Marcă",
+      greutateUnitara: "Greutate unitară",
+      greutateTotala: "Greutate totală",
       unitate: "U.M.",
-      cost: "Cost",
+      cost: "Cost unitar",
       cantitate: "Qty unitar",
       qtyTotal: "Qty total",
       total: "Cost total",
@@ -145,6 +153,7 @@ const PDF_TEXT = {
       utilaje: "Utilaje",
       transport: "Transport",
       subtotal: "Subtotal",
+      greutateTotala: "Greutate totală",
       recapitulatii: "Recapitulații",
       reducere: "Discount",
       tva: "TVA",
@@ -176,8 +185,12 @@ const PDF_TEXT = {
       clasa: "Classe",
       denumire: "Désignation",
       descriere: "Description",
+      furnizor: "Fournisseur",
+      marca: "Marque",
+      greutateUnitara: "Poids unitaire",
+      greutateTotala: "Poids total",
       unitate: "U.M.",
-      cost: "Coût",
+      cost: "Coût unitaire",
       cantitate: "Qté unitaire",
       qtyTotal: "Qté totale",
       total: "Coût total",
@@ -198,6 +211,7 @@ const PDF_TEXT = {
       utilaje: "Équipements",
       transport: "Transport",
       subtotal: "Sous-total",
+      greutateTotala: "Poids total",
       recapitulatii: "Récapitulatif",
       reducere: "Discount",
       tva: "TVA",
@@ -311,6 +325,7 @@ const normalizeOptions = (options = {}) => {
     showRecapitulatii: options.showRecapitulatii !== false,
     showReducere: options.showReducere !== false,
     showTva: options.showTva !== false,
+    showGreutateTotalaFooter: options.showGreutateTotalaFooter === true,
     creatDe: String(options.creatDe || "").trim(),
     aprobatDe: String(options.aprobatDe || "").trim(),
     logoData: options.logoData || null,
@@ -529,6 +544,7 @@ const getCategoryTotals = (retete = []) =>
       acc.cost += Number(reteta.cost || 0);
       acc.cantitate += Number(reteta.cantitate_lucrare || 0);
       acc.qtyTotal += Number(reteta.cantitate_lucrare || 0);
+      acc.greutateTotala += getRetetaGreutateTotala(reteta);
       acc.total += Number(reteta.cost_total_lucrare || 0);
       acc.coeficientTotal += Number(reteta.coeficient_added_value || 0);
       acc.pret += Number(reteta.pret_total_lucrare || 0);
@@ -540,6 +556,7 @@ const getCategoryTotals = (retete = []) =>
       cost: 0,
       cantitate: 0,
       qtyTotal: 0,
+      greutateTotala: 0,
       total: 0,
       coeficientTotal: 0,
       pret: 0,
@@ -586,6 +603,43 @@ const getElementDescription = (element, displayLang) => {
   return element.descriere_afisata || element.descriere_afisata_fr || "";
 };
 
+const isVariantMetaResource = (element) => ["material", "utilaj"].includes(String(element?.tip_resursa || "").trim().toLowerCase());
+
+const getElementFurnizor = (element) => {
+  if (!element?.oferta_subcategorie_id || !isVariantMetaResource(element)) return "";
+
+  return String(element.furnizor_denumire || "").trim();
+};
+
+const getElementMarca = (element) => {
+  if (!element?.oferta_subcategorie_id || !isVariantMetaResource(element)) return "";
+
+  return String(element.marca_denumire || "").trim();
+};
+
+const getElementGreutateValue = (element) => {
+  if (element.tip_resursa !== "material") return 0;
+
+  const value = Number(String(element.greutate ?? "").replace(",", "."));
+  return Number.isFinite(value) ? value : 0;
+};
+
+const getRetetaGreutateUnitara = (reteta) => {
+  const saved = Number(reteta.greutate_unitara);
+
+  if (Number.isFinite(saved)) return saved;
+
+  return (reteta.elemente || []).reduce((sum, element) => sum + getElementGreutateValue(element) * Number(element.cantitate_in_reteta || 0), 0);
+};
+
+const getRetetaGreutateTotala = (reteta) => {
+  const saved = Number(reteta.greutate_totala);
+
+  if (Number.isFinite(saved)) return saved;
+
+  return getRetetaGreutateUnitara(reteta) * Number(reteta.cantitate_lucrare || 0);
+};
+
 const getResourceConfig = (tipResursa) => {
   const normalized = String(tipResursa || "")
     .trim()
@@ -620,7 +674,8 @@ const getBaseCell = (text, style, fillColor, extra = {}) => ({
 });
 
 const MONEY_COLUMN_KEYS = new Set(["cost", "costTotal", "total", "coefPret", "pret"]);
-const PDF_COST_COLUMN_WIDTH = 56;
+const PDF_COST_COLUMN_WIDTH = 66;
+const PDF_COST_TOTAL_COLUMN_WIDTH = 72;
 const PDF_PRICE_COLUMN_WIDTH = 68;
 const RETETA_MONEY_FIELDS = ["cost", "cost_total_lucrare", "coeficient_added_value", "pret_total_lucrare"];
 const ELEMENT_MONEY_FIELDS = ["cost_unitar", "cost_total", "cost_total_lucrare", "coeficient_added_value", "pret_total_lucrare"];
@@ -715,11 +770,15 @@ const getColumns = (dynamicColumns, visibleColumns, includeElements = false, lab
   if (showCol(visibleColumns, "clasa")) columns.push({ key: "clasa", label: labels.clasa, width: "auto", align: textAlign });
   if (showCol(visibleColumns, "denumire")) columns.push({ key: "denumire", label: labels.denumire, width: "*", align: textAlign });
   if (showCol(visibleColumns, "descriere")) columns.push({ key: "descriere", label: labels.descriere, width: "*", align: textAlign });
+  if (showCol(visibleColumns, "furnizor")) columns.push({ key: "furnizor", label: labels.furnizor, width: "auto", align: textAlign });
+  if (showCol(visibleColumns, "marca")) columns.push({ key: "marca", label: labels.marca, width: "auto", align: textAlign });
   if (showCol(visibleColumns, "unitate")) columns.push({ key: "unitate", label: labels.unitate, width: "auto", align: "center" });
   if (showCol(visibleColumns, "cantitate")) columns.push({ key: "cantitate", label: labels.cantitate, width: "auto", align: "center" });
   if (showCol(visibleColumns, "qtyTotal")) columns.push({ key: "qtyTotal", label: labels.qtyTotal, width: "auto", align: "center" });
+  if (showCol(visibleColumns, "greutateUnitara")) columns.push({ key: "greutateUnitara", label: labels.greutateUnitara, width: "auto", align: "center" });
+  if (showCol(visibleColumns, "greutateTotala")) columns.push({ key: "greutateTotala", label: labels.greutateTotala, width: "auto", align: "center" });
   if (showCol(visibleColumns, "cost")) columns.push({ key: "cost", label: getMoneyHeaderLabel(labels.cost, "cost", currency), width: PDF_COST_COLUMN_WIDTH, align: "right" });
-  if (showCol(visibleColumns, "costTotal")) columns.push({ key: "costTotal", label: getMoneyHeaderLabel(labels.total, "costTotal", currency), width: "auto", align: "right" });
+  if (showCol(visibleColumns, "costTotal")) columns.push({ key: "costTotal", label: getMoneyHeaderLabel(labels.total, "costTotal", currency), width: PDF_COST_TOTAL_COLUMN_WIDTH, align: "right" });
   if (showCol(visibleColumns, "coefProcent")) columns.push({ key: "coefProcent", label: labels.coefProcent, width: "auto", align: "left" });
   if (showCol(visibleColumns, "coefPret")) columns.push({ key: "coefPret", label: getMoneyHeaderLabel(labels.coefPret, "coefPret", currency), width: "auto", align: "left" });
   if (showCol(visibleColumns, "pret")) columns.push({ key: "pret", label: getMoneyHeaderLabel(labels.pret, "pret", currency), width: PDF_PRICE_COLUMN_WIDTH, align: "right" });
@@ -736,7 +795,7 @@ const getHeaderRow = (columns) =>
     margin: [3, 0, 3, 0],
     border: [true, true, true, true],
     borderColor: [index === 0 ? "#111827" : "#ffffff", "#111827", index === columns.length - 1 ? "#111827" : "#ffffff", "#111827"],
-    noWrap: ["tipParent", "tipChild", "poza", "cod", "clasa", "unitate", "cantitate", "qtyTotal", "coefProcent"].includes(col.key),
+    noWrap: ["tipParent", "tipChild", "poza", "cod", "clasa", "unitate", "greutateUnitara", "greutateTotala", "cantitate", "qtyTotal", "coefProcent"].includes(col.key),
   }));
 
 const buildRetetaCell = ({ col, reteta, displayLang, fillColor, decimalPlaces = 2 }) => {
@@ -748,9 +807,13 @@ const buildRetetaCell = ({ col, reteta, displayLang, fillColor, decimalPlaces = 
   if (col.key === "clasa") return getBaseCell(getRetetaClassDisplay(reteta, displayLang), "tableCell", fillColor, { noWrap: true });
   if (col.key === "denumire") return getBaseCell(getRetetaName(reteta, displayLang), "tableCell", fillColor);
   if (col.key === "descriere") return getBaseCell(getRetetaDescription(reteta, displayLang), "tableCell", fillColor);
+  if (col.key === "furnizor") return getBaseCell("", "tableCell", fillColor);
+  if (col.key === "marca") return getBaseCell("", "tableCell", fillColor);
   if (col.key === "unitate") return getBaseCell(reteta.unitate_masura, "tableCell", fillColor, { noWrap: true });
   if (col.key === "cantitate") return getBaseCell(formatNumber(1, decimalPlaces), "tableCellRight", fillColor, { noWrap: true });
   if (col.key === "qtyTotal") return getBaseCell(formatNumber(reteta.cantitate_lucrare, decimalPlaces), "tableCellRight", fillColor, { noWrap: true });
+  if (col.key === "greutateUnitara") return getBaseCell(formatNumber(getRetetaGreutateUnitara(reteta), decimalPlaces), "tableCellCenter", fillColor, { noWrap: true });
+  if (col.key === "greutateTotala") return getBaseCell(formatNumber(getRetetaGreutateTotala(reteta), decimalPlaces), "tableCellCenter", fillColor, { noWrap: true });
   if (col.key === "cost") return getBaseCell(formatNumber(reteta.cost, decimalPlaces), "tableCellRight", fillColor, { noWrap: true });
   if (col.key === "costTotal") return getBaseCell(formatNumber(reteta.cost_total_lucrare, decimalPlaces), "tableCellRight", fillColor, { noWrap: true });
   if (col.key === "coefProcent") {
@@ -776,6 +839,8 @@ const buildElementCell = ({ col, element, displayLang, isLastElement, fillColor,
   const coefAddedValue = Number(element.coeficient_added_value || 0);
   const pretTotalLucrare = Number(element.pret_total_lucrare ?? costTotalLucrare + coefAddedValue);
   const coefInactive = !!element.coeficient_inactive && !element.coeficient_excluded && Math.abs(coefAddedValue) < 0.000001;
+  const greutateUnitara = getElementGreutateValue(element);
+  const greutateTotala = greutateUnitara * qtyTotalLucrare;
 
   if (col.key === "tipParent") {
     return {
@@ -794,9 +859,13 @@ const buildElementCell = ({ col, element, displayLang, isLastElement, fillColor,
   if (col.key === "clasa") return getBaseCell(element.oferta_subcategorie_id ? text.variant : "", element.oferta_subcategorie_id ? "variantCell" : "tableCell", fillColor, { noWrap: true });
   if (col.key === "denumire") return getBaseCell(getElementName(element, displayLang), "tableCell", fillColor);
   if (col.key === "descriere") return getBaseCell(getElementDescription(element, displayLang), "tableCell", fillColor);
+  if (col.key === "furnizor") return getBaseCell(getElementFurnizor(element), "tableCell", fillColor);
+  if (col.key === "marca") return getBaseCell(getElementMarca(element), "tableCell", fillColor);
   if (col.key === "unitate") return getBaseCell(element.unitate_masura, "tableCell", fillColor, { noWrap: true });
   if (col.key === "cantitate") return getBaseCell(formatNumber(qtyInReteta, decimalPlaces), element.has_qty_diff ? "tableCellRightDiff" : "tableCellRight", fillColor, { noWrap: true });
   if (col.key === "qtyTotal") return getBaseCell(formatNumber(qtyTotalLucrare, decimalPlaces), element.has_qty_diff ? "tableCellRightDiff" : "tableCellRight", fillColor, { noWrap: true });
+  if (col.key === "greutateUnitara") return getBaseCell(greutateUnitara ? formatNumber(greutateUnitara, decimalPlaces) : "", "tableCellCenter", fillColor, { noWrap: true });
+  if (col.key === "greutateTotala") return getBaseCell(greutateTotala ? formatNumber(greutateTotala, decimalPlaces) : "", "tableCellCenter", fillColor, { noWrap: true });
   if (col.key === "cost") return getBaseCell(formatNumber(element.cost_unitar, decimalPlaces), element.has_cost_diff ? "tableCellRightDiff" : "tableCellRight", fillColor, { noWrap: true });
   if (col.key === "costTotal") return getBaseCell(formatNumber(costTotalLucrare, decimalPlaces), "tableCellRight", fillColor, { noWrap: true });
   if (col.key === "coefProcent")
@@ -861,6 +930,7 @@ const getReteteTableTotals = (retete = []) =>
       acc.cost += Number(reteta.cost || 0);
       acc.cantitate += 1;
       acc.qtyTotal += Number(reteta.cantitate_lucrare || 0);
+      acc.greutateTotala += getRetetaGreutateTotala(reteta);
       acc.costTotal += Number(reteta.cost_total_lucrare || 0);
       acc.coefPret += Number(reteta.coeficient_added_value || 0);
       acc.pret += Number(reteta.pret_total_lucrare ?? reteta.cost_total_lucrare ?? 0);
@@ -871,6 +941,7 @@ const getReteteTableTotals = (retete = []) =>
       cost: 0,
       cantitate: 0,
       qtyTotal: 0,
+      greutateTotala: 0,
       costTotal: 0,
       coefPret: 0,
       pret: 0,
@@ -910,9 +981,9 @@ const buildSummaryLabelCell = (content, labelSpan, fillColor) => ({
   verticalAlignment: "middle",
 });
 
-const buildSummaryTwoColumnRow = ({ label, value, fillColor, options, valueStyle = "tableSummaryCell" }) => [
+const buildSummaryTwoColumnRow = ({ label, value, fillColor, options, valueStyle = "tableSummaryCell", suffix = "" }) => [
   buildSummaryLabelCell(label, 1, fillColor),
-  getBaseCell(formatNumber(value, options.decimalPlaces), valueStyle, fillColor, { noWrap: true }),
+  getBaseCell(`${formatNumber(value, options.decimalPlaces)}${suffix}`, valueStyle, fillColor, { noWrap: true }),
 ];
 
 const getSummaryFinalLabel = ({ options, text }) => {
@@ -922,12 +993,27 @@ const getSummaryFinalLabel = ({ options, text }) => {
 
 const buildTableSummaryRows = ({ columns, totals, options, text }) => {
   const fillColor = "#dbeafe";
+  const greutateFillColor = "#dcfce7";
   const finalValues = getSummaryFinalValues(Number(totals.pret || totals.costTotal || 0), options);
   const showRecapitulatii = options.showRecapitulatii !== false;
   const showReducere = options.showReducere !== false;
   const showTva = options.showTva !== false;
 
-  const rows = [buildSummaryTwoColumnRow({ label: text.summary.subtotal, value: totals.pret, fillColor, options, valueStyle: "tableSummaryCellStrong" })];
+  const rows = [];
+
+  if (options.showGreutateTotalaFooter) {
+    rows.push(
+      buildSummaryTwoColumnRow({
+        label: text.summary.greutateTotala,
+        value: totals.greutateTotala || 0,
+        fillColor: greutateFillColor,
+        options,
+        suffix: " kg",
+      }),
+    );
+  }
+
+  rows.push(buildSummaryTwoColumnRow({ label: text.summary.subtotal, value: totals.pret, fillColor, options, valueStyle: "tableSummaryCellStrong" }));
 
   if (showRecapitulatii) {
     rows.push(
@@ -1106,6 +1192,9 @@ const getResourceRows = (retete = [], displayLang, resourceKey) => {
       const cod = String(element.cod_afisat || "").trim();
       const denumire = getElementName(element, displayLang);
       const descriere = getElementDescription(element, displayLang);
+      const furnizor = getElementFurnizor(element);
+      const marca = getElementMarca(element);
+      const greutateValue = getElementGreutateValue(element);
       const unitate = String(element.unitate_masura || "").trim();
       const cost = Number(element.cost_unitar || 0);
       const cantitateInReteta = Number(element.cantitate_in_reteta || 0);
@@ -1115,7 +1204,7 @@ const getResourceRows = (retete = [], displayLang, resourceKey) => {
       const coefInactive = !!element.coeficient_inactive && !element.coeficient_excluded && Math.abs(coefAdded) < 0.000001;
       const coefUnitAdded = totalCantitate > 0 ? coefAdded / totalCantitate : 0;
       const pretUnitar = cost + coefUnitAdded;
-      const key = JSON.stringify([cod, denumire, descriere, unitate, cost, coefInactive ? "inactive" : "active", coefPercent.toFixed(8), pretUnitar.toFixed(8)]);
+      const key = JSON.stringify([cod, denumire, descriere, furnizor, marca, greutateValue.toFixed(8), unitate, cost, coefInactive ? "inactive" : "active", coefPercent.toFixed(8), pretUnitar.toFixed(8)]);
 
       if (!grouped.has(key)) {
         const resourceLabel = {
@@ -1131,6 +1220,10 @@ const getResourceRows = (retete = [], displayLang, resourceKey) => {
           cod,
           denumire,
           descriere,
+          furnizor,
+          marca,
+          greutateUnitara: greutateValue,
+          greutateTotala: 0,
           unitate,
           cost,
           cantitate: 0,
@@ -1144,6 +1237,7 @@ const getResourceRows = (retete = [], displayLang, resourceKey) => {
 
       const row = grouped.get(key);
       row.cantitate += totalCantitate;
+      row.greutateTotala += greutateValue * totalCantitate;
       row.total += totalCantitate * cost;
       row.coefPret += coefAdded;
       if (coefInactive) {
@@ -1169,7 +1263,7 @@ const getUtilajRows = (retete = [], displayLang) => getResourceRows(retete, disp
 
 const getTransportRows = (retete = [], displayLang) => getResourceRows(retete, displayLang, "transport");
 
-const getManoperaColumns = (text, visibleColumns = DEFAULT_VISIBLE_COLUMNS, textAlign = "left", currency = "") => {
+const getManoperaColumns = (text, visibleColumns = DEFAULT_VISIBLE_COLUMNS, textAlign = "left", currency = "", resourceKey = "manopera") => {
   const columns = [
     { key: "tip", label: text.columns.tip, width: "auto", align: "left" },
     { key: "cod", label: text.columns.cod, width: "auto", align: textAlign },
@@ -1179,12 +1273,16 @@ const getManoperaColumns = (text, visibleColumns = DEFAULT_VISIBLE_COLUMNS, text
   if (showCol(visibleColumns, "descriere")) {
     columns.push({ key: "descriere", label: text.columns.descriere, width: "*", align: textAlign });
   }
+  if (showCol(visibleColumns, "furnizor")) columns.push({ key: "furnizor", label: text.columns.furnizor, width: "auto", align: textAlign });
+  if (showCol(visibleColumns, "marca")) columns.push({ key: "marca", label: text.columns.marca, width: "auto", align: textAlign });
 
   columns.push({ key: "unitate", label: text.columns.unitate, width: "auto", align: "center" });
   if (showCol(visibleColumns, "cantitate")) columns.push({ key: "cantitate", label: text.columns.cantitate, width: "auto", align: "center" });
   if (showCol(visibleColumns, "qtyTotal")) columns.push({ key: "qtyTotal", label: text.columns.qtyTotal, width: "auto", align: "center" });
+  if (resourceKey === "material" && showCol(visibleColumns, "greutateUnitara")) columns.push({ key: "greutateUnitara", label: text.columns.greutateUnitara, width: "auto", align: "center" });
+  if (resourceKey === "material" && showCol(visibleColumns, "greutateTotala")) columns.push({ key: "greutateTotala", label: text.columns.greutateTotala, width: "auto", align: "center" });
   if (showCol(visibleColumns, "cost")) columns.push({ key: "cost", label: getMoneyHeaderLabel(text.columns.cost, "cost", currency), width: PDF_COST_COLUMN_WIDTH, align: "right" });
-  if (showCol(visibleColumns, "costTotal")) columns.push({ key: "total", label: getMoneyHeaderLabel(text.columns.total, "total", currency), width: "auto", align: "right" });
+  if (showCol(visibleColumns, "costTotal")) columns.push({ key: "total", label: getMoneyHeaderLabel(text.columns.total, "total", currency), width: PDF_COST_TOTAL_COLUMN_WIDTH, align: "right" });
   if (showCol(visibleColumns, "coefProcent")) columns.push({ key: "coefProcent", label: text.columns.coefProcent, width: "auto", align: "left" });
   if (showCol(visibleColumns, "coefPret")) columns.push({ key: "coefPret", label: getMoneyHeaderLabel(text.columns.coefPret, "coefPret", currency), width: "auto", align: "left" });
   if (showCol(visibleColumns, "pret")) columns.push({ key: "pret", label: getMoneyHeaderLabel(text.columns.pret, "pret", currency), width: PDF_PRICE_COLUMN_WIDTH, align: "right" });
@@ -1197,9 +1295,13 @@ const buildManoperaCell = (row, col, decimalPlaces = 2) => {
   if (col.key === "cod") return getBaseCell(row.cod, "tableCell", null, { noWrap: true });
   if (col.key === "denumire") return getBaseCell(row.denumire, "tableCell", null);
   if (col.key === "descriere") return getBaseCell(row.descriere, "tableCell", null);
+  if (col.key === "furnizor") return getBaseCell(row.furnizor || "", "tableCell", null);
+  if (col.key === "marca") return getBaseCell(row.marca || "", "tableCell", null);
   if (col.key === "unitate") return getBaseCell(row.unitate, "tableCell", null, { noWrap: true });
   if (col.key === "cantitate") return getBaseCell(formatNumber(row.cantitate, decimalPlaces), "tableCellRight", null, { noWrap: true });
   if (col.key === "qtyTotal") return getBaseCell(formatNumber(row.qtyTotal ?? row.cantitate, decimalPlaces), "tableCellRight", null, { noWrap: true });
+  if (col.key === "greutateUnitara") return getBaseCell(row.greutateUnitara ? formatNumber(row.greutateUnitara, decimalPlaces) : "", "tableCellCenter", null, { noWrap: true });
+  if (col.key === "greutateTotala") return getBaseCell(row.greutateTotala ? formatNumber(row.greutateTotala, decimalPlaces) : "", "tableCellCenter", null, { noWrap: true });
   if (col.key === "cost") return getBaseCell(formatNumber(row.cost, decimalPlaces), "tableCellRight", null, { noWrap: true });
   if (col.key === "total") return getBaseCell(formatNumber(row.total, decimalPlaces), "tableCellRight", null, { noWrap: true });
   if (col.key === "coefProcent") return getBaseCell(formatPercent(row.coefProcent, 2), row.coefInactive ? "tableCellRightDanger" : row.coefProcent ? "tableCellRight" : "tableCellMuted", null, { noWrap: true });
@@ -1215,6 +1317,7 @@ const getResourceTableTotals = (rows = []) =>
       acc.cost += Number(row.cost || 0);
       acc.cantitate += Number(row.cantitate || 0);
       acc.qtyTotal += Number(row.qtyTotal ?? row.cantitate ?? 0);
+      acc.greutateTotala += Number(row.greutateTotala || 0);
       acc.costTotal += Number(row.total || 0);
       acc.coefPret += Number(row.coefPret || 0);
       acc.pret += Number(row.pret || row.total || 0);
@@ -1225,6 +1328,7 @@ const getResourceTableTotals = (rows = []) =>
       cost: 0,
       cantitate: 0,
       qtyTotal: 0,
+      greutateTotala: 0,
       costTotal: 0,
       coefPret: 0,
       pret: 0,
@@ -1480,8 +1584,9 @@ const createOfertaDocDefinition = ({ lucrare, retete, totals, options }) => {
   const isUtilajPdf = normalizedOptions.formType === "utilaje_retete";
   const isTransportPdf = normalizedOptions.formType === "transport_retete";
   const isResourcePdf = isManoperaPdf || isMaterialPdf || isUtilajPdf || isTransportPdf;
+  const resourceKey = isManoperaPdf ? "manopera" : isMaterialPdf ? "material" : isUtilajPdf ? "utilaj" : "transport";
   const columns = isResourcePdf
-    ? getManoperaColumns(text, normalizedOptions.visibleColumns, normalizedOptions.textAlign, normalizedOptions.currency)
+    ? getManoperaColumns(text, normalizedOptions.visibleColumns, normalizedOptions.textAlign, normalizedOptions.currency, resourceKey)
     : getColumns(dynamicColumns, normalizedOptions.visibleColumns, normalizedOptions.includeElements, text.columns, normalizedOptions.textAlign, normalizedOptions.currency);
   const manoperaRows = isManoperaPdf ? getManoperaRows(pdfRetete, normalizedOptions.displayLang) : [];
   const materialRows = isMaterialPdf ? getMaterialRows(pdfRetete, normalizedOptions.displayLang) : [];

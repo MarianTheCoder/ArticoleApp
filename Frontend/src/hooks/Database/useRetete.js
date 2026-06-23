@@ -1,13 +1,31 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/api/axiosAPI";
 
-const invalidateReteteClaseData = (queryClient) =>
-  Promise.all([
+const CATALOG_SCOPE_RESOURCE_TYPES = {
+  catalog_manopera: "manopera",
+  catalog_material: "material",
+  catalog_utilaj: "utilaj",
+  catalog_transport: "transport",
+};
+
+const isCatalogClassScope = (scope) => scope === "catalog" || String(scope || "").startsWith("catalog_");
+
+const invalidateReteteClaseData = (queryClient, scope = "reteta") => {
+  const invalidations = [
     queryClient.invalidateQueries({ queryKey: ["retete-clase-coduri"] }),
     queryClient.invalidateQueries({ queryKey: ["retete"] }),
     queryClient.invalidateQueries({ queryKey: ["oferte", "retete"] }),
     queryClient.invalidateQueries({ queryKey: ["oferte"] }),
-  ]);
+  ];
+
+  if (isCatalogClassScope(scope)) {
+    const tipResursa = CATALOG_SCOPE_RESOURCE_TYPES[scope];
+    invalidations.push(queryClient.invalidateQueries({ queryKey: tipResursa ? ["catalog", tipResursa] : ["catalog"] }));
+    invalidations.push(queryClient.invalidateQueries({ queryKey: ["inventar", "resurse"] }));
+  }
+
+  return Promise.all(invalidations);
+};
 
 // ============================================================================
 // 1. GET: FETCH REȚETE (PĂRINȚI) + ELEMENTELE LOR (Dacă le returnezi direct din GET)
@@ -92,7 +110,7 @@ export const useBulkSaveRetetaClaseCoduri = () => {
     },
 
     onSuccess: async (_data, variables) => {
-      await invalidateReteteClaseData(queryClient);
+      await invalidateReteteClaseData(queryClient, variables?.scope);
     },
   });
 };

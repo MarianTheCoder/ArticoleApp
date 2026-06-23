@@ -115,6 +115,7 @@ const DEFAULT_COLUMN_WIDTHS = {
   clasa5: 150,
   denumire: 560,
   unitate: 120,
+  greutate: 130,
   cost: 160,
   creat: 210,
   actualizat: 210,
@@ -131,6 +132,7 @@ const MIN_COLUMN_WIDTHS = {
   clasa5: 110,
   denumire: 260,
   unitate: 80,
+  greutate: 100,
   cost: 110,
   creat: 150,
   actualizat: 150,
@@ -146,6 +148,22 @@ const SORT_FIELD_BY_COLUMN = {
 };
 
 const normalizeDecimalPlaces = (value) => ([1, 2].includes(Number(value)) ? Number(value) : 2);
+
+const toFiniteNumber = (value) => {
+  const parsed = Number(String(value ?? 0).replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const getRetetaGreutateUnitara = (reteta) => {
+  return (reteta?.elemente || []).reduce((sum, element) => {
+    if (element?.tip_resursa !== "material") return sum;
+
+    const greutate = toFiniteNumber(element.greutate_resursa ?? element.greutate ?? element.greutate_definitie ?? element.definitie_oferta?.greutate);
+    const cantitate = toFiniteNumber(element.cantitate_in_reteta ?? element.cantitate);
+
+    return sum + greutate * cantitate;
+  }, 0);
+};
 
 const getTextAlignClasses = (textAlign) => {
   if (textAlign === "left") return { cell: "text-left", flex: "justify-start", tooltip: "left" };
@@ -471,6 +489,12 @@ const ReteteList = memo(
                   </ResizableTableHead>
                 )}
 
+                {showCol("greutate") && (
+                  <ResizableTableHead colKey="greutate" style={getColumnStyle("greutate")} onResizeStart={handleColumnResizeStart} className="text-center">
+                    <div className="px-2 xxxl:px-2.5 text-sm xxxl:text-base font-bold">Greutate</div>
+                  </ResizableTableHead>
+                )}
+
                 {showCol("cost") && (
                   <ResizableTableHead colKey="cost" style={getColumnStyle("cost")} onResizeStart={handleColumnResizeStart} className="text-center">
                     {renderSortHeaderContent("cost", "Cost")}
@@ -631,6 +655,14 @@ const ReteteList = memo(
                       <Badge variant="secondary" className="text-sm xxxl:text-base bg-card border-border px-2 xxxl:px-3 py-1 xxxl:py-1.5 shadow-none whitespace-nowrap ">
                         {parent.unitate_masura}
                       </Badge>
+                    </TableCell>
+                  )}
+
+                  {showCol("greutate") && (
+                    <TableCell style={getColumnStyle("greutate")} className="text-center px-2 xxxl:px-3 py-1 xxxl:py-1.5">
+                      <span className="font-bold text-sm xxxl:text-base text-foreground whitespace-nowrap">
+                        {getRetetaGreutateUnitara(parent).toFixed(safeDecimalPlaces).replace(".", ",")}
+                      </span>
                     </TableCell>
                   )}
 

@@ -2,6 +2,8 @@ const express = require("express");
 const router = express.Router();
 const {
   getResurse,
+  getCatalogMeta,
+  bulkSaveCatalogMeta,
   getNextCatalogDefinitionCode,
   addDefinitie,
   editDefinitie,
@@ -37,6 +39,8 @@ const upload = multer({ dest: tempDir });
 // Rute pentru Catalog (Definiții)
 //
 router.get("/getResurse", authenticateToken(), getResurse);
+router.get("/meta/:type", authenticateToken(), getCatalogMeta);
+router.post("/meta/:type/bulkSave", authenticateToken(), bulkSaveCatalogMeta);
 router.get("/getNextCatalogDefinitionCode", authenticateToken(), getNextCatalogDefinitionCode);
 router.post("/addDefinitie", authenticateToken(), upload.single("photo"), checkCatalogPermission("c"), addDefinitie);
 router.put("/editDefinitie/:id", authenticateToken(), upload.single("photo"), checkCatalogPermission("e"), editDefinitie);

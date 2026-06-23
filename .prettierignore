@@ -1,2 +1,20 @@
 Backend/.dockerignore
 Frontend/.dockerignore
+node_modules
+dist
+build
+coverage
+uploads
+public/uploads
+.env
+.env.*
+*.log
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# dacă ai fișiere generate / mari
+generated
+tmp
+.cache
+.vite

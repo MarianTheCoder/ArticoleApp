@@ -92,6 +92,11 @@ export const formatNumber = (value, decimalPlaces = 2) => {
     .replace(".", ",");
 };
 
+const toFiniteNumber = (value) => {
+  const parsed = Number(String(value ?? 0).replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
 export const numbersDifferent = (a, b) => {
   const n1 = Number(a);
   const n2 = Number(b);
@@ -149,6 +154,23 @@ export const getElementUnitCost = (el) => {
 
   return Number(el.cost_definitie ?? el.cost_definitie_snapshot ?? el.definitie_cost ?? el.cost ?? 0);
 };
+
+export const getElementGreutateUnitara = (el) => {
+  if (el?.tip_resursa !== "material") return 0;
+
+  return toFiniteNumber(el.greutate ?? el.greutate_definitie_snapshot ?? el.greutate_definitie ?? el.definitie_oferta?.greutate ?? el.greutate_actual ?? el.definitie_live?.greutate);
+};
+
+export const getRetetaGreutateUnitara = (reteta) => {
+  const elemente = reteta?.elemente || [];
+
+  return elemente.reduce((sum, el) => {
+    const cantitateInReteta = toFiniteNumber(el.cantitate_in_reteta ?? el.cantitate);
+    return sum + getElementGreutateUnitara(el) * cantitateInReteta;
+  }, 0);
+};
+
+export const getRetetaGreutateTotala = (reteta) => getRetetaGreutateUnitara(reteta) * toFiniteNumber(reteta?.cantitate_lucrare);
 
 export const getRetetaCost = (reteta) => {
   if (reteta.cost_total_reteta !== undefined) return Number(reteta.cost_total_reteta || 0);
@@ -484,6 +506,7 @@ export const getCategoryTotals = (retete = []) => {
 
       acc.cost += getRetetaCost(reteta);
       acc.cantitate += cantitateLucrare;
+      acc.greutateTotala += getRetetaGreutateTotala(reteta);
       acc.total += getRetetaTotalLucrare(reteta);
       acc.pret += Number(reteta?.pret_total_lucrare ?? reteta?.cost_total_lucrare ?? getRetetaTotalLucrare(reteta) ?? 0);
 
@@ -498,6 +521,7 @@ export const getCategoryTotals = (retete = []) => {
     {
       cost: 0,
       cantitate: 0,
+      greutateTotala: 0,
       total: 0,
       pret: 0,
       totalManoperaHours: 0,

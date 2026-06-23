@@ -10,9 +10,11 @@ import { faUndo, faSave, faCopy, faUpload, faX } from "@fortawesome/free-solid-s
 import { toast } from "sonner";
 import { useLoading } from "@/context/LoadingContext";
 import { AuthContext } from "@/context/TokenContext";
-import { useAddCatalogSubDef, useEditCatalogSubDef } from "@/hooks/Database/useCatalog";
+import { useAddCatalogSubDef, useCatalogMeta, useEditCatalogSubDef } from "@/hooks/Database/useCatalog";
 import photoAPI from "@/api/photoAPI";
 import imageCompression from "browser-image-compression";
+import CatalogMetaSelect from "./CatalogMetaSelect";
+import CatalogMetaDialog from "./CatalogMetaDialog";
 
 const formatDecimalInputValue = (value) => {
   const numberValue = Number(value || 0);
@@ -24,9 +26,12 @@ export default function CatalogSubDefDialog({ config, open, setOpen, mode = "add
   const { user } = useContext(AuthContext);
   const { mutateAsync: addSubDef } = useAddCatalogSubDef();
   const { mutateAsync: editSubDef } = useEditCatalogSubDef();
+  const { data: furnizoriData } = useCatalogMeta("furnizori");
+  const { data: marciData } = useCatalogMeta("marci");
 
   const isDuplicateMode = initialData?.isDuplicate === true;
   const actualMode = isDuplicateMode ? "add" : mode;
+  const supportsVariantMeta = config.id === "material" || config.id === "utilaj";
 
   const defaultDraft = {
     cod_specific: "",
@@ -34,10 +39,15 @@ export default function CatalogSubDefDialog({ config, open, setOpen, mode = "add
     descriere_fr: "",
     cost: "0,00",
     furnizor: "", // Preluat doar dacă config.hasFurnizor este true
+    furnizor_id: null,
+    marca: "",
+    marca_id: null,
     status_utilaj: "Nou", // Preluat doar dacă config.hasStatus este true
   };
 
   const [draft, setDraft] = useState(defaultDraft);
+  const [furnizoriDialogOpen, setFurnizoriDialogOpen] = useState(false);
+  const [marciDialogOpen, setMarciDialogOpen] = useState(false);
 
   // --- STATE-URI DRAG & DROP ---
   const [selectedFile, setSelectedFile] = useState(null);
@@ -58,6 +68,9 @@ export default function CatalogSubDefDialog({ config, open, setOpen, mode = "add
             descriere_fr: initialData.descriere_fr || "",
             cost: initialData.cost != null ? formatDecimalInputValue(initialData.cost) : "0,00",
             furnizor: config.hasFurnizor ? initialData.detalii_extra?.furnizor || "" : "",
+            furnizor_id: config.hasFurnizor ? initialData.furnizor_id || null : null,
+            marca: supportsVariantMeta ? initialData.detalii_extra?.marca || "" : "",
+            marca_id: supportsVariantMeta ? initialData.marca_id || null : null,
             status_utilaj: config.hasStatus ? initialData.detalii_extra?.status_utilaj || "Nou" : "Nou",
           });
 
@@ -112,7 +125,7 @@ export default function CatalogSubDefDialog({ config, open, setOpen, mode = "add
     return () => {
       isMounted = false;
     };
-  }, [open, mode, initialData, isDuplicateMode, config]);
+  }, [open, mode, initialData, isDuplicateMode, config, supportsVariantMeta]);
 
   const setField = (key, value) => setDraft((prev) => ({ ...prev, [key]: value }));
 
@@ -204,10 +217,18 @@ export default function CatalogSubDefDialog({ config, open, setOpen, mode = "add
     fd.append("descriere_fr", draft.descriere_fr.trim());
     fd.append("cost", String(parseFloat(draft.cost.replace(",", ".")) || 0));
     fd.append("user_id", user.id);
+    fd.append("furnizor_id", draft.furnizor_id || "");
+    fd.append("marca_id", draft.marca_id || "");
 
     // Construim obiectul detalii_extra doar cu câmpurile necesare
     const detaliiExtraObj = {};
-    if (config.hasFurnizor) detaliiExtraObj.furnizor = draft.furnizor.trim();
+    const selectedFurnizor = (furnizoriData?.items || []).find((item) => String(item.id) === String(draft.furnizor_id));
+    const selectedMarca = (marciData?.items || []).find((item) => String(item.id) === String(draft.marca_id));
+
+    if (config.hasFurnizor) detaliiExtraObj.furnizor = String(selectedFurnizor?.denumire || draft.furnizor || "").trim();
+    if (supportsVariantMeta) {
+      detaliiExtraObj.marca = String(selectedMarca?.denumire || draft.marca || "").trim();
+    }
     if (config.hasStatus) detaliiExtraObj.status_utilaj = draft.status_utilaj;
 
     if (Object.keys(detaliiExtraObj).length > 0) {
@@ -241,6 +262,9 @@ export default function CatalogSubDefDialog({ config, open, setOpen, mode = "add
 
   const buttonColorClass = config.colorClass.replace("text-", "bg-");
   const buttonHoverClass = config.colorClass.replace("text-", "hover:bg-");
+  const detailsGridClass = supportsVariantMeta ? "grid-cols-5" : config.id === "utilaj" ? "grid-cols-4" : "grid-cols-3";
+  const furnizoriOptions = furnizoriData?.items || [];
+  const marciOptions = marciData?.items || [];
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -295,7 +319,7 @@ export default function CatalogSubDefDialog({ config, open, setOpen, mode = "add
               )}
 
               {/* INPUTURILE COD / COST / FURNIZOR / STATUS */}
-              <div className={`flex-1 grid grid-cols-3 ${config.id == "utilaj" ? "grid-cols-4" : ""} gap-3 xxxl:gap-4 mb-1`}>
+              <div className={`flex-1 grid ${detailsGridClass} gap-3 xxxl:gap-4 mb-1`}>
                 <div className="flex flex-col gap-1 xxxl:gap-1.5">
                   <Label className="font-semibold text-xs xxxl:text-sm text-foreground">
                     Cod Specific <span className="text-destructive">*</span>
@@ -307,7 +331,34 @@ export default function CatalogSubDefDialog({ config, open, setOpen, mode = "add
                 {config.hasFurnizor && (
                   <div className="flex flex-col gap-1 xxxl:gap-1.5">
                     <Label className="font-semibold text-xs xxxl:text-sm text-foreground">Furnizor (Opțional)</Label>
-                    <Input value={draft.furnizor} onChange={(e) => setField("furnizor", e.target.value)} placeholder="Ex: Dedeman, Arabesque" className="h-9" />
+                    <CatalogMetaSelect
+                      label="Furnizor"
+                      valueId={draft.furnizor_id}
+                      fallbackValue={draft.furnizor}
+                      options={furnizoriOptions}
+                      onChange={(id, denumire) => {
+                        setField("furnizor_id", id);
+                        setField("furnizor", denumire);
+                      }}
+                      onManage={() => setFurnizoriDialogOpen(true)}
+                    />
+                  </div>
+                )}
+
+                {supportsVariantMeta && (
+                  <div className="flex flex-col gap-1 xxxl:gap-1.5">
+                    <Label className="font-semibold text-xs xxxl:text-sm text-foreground">Marcă (Opțional)</Label>
+                    <CatalogMetaSelect
+                      label="Marcă"
+                      valueId={draft.marca_id}
+                      fallbackValue={draft.marca}
+                      options={marciOptions}
+                      onChange={(id, denumire) => {
+                        setField("marca_id", id);
+                        setField("marca", denumire);
+                      }}
+                      onManage={() => setMarciDialogOpen(true)}
+                    />
                   </div>
                 )}
 
@@ -400,6 +451,8 @@ export default function CatalogSubDefDialog({ config, open, setOpen, mode = "add
           </DialogFooter>
         </form>
       </DialogContent>
+      <CatalogMetaDialog type="furnizori" open={furnizoriDialogOpen} setOpen={setFurnizoriDialogOpen} />
+      <CatalogMetaDialog type="marci" open={marciDialogOpen} setOpen={setMarciDialogOpen} />
     </Dialog>
   );
 }

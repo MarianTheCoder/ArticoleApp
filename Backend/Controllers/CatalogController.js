@@ -13,6 +13,196 @@ const {
   resolveCatalogCodes,
 } = require("../utils/reteteClaseHelper");
 
+const parseJsonObject = (value) => {
+  if (!value) return {};
+  if (typeof value === "object" && !Array.isArray(value)) return value;
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  return {};
+};
+
+const normalizeSubcategorieDetaliiExtraForDb = (value, tipResursa) => {
+  const detaliiExtra = parseJsonObject(value);
+
+  if (tipResursa === "material" || tipResursa === "utilaj") {
+    detaliiExtra.marca = String(detaliiExtra.marca || "").trim();
+  }
+
+  return {
+    ok: true,
+    value: Object.keys(detaliiExtra).length > 0 ? JSON.stringify(detaliiExtra) : null,
+  };
+};
+
+const normalizeNullableId = (value) => {
+  const raw = String(value ?? "").trim();
+  if (!raw || raw === "null" || raw === "undefined") return null;
+
+  const parsed = Number(raw);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+};
+
+const getSubcategorieMetaIdsForDb = (body = {}, tipResursa = "") => {
+  const supportsMeta = tipResursa === "material" || tipResursa === "utilaj";
+
+  return {
+    furnizorId: supportsMeta ? normalizeNullableId(body.furnizor_id) : null,
+    marcaId: supportsMeta ? normalizeNullableId(body.marca_id) : null,
+  };
+};
+
+const parseSubcategorieDetaliiExtra = (sub) => parseJsonObject(sub?.detalii_extra);
+
+const decorateSubcategorieMeta = (sub) => {
+  const detaliiExtra = parseSubcategorieDetaliiExtra(sub);
+
+  if (sub.furnizor_denumire) {
+    detaliiExtra.furnizor = sub.furnizor_denumire;
+  }
+
+  if (sub.marca_denumire) {
+    detaliiExtra.marca = sub.marca_denumire;
+  }
+
+  return {
+    ...sub,
+    detalii_extra: Object.keys(detaliiExtra).length > 0 ? detaliiExtra : null,
+  };
+};
+
+const normalizeDefinitieGreutateForDb = (value, tipResursa) => {
+  if (tipResursa !== "material") return { ok: true, value: 0 };
+
+  const raw = String(value ?? "").trim();
+  if (!raw) return { ok: true, value: 0 };
+
+  const greutate = Number(raw.replace(",", "."));
+
+  if (!Number.isFinite(greutate) || greutate < 0 || greutate > 99999.99) {
+    return {
+      ok: false,
+      message: "Greutatea trebuie să fie între 0 și 99999,99 kg.",
+    };
+  }
+
+  return {
+    ok: true,
+    value: Number(greutate.toFixed(2)),
+  };
+};
+
+const CATALOG_META_CONFIG = {
+  furnizori: {
+    tableName: "S02_Catalog_Meta_Furnizori",
+    subcategorieColumn: "furnizor_id",
+    label: "Furnizor",
+  },
+  marci: {
+    tableName: "S02_Catalog_Meta_Marci",
+    subcategorieColumn: "marca_id",
+    label: "Marcă",
+  },
+};
+
+const getCatalogMetaConfig = (type) => CATALOG_META_CONFIG[String(type || "").trim()];
+
+const getCatalogMeta = async (req, res) => {
+  let conn;
+
+  try {
+    const config = getCatalogMetaConfig(req.params.type || req.query.type);
+
+    if (!config) {
+      return res.status(400).json({ message: "Tip meta invalid." });
+    }
+
+    conn = await global.db.getConnection();
+
+    const [items] = await conn.execute(
+      `
+      SELECT
+        id,
+        denumire,
+        DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at,
+        DATE_FORMAT(updated_at, '%Y-%m-%dT%H:%i:%sZ') AS updated_at
+      FROM ${config.tableName}
+      ORDER BY denumire ASC
+      `,
+    );
+
+    return res.status(200).json({ items });
+  } catch (error) {
+    console.log("getCatalogMeta error:", error);
+    return res.status(500).json({ message: "Eroare la preluarea listei meta." });
+  } finally {
+    if (conn) conn.release();
+  }
+};
+
+const bulkSaveCatalogMeta = async (req, res) => {
+  let conn;
+
+  try {
+    const config = getCatalogMetaConfig(req.params.type || req.body.type);
+
+    if (!config) {
+      return res.status(400).json({ message: "Tip meta invalid." });
+    }
+
+    const items = Array.isArray(req.body.items) ? req.body.items : [];
+    const deletedIds = Array.isArray(req.body.deletedIds) ? req.body.deletedIds : [];
+
+    conn = await global.db.getConnection();
+    await conn.beginTransaction();
+
+    const normalizedItems = items
+      .map((item) => ({
+        id: normalizeNullableId(item.id),
+        denumire: String(item.denumire || "").trim(),
+      }))
+      .filter((item) => item.denumire);
+
+    for (const item of normalizedItems.filter((item) => item.id)) {
+      await conn.execute(`UPDATE ${config.tableName} SET denumire = ? WHERE id = ?`, [item.denumire, item.id]);
+    }
+
+    const cleanDeletedIds = deletedIds.map((id) => normalizeNullableId(id)).filter(Boolean);
+
+    if (cleanDeletedIds.length > 0) {
+      const placeholders = cleanDeletedIds.map(() => "?").join(",");
+      await conn.execute(`UPDATE S02_Catalog_Subcategorii SET ${config.subcategorieColumn} = NULL WHERE ${config.subcategorieColumn} IN (${placeholders})`, cleanDeletedIds);
+      await conn.execute(`DELETE FROM ${config.tableName} WHERE id IN (${placeholders})`, cleanDeletedIds);
+    }
+
+    for (const item of normalizedItems.filter((item) => !item.id)) {
+      await conn.execute(`INSERT INTO ${config.tableName} (denumire) VALUES (?)`, [item.denumire]);
+    }
+
+    await conn.commit();
+
+    return res.status(200).json({ message: `${config.label} salvat.` });
+  } catch (error) {
+    if (conn) await conn.rollback();
+    console.log("bulkSaveCatalogMeta error:", error);
+
+    if (error?.code === "ER_DUP_ENTRY") {
+      return res.status(400).json({ message: "Există deja o valoare cu aceeași denumire." });
+    }
+
+    return res.status(500).json({ message: "Eroare la salvarea listei meta." });
+  } finally {
+    if (conn) conn.release();
+  }
+};
+
 const getResurse = async (req, res) => {
   let conn;
   try {
@@ -35,13 +225,14 @@ const getResurse = async (req, res) => {
     const denumire = req.query.denumire ? req.query.denumire.trim() : "";
     const descriere = req.query.descriere ? req.query.descriere.trim() : "";
     const unitate = req.query.unitate ? req.query.unitate.trim() : "";
+    const greutate = req.query.greutate ? req.query.greutate.trim() : "";
     const cost = req.query.cost ? req.query.cost.trim() : "";
 
     // Verificăm dacă primim "1"
     const variante = req.query.variante ? (req.query.variante.trim() == "1" ? true : false) : false;
 
     // Sortare securizată
-    const allowedSortColumns = ["updated_at", "created_at", "cod_definitie", "denumire", "cost"];
+    const allowedSortColumns = ["updated_at", "created_at", "cod_definitie", "denumire", "greutate", "cost"];
     const sortBy = allowedSortColumns.includes(req.query.sortBy) ? req.query.sortBy : "updated_at";
     const sortOrder = req.query.sortOrder === "asc" ? "ASC" : "DESC";
 
@@ -85,6 +276,11 @@ const getResurse = async (req, res) => {
       queryParams.push(unitate);
     }
 
+    if (greutate) {
+      whereClause += " AND CAST(d.greutate AS CHAR) LIKE ?";
+      queryParams.push(`%${greutate.replace(",", ".")}%`);
+    }
+
     if (cost) {
       whereClause += " AND CAST(d.cost AS CHAR) LIKE ?";
       queryParams.push(`%${cost.replace(",", ".")}%`);
@@ -125,16 +321,14 @@ const getResurse = async (req, res) => {
     );
 
     if (parents.length > 0) {
-      const coduriCatalogMeta = await resolveCatalogCodes(
-        conn,
-        parents.map((parent) => parent.cod_definitie).filter(Boolean),
-        tip_resursa,
-      );
+      const coduriCatalogMeta = await resolveCatalogCodes(conn, parents.map((parent) => parent.cod_definitie).filter(Boolean), tip_resursa);
       const parentIds = parents.map((p) => p.id);
       const placeholders = parentIds.map(() => "?").join(",");
 
       const [subcategories] = await conn.query(
         `SELECT s.*,
+                mf.denumire AS furnizor_denumire,
+                mm.denumire AS marca_denumire,
                 DATE_FORMAT(s.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at,
                 DATE_FORMAT(s.updated_at, '%Y-%m-%dT%H:%i:%sZ') AS updated_at,
                 u1.name as created_by_name, 
@@ -142,6 +336,8 @@ const getResurse = async (req, res) => {
                 u2.name as updated_by_name,
                 u2.photo_url AS updated_by_photo_url
          FROM S02_Catalog_Subcategorii s
+         LEFT JOIN S02_Catalog_Meta_Furnizori mf ON mf.id = s.furnizor_id
+         LEFT JOIN S02_Catalog_Meta_Marci mm ON mm.id = s.marca_id
          LEFT JOIN S00_Utilizatori u1 ON s.created_by_user_id = u1.id
          LEFT JOIN S00_Utilizatori u2 ON s.updated_by_user_id = u2.id 
          WHERE s.definitie_id IN (${placeholders})
@@ -152,14 +348,7 @@ const getResurse = async (req, res) => {
       const items = parents.map((parent) => ({
         ...parent,
         cod_definitie_meta: coduriCatalogMeta.get(parent.cod_definitie) || null,
-        subcategorii: subcategories
-          .filter((sub) => sub.definitie_id === parent.id)
-          .map((sub) => {
-            return {
-              ...sub,
-              detalii_extra: sub.detalii_extra ? (typeof sub.detalii_extra === "string" ? JSON.parse(sub.detalii_extra) : sub.detalii_extra) : null,
-            };
-          }),
+        subcategorii: subcategories.filter((sub) => sub.definitie_id === parent.id).map((sub) => decorateSubcategorieMeta(sub)),
       }));
 
       return res.status(200).json({ total, totalPages, items });
@@ -235,7 +424,7 @@ const addDefinitie = async (req, res) => {
     conn = await global.db.getConnection();
     await conn.beginTransaction();
 
-    const { tip_resursa, limba, cod_definitie, denumire, denumire_fr, descriere, descriere_fr, unitate_masura, cost, duplicate_from_id } = req.body;
+    const { tip_resursa, limba, cod_definitie, denumire, denumire_fr, descriere, descriere_fr, unitate_masura, greutate, cost, duplicate_from_id } = req.body;
 
     if (!tip_resursa || !cod_definitie || !denumire || !unitate_masura) {
       if (req.file) fs.unlinkSync(req.file.path);
@@ -249,6 +438,13 @@ const addDefinitie = async (req, res) => {
     }
 
     const costDb = parseFloat(String(cost).replace(",", ".")) || 0;
+    const greutateDb = normalizeDefinitieGreutateForDb(greutate, tip_resursa);
+
+    if (!greutateDb.ok) {
+      if (req.file) fs.unlinkSync(req.file.path);
+      await conn.rollback();
+      return res.status(400).json({ message: greutateDb.message });
+    }
 
     let photo_url = null;
     if (req.file) {
@@ -270,8 +466,8 @@ const addDefinitie = async (req, res) => {
 
     const insertQuery = `
       INSERT INTO S02_Catalog_Definitii 
-      (tip_resursa, limba, cod_definitie, denumire, denumire_fr, descriere, descriere_fr, unitate_masura, cost, photo_url, created_by_user_id, updated_by_user_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (tip_resursa, limba, cod_definitie, denumire, denumire_fr, descriere, descriere_fr, unitate_masura, greutate, cost, photo_url, created_by_user_id, updated_by_user_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
@@ -283,6 +479,7 @@ const addDefinitie = async (req, res) => {
       descriere ? descriere.trim() : "",
       descriere_fr ? (limba == "FR" ? descriere_fr.trim() : "") : "",
       unitate_masura.trim(),
+      greutateDb.value,
       costDb,
       photo_url,
       user.id || null,
@@ -294,9 +491,10 @@ const addDefinitie = async (req, res) => {
 
     // --- DUPLICARE CU INCREMENTARE ---
     if (duplicate_from_id) {
-      const [originalSubs] = await conn.execute(`SELECT cod_specific, descriere, descriere_fr, cost, photo_url FROM S02_Catalog_Subcategorii WHERE definitie_id = ? ORDER BY updated_at DESC`, [
-        duplicate_from_id,
-      ]);
+      const [originalSubs] = await conn.execute(
+        `SELECT cod_specific, descriere, descriere_fr, cost, detalii_extra, furnizor_id, marca_id, photo_url FROM S02_Catalog_Subcategorii WHERE definitie_id = ? ORDER BY updated_at DESC`,
+        [duplicate_from_id],
+      );
 
       for (const sub of originalSubs) {
         const baseCod = sub.cod_specific.replace(/\s*\(\d+\)$/, "");
@@ -329,11 +527,25 @@ const addDefinitie = async (req, res) => {
           }
         }
 
+        const normalizedSubDetaliiExtra = normalizeSubcategorieDetaliiExtraForDb(sub.detalii_extra, tip_resursa);
+
         await conn.execute(
           `INSERT INTO S02_Catalog_Subcategorii 
-          (definitie_id, cod_specific, descriere, descriere_fr, cost, photo_url, created_by_user_id, updated_by_user_id)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [noulId, noulCodSpecific, sub.descriere, sub.descriere_fr, sub.cost, newSubPhotoUrl, user.id || null, user.id || null],
+          (definitie_id, cod_specific, descriere, descriere_fr, cost, detalii_extra, furnizor_id, marca_id, photo_url, created_by_user_id, updated_by_user_id)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            noulId,
+            noulCodSpecific,
+            sub.descriere,
+            sub.descriere_fr,
+            sub.cost,
+            normalizedSubDetaliiExtra.value,
+            sub.furnizor_id || null,
+            sub.marca_id || null,
+            newSubPhotoUrl,
+            user.id || null,
+            user.id || null,
+          ],
         );
       }
     }
@@ -364,7 +576,7 @@ const editDefinitie = async (req, res) => {
   try {
     conn = await global.db.getConnection();
 
-    const { tip_resursa, limba, cod_definitie, denumire, denumire_fr, descriere, descriere_fr, unitate_masura, cost } = req.body;
+    const { tip_resursa, limba, cod_definitie, denumire, denumire_fr, descriere, descriere_fr, unitate_masura, greutate, cost } = req.body;
     const delete_photo = req.body.delete_photo === "true"; // Flag de ștergere
 
     if (!tip_resursa || !cod_definitie || !denumire || !unitate_masura) {
@@ -382,6 +594,12 @@ const editDefinitie = async (req, res) => {
     const oldPhotoUrl = oldRecord.length > 0 ? oldRecord[0].photo_url : null;
 
     const costDb = parseFloat(String(cost).replace(",", ".")) || 0;
+    const greutateDb = normalizeDefinitieGreutateForDb(greutate, tip_resursa);
+
+    if (!greutateDb.ok) {
+      if (req.file) fs.unlinkSync(req.file.path);
+      return res.status(400).json({ message: greutateDb.message });
+    }
 
     let photoQueryPart = "";
     let queryParams = [
@@ -392,6 +610,7 @@ const editDefinitie = async (req, res) => {
       descriere ? descriere.trim() : "",
       descriere_fr ? (limba == "FR" ? descriere_fr.trim() : "") : "",
       unitate_masura.trim(),
+      greutateDb.value,
       costDb,
       user.id || null,
     ];
@@ -429,7 +648,7 @@ const editDefinitie = async (req, res) => {
 
     const updateQuery = `
       UPDATE S02_Catalog_Definitii 
-      SET limba = ?, cod_definitie = ?, denumire = ?, denumire_fr = ?, descriere = ?, descriere_fr = ?, unitate_masura = ?, cost = ?, updated_by_user_id = ? ${photoQueryPart}
+      SET limba = ?, cod_definitie = ?, denumire = ?, denumire_fr = ?, descriere = ?, descriere_fr = ?, unitate_masura = ?, greutate = ?, cost = ?, updated_by_user_id = ? ${photoQueryPart}
       WHERE id = ?
     `;
 
@@ -514,13 +733,21 @@ const addSubcategorie = async (req, res) => {
     }
 
     const costDb = parseFloat(cost) || 0;
+    const [parentRecord] = await conn.execute(`SELECT tip_resursa FROM S02_Catalog_Definitii WHERE id = ?`, [definitie_id]);
+    const parentTipResursa = parentRecord?.[0]?.tip_resursa || req.body.tip_resursa || "";
+    const normalizedDetaliiExtra = normalizeSubcategorieDetaliiExtraForDb(detalii_extra, parentTipResursa);
+    const { furnizorId, marcaId } = getSubcategorieMetaIdsForDb(req.body, parentTipResursa);
+
+    if (!normalizedDetaliiExtra.ok) {
+      if (req.file) fs.unlinkSync(req.file.path);
+      return res.status(400).json({ message: normalizedDetaliiExtra.message });
+    }
 
     let photo_url = null;
     if (req.file) {
-      const [parentRecord] = await conn.execute(`SELECT tip_resursa FROM S02_Catalog_Definitii WHERE id = ?`, [definitie_id]);
       let baseFolder = "Catalog";
-      if (parentRecord.length > 0) {
-        const tip = parentRecord[0].tip_resursa;
+      if (parentTipResursa) {
+        const tip = parentTipResursa;
         if (tip === "material") baseFolder = "Materiale";
         if (tip === "utilaj") baseFolder = "Utilaje";
       }
@@ -538,8 +765,8 @@ const addSubcategorie = async (req, res) => {
     // Am adăugat detalii_extra în INSERT
     const insertQuery = `
       INSERT INTO S02_Catalog_Subcategorii 
-      (definitie_id, cod_specific, descriere, descriere_fr, cost, detalii_extra, photo_url, created_by_user_id, updated_by_user_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (definitie_id, cod_specific, descriere, descriere_fr, cost, detalii_extra, furnizor_id, marca_id, photo_url, created_by_user_id, updated_by_user_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
@@ -548,7 +775,9 @@ const addSubcategorie = async (req, res) => {
       descriere ? descriere.trim() : "",
       descriere_fr ? descriere_fr.trim() : "",
       costDb,
-      detalii_extra || null, // AICI
+      normalizedDetaliiExtra.value, // AICI
+      furnizorId,
+      marcaId,
       photo_url,
       user.id || null,
       user.id || null,
@@ -597,6 +826,26 @@ const editSubcategorie = async (req, res) => {
     const [oldRecord] = await conn.execute(`SELECT photo_url FROM S02_Catalog_Subcategorii WHERE id = ?`, [id]);
     const oldPhotoUrl = oldRecord.length > 0 ? oldRecord[0].photo_url : null;
     const costDb = parseFloat(cost) || 0;
+    const [parentRecord] = definitie_id
+      ? await conn.execute(`SELECT id, tip_resursa FROM S02_Catalog_Definitii WHERE id = ?`, [definitie_id])
+      : await conn.execute(
+          `
+          SELECT d.id, d.tip_resursa
+          FROM S02_Catalog_Subcategorii s
+          INNER JOIN S02_Catalog_Definitii d ON d.id = s.definitie_id
+          WHERE s.id = ?
+          `,
+          [id],
+        );
+    const parentTipResursa = parentRecord?.[0]?.tip_resursa || req.body.tip_resursa || "";
+    const parentDefinitieId = definitie_id || parentRecord?.[0]?.id || null;
+    const normalizedDetaliiExtra = normalizeSubcategorieDetaliiExtraForDb(detalii_extra, parentTipResursa);
+    const { furnizorId, marcaId } = getSubcategorieMetaIdsForDb(req.body, parentTipResursa);
+
+    if (!normalizedDetaliiExtra.ok) {
+      if (req.file) fs.unlinkSync(req.file.path);
+      return res.status(400).json({ message: normalizedDetaliiExtra.message });
+    }
 
     let photoQueryPart = "";
     // Adăugat detalii_extra în array-ul de queryParams
@@ -605,15 +854,16 @@ const editSubcategorie = async (req, res) => {
       descriere ? descriere.trim() : "",
       descriere_fr ? descriere_fr.trim() : "",
       costDb,
-      detalii_extra || null, // AICI
+      normalizedDetaliiExtra.value, // AICI
+      furnizorId,
+      marcaId,
       user.id || null,
     ];
 
     if (req.file) {
-      const [parentRecord] = await conn.execute(`SELECT tip_resursa FROM S02_Catalog_Definitii WHERE id = ?`, [definitie_id]);
       let baseFolder = "Catalog";
-      if (parentRecord.length > 0 && parentRecord[0].tip_resursa === "material") baseFolder = "Materiale";
-      if (parentRecord.length > 0 && parentRecord[0].tip_resursa === "utilaj") baseFolder = "Utilaje";
+      if (parentTipResursa === "material") baseFolder = "Materiale";
+      if (parentTipResursa === "utilaj") baseFolder = "Utilaje";
 
       const folderName = `${baseFolder}/Variante`;
       const uploadDir = path.join(__dirname, `../uploads/${folderName}`);
@@ -644,12 +894,14 @@ const editSubcategorie = async (req, res) => {
     // Am adăugat detalii_extra în SET
     const updateQuery = `
       UPDATE S02_Catalog_Subcategorii 
-      SET cod_specific = ?, descriere = ?, descriere_fr = ?, cost = ?, detalii_extra = ?, updated_by_user_id = ? ${photoQueryPart}
+      SET cod_specific = ?, descriere = ?, descriere_fr = ?, cost = ?, detalii_extra = ?, furnizor_id = ?, marca_id = ?, updated_by_user_id = ? ${photoQueryPart}
       WHERE id = ?
     `;
 
     await conn.execute(updateQuery, queryParams);
-    await conn.execute(`UPDATE S02_Catalog_Definitii SET updated_by_user_id = ?, updated_at = NOW() WHERE id = ?`, [user.id || null, definitie_id]);
+    if (parentDefinitieId) {
+      await conn.execute(`UPDATE S02_Catalog_Definitii SET updated_by_user_id = ?, updated_at = NOW() WHERE id = ?`, [user.id || null, parentDefinitieId]);
+    }
 
     return res.status(200).json({ message: "Varianta a fost actualizată cu succes." });
   } catch (error) {
@@ -1203,27 +1455,7 @@ const bulkSaveRetetaClaseCoduri = async (req, res) => {
       }
     }
 
-    if (pathReplacements.length > 0 && isCatalogClassScope(scope)) {
-      const tipResursa = getCatalogTipResursaFromScope(scope);
-      const [definitions] = tipResursa
-        ? await conn.execute(`SELECT id, cod_definitie FROM S02_Catalog_Definitii WHERE tip_resursa = ?`, [tipResursa])
-        : await conn.execute(`SELECT id, cod_definitie FROM S02_Catalog_Definitii`);
-
-      for (const definition of definitions) {
-        const nextCode = replaceCodeByPathMap(definition.cod_definitie, pathReplacements, 2);
-
-        if (!nextCode || nextCode === definition.cod_definitie) continue;
-
-        await conn.execute(
-          `UPDATE S02_Catalog_Definitii
-           SET cod_definitie = ?
-           WHERE id = ?`,
-          [nextCode, definition.id],
-        );
-
-        updatedCatalogDefinitions += 1;
-      }
-    }
+    updatedCatalogDefinitions = await updateCatalogDefinitionCodesForClassReplacements(conn, scope, pathReplacements);
 
     await conn.commit();
 
@@ -1295,6 +1527,87 @@ const buildCatalogCodeWithPathReplacement = (codDefinitie, oldPathCode, newPathC
   });
 
   return [...nextClassSegments, ...parsed.specificSegments].join(" ").trim();
+};
+
+const getClassPathFromDefinitionCode = (code, levelCount) => {
+  return String(code || "")
+    .trim()
+    .split(/\s+/)
+    .slice(0, levelCount)
+    .filter((segment) => segment && segment !== "00")
+    .join(".");
+};
+
+const replaceDefinitionCodeByPathReplacements = (code, replacements, levelCount) => {
+  const segments = String(code || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (segments.length < levelCount + 1) return code;
+
+  const currentPath = getClassPathFromDefinitionCode(code, levelCount);
+  if (!currentPath) return code;
+
+  const matchingReplacement = replacements
+    .filter((replacement) => currentPath === replacement.oldPath || currentPath.startsWith(`${replacement.oldPath}.`))
+    .sort((a, b) => b.oldPath.length - a.oldPath.length)[0];
+
+  if (!matchingReplacement) return code;
+
+  const oldParts = matchingReplacement.oldPath.split(".").filter(Boolean);
+  const newParts = matchingReplacement.newPath.split(".").filter(Boolean);
+  const currentParts = currentPath.split(".").filter(Boolean);
+  const nextClassParts = [...newParts, ...currentParts.slice(oldParts.length)];
+  const paddedClassParts = Array.from({ length: levelCount }, (_, index) => nextClassParts[index] || "00");
+  const finalSegments = segments.slice(levelCount);
+
+  return [...paddedClassParts, ...finalSegments].join(" ");
+};
+
+const updateCatalogDefinitionCodesForClassReplacements = async (conn, scope, pathReplacements) => {
+  const cleanReplacements = (Array.isArray(pathReplacements) ? pathReplacements : [])
+    .map((replacement) => ({
+      oldPath: normalizePathCode(replacement?.oldPath),
+      newPath: normalizePathCode(replacement?.newPath),
+    }))
+    .filter((replacement) => replacement.oldPath && replacement.newPath && replacement.oldPath !== replacement.newPath);
+
+  if (cleanReplacements.length === 0 || !isCatalogClassScope(scope)) return 0;
+
+  const tipResursa = getCatalogTipResursaFromScope(scope);
+  const [definitions] = tipResursa
+    ? await conn.execute(
+        `SELECT id, cod_definitie
+         FROM S02_Catalog_Definitii
+         WHERE tip_resursa = ?
+         FOR UPDATE`,
+        [tipResursa],
+      )
+    : await conn.execute(
+        `SELECT id, cod_definitie
+         FROM S02_Catalog_Definitii
+         FOR UPDATE`,
+      );
+
+  let updatedCatalogDefinitions = 0;
+
+  for (const definition of definitions) {
+    const nextCode = replaceDefinitionCodeByPathReplacements(definition.cod_definitie, cleanReplacements, 2);
+
+    if (!nextCode || nextCode === definition.cod_definitie) continue;
+
+    await conn.execute(
+      `UPDATE S02_Catalog_Definitii
+       SET cod_definitie = ?
+       WHERE id = ?`,
+      [nextCode, definition.id],
+    );
+
+    updatedCatalogDefinitions += 1;
+  }
+
+  return updatedCatalogDefinitions;
 };
 
 const editRetetaClasaCod = async (req, res) => {
@@ -1416,18 +1729,12 @@ const editRetetaClasaCod = async (req, res) => {
         updatedRecipes += 1;
       }
     } else if (isCatalogClassScope(scope)) {
-      const tipResursa = getCatalogTipResursaFromScope(scope);
-      const [definitions] = tipResursa
-        ? await conn.execute(`SELECT id, cod_definitie FROM S02_Catalog_Definitii WHERE tip_resursa = ?`, [tipResursa])
-        : await conn.execute(`SELECT id, cod_definitie FROM S02_Catalog_Definitii`);
-
-      for (const definition of definitions) {
-        const nextCode = buildCatalogCodeWithPathReplacement(definition.cod_definitie, previousPathCode, parsed.pathCode);
-        if (!nextCode || nextCode === definition.cod_definitie) continue;
-
-        await conn.execute(`UPDATE S02_Catalog_Definitii SET cod_definitie = ? WHERE id = ?`, [nextCode, definition.id]);
-        updatedCatalogDefinitions += 1;
-      }
+      updatedCatalogDefinitions = await updateCatalogDefinitionCodesForClassReplacements(conn, scope, [
+        {
+          oldPath: previousPathCode,
+          newPath: parsed.pathCode,
+        },
+      ]);
     }
 
     await conn.commit();
@@ -1683,6 +1990,7 @@ const getRetete = async (req, res) => {
                 cd.descriere AS descriere_resursa,
                 cd.descriere_fr AS descriere_resursa_fr,
                 cd.unitate_masura AS unitate_masura_resursa,
+                cd.greutate AS greutate_resursa,
                 cd.cost AS cost_unitar,
                 DATE_FORMAT(re.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at,
                 DATE_FORMAT(re.updated_at, '%Y-%m-%dT%H:%i:%sZ') AS updated_at,
@@ -1708,6 +2016,8 @@ const getRetete = async (req, res) => {
 
         const [subs] = await conn.query(
           `SELECT s.*,
+                  mf.denumire AS furnizor_denumire,
+                  mm.denumire AS marca_denumire,
                   DATE_FORMAT(s.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at,
                   DATE_FORMAT(s.updated_at, '%Y-%m-%dT%H:%i:%sZ') AS updated_at,
                   u1.name as created_by_name, 
@@ -1715,6 +2025,8 @@ const getRetete = async (req, res) => {
                   u2.name as updated_by_name,
                   u2.photo_url AS updated_by_photo_url
            FROM S02_Catalog_Subcategorii s
+           LEFT JOIN S02_Catalog_Meta_Furnizori mf ON mf.id = s.furnizor_id
+           LEFT JOIN S02_Catalog_Meta_Marci mm ON mm.id = s.marca_id
            LEFT JOIN S00_Utilizatori u1 ON s.created_by_user_id = u1.id
            LEFT JOIN S00_Utilizatori u2 ON s.updated_by_user_id = u2.id 
            WHERE s.definitie_id IN (${subPlaceholders})
@@ -1740,12 +2052,7 @@ const getRetete = async (req, res) => {
             ...el,
             cost_total_element: cost_element,
             // AICI atașăm subcategoriile fiecărui element
-            subcategorii: allSubcategories
-              .filter((sub) => sub.definitie_id === el.definitie_id)
-              .map((sub) => ({
-                ...sub,
-                detalii_extra: sub.detalii_extra ? (typeof sub.detalii_extra === "string" ? JSON.parse(sub.detalii_extra) : sub.detalii_extra) : null,
-              })),
+            subcategorii: allSubcategories.filter((sub) => sub.definitie_id === el.definitie_id).map((sub) => decorateSubcategorieMeta(sub)),
           };
         });
 
@@ -2004,6 +2311,8 @@ const deleteReteta = async (req, res) => {
 
 module.exports = {
   getResurse,
+  getCatalogMeta,
+  bulkSaveCatalogMeta,
   getNextCatalogDefinitionCode,
   addDefinitie,
   deleteDefinitie,

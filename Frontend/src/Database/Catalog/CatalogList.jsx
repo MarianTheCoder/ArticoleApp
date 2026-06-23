@@ -27,6 +27,7 @@ const DEFAULT_COLUMN_WIDTHS = {
   clasa2: 130,
   denumire: 620,
   descriere: 320,
+  greutate: 110,
   unitate: 110,
   cost: 130,
   creat: 180,
@@ -42,6 +43,7 @@ const MIN_COLUMN_WIDTHS = {
   clasa2: 100,
   denumire: 260,
   descriere: 220,
+  greutate: 90,
   unitate: 80,
   cost: 100,
   creat: 150,
@@ -51,6 +53,7 @@ const MIN_COLUMN_WIDTHS = {
 const SORT_FIELD_BY_COLUMN = {
   cod: "cod_definitie",
   denumire: "denumire",
+  greutate: "greutate",
   cost: "cost",
   creat: "created_at",
   actualizat: "updated_at",
@@ -109,11 +112,11 @@ const getCatalogCodeTooltipParts = (item, displayLang = "RO") => {
   return [...classParts, ...specificParts].length > 0 ? [...classParts, ...specificParts] : [{ key: "fallback", label: item?.cod_definitie || "Cod nedefinit" }];
 };
 
-const CatalogCodeValue = ({ item, displayLang, flexClass = "justify-center" }) => {
+const CatalogCodeValue = ({ item, displayLang }) => {
   const parts = getCatalogCodeTooltipParts(item, displayLang);
 
   return (
-    <div className={`flex min-w-0 items-center gap-1.5 ${flexClass}`}>
+    <div className="flex min-w-0 w-full items-center justify-between gap-1.5">
       <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-xs xxxl:text-sm font-bold text-foreground">{String(item.cod_definitie)}</span>
 
       <Popover>
@@ -489,9 +492,15 @@ const CatalogList = memo(
                     {renderPlainHeader("Descriere", textAlign)}
                   </ResizableTableHead>
                 )}
+
                 {showCol("unitate") && (
                   <ResizableTableHead colKey="unitate" style={getColumnStyle("unitate")} onResizeStart={handleColumnResizeStart} className="text-center">
                     {renderPlainHeader("Unitate")}
+                  </ResizableTableHead>
+                )}
+                {showCol("greutate") && (
+                  <ResizableTableHead colKey="greutate" style={getColumnStyle("greutate")} onResizeStart={handleColumnResizeStart} className="text-center">
+                    {renderSortHeaderContent("greutate", "Greutate (kg)")}
                   </ResizableTableHead>
                 )}
                 {showCol("cost") && (
@@ -635,6 +644,20 @@ const CatalogList = memo(
                       <Badge variant="outline" className="h-8 px-2 text-xs xxxl:text-sm shadow-none whitespace-nowrap">
                         {parent.unitate_masura}
                       </Badge>
+                    </TableCell>
+                  )}
+
+                  {showCol("greutate") && (
+                    <TableCell style={getColumnStyle("greutate")} className={tableCellCenterClass}>
+                      {parent.tip_resursa === "material" ? (
+                        <span className="font-semibold text-foreground">
+                          {parseFloat(parent.greutate || 0)
+                            .toFixed(safeDecimalPlaces)
+                            .replace(".", ",")}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground/40 italic">—</span>
+                      )}
                     </TableCell>
                   )}
 

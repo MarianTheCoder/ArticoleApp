@@ -19,6 +19,7 @@ import {
   faAlignLeft,
   faHashtag,
   faRotateLeft,
+  faFolderOpen,
 } from "@fortawesome/free-solid-svg-icons";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -48,6 +49,9 @@ const COLUMN_LABELS = {
   clasa2: "Subclasă",
   denumire: "Denumire",
   descriere: "Descriere",
+  furnizor: "Furnizor",
+  marca: "Marcă",
+  greutate: "Greutate",
   unitate: "Unitate",
   cost: "Cost",
   stocTotal: "Stoc total",
@@ -96,6 +100,9 @@ export default function CatalogFilters({
   advancedFilters,
   setAdvancedFilters,
   lockedLang = null,
+  allRowsExpanded = false,
+  onToggleAllRows,
+  toggleAllRowsLabel = "Extinde/închide rânduri",
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [claseFilterOpen, setClaseFilterOpen] = useState(false);
@@ -154,7 +161,10 @@ export default function CatalogFilters({
                 <SelectItem value="created_at">Creat la</SelectItem>
                 <SelectItem value="cod_definitie">Cod</SelectItem>
                 <SelectItem value="denumire">Denumire</SelectItem>
+                {config.id === "material" && <SelectItem value="greutate">Greutate</SelectItem>}
                 <SelectItem value="cost">Cost</SelectItem>
+                {visibleColumns?.stocInventar && <SelectItem value="stoc_inventar">Stoc inventar</SelectItem>}
+                {visibleColumns?.stocTotal && <SelectItem value="stoc_total">Stoc total</SelectItem>}
               </SelectContent>
             </Select>
             <Button variant="outline" className="h-8 xxxl:h-9 px-2.5 xxxl:px-3 shrink-0 text-sm xxxl:text-base text-foreground" onClick={toggleSortOrder}>
@@ -219,13 +229,28 @@ export default function CatalogFilters({
                   Coloane vizibile
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent className="w-52 p-1">
-                  {Object.keys(visibleColumns).map((colKey) => (
+                  {Object.keys(visibleColumns)
+                    .filter((colKey) => colKey !== "greutate" || config.id === "material")
+                    .filter((colKey) => colKey !== "furnizor" || config.hasFurnizor)
+                    .filter((colKey) => colKey !== "marca" || config.id === "material" || config.id === "utilaj")
+                    .map((colKey) => (
                     <DropdownMenuCheckboxItem key={colKey} checked={visibleColumns[colKey]} onCheckedChange={(c) => toggleCol(colKey, c)} onSelect={(e) => e.preventDefault()} className="text-sm font-semibold">
                       {COLUMN_LABELS[colKey] || colKey}
                     </DropdownMenuCheckboxItem>
                   ))}
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
+
+              {onToggleAllRows && (
+                <>
+                  <DropdownMenuSeparator />
+
+                  <DropdownMenuItem className={`${allRowsExpanded ? "bg-primary/25 text-foreground focus:bg-primary/30" : ""} gap-2 text-sm font-semibold`} onSelect={onToggleAllRows}>
+                    <FontAwesomeIcon icon={faFolderOpen} className={`text-sm ${allRowsExpanded ? "text-primary" : "text-foreground"}`} />
+                    <span>{toggleAllRowsLabel}</span>
+                  </DropdownMenuItem>
+                </>
+              )}
 
               <DropdownMenuSeparator />
 
@@ -271,6 +296,7 @@ export default function CatalogFilters({
                 cod: "",
                 denumire: "",
                 descriere: "",
+                greutate: "",
                 unitate: "all",
                 cost: "",
                 variante: "0",
@@ -346,6 +372,13 @@ export default function CatalogFilters({
               </SelectContent>
             </Select>
           </div>
+
+          {config.id === "material" && (
+            <div className="flex flex-col w-[8rem] xxxl:w-[9rem] gap-1">
+              <span className="text-[11px] xxxl:text-xs font-semibold uppercase text-foreground">Greutate</span>
+              <Input value={advancedFilters.greutate || ""} onChange={(e) => updateFilter("greutate", e.target.value)} className="bg-background h-8 xxxl:h-9 text-sm xxxl:text-base" />
+            </div>
+          )}
 
           <div className="flex flex-col w-[9rem] xxxl:w-[10rem] gap-1">
             <span className="text-[11px] xxxl:text-xs font-semibold uppercase text-foreground">Cost</span>

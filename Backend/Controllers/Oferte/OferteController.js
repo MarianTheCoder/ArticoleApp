@@ -1384,6 +1384,7 @@ const duplicateOfertaLucrare = async (req, res) => {
           od.descriere_fr AS od_descriere_fr,
           od.photo_url AS od_photo_url,
           od.unitate_masura AS od_unitate_masura,
+          od.greutate AS od_greutate,
           od.cost AS od_cost,
 
           os.id AS os_id,
@@ -1429,11 +1430,12 @@ const duplicateOfertaLucrare = async (req, res) => {
             descriere_fr,
             photo_url,
             unitate_masura,
+            greutate,
             cost,
 
             created_by_user_id
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `,
           [
             newOfertaRetetaId,
@@ -1450,6 +1452,7 @@ const duplicateOfertaLucrare = async (req, res) => {
             el.od_descriere_fr || null,
             copiedDefinitionPhotoUrl,
             el.od_unitate_masura,
+            Number(el.od_greutate || 0),
             Number(el.od_cost || 0),
 
             createdBy,

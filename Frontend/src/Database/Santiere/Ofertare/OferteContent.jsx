@@ -104,10 +104,14 @@ const DEFAULT_RETETE_COLUMNS = {
   clasa5: false,
   denumire: true,
   descriere: false,
+  furnizor: false,
+  marca: false,
   unitate: true,
   cantitate: true,
-  cost: true,
   qtyTotal: true,
+  greutateUnitara: false,
+  greutateTotala: false,
+  cost: true,
   costTotal: true,
   coefProcent: true,
   coefPret: false,
@@ -960,6 +964,14 @@ export default function OferteContent({
                         Descriere
                       </DropdownMenuCheckboxItem>
 
+                      <DropdownMenuCheckboxItem className={COMPACT.menuItem} checked={showTableCol("furnizor")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("furnizor")}>
+                        Furnizor
+                      </DropdownMenuCheckboxItem>
+
+                      <DropdownMenuCheckboxItem className={COMPACT.menuItem} checked={showTableCol("marca")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("marca")}>
+                        Marcă
+                      </DropdownMenuCheckboxItem>
+
                       <DropdownMenuCheckboxItem className={COMPACT.menuItem} checked={showTableCol("unitate")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("unitate")}>
                         Unitate
                       </DropdownMenuCheckboxItem>
@@ -975,6 +987,24 @@ export default function OferteContent({
 
                       <DropdownMenuCheckboxItem className={COMPACT.menuItem} checked={showTableCol("qtyTotal")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("qtyTotal")}>
                         Cantitate totala
+                      </DropdownMenuCheckboxItem>
+
+                      <DropdownMenuCheckboxItem
+                        className={COMPACT.menuItem}
+                        checked={showTableCol("greutateUnitara")}
+                        onSelect={(e) => e.preventDefault()}
+                        onCheckedChange={() => toggleTableCol("greutateUnitara")}
+                      >
+                        Greutate unitară
+                      </DropdownMenuCheckboxItem>
+
+                      <DropdownMenuCheckboxItem
+                        className={COMPACT.menuItem}
+                        checked={showTableCol("greutateTotala")}
+                        onSelect={(e) => e.preventDefault()}
+                        onCheckedChange={() => toggleTableCol("greutateTotala")}
+                      >
+                        Greutate totală
                       </DropdownMenuCheckboxItem>
 
                       <DropdownMenuCheckboxItem className={COMPACT.menuItem} checked={showTableCol("cost")} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleTableCol("cost")}>

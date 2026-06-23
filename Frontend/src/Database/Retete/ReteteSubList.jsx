@@ -26,14 +26,19 @@ import { resurseConfig } from "../Catalog/resurseConfig"; // ajustează path-ul 
 import CatalogDefDialog from "../Catalog/CatalogDefDialog";
 
 const VISIBLE_COLUMNS_STORAGE_KEY = "retete_sub_visible_columns";
+const VISIBLE_COLUMNS_MIGRATION_KEY = "retete_sub_visible_columns_descriere_hidden_v1";
 
 const DEFAULT_VISIBLE_COLUMNS = {
   poza: true,
   variante: true,
   cod: true,
   denumire: true,
-  descriere: true,
+  descriere: false,
+  furnizor: false,
+  marca: false,
   unitate: true,
+  greutate: true,
+  greutateTotal: true,
   costUnitar: true,
   cantitate: true,
   costTotal: true,
@@ -45,9 +50,15 @@ const readVisibleColumns = () => {
   try {
     const saved = JSON.parse(localStorage.getItem(VISIBLE_COLUMNS_STORAGE_KEY) || "null");
     if (saved && typeof saved === "object") {
+      const hasGreutateTotal = Object.prototype.hasOwnProperty.call(saved, "greutateTotal");
+      const shouldHideDescriereDefault = localStorage.getItem(VISIBLE_COLUMNS_MIGRATION_KEY) !== "1";
+      localStorage.setItem(VISIBLE_COLUMNS_MIGRATION_KEY, "1");
+
       return {
         ...DEFAULT_VISIBLE_COLUMNS,
         ...saved,
+        ...(!hasGreutateTotal ? { greutate: true, greutateTotal: true } : {}),
+        ...(shouldHideDescriereDefault ? { descriere: false } : {}),
       };
     }
   } catch {}
@@ -76,6 +87,7 @@ const buildCatalogParentFromRetetaElement = (el) => ({
   descriere_fr: el.descriere_resursa_fr,
 
   unitate_masura: el.unitate_masura_resursa,
+  greutate: el.greutate_resursa,
   cost: el.cost_unitar,
 
   photo_url: el.resursa_photo_url,
@@ -92,6 +104,34 @@ const buildCatalogParentFromRetetaElement = (el) => ({
 
 const getVisibleColumnCount = (visibleColumns) => {
   return Math.max(1, Object.values(visibleColumns).filter(Boolean).length);
+};
+
+const parseMaybeJsonObject = (value) => {
+  if (!value) return null;
+  if (typeof value === "object" && !Array.isArray(value)) return value;
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+};
+
+const getElementVariantExtra = (el) => parseMaybeJsonObject(el?.detalii_extra) || parseMaybeJsonObject(el?.subcategorie_detalii_extra) || parseMaybeJsonObject(el?.sub_detalii_extra);
+
+const formatGreutate = (value) => {
+  const numberValue = Number(String(value ?? "").replace(",", "."));
+  return Number.isFinite(numberValue) ? `${numberValue.toFixed(2).replace(".", ",")} kg` : "";
+};
+
+const toNumber = (value) => {
+  const numberValue = Number(String(value ?? 0).replace(",", "."));
+  return Number.isFinite(numberValue) ? numberValue : 0;
 };
 
 const ResourceMiniHeaderRow = memo(({ config, elements, onAdd, colSpan }) => {
@@ -138,6 +178,13 @@ const ResourceRows = memo(({ elements, config, onEdit, onEditDef, onDelete, onOp
     const afisareDescriere = displayLang === "FR" ? el.descriere_resursa_fr || "" : el.descriere_resursa;
     const varianteCount = el.subcategorii?.length || 0;
     const resourceLang = el.limba_resursa;
+    const variantExtra = el.tip_resursa === "material" || el.tip_resursa === "utilaj" ? getElementVariantExtra(el) : null;
+    const furnizor = variantExtra?.furnizor || "";
+    const marca = variantExtra?.marca || "";
+    const greutateValue = el.tip_resursa === "material" ? toNumber(el.greutate_resursa ?? el.greutate) : null;
+    const cantitateValue = toNumber(el.cantitate);
+    const greutate = greutateValue !== null ? formatGreutate(greutateValue) : "";
+    const greutateTotala = greutateValue !== null ? formatGreutate(greutateValue * cantitateValue) : "";
 
     return (
       <ContextMenu key={el.id}>
@@ -185,14 +232,14 @@ const ResourceRows = memo(({ elements, config, onEdit, onEditDef, onDelete, onOp
 
             {/* DENUMIRE */}
             {showCol("denumire") && (
-              <TableCell className="px-3 xxxl:px-4 min-w-[14rem] xxxl:min-w-[16rem] w-[14rem] xxxl:w-[16rem] max-w-[14rem] xxxl:max-w-[16rem]">
+              <TableCell className="px-3 xxxl:px-4 py-2.5 xxxl:py-3 min-w-[30rem] xxxl:min-w-[40rem] w-[30rem] xxxl:w-[40rem] max-w-[30rem] xxxl:max-w-[40rem]">
                 <OverflowTooltip align="left" text={afisareDenumire} className="text-sm xxxl:text-base text-foreground whitespace-pre-wrap leading-normal" maxLines={2} />
               </TableCell>
             )}
 
             {/* DESCRIERE */}
             {showCol("descriere") && (
-              <TableCell className="px-3 xxxl:px-4 min-w-[18rem] xxxl:min-w-[20rem]">
+              <TableCell className="px-3 xxxl:px-4 min-w-[16rem] xxxl:min-w-[28rem]">
                 {afisareDescriere ? (
                   <OverflowTooltip align="left" text={afisareDescriere} className="text-sm xxxl:text-base text-foreground whitespace-pre-wrap leading-normal" maxLines={2} />
                 ) : (
@@ -201,18 +248,67 @@ const ResourceRows = memo(({ elements, config, onEdit, onEditDef, onDelete, onOp
               </TableCell>
             )}
 
+            {showCol("furnizor") && (
+              <TableCell className="text-center px-3 xxxl:px-4 min-w-[10rem] xxxl:min-w-[12rem] w-[10rem] xxxl:w-[12rem] max-w-[10rem] xxxl:max-w-[12rem]">
+                {furnizor ? (
+                  <OverflowTooltip align="center" text={furnizor} className="text-sm xxxl:text-base text-foreground truncate" maxLines={1} />
+                ) : (
+                  <span className="text-sm xxxl:text-base text-muted-foreground/40 italic">—</span>
+                )}
+              </TableCell>
+            )}
+
+            {showCol("marca") && (
+              <TableCell className="text-center px-3 xxxl:px-4 min-w-[10rem] xxxl:min-w-[12rem] w-[10rem] xxxl:w-[12rem] max-w-[10rem] xxxl:max-w-[12rem]">
+                {marca ? (
+                  <OverflowTooltip align="center" text={marca} className="text-sm xxxl:text-base text-foreground truncate" maxLines={1} />
+                ) : (
+                  <span className="text-sm xxxl:text-base text-muted-foreground/40 italic">—</span>
+                )}
+              </TableCell>
+            )}
+
             {/* UNITATE */}
             {showCol("unitate") && (
-              <TableCell className="text-center px-3 xxxl:px-4 whitespace-nowrap">
+              <TableCell className="text-center px-1.5 xxxl:px-2 w-[5rem] xxxl:w-[5.5rem] max-w-[5rem] xxxl:max-w-[5.5rem] whitespace-nowrap">
                 <Badge variant="outline" className="text-sm xxxl:text-base px-2 w-9 xxxl:w-10 justify-center py-1.5 xxxl:py-2 shadow-none whitespace-nowrap">
                   {el.unitate_masura_resursa}
                 </Badge>
               </TableCell>
             )}
 
+            {/* CANTITATE */}
+            {showCol("cantitate") && (
+              <TableCell className="text-center px-1.5 xxxl:px-2 w-[6rem] xxxl:w-[6.5rem] max-w-[6rem] xxxl:max-w-[6.5rem] whitespace-nowrap text-sm xxxl:text-base font-bold text-foreground">
+                {parseFloat(el.cantitate || 0)
+                  .toFixed(2)
+                  .replace(".", ",")}
+              </TableCell>
+            )}
+
+            {showCol("greutate") && (
+              <TableCell className="text-center px-1.5 xxxl:px-2 min-w-[7.5rem] xxxl:min-w-[8rem] w-[7.5rem] xxxl:w-[8rem] max-w-[7.5rem] xxxl:max-w-[8rem]">
+                {greutate ? (
+                  <span className="text-sm xxxl:text-base font-normal text-foreground whitespace-nowrap">{greutate}</span>
+                ) : (
+                  <span className="text-sm xxxl:text-base text-muted-foreground/40 italic">—</span>
+                )}
+              </TableCell>
+            )}
+
+            {showCol("greutateTotal") && (
+              <TableCell className="text-center px-1.5 xxxl:px-2 min-w-[8rem] xxxl:min-w-[8.5rem] w-[8rem] xxxl:w-[8.5rem] max-w-[8rem] xxxl:max-w-[8.5rem]">
+                {greutateTotala ? (
+                  <span className="text-sm xxxl:text-base font-normal text-foreground whitespace-nowrap">{greutateTotala}</span>
+                ) : (
+                  <span className="text-sm xxxl:text-base text-muted-foreground/40 italic">—</span>
+                )}
+              </TableCell>
+            )}
+
             {/* COST UNITAR */}
             {showCol("costUnitar") && (
-              <TableCell className="text-center px-3 xxxl:px-4 whitespace-nowrap">
+              <TableCell className="text-center px-1.5 xxxl:px-2 w-[6.5rem] xxxl:w-[7rem] max-w-[6.5rem] xxxl:max-w-[7rem] whitespace-nowrap">
                 <span className="text-sm xxxl:text-base text-muted-foreground">
                   {parseFloat(el.cost_unitar || 0)
                     .toFixed(2)
@@ -221,18 +317,9 @@ const ResourceRows = memo(({ elements, config, onEdit, onEditDef, onDelete, onOp
               </TableCell>
             )}
 
-            {/* CANTITATE */}
-            {showCol("cantitate") && (
-              <TableCell className="text-center px-3 xxxl:px-4 whitespace-nowrap text-sm xxxl:text-base font-bold text-foreground">
-                {parseFloat(el.cantitate || 0)
-                  .toFixed(2)
-                  .replace(".", ",")}
-              </TableCell>
-            )}
-
             {/* COST TOTAL */}
             {showCol("costTotal") && (
-              <TableCell className="text-center px-3 xxxl:px-4 whitespace-nowrap">
+              <TableCell className="text-center px-1.5 xxxl:px-2 w-[7rem] xxxl:w-[8rem] max-w-[7rem] xxxl:max-w-[8rem] whitespace-nowrap">
                 <span className={`font-bold text-sm xxxl:text-base ${config.colorClass}`}>
                   {parseFloat(el.cost_total_element || 0)
                     .toFixed(2)
@@ -328,12 +415,16 @@ const ResourcesTable = memo(({ sections, visibleColumns, displayLang, onEdit, on
             {showCol("poza") && <TableHead className="text-center px-3 xxxl:px-4 w-[5.5rem] xxxl:w-[6rem] max-w-[5.5rem] xxxl:max-w-[6rem]">Poză</TableHead>}
             {showCol("variante") && <TableHead className="text-center px-3 xxxl:px-4 w-[5.5rem] xxxl:w-[6rem] max-w-[5.5rem] xxxl:max-w-[6rem]">Variante</TableHead>}
             {showCol("cod") && <TableHead className="text-center px-3 xxxl:px-4 w-[10rem] xxxl:w-[12rem] max-w-[10rem] xxxl:max-w-[12rem]">Cod</TableHead>}
-            {showCol("denumire") && <TableHead className="px-3 xxxl:px-4 min-w-[14rem] xxxl:min-w-[16rem] w-[14rem] xxxl:w-[16rem] max-w-[14rem] xxxl:max-w-[16rem]">Denumire</TableHead>}
-            {showCol("descriere") && <TableHead className="px-3 xxxl:px-4 min-w-[18rem] xxxl:min-w-[20rem]">Descriere</TableHead>}
-            {showCol("unitate") && <TableHead className="text-center px-3 xxxl:px-4 w-[7rem] xxxl:w-[8rem] max-w-[7rem] xxxl:max-w-[8rem]">Unitate</TableHead>}
-            {showCol("costUnitar") && <TableHead className="text-center px-3 xxxl:px-4 w-[9rem] xxxl:w-[10rem] max-w-[9rem] xxxl:max-w-[10rem]">Cost Unitar</TableHead>}
-            {showCol("cantitate") && <TableHead className="text-center px-3 xxxl:px-4 w-[9rem] xxxl:w-[10rem] max-w-[9rem] xxxl:max-w-[10rem]">Cantitate</TableHead>}
-            {showCol("costTotal") && <TableHead className="text-center px-3 xxxl:px-4 w-[10rem] xxxl:w-[12rem] max-w-[10rem] xxxl:max-w-[12rem]">Cost Total</TableHead>}
+            {showCol("denumire") && <TableHead className="px-3 xxxl:px-4 min-w-[30rem] xxxl:min-w-[40rem] w-[30rem] xxxl:w-[40rem] max-w-[30rem] xxxl:max-w-[40rem]">Denumire</TableHead>}
+            {showCol("descriere") && <TableHead className="px-3 xxxl:px-4 min-w-[16rem] xxxl:min-w-[18rem]">Descriere</TableHead>}
+            {showCol("furnizor") && <TableHead className="text-center px-3 xxxl:px-4 w-[10rem] xxxl:w-[12rem] max-w-[10rem] xxxl:max-w-[12rem]">Furnizor</TableHead>}
+            {showCol("marca") && <TableHead className="text-center px-3 xxxl:px-4 w-[10rem] xxxl:w-[12rem] max-w-[10rem] xxxl:max-w-[12rem]">Marcă</TableHead>}
+            {showCol("unitate") && <TableHead className="text-center px-1.5 xxxl:px-2 w-[5rem] xxxl:w-[5.5rem] max-w-[5rem] xxxl:max-w-[5.5rem]">Unitate</TableHead>}
+            {showCol("cantitate") && <TableHead className="text-center px-1.5 xxxl:px-2 w-[6rem] xxxl:w-[6.5rem] max-w-[6rem] xxxl:max-w-[6.5rem]">Cantitate</TableHead>}
+            {showCol("greutate") && <TableHead className="text-center px-1.5 xxxl:px-2 w-[8rem] xxxl:w-[9rem] max-w-[8rem] xxxl:max-w-[9rem]">Greutate unitara (kg)</TableHead>}
+            {showCol("greutateTotal") && <TableHead className="text-center px-1.5 xxxl:px-2 w-[8rem] xxxl:w-[8.5rem] max-w-[8rem] xxxl:max-w-[8.5rem]">Greutate totală (kg)</TableHead>}
+            {showCol("costUnitar") && <TableHead className="text-center px-1.5 xxxl:px-2 w-[6.5rem] xxxl:w-[7rem] max-w-[6.5rem] xxxl:max-w-[7rem]">Cost</TableHead>}
+            {showCol("costTotal") && <TableHead className="text-center px-1.5 xxxl:px-2 w-[7rem] xxxl:w-[8rem] max-w-[7rem] xxxl:max-w-[8rem]">Cost Total</TableHead>}
             {showCol("creat") && <TableHead className="text-left px-3 xxxl:px-4 w-[12.5rem] xxxl:w-[14rem] max-w-[12.5rem] xxxl:max-w-[14rem]">Creat</TableHead>}
             {showCol("actualizat") && <TableHead className="text-left px-3 xxxl:px-4 w-[12.5rem] xxxl:w-[14rem] max-w-[12.5rem] xxxl:max-w-[14rem]">Actualizat</TableHead>}
           </TableRow>
@@ -629,16 +720,31 @@ export default function ReteteSubList({ open, setOpen, parentItem }) {
                       Descriere
                     </DropdownMenuCheckboxItem>
 
+                    <DropdownMenuCheckboxItem checked={visibleColumns.furnizor} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleCol("furnizor")}>
+                      Furnizor
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuCheckboxItem checked={visibleColumns.marca} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleCol("marca")}>
+                      Marcă
+                    </DropdownMenuCheckboxItem>
+
                     <DropdownMenuCheckboxItem checked={visibleColumns.unitate} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleCol("unitate")}>
                       Unitate
                     </DropdownMenuCheckboxItem>
 
-                    <DropdownMenuCheckboxItem checked={visibleColumns.costUnitar} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleCol("costUnitar")}>
-                      Cost Unitar
+                    <DropdownMenuCheckboxItem checked={visibleColumns.greutate} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleCol("greutate")}>
+                      Greutate
+                    </DropdownMenuCheckboxItem>
+
+                    <DropdownMenuCheckboxItem checked={visibleColumns.greutateTotal} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleCol("greutateTotal")}>
+                      Greutate totală
                     </DropdownMenuCheckboxItem>
 
                     <DropdownMenuCheckboxItem checked={visibleColumns.cantitate} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleCol("cantitate")}>
                       Cantitate
+                    </DropdownMenuCheckboxItem>
+
+                    <DropdownMenuCheckboxItem checked={visibleColumns.costUnitar} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleCol("costUnitar")}>
+                      Cost
                     </DropdownMenuCheckboxItem>
 
                     <DropdownMenuCheckboxItem checked={visibleColumns.costTotal} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleCol("costTotal")}>

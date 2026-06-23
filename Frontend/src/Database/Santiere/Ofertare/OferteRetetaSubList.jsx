@@ -75,6 +75,53 @@ const getVariantCost = (el) => {
   return Number(el?.cost_subcategorie ?? el?.cost_subcategorie_snapshot ?? el?.subcategorie_oferta?.cost ?? el?.sub_cost ?? 0);
 };
 
+const parseMaybeJsonObject = (value) => {
+  if (!value) return null;
+  if (typeof value === "object" && !Array.isArray(value)) return value;
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+};
+
+const getVariantExtra = (el) => {
+  const selectedVariant = getSelectedVariant(el);
+
+  return (
+    parseMaybeJsonObject(el?.detalii_extra) ||
+    parseMaybeJsonObject(el?.subcategorie_oferta?.detalii_extra) ||
+    parseMaybeJsonObject(selectedVariant?.detalii_extra) ||
+    parseMaybeJsonObject(el?.sub_detalii_extra)
+  );
+};
+
+const getVariantMetaLabel = (el, key) => {
+  if (!hasVariantSelected(el)) return "";
+  if (!["material", "utilaj"].includes(String(el?.tip_resursa || "").trim().toLowerCase())) return "";
+
+  const selectedVariant = getSelectedVariant(el);
+  const field = key === "furnizor" ? "furnizor_denumire" : "marca_denumire";
+
+  return String(el?.[field] || el?.subcategorie_oferta?.[field] || selectedVariant?.[field] || "").trim();
+};
+
+const formatGreutate = (value) => {
+  const numberValue = Number(String(value ?? "").replace(",", "."));
+  return Number.isFinite(numberValue) ? `${numberValue.toFixed(2).replace(".", ",")} kg` : "";
+};
+
+const getGreutateNumber = (value) => {
+  const numberValue = Number(String(value ?? "").replace(",", "."));
+  return Number.isFinite(numberValue) ? numberValue : 0;
+};
+
 const getDisplayedCode = (el) => {
   return hasVariantSelected(el) ? getVariantCode(el) : getDefinitionCode(el);
 };
@@ -307,7 +354,7 @@ const IssueTooltipGroup = memo(function IssueTooltipGroup({ group }) {
 
       <div className="flex flex-col gap-1">
         {group.items.map((item, index) => (
-          <div key={`${group.title}-${index}`} className="flex items-start gap-2 text-popover-foreground"> 
+          <div key={`${group.title}-${index}`} className="flex items-start gap-2 text-popover-foreground">
             <span className="text-muted-foreground">-</span>
             <span className="leading-snug">{item}</span>
           </div>
@@ -319,7 +366,7 @@ const IssueTooltipGroup = memo(function IssueTooltipGroup({ group }) {
 
 const ElementIssueIcon = memo(function ElementIssueIcon({ priceChanged, quantityChanged, otherChanged, syncStatus }) {
   if (!priceChanged && !quantityChanged && !otherChanged) {
-    return <span className="text-sm text-muted-foreground/30 italic"></span>;
+    return <span className="text-sm text-muted-foreground italic"></span>;
   }
 
   const groups = getIssueGroups({ priceChanged, quantityChanged, otherChanged, syncStatus });
@@ -389,6 +436,10 @@ const OferteRetetaSubList = memo(function OferteRetetaSubList({
   const afisareDenumire = getDefinitionName(element, displayLang);
   const photoUrl = getElementPhoto(element);
   const photoRingClass = getPhotoRingClass(element);
+  const variantFurnizor = getVariantMetaLabel(element, "furnizor");
+  const variantMarca = getVariantMetaLabel(element, "marca");
+  const materialGreutateValue =
+    element?.tip_resursa === "material" ? getGreutateNumber(element?.greutate ?? element?.definitie_oferta?.greutate ?? element?.greutate_actual ?? element?.definitie_live?.greutate) : 0;
 
   const unitCost = getUnitCost(element);
   const totalElement = getElementTotal(element);
@@ -410,6 +461,8 @@ const OferteRetetaSubList = memo(function OferteRetetaSubList({
   const cantitateLucrare = Number(parentItem?.cantitate_lucrare || 0);
   const totalCantitateElement = Number(element?.cantitate_in_reteta || 0) * cantitateLucrare;
   const totalElementInLucrare = totalElement * cantitateLucrare;
+  const materialGreutateUnitara = materialGreutateValue ? formatGreutate(materialGreutateValue) : "";
+  const materialGreutateTotala = materialGreutateValue ? formatGreutate(materialGreutateValue * totalCantitateElement) : "";
   const coeficientPriceValue = totalElementInLucrare + coeficientAddedValue;
   const coeficientExcluded = !!coeficientImpact?.excluded;
   const coeficientInactive = !!coeficientImpact?.inactive && Math.abs(coeficientAddedValue) < 0.000001;
@@ -443,11 +496,11 @@ const OferteRetetaSubList = memo(function OferteRetetaSubList({
               src={`${photoAPI}/${photoUrl}`}
               alt={afisareCod || afisareDenumire || "Poză"}
               ringColor={photoRingClass}
-              fallback={<span className="text-xs xxxl:text-sm text-muted-foreground/60">-</span>}
+              fallback={<span className="text-xs xxxl:text-sm text-muted-foreground">-</span>}
               containerClassName="h-7 w-7 rounded border border-border bg-background flex items-center justify-center overflow-hidden shrink-0 mx-auto"
             />
           ) : (
-            <span className="text-xs xxxl:text-sm text-muted-foreground/60">-</span>
+            <span className="text-xs xxxl:text-sm text-muted-foreground">-</span>
           )}
         </TableCell>
       )}
@@ -485,7 +538,7 @@ const OferteRetetaSubList = memo(function OferteRetetaSubList({
                 textSize="sm"
               />
             ) : (
-              <span className="text-xs xxxl:text-sm text-muted-foreground/40 italic">{EMPTY}</span>
+              <span className="text-xs xxxl:text-sm text-muted-foreground italic">{EMPTY}</span>
             )}
           </TableCell>
         );
@@ -495,7 +548,7 @@ const OferteRetetaSubList = memo(function OferteRetetaSubList({
           {afisareDenumire ? (
             <OverflowTooltip align={tooltipAlign} text={afisareDenumire} className={`font-medium whitespace-nowrap text-foreground leading-none ${textAlignClass}`} maxLines={1} textSize="sm" />
           ) : (
-            <span className="text-xs xxxl:text-sm text-muted-foreground/40 italic">{EMPTY}</span>
+            <span className="text-xs xxxl:text-sm text-muted-foreground italic">{EMPTY}</span>
           )}
         </TableCell>
       )}
@@ -505,7 +558,27 @@ const OferteRetetaSubList = memo(function OferteRetetaSubList({
           {afisareDescriere ? (
             <OverflowTooltip align={tooltipAlign} text={afisareDescriere} className={`font-normal whitespace-nowrap text-foreground leading-none ${textAlignClass}`} maxLines={1} textSize="sm" />
           ) : (
-            <span className="text-xs xxxl:text-sm text-muted-foreground/40 italic">{EMPTY}</span>
+            <span className="text-xs xxxl:text-sm text-muted-foreground italic">{EMPTY}</span>
+          )}
+        </TableCell>
+      )}
+
+      {showCol("furnizor") && (
+        <TableCell style={getColumnStyle("furnizor")} className={`${childCellClass} ${textAlignClass}`}>
+          {variantFurnizor ? (
+            <OverflowTooltip align={tooltipAlign} text={variantFurnizor} className={`font-normal whitespace-nowrap text-foreground leading-none ${textAlignClass}`} maxLines={1} textSize="sm" />
+          ) : (
+            <span className="text-xs xxxl:text-sm text-muted-foreground italic">{EMPTY}</span>
+          )}
+        </TableCell>
+      )}
+
+      {showCol("marca") && (
+        <TableCell style={getColumnStyle("marca")} className={`${childCellClass} ${textAlignClass}`}>
+          {variantMarca ? (
+            <OverflowTooltip align={tooltipAlign} text={variantMarca} className={`font-normal whitespace-nowrap text-foreground leading-none ${textAlignClass}`} maxLines={1} textSize="sm" />
+          ) : (
+            <span className="text-xs xxxl:text-sm text-muted-foreground italic">{EMPTY}</span>
           )}
         </TableCell>
       )}
@@ -518,13 +591,37 @@ const OferteRetetaSubList = memo(function OferteRetetaSubList({
 
       {showCol("cantitate") && (
         <TableCell style={getColumnStyle("cantitate")} className={`${childCellClass} text-center`}>
-          <span className={`text-xs xxxl:text-sm whitespace-nowrap ${quantityChanged ? "text-high font-black" : "text-foreground font-semibold"}`}>{formatNumber(element.cantitate_in_reteta, decimalPlaces)}</span>
+          <span className={`text-xs xxxl:text-sm whitespace-nowrap ${quantityChanged ? "text-high font-black" : "text-foreground font-semibold"}`}>
+            {formatNumber(element.cantitate_in_reteta, decimalPlaces)}
+          </span>
         </TableCell>
       )}
 
       {showCol("qtyTotal") && (
         <TableCell style={getColumnStyle("qtyTotal")} className={`${childCellClass} text-center`}>
-          <span className={`text-xs xxxl:text-sm whitespace-nowrap ${quantityChanged ? "text-high font-black" : "text-foreground font-semibold"}`}>{formatNumber(totalCantitateElement, decimalPlaces)}</span>
+          <span className={`text-xs xxxl:text-sm whitespace-nowrap ${quantityChanged ? "text-high font-black" : "text-foreground font-semibold"}`}>
+            {formatNumber(totalCantitateElement, decimalPlaces)}
+          </span>
+        </TableCell>
+      )}
+
+      {showCol("greutateUnitara") && (
+        <TableCell style={getColumnStyle("greutateUnitara")} className={`${childCellClass} text-center`}>
+          {materialGreutateUnitara ? (
+            <span className="text-xs xxxl:text-sm font-semibold text-foreground whitespace-nowrap">{materialGreutateUnitara}</span>
+          ) : (
+            <span className="text-xs xxxl:text-sm text-muted-foreground italic">{EMPTY}</span>
+          )}
+        </TableCell>
+      )}
+
+      {showCol("greutateTotala") && (
+        <TableCell style={getColumnStyle("greutateTotala")} className={`${childCellClass} text-center`}>
+          {materialGreutateTotala ? (
+            <span className="text-xs xxxl:text-sm font-semibold text-foreground whitespace-nowrap">{materialGreutateTotala}</span>
+          ) : (
+            <span className="text-xs xxxl:text-sm text-muted-foreground italic">{EMPTY}</span>
+          )}
         </TableCell>
       )}
 
@@ -545,7 +642,9 @@ const OferteRetetaSubList = memo(function OferteRetetaSubList({
           {coeficientExcluded ? (
             <span className="text-xs xxxl:text-sm font-black text-red-600 whitespace-nowrap">Exclude</span>
           ) : (
-            <span className={`text-xs xxxl:text-sm font-black whitespace-nowrap ${coeficientInactive ? "text-red-600 dark:text-red-400" : getCoefTextClass(coeficientPercent, "text-teal-700 dark:text-teal-300")}`}>
+            <span
+              className={`text-xs xxxl:text-sm font-black whitespace-nowrap ${coeficientInactive ? "text-red-600 dark:text-red-400" : getCoefTextClass(coeficientPercent, "text-teal-700 dark:text-teal-300")}`}
+            >
               {formatNumber(coeficientPercent, 2)}%
             </span>
           )}
@@ -554,7 +653,9 @@ const OferteRetetaSubList = memo(function OferteRetetaSubList({
 
       {showCol("coefPret") && (
         <TableCell style={getColumnStyle("coefPret")} className={`${childCellClass} text-right`}>
-          <span className={`text-xs xxxl:text-sm font-black whitespace-nowrap ${coeficientExcluded || coeficientInactive ? "text-red-600 dark:text-red-400" : getCoefTextClass(coeficientAddedValue, "text-primary")}`}>
+          <span
+            className={`text-xs xxxl:text-sm font-black whitespace-nowrap ${coeficientExcluded || coeficientInactive ? "text-red-600 dark:text-red-400" : getCoefTextClass(coeficientAddedValue, "text-primary")}`}
+          >
             {formatNumber(coeficientAddedValue, decimalPlaces)}
           </span>
         </TableCell>
@@ -562,21 +663,19 @@ const OferteRetetaSubList = memo(function OferteRetetaSubList({
 
       {showCol("pret") && (
         <TableCell style={getColumnStyle("pret")} className={`${childCellClass} text-right`}>
-          <span className={`text-xs xxxl:text-sm font-black whitespace-nowrap ${coeficientExcluded ? "text-red-600" : priceTextColorClass}`}>
-            {formatNumber(coeficientPriceValue, decimalPlaces)}
-          </span>
+          <span className={`text-xs xxxl:text-sm font-black whitespace-nowrap ${coeficientExcluded ? "text-red-600" : priceTextColorClass}`}>{formatNumber(coeficientPriceValue, decimalPlaces)}</span>
         </TableCell>
       )}
 
       {showCol("creat") && (
         <TableCell style={getColumnStyle("creat")} className={childCellClass}>
-          <span className="text-sm text-muted-foreground/30 italic">{EMPTY}</span>
+          <span className="text-sm text-muted-foreground italic">{EMPTY}</span>
         </TableCell>
       )}
 
       {showCol("actualizat") && (
         <TableCell style={getColumnStyle("actualizat")} className={childCellClass}>
-          <span className="text-sm text-muted-foreground/30 italic">{EMPTY}</span>
+          <span className="text-sm text-muted-foreground italic">{EMPTY}</span>
         </TableCell>
       )}
 

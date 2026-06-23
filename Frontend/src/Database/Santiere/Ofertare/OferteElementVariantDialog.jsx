@@ -96,6 +96,8 @@ const getVariantExtra = (sub) => {
   return parseMaybeJson(sub?.detalii_extra, {}) || {};
 };
 
+const isMetaResource = (config) => ["material", "utilaj"].includes(String(config?.id || "").trim().toLowerCase());
+
 const getDefaultQuantity = (el) => {
   const value = el?.cantitate_in_reteta_default ?? el?.cantitate_default ?? el?.reteta_element_cantitate ?? el?.cantitate_originala ?? el?.cantitate_in_reteta ?? 0;
 
@@ -122,7 +124,8 @@ const OptionRow = memo(function OptionRow({ row, config, displayLang, visibleCol
   const cost = isDefinitie ? getDefinitionCost(raw) : Number(raw?.cost || 0);
 
   const extra = isDefinitie ? {} : getVariantExtra(raw);
-  const furnizor = extra?.furnizor || "";
+  const furnizor = !isDefinitie ? String(raw?.furnizor_denumire || "").trim() : "";
+  const marca = !isDefinitie ? String(raw?.marca_denumire || "").trim() : "";
   const statusUtilaj = extra?.status_utilaj || "";
 
   return (
@@ -171,6 +174,12 @@ const OptionRow = memo(function OptionRow({ row, config, displayLang, visibleCol
         </TableCell>
       )}
 
+      {isMetaResource(config) && showCol("marca") && (
+        <TableCell className="text-center px-4 py-2 w-[12rem] max-w-[12rem]">
+          {marca ? <OverflowTooltip align="center" text={marca} className="text-base text-foreground truncate" maxLines={1} /> : <span className="text-base text-muted-foreground/40 italic">{EMPTY}</span>}
+        </TableCell>
+      )}
+
       {config?.hasStatus && showCol("status") && (
         <TableCell className="text-center px-4 py-2 w-[12rem] max-w-[12rem]">
           {statusUtilaj ? <span className="text-base text-foreground font-medium">{statusUtilaj}</span> : <span className="text-base text-muted-foreground/40 italic">{EMPTY}</span>}
@@ -214,6 +223,7 @@ export default function OferteElementVariantDialog({ open, setOpen, config, elem
     furnizor: true,
     descriere: true,
     status: true,
+    marca: false,
     cost: true,
     cantitate: true,
   });
@@ -265,6 +275,7 @@ export default function OferteElementVariantDialog({ open, setOpen, config, elem
       cod: true,
       furnizor: !!config?.hasFurnizor,
       descriere: true,
+      marca: false,
       status: !!config?.hasStatus,
       cost: true,
       cantitate: true,
@@ -423,6 +434,12 @@ export default function OferteElementVariantDialog({ open, setOpen, config, elem
                   Descriere
                 </DropdownMenuCheckboxItem>
 
+                    {isMetaResource(config) && (
+                      <DropdownMenuCheckboxItem checked={visibleColumns.marca} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleCol("marca")}>
+                        Marcă
+                  </DropdownMenuCheckboxItem>
+                )}
+
                 {config?.hasStatus && (
                   <DropdownMenuCheckboxItem checked={visibleColumns.status} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleCol("status")}>
                     Status
@@ -452,6 +469,7 @@ export default function OferteElementVariantDialog({ open, setOpen, config, elem
                     {visibleColumns.cod && <TableHead className="text-center px-4 w-[12rem] max-w-[12rem]">Cod</TableHead>}
                     {config?.hasFurnizor && visibleColumns.furnizor && <TableHead className="text-center px-4 w-[12rem] max-w-[12rem]">Furnizor</TableHead>}
                     {visibleColumns.descriere && <TableHead className="px-4 min-w-[28rem]">Descriere</TableHead>}
+                    {isMetaResource(config) && visibleColumns.marca && <TableHead className="text-center px-4 w-[12rem] max-w-[12rem]">Marcă</TableHead>}
                     {config?.hasStatus && visibleColumns.status && <TableHead className="text-center px-4 w-[12rem] max-w-[12rem]">Status</TableHead>}
                     {visibleColumns.cost && <TableHead className="text-center px-4 w-[10rem] max-w-[10rem]">Cost</TableHead>}
                     {visibleColumns.cantitate && <TableHead className="text-center px-4 w-[10rem] max-w-[10rem]">Cantitate</TableHead>}

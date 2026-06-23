@@ -23,6 +23,7 @@ const VISIBLE_COLUMNS_STORAGE_PREFIX = "catalog_sub_visible_columns";
 const getDefaultVisibleColumns = (config) => ({
   poza: config.hasPhoto,
   furnizor: config.hasFurnizor,
+  marca: config.id === "material" || config.id === "utilaj",
   status: config.hasStatus,
   descriere: true,
   cost: true,
@@ -43,6 +44,7 @@ const readVisibleColumns = (config) => {
         ...saved,
         poza: config.hasPhoto ? Boolean(saved.poza ?? defaults.poza) : false,
         furnizor: config.hasFurnizor ? Boolean(saved.furnizor ?? defaults.furnizor) : false,
+        marca: config.id === "material" || config.id === "utilaj" ? Boolean(saved.marca ?? defaults.marca) : false,
         status: config.hasStatus ? Boolean(saved.status ?? defaults.status) : false,
       };
     }
@@ -60,6 +62,9 @@ const saveVisibleColumns = (config, value) => {
 // --- MEMOIZED ROW ---
 const SubRow = memo(({ sub, config, visibleColumns, displayLang, onEdit, onDuplicate, onDelete }) => {
   const afisareDescriere = displayLang === "FR" ? sub.descriere_fr : sub.descriere;
+  const hasMarca = config.id === "material" || config.id === "utilaj";
+  const marca = sub.marca_denumire || sub.detalii_extra?.marca || "";
+  const furnizor = sub.furnizor_denumire || sub.detalii_extra?.furnizor || "";
 
   const showCol = (colKey) => visibleColumns[colKey];
 
@@ -89,7 +94,13 @@ const SubRow = memo(({ sub, config, visibleColumns, displayLang, onEdit, onDupli
           {/* COLOANĂ FURNIZOR */}
           {config.hasFurnizor && showCol("furnizor") && (
             <TableCell className="text-center px-3 xxxl:px-4 py-1.5 xxxl:py-2 min-w-[10rem] xxxl:min-w-[12rem] w-[10rem] xxxl:w-[12rem] max-w-[10rem] xxxl:max-w-[12rem]">
-              {sub.detalii_extra?.furnizor ? <span className="text-sm xxxl:text-base text-foreground">{sub.detalii_extra.furnizor}</span> : <span className="text-sm xxxl:text-base text-muted-foreground/40 italic">—</span>}
+              {furnizor ? <OverflowTooltip align="center" text={furnizor} className="text-sm xxxl:text-base text-foreground truncate" maxLines={1} /> : <span className="text-sm xxxl:text-base text-muted-foreground/40 italic">—</span>}
+            </TableCell>
+          )}
+
+          {hasMarca && showCol("marca") && (
+            <TableCell className="text-center px-3 xxxl:px-4 py-1.5 xxxl:py-2 min-w-[10rem] xxxl:min-w-[12rem] w-[10rem] xxxl:w-[12rem] max-w-[10rem] xxxl:max-w-[12rem]">
+              {marca ? <OverflowTooltip align="center" text={marca} className="text-sm xxxl:text-base text-foreground truncate" maxLines={1} /> : <span className="text-sm xxxl:text-base text-muted-foreground/40 italic">—</span>}
             </TableCell>
           )}
 
@@ -306,6 +317,11 @@ export default function CatalogSubList({ config, open, setOpen, parentItem }) {
                       Furnizor
                     </DropdownMenuCheckboxItem>
                   )}
+                  {(config.id === "material" || config.id === "utilaj") && (
+                    <DropdownMenuCheckboxItem checked={visibleColumns.marca} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleCol("marca")}>
+                      Marcă
+                    </DropdownMenuCheckboxItem>
+                  )}
                   <DropdownMenuCheckboxItem checked={visibleColumns.descriere} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleCol("descriere")}>
                     Descriere
                   </DropdownMenuCheckboxItem>
@@ -345,6 +361,7 @@ export default function CatalogSubList({ config, open, setOpen, parentItem }) {
                       {config.hasPhoto && showCol("poza") && <TableHead className="text-center px-3 xxxl:px-4 w-[5.5rem] xxxl:w-[6rem] max-w-[5.5rem] xxxl:max-w-[6rem]">Poză</TableHead>}
                       <TableHead className="text-center px-3 xxxl:px-4 w-[10rem] xxxl:w-[12rem] max-w-[10rem] xxxl:max-w-[12rem]">Cod Variantă</TableHead>
                       {config.hasFurnizor && showCol("furnizor") && <TableHead className="text-center px-3 xxxl:px-4 w-[10rem] xxxl:w-[12rem] max-w-[10rem] xxxl:max-w-[12rem]">Furnizor</TableHead>}
+                      {(config.id === "material" || config.id === "utilaj") && showCol("marca") && <TableHead className="text-center px-3 xxxl:px-4 w-[10rem] xxxl:w-[12rem] max-w-[10rem] xxxl:max-w-[12rem]">Marcă</TableHead>}
                       {showCol("descriere") && <TableHead className="px-3 xxxl:px-4 min-w-[28rem] xxxl:min-w-[35rem]">Descriere</TableHead>}
                       {config.hasStatus && showCol("status") && <TableHead className="text-center px-3 xxxl:px-4 w-[10rem] xxxl:w-[12rem] max-w-[10rem] xxxl:max-w-[12rem]">Status</TableHead>}
                       {showCol("cost") && <TableHead className="text-center px-3 xxxl:px-4 w-[10rem] xxxl:w-[12rem] max-w-[10rem] xxxl:max-w-[12rem]">Cost</TableHead>}

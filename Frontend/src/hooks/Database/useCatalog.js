@@ -23,6 +23,34 @@ export const useCatalog = (tipResursa, filters = {}) => {
   });
 };
 
+export const useCatalogMeta = (type) => {
+  return useQuery({
+    queryKey: ["catalog", "meta", type],
+    queryFn: async () => {
+      const response = await api.get(`/Catalog/meta/${type}`);
+      return response.data;
+    },
+    enabled: Boolean(type),
+  });
+};
+
+export const useBulkSaveCatalogMeta = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ type, items, deletedIds }) => {
+      const response = await api.post(`/Catalog/meta/${type}/bulkSave`, { items, deletedIds });
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["catalog", "meta", variables.type] });
+      queryClient.invalidateQueries({ queryKey: ["catalog"] });
+      queryClient.invalidateQueries({ queryKey: ["retete"] });
+      queryClient.invalidateQueries({ queryKey: ["inventar", "resurse"] });
+    },
+  });
+};
+
 // ============================================================================
 // 2. MUTATIONS PENTRU DEFINIȚII (PĂRINȚI)
 // ============================================================================

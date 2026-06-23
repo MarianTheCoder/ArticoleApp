@@ -33,6 +33,7 @@ const getDefaultVisibleColumns = (config) => ({
   clasa2: false,
   denumire: true,
   descriere: false,
+  greutate: config.id === "material",
   unitate: true,
   cost: true,
   creat: false,
@@ -51,6 +52,7 @@ const readVisibleColumns = (tipResursa, config) => {
         ...defaults,
         ...saved,
         poza: config.hasPhoto ? Boolean(saved.poza ?? defaults.poza) : false,
+        greutate: config.id === "material" ? Boolean(saved.greutate ?? defaults.greutate) : false,
       };
     }
   } catch {}
@@ -92,7 +94,7 @@ export default function CatalogMainPage({
 
   useEffect(() => {
     setVisibleColumns(readVisibleColumns(tipResursa, config));
-  }, [tipResursa, config.hasPhoto]);
+  }, [tipResursa, config.hasPhoto, config.id]);
 
   // --- STATE FILTRE & PAGINARE ---
   const [search, setSearch] = useState("");
@@ -125,6 +127,7 @@ export default function CatalogMainPage({
       cod: "",
       denumire: "",
       variante: "0",
+      greutate: "",
       cost: "",
       unitate: "all",
       limba: effectiveLockedLang || "all",
@@ -189,6 +192,7 @@ export default function CatalogMainPage({
     variante: advancedFiltersDebounced.variante,
     descriere: advancedFiltersDebounced.descriere,
     cost: advancedFiltersDebounced.cost,
+    greutate: advancedFiltersDebounced.greutate,
     unitate: advancedFiltersDebounced.unitate === "all" ? "" : advancedFiltersDebounced.unitate,
     limba: effectiveLockedLang || (advancedFiltersDebounced.limba === "all" ? "" : advancedFiltersDebounced.limba),
     sortBy: advancedFiltersDebounced.sortBy,

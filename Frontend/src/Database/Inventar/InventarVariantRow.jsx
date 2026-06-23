@@ -1,6 +1,9 @@
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faBan, faRightLeft } from "@fortawesome/free-solid-svg-icons";
 
 import OverflowTooltip from "@/components/ui/OverflowTooltip";
 import ImagePreviewTooltip from "@/components/ui/ImagePreviewTooltip";
@@ -41,14 +44,40 @@ const tableCellClass = "px-2 py-1 border-b text-xs xxxl:text-sm";
 const tableCellCenterClass = `${tableCellClass} text-center`;
 const tableCellLeftClass = `${tableCellClass} text-left`;
 
-export default function InventarVariantRow({ sub, parent, config, visibleColumns, displayLang, getColumnStyle, textAlignClasses, decimalPlaces, last }) {
+export default function InventarVariantRow({
+  sub,
+  parent,
+  config,
+  visibleColumns,
+  displayLang,
+  getColumnStyle,
+  textAlignClasses,
+  decimalPlaces,
+  last,
+  isSelected = false,
+  selectedCount = 0,
+  onToggleSelect,
+  onContextSelect,
+  onOpenTransaction,
+  onClearSelection,
+}) {
   const showCol = (key) => visibleColumns[key];
   const afisareDescriere = displayLang === "FR" ? sub.descriere_fr || sub.descriere || "" : sub.descriere || sub.descriere_fr || "";
+  const furnizor = sub.furnizor_denumire || sub.detalii_extra?.furnizor || "";
+  const marca = sub.marca_denumire || sub.detalii_extra?.marca || "";
+  const hasMarca = config.id === "material" || config.id === "utilaj";
   const stocTotal = getStockNumber(sub.stoc_total, sub.stocTotal);
   const stocInventar = getStockNumber(sub.stoc_inventar, sub.stocInventar, sub.stoc_total);
 
-  return (
-    <TableRow className="h-8 border-b-0 bg-zinc-500/35 hover:bg-zinc-500/50 dark:bg-zinc-700/80 dark:hover:bg-zinc-700/95">
+  const rowNode = (
+    <TableRow
+      className={`h-8 cursor-pointer border-b-0 bg-zinc-500/35 hover:bg-zinc-500/50 dark:bg-zinc-700/80 dark:hover:bg-zinc-700/95 ${isSelected ? "!bg-primary/25 hover:!bg-primary/35 dark:!bg-primary/45 dark:hover:!bg-primary/60" : ""}`}
+      onClick={(event) => {
+        if (event.target.closest("a, button, input, textarea, select")) return;
+        onToggleSelect?.(parent, sub);
+      }}
+      onContextMenuCapture={() => onContextSelect?.(parent, sub)}
+    >
       <TableCell style={getColumnStyle("expand")} className={`px-0 py-1 ${last ? "border-b " : ""} text-center bg-card dark:bg-card`} />
 
       {config.hasPhoto && showCol("poza") && (
@@ -111,6 +140,32 @@ export default function InventarVariantRow({ sub, parent, config, visibleColumns
         </TableCell>
       )}
 
+      {config.hasFurnizor && showCol("furnizor") && (
+        <TableCell style={getColumnStyle("furnizor")} className={`${textAlignClasses.cell} ${tableCellClass}`}>
+          {furnizor ? (
+            <OverflowTooltip align={textAlignClasses.tooltip} text={furnizor} className={`truncate text-foreground ${textAlignClasses.cell}`} maxLines={1} textSize="sm" />
+          ) : (
+            <span className="text-muted-foreground/40 italic">—</span>
+          )}
+        </TableCell>
+      )}
+
+      {hasMarca && showCol("marca") && (
+        <TableCell style={getColumnStyle("marca")} className={`${textAlignClasses.cell} ${tableCellClass}`}>
+          {marca ? (
+            <OverflowTooltip align={textAlignClasses.tooltip} text={marca} className={`truncate text-foreground ${textAlignClasses.cell}`} maxLines={1} textSize="sm" />
+          ) : (
+            <span className="text-muted-foreground/40 italic">—</span>
+          )}
+        </TableCell>
+      )}
+
+      {showCol("greutate") && (
+        <TableCell style={getColumnStyle("greutate")} className={tableCellCenterClass}>
+          <span className="text-muted-foreground/40 italic">—</span>
+        </TableCell>
+      )}
+
       {showCol("unitate") && (
         <TableCell style={getColumnStyle("unitate")} className={tableCellCenterClass}>
           <Badge variant="outline" className="h-6 px-2 text-xs xxxl:text-sm shadow-none whitespace-nowrap">
@@ -125,15 +180,15 @@ export default function InventarVariantRow({ sub, parent, config, visibleColumns
         </TableCell>
       )}
 
-      {showCol("stocTotal") && (
-        <TableCell style={getColumnStyle("stocTotal")} className={tableCellCenterClass}>
-          <span className="font-black text-foreground">{formatNumber(stocTotal, decimalPlaces)}</span>
+      {showCol("stocInventar") && (
+        <TableCell style={getColumnStyle("stocInventar")} className={tableCellCenterClass}>
+          <span className="font-black text-foreground">{formatNumber(stocInventar, decimalPlaces)}</span>
         </TableCell>
       )}
 
-      {showCol("stocInventar") && (
-        <TableCell style={getColumnStyle("stocInventar")} className={tableCellCenterClass}>
-          <span className="font-black text-primary">{formatNumber(stocInventar, decimalPlaces)}</span>
+      {showCol("stocTotal") && (
+        <TableCell style={getColumnStyle("stocTotal")} className={tableCellCenterClass}>
+          <span className="font-black text-primary">{formatNumber(stocTotal, decimalPlaces)}</span>
         </TableCell>
       )}
 
@@ -167,5 +222,34 @@ export default function InventarVariantRow({ sub, parent, config, visibleColumns
         </TableCell>
       )}
     </TableRow>
+  );
+
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>{rowNode}</ContextMenuTrigger>
+      <ContextMenuContent className="w-52">
+        {selectedCount > 1 && (
+          <>
+            <div className="p-2">
+              <p className="text-sm font-black uppercase tracking-wider text-foreground">Selecție multiplă</p>
+              <p className="text-sm text-muted-foreground">{selectedCount} variante selectate</p>
+            </div>
+            <ContextMenuSeparator />
+          </>
+        )}
+
+        <ContextMenuItem className="gap-3" onClick={() => onOpenTransaction?.(parent, sub)}>
+          <FontAwesomeIcon icon={faRightLeft} className="text-primary" />
+          Tranzacție stoc
+        </ContextMenuItem>
+
+        <ContextMenuSeparator />
+
+        <ContextMenuItem className="gap-3" onClick={onClearSelection}>
+          <FontAwesomeIcon icon={faBan} className="text-muted-foreground" />
+          Anulează selecția
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }

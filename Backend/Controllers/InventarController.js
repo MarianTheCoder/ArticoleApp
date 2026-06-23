@@ -183,6 +183,7 @@ const getInventarResurse = async (req, res) => {
     const denumire = req.query.denumire ? req.query.denumire.trim() : "";
     const descriere = req.query.descriere ? req.query.descriere.trim() : "";
     const unitate = req.query.unitate ? req.query.unitate.trim() : "";
+    const greutate = req.query.greutate ? req.query.greutate.trim() : "";
     const cost = req.query.cost ? req.query.cost.trim() : "";
     const variante = req.query.variante ? req.query.variante.trim() === "1" : false;
 
@@ -191,7 +192,10 @@ const getInventarResurse = async (req, res) => {
       created_at: "d.created_at",
       cod_definitie: "d.cod_definitie",
       denumire: "d.denumire",
+      greutate: "d.greutate",
       cost: "d.cost",
+      stoc_inventar: "COALESCE(st.stoc_inventar, 0)",
+      stoc_total: "COALESCE(st.stoc_total, 0)",
     };
     const sortBy = allowedSortColumns[req.query.sortBy] || "d.updated_at";
     const sortOrder = req.query.sortOrder === "asc" ? "ASC" : "DESC";
@@ -233,6 +237,11 @@ const getInventarResurse = async (req, res) => {
     if (unitate && unitate !== "all") {
       whereClause += " AND d.unitate_masura = ?";
       queryParams.push(unitate);
+    }
+
+    if (greutate) {
+      whereClause += " AND CAST(d.greutate AS CHAR) LIKE ?";
+      queryParams.push(`%${greutate.replace(",", ".")}%`);
     }
 
     if (cost) {
@@ -300,6 +309,8 @@ const getInventarResurse = async (req, res) => {
       `
       SELECT
         s.*,
+        mf.denumire AS furnizor_denumire,
+        mm.denumire AS marca_denumire,
         COALESCE(st_sub.stoc_total, 0) AS stoc_total,
         COALESCE(st_sub.stoc_total, 0) AS stoc_inventar,
         DATE_FORMAT(s.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at,
@@ -318,6 +329,8 @@ const getInventarResurse = async (req, res) => {
           AND catalog_subcategorie_id IS NOT NULL
         GROUP BY catalog_subcategorie_id
       ) st_sub ON st_sub.catalog_subcategorie_id = s.id
+      LEFT JOIN S02_Catalog_Meta_Furnizori mf ON mf.id = s.furnizor_id
+      LEFT JOIN S02_Catalog_Meta_Marci mm ON mm.id = s.marca_id
       LEFT JOIN S00_Utilizatori u1 ON s.created_by_user_id = u1.id
       LEFT JOIN S00_Utilizatori u2 ON s.updated_by_user_id = u2.id
       WHERE s.definitie_id IN (${parentPlaceholders})

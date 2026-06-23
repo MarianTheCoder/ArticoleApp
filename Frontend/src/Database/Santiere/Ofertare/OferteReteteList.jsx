@@ -51,6 +51,8 @@ import {
   formatNumber,
   getRetetaCost,
   getRetetaTotalLucrare,
+  getRetetaGreutateUnitara,
+  getRetetaGreutateTotala,
   getElementTotalInLucrare,
   getPercentNumber,
   normalizePercentInput,
@@ -83,7 +85,7 @@ const getDefaultColumnWidths = () => ({
   elemente: 42,
   poza: 48,
   info: 40,
-  cod: 112,
+  cod: 150,
   clasa1: 128,
   clasa2: 128,
   clasa3: 128,
@@ -91,11 +93,15 @@ const getDefaultColumnWidths = () => ({
   clasa5: 128,
   denumire: typeof window !== "undefined" && window.innerWidth >= 1980 ? 480 : 550,
   descriere: typeof window !== "undefined" && window.innerWidth >= 1980 ? 220 : 180,
+  furnizor: 118,
+  marca: 112,
   dynamic: 104,
   unitate: 68,
+  greutateUnitara: 112,
+  greutateTotala: 112,
   cantitate: 104,
-  cost: 96,
-  qtyTotal: 88,
+  cost: 105,
+  qtyTotal: 100,
   costTotal: 132,
   coefProcent: 98,
   coefPret: 112,
@@ -109,7 +115,7 @@ const MIN_COL_WIDTHS = {
   elemente: 40,
   poza: 42,
   info: 40,
-  cod: 80,
+  cod: 100,
   clasa1: 90,
   clasa2: 90,
   clasa3: 90,
@@ -117,11 +123,15 @@ const MIN_COL_WIDTHS = {
   clasa5: 90,
   denumire: 110,
   descriere: 120,
+  furnizor: 88,
+  marca: 88,
   dynamic: 80,
   unitate: 56,
+  greutateUnitara: 104,
+  greutateTotala: 104,
   cantitate: 104,
-  cost: 96,
-  qtyTotal: 92,
+  cost: 100,
+  qtyTotal: 100,
   costTotal: 112,
   coefProcent: 92,
   coefPret: 104,
@@ -978,6 +988,8 @@ const OferteReteteList = memo(function OferteReteteList({
         return getRetetaClassLevelDisplay(reteta, levelNo, displayLang);
       }
       if (key === "denumire") return displayLang === "FR" ? reteta?.denumire_fr || reteta?.denumire || "" : reteta?.denumire || reteta?.denumire_fr || "";
+      if (key === "greutateUnitara") return getRetetaGreutateUnitara(reteta);
+      if (key === "greutateTotala") return getRetetaGreutateTotala(reteta);
       if (key === "cantitate") return 1;
       if (key === "cost") return getRetetaCost(reteta);
       if (key === "qtyTotal") return Number(reteta?.cantitate_lucrare || 0);
@@ -1146,6 +1158,7 @@ const OferteReteteList = memo(function OferteReteteList({
     };
 
     let totalManoperaHours = 0;
+    let totalGreutate = 0;
     let finalSubtotal = 0;
 
     orderedRetete.forEach((reteta) => {
@@ -1160,6 +1173,7 @@ const OferteReteteList = memo(function OferteReteteList({
       };
 
       finalSubtotal += priceTotals.pretTotal;
+      totalGreutate += getRetetaGreutateTotala(reteta);
 
       elemente.forEach((el) => {
         if (resourceTotals[el.tip_resursa] === undefined) return;
@@ -1211,6 +1225,7 @@ const OferteReteteList = memo(function OferteReteteList({
     return {
       ...resourceTotals,
       totalManoperaHours,
+      totalGreutate,
       subtotal,
       extraValue,
       totalDupaAdaos,
@@ -2004,9 +2019,13 @@ const OferteReteteList = memo(function OferteReteteList({
       "clasa5",
       "denumire",
       "descriere",
+      "furnizor",
+      "marca",
       "unitate",
       "cantitate",
       "qtyTotal",
+      "greutateUnitara",
+      "greutateTotala",
       "cost",
       "costTotal",
       "coefProcent",
@@ -2038,7 +2057,27 @@ const OferteReteteList = memo(function OferteReteteList({
     });
 
     const labelKeys = showCol("pret")
-      ? ["cod", "clasa1", "clasa2", "clasa3", "clasa4", "clasa5", "denumire", "descriere", "unitate", "cantitate", "qtyTotal", "cost", "costTotal", "coefProcent", "coefPret"]
+      ? [
+          "cod",
+          "clasa1",
+          "clasa2",
+          "clasa3",
+          "clasa4",
+          "clasa5",
+          "denumire",
+          "descriere",
+          "furnizor",
+          "marca",
+          "unitate",
+          "cantitate",
+          "qtyTotal",
+          "greutateUnitara",
+          "greutateTotala",
+          "cost",
+          "costTotal",
+          "coefProcent",
+          "coefPret",
+        ]
       : [
           "cod",
           "clasa1",
@@ -2048,9 +2087,13 @@ const OferteReteteList = memo(function OferteReteteList({
           "clasa5",
           "denumire",
           "descriere",
+          "furnizor",
+          "marca",
           "unitate",
           "cantitate",
           "qtyTotal",
+          "greutateUnitara",
+          "greutateTotala",
           "cost",
           "costTotal",
           "coefProcent",
@@ -2187,6 +2230,39 @@ const OferteReteteList = memo(function OferteReteteList({
     [handleSortColumn, isCoeficientEditing, sortConfig],
   );
 
+  const renderMoneySortHeaderContent = useCallback(
+    (sortKey, label) => {
+      const active = sortConfig?.key === sortKey;
+      const icon = !active ? faSort : sortConfig.direction === "asc" ? faSortDown : faSortUp;
+      const normalizedCurrency = String(currency || "").trim();
+
+      return (
+        <button
+          data-no-row-open
+          type="button"
+          className="relative flex h-full w-full min-w-0 items-center justify-center px-1 py-0.5 text-center text-sm font-black text-foreground transition-colors hover:bg-background/15"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (isCoeficientEditing) return;
+            handleSortColumn(sortKey);
+          }}
+        >
+          <span className="flex min-w-0 flex-col items-center justify-center leading-tight">
+            <span className="max-w-full truncate">{label}</span>
+            {normalizedCurrency && <span className="max-w-full truncate text-[10px] xxxl:text-xs font-black uppercase leading-tight text-foreground/80">- {normalizedCurrency} -</span>}
+          </span>
+          <FontAwesomeIcon
+            className={`absolute right-1 shrink-0 text-base ${active ? "!text-[#facc15] dark:!text-[#b7791f]" : "!text-white dark:!text-[#050507] [.blue_&]:!text-white"}`}
+            icon={icon}
+          />
+        </button>
+      );
+    },
+    [currency, handleSortColumn, isCoeficientEditing, sortConfig],
+  );
+
   return (
     <div className="rounded-md border bg-card w-full h-full overflow-hidden relative flex flex-col text-sm text-foreground">
       <div ref={containerRef} onScroll={handleScroll} className="flex-1 min-h-0 overflow-auto relative">
@@ -2297,6 +2373,28 @@ const OferteReteteList = memo(function OferteReteteList({
                     </ResizableTableHead>
                   )}
 
+                  {showCol("furnizor") && (
+                    <ResizableTableHead
+                      colKey="furnizor"
+                      style={getColumnStyle("furnizor")}
+                      onResizeStart={handleColumnResizeStart}
+                      className="relative h-9 border-r border-b border-border text-center align-middle text-sm font-bold text-foreground"
+                    >
+                      Furnizor
+                    </ResizableTableHead>
+                  )}
+
+                  {showCol("marca") && (
+                    <ResizableTableHead
+                      colKey="marca"
+                      style={getColumnStyle("marca")}
+                      onResizeStart={handleColumnResizeStart}
+                      className="relative h-9 border-r border-b border-border text-center align-middle text-sm font-bold text-foreground"
+                    >
+                      Marcă
+                    </ResizableTableHead>
+                  )}
+
                   {showCol("unitate") && (
                     <ResizableTableHead
                       colKey="unitate"
@@ -2330,6 +2428,28 @@ const OferteReteteList = memo(function OferteReteteList({
                     </ResizableTableHead>
                   )}
 
+                  {showCol("greutateUnitara") && (
+                    <ResizableTableHead
+                      colKey="greutateUnitara"
+                      style={getColumnStyle("greutateUnitara")}
+                      onResizeStart={handleColumnResizeStart}
+                      className="relative h-9 border-r border-b border-border text-center align-middle text-sm font-bold text-foreground"
+                    >
+                      {renderSortHeaderContent("greutateUnitara", "Greutate unitară")}
+                    </ResizableTableHead>
+                  )}
+
+                  {showCol("greutateTotala") && (
+                    <ResizableTableHead
+                      colKey="greutateTotala"
+                      style={getColumnStyle("greutateTotala")}
+                      onResizeStart={handleColumnResizeStart}
+                      className="relative h-9 border-r border-b border-border text-center align-middle text-sm font-bold text-foreground"
+                    >
+                      {renderSortHeaderContent("greutateTotala", "Greutate totală")}
+                    </ResizableTableHead>
+                  )}
+
                   {showCol("cost") && (
                     <ResizableTableHead
                       colKey="cost"
@@ -2337,7 +2457,7 @@ const OferteReteteList = memo(function OferteReteteList({
                       onResizeStart={handleColumnResizeStart}
                       className="relative h-10 border-r border-b border-border text-center align-middle text-sm font-bold text-foreground"
                     >
-                      {renderSortHeaderContent("cost", getMoneyHeaderLabel("Cost", currency), "right")}
+                      {renderMoneySortHeaderContent("cost", "Cost unitar")}
                     </ResizableTableHead>
                   )}
 
@@ -2348,7 +2468,7 @@ const OferteReteteList = memo(function OferteReteteList({
                       onResizeStart={handleColumnResizeStart}
                       className="relative h-10 border-r border-b border-border  text-center align-middle text-sm font-bold text-foreground"
                     >
-                      {renderSortHeaderContent("costTotal", getMoneyHeaderLabel("Cost total", currency), "right")}
+                      {renderMoneySortHeaderContent("costTotal", "Cost total")}
                     </ResizableTableHead>
                   )}
 
@@ -2381,7 +2501,7 @@ const OferteReteteList = memo(function OferteReteteList({
                       onResizeStart={handleColumnResizeStart}
                       className="relative h-10 border-r border-b border-border  text-center align-middle text-sm font-black text-foreground"
                     >
-                      {renderSortHeaderContent("pret", getMoneyHeaderLabel("Preț", currency), "right")}
+                      {renderMoneySortHeaderContent("pret", "Preț")}
                     </ResizableTableHead>
                   )}
 
@@ -2546,6 +2666,8 @@ const OferteReteteList = memo(function OferteReteteList({
 
                 const coloaneValori = normalizeColoaneValori(reteta.coloane_valori);
 
+                const greutateUnitara = getRetetaGreutateUnitara(reteta);
+                const greutateTotala = getRetetaGreutateTotala(reteta);
                 const costReteta = getRetetaCost(reteta);
                 const costTotalLucrare = getRetetaTotalLucrare(reteta);
                 const coefImpact = coefRetetaImpactById[toId(reteta.id)] || {};
@@ -2647,6 +2769,18 @@ const OferteReteteList = memo(function OferteReteteList({
                       </TableCell>
                     )}
 
+                    {showCol("furnizor") && (
+                      <TableCell style={getColumnStyle("furnizor")} className="border-r border-border p-1 text-center align-middle text-sm">
+                        <span className="text-sm text-muted-foreground italic"></span>
+                      </TableCell>
+                    )}
+
+                    {showCol("marca") && (
+                      <TableCell style={getColumnStyle("marca")} className="border-r border-border p-1 text-center align-middle text-sm">
+                        <span className="text-sm text-muted-foreground italic"></span>
+                      </TableCell>
+                    )}
+
                     {showCol("unitate") && (
                       <TableCell style={getColumnStyle("unitate")} className="border-r border-border p-1 text-center align-middle text-sm">
                         <span className="text-sm font-semibold text-foreground whitespace-nowrap">{reteta.unitate_masura}</span>
@@ -2697,6 +2831,18 @@ const OferteReteteList = memo(function OferteReteteList({
                             onSave={(values) => handleSaveRetetaQuantity(reteta, values)}
                           />
                         )}
+                      </TableCell>
+                    )}
+
+                    {showCol("greutateUnitara") && (
+                      <TableCell style={getColumnStyle("greutateUnitara")} className="border-r border-border p-1 text-center align-middle text-sm">
+                        <span className="text-sm font-bold text-foreground whitespace-nowrap">{formatNumber(greutateUnitara, safeDecimalPlaces)}</span>
+                      </TableCell>
+                    )}
+
+                    {showCol("greutateTotala") && (
+                      <TableCell style={getColumnStyle("greutateTotala")} className="border-r border-border p-1 text-center align-middle text-sm">
+                        <span className="text-sm font-bold text-foreground whitespace-nowrap">{formatNumber(greutateTotala, safeDecimalPlaces)}</span>
                       </TableCell>
                     )}
 

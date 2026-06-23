@@ -32,6 +32,7 @@ const DEFAULT_VISIBLE_COLUMNS = {
   clasa5: false,
   denumire: true,
   unitate: true,
+  greutate: true,
   cost: true,
   creat: false,
   actualizat: false,

@@ -15,6 +15,7 @@ import ImagePreviewTooltip from "@/components/ui/ImagePreviewTooltip";
 import SpinnerElement from "@/MainElements/SpinnerElement";
 import InventarCatalogSelectDialog from "./InventarCatalogSelectDialog";
 import InventarVariantRow from "./InventarVariantRow";
+import InventarStocTranzactieDialog from "./InventarStocTranzactieDialog";
 import CatalogSubList from "@/Database/Catalog/CatalogSubList";
 import { useAddInventarResurse, useInventarResurse } from "@/hooks/Database/useInventar";
 import photoAPI from "@/api/photoAPI";
@@ -35,6 +36,9 @@ const DEFAULT_COLUMN_WIDTHS = {
   clasa2: 130,
   denumire: 620,
   descriere: 320,
+  furnizor: 118,
+  marca: 112,
+  greutate: 110,
   unitate: 74,
   cost: 120,
   stocTotal: 110,
@@ -53,6 +57,9 @@ const MIN_COLUMN_WIDTHS = {
   clasa2: 100,
   denumire: 260,
   descriere: 220,
+  furnizor: 88,
+  marca: 88,
+  greutate: 90,
   unitate: 64,
   cost: 90,
   stocTotal: 90,
@@ -64,7 +71,10 @@ const MIN_COLUMN_WIDTHS = {
 const SORT_FIELD_BY_COLUMN = {
   cod: "cod_definitie",
   denumire: "denumire",
+  greutate: "greutate",
   cost: "cost",
+  stocInventar: "stoc_inventar",
+  stocTotal: "stoc_total",
   creat: "created_at",
   actualizat: "updated_at",
 };
@@ -78,6 +88,9 @@ const getDefaultVisibleColumns = (config) => ({
   clasa2: false,
   denumire: true,
   descriere: false,
+  furnizor: config.hasFurnizor,
+  marca: config.id === "material" || config.id === "utilaj",
+  greutate: config.id === "material",
   unitate: true,
   cost: false,
   stocTotal: true,
@@ -98,6 +111,9 @@ const readVisibleColumns = (tipResursa, config) => {
         ...defaults,
         ...saved,
         poza: config.hasPhoto ? Boolean(saved.poza ?? defaults.poza) : false,
+        furnizor: config.hasFurnizor ? Boolean(saved.furnizor ?? defaults.furnizor) : false,
+        marca: config.id === "material" || config.id === "utilaj" ? Boolean(saved.marca ?? defaults.marca) : false,
+        greutate: config.id === "material" ? Boolean(saved.greutate ?? defaults.greutate) : false,
       };
     }
   } catch {}
@@ -110,6 +126,14 @@ const saveVisibleColumns = (tipResursa, value) => {
     localStorage.setItem(getVisibleColumnsStorageKey(tipResursa), JSON.stringify(value));
   } catch {}
 };
+
+const getVariantSelectionKey = (parent, sub) => `${parent?.inventar_resursa_id || parent?.id || "parent"}:${sub?.id || "variant"}`;
+
+const buildVariantSelectionItem = (parent, sub) => ({
+  key: getVariantSelectionKey(parent, sub),
+  parent,
+  sub,
+});
 
 const normalizeDecimalPlaces = (value) => ([1, 2].includes(Number(value)) ? Number(value) : 2);
 
@@ -199,11 +223,11 @@ const getCatalogCodeTooltipParts = (item, displayLang = "RO") => {
   return [...classParts, ...specificParts].length > 0 ? [...classParts, ...specificParts] : [{ key: "fallback", label: item?.cod_definitie || "Cod nedefinit" }];
 };
 
-const InventarCodeValue = ({ item, displayLang, flexClass = "justify-center" }) => {
+const InventarCodeValue = ({ item, displayLang }) => {
   const parts = getCatalogCodeTooltipParts(item, displayLang);
 
   return (
-    <div className={`flex min-w-0 items-center gap-1.5 ${flexClass}`}>
+    <div className="flex min-w-0 w-full items-center justify-between gap-1.5">
       <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-bold text-foreground">{String(item.cod_definitie || "—")}</span>
 
       <Popover>
@@ -252,7 +276,23 @@ const tableCellCenterClass = `${tableCellClass} text-center`;
 const tableCellLeftClass = `${tableCellClass} text-left`;
 const expandCellClass = "px-0 py-1 text-center";
 
-function InventarResourceRow({ item, config, visibleColumns, displayLang, getColumnStyle, textAlignClasses, decimalPlaces, isExpanded, onToggleVariants, onAddVariant }) {
+function InventarResourceRow({
+  item,
+  config,
+  visibleColumns,
+  displayLang,
+  getColumnStyle,
+  textAlignClasses,
+  decimalPlaces,
+  isExpanded,
+  onToggleVariants,
+  onAddVariant,
+  selectedVariantKeys,
+  onToggleVariantSelect,
+  onContextSelectVariant,
+  onOpenTransaction,
+  onClearVariantSelection,
+}) {
   const showCol = (key) => visibleColumns[key];
   const afisareDenumire = displayLang === "FR" ? item.denumire_fr || item.denumire : item.denumire;
   const afisareDescriere = displayLang === "FR" ? item.descriere_fr || "" : item.descriere;
@@ -380,6 +420,28 @@ function InventarResourceRow({ item, config, visibleColumns, displayLang, getCol
           </TableCell>
         )}
 
+        {showCol("furnizor") && (
+          <TableCell style={getColumnStyle("furnizor")} className={`${textAlignClasses.cell} ${tableCellClass}`}>
+            <span className="text-muted-foreground/40 italic">—</span>
+          </TableCell>
+        )}
+
+        {showCol("marca") && (
+          <TableCell style={getColumnStyle("marca")} className={`${textAlignClasses.cell} ${tableCellClass}`}>
+            <span className="text-muted-foreground/40 italic">—</span>
+          </TableCell>
+        )}
+
+        {showCol("greutate") && (
+          <TableCell style={getColumnStyle("greutate")} className={tableCellCenterClass}>
+            {item.tip_resursa === "material" ? (
+              <span className="font-semibold text-foreground">{formatNumber(item.greutate, decimalPlaces)}</span>
+            ) : (
+              <span className="text-muted-foreground/40 italic">—</span>
+            )}
+          </TableCell>
+        )}
+
         {showCol("unitate") && (
           <TableCell style={getColumnStyle("unitate")} className={tableCellCenterClass}>
             <Badge variant="outline" className="h-6 px-2 text-xs xxxl:text-sm shadow-none whitespace-nowrap">
@@ -394,15 +456,15 @@ function InventarResourceRow({ item, config, visibleColumns, displayLang, getCol
           </TableCell>
         )}
 
-        {showCol("stocTotal") && (
-          <TableCell style={getColumnStyle("stocTotal")} className={tableCellCenterClass}>
-            <span className="font-black text-foreground">{formatNumber(stocTotal, decimalPlaces)}</span>
+        {showCol("stocInventar") && (
+          <TableCell style={getColumnStyle("stocInventar")} className={tableCellCenterClass}>
+            <span className="font-black text-foreground">{formatNumber(stocInventar, decimalPlaces)}</span>
           </TableCell>
         )}
 
-        {showCol("stocInventar") && (
-          <TableCell style={getColumnStyle("stocInventar")} className={tableCellCenterClass}>
-            <span className="font-black text-primary">{formatNumber(stocInventar, decimalPlaces)}</span>
+        {showCol("stocTotal") && (
+          <TableCell style={getColumnStyle("stocTotal")} className={tableCellCenterClass}>
+            <span className="font-black text-primary">{formatNumber(stocTotal, decimalPlaces)}</span>
           </TableCell>
         )}
 
@@ -440,20 +502,33 @@ function InventarResourceRow({ item, config, visibleColumns, displayLang, getCol
       </TableRow>
 
       {isExpanded &&
-        subcategorii.map((sub, index) => (
-          <InventarVariantRow
-            key={sub.id}
-            last={index == subcategorii.length - 1}
-            sub={sub}
-            parent={item}
-            config={config}
-            visibleColumns={visibleColumns}
-            displayLang={displayLang}
-            getColumnStyle={getColumnStyle}
-            textAlignClasses={textAlignClasses}
-            decimalPlaces={decimalPlaces}
-          />
-        ))}
+        subcategorii.map((sub, index) =>
+          (() => {
+            const variantKey = getVariantSelectionKey(item, sub);
+            const isSelected = selectedVariantKeys.includes(variantKey);
+
+            return (
+              <InventarVariantRow
+                key={sub.id}
+                last={index == subcategorii.length - 1}
+                sub={sub}
+                parent={item}
+                config={config}
+                visibleColumns={visibleColumns}
+                displayLang={displayLang}
+                getColumnStyle={getColumnStyle}
+                textAlignClasses={textAlignClasses}
+                decimalPlaces={decimalPlaces}
+                isSelected={isSelected}
+                selectedCount={isSelected ? selectedVariantKeys.length : 1}
+                onToggleSelect={onToggleVariantSelect}
+                onContextSelect={onContextSelectVariant}
+                onOpenTransaction={onOpenTransaction}
+                onClearSelection={onClearVariantSelection}
+              />
+            );
+          })(),
+        )}
     </>
   );
 }
@@ -474,6 +549,9 @@ export default function InventarResursePage({ inventar, tipResursa }) {
   const [visibleColumns, setVisibleColumns] = useState(() => readVisibleColumns(tipResursa, config));
 
   const [expandedResourceIds, setExpandedResourceIds] = useState(new Set());
+  const [selectedVariantKeys, setSelectedVariantKeys] = useState([]);
+  const [transactionDialogOpen, setTransactionDialogOpen] = useState(false);
+  const [transactionItems, setTransactionItems] = useState([]);
   const [decimalPlaces, setDecimalPlaces] = useState(2);
   const [textAlign, setTextAlign] = useState(() => {
     try {
@@ -510,7 +588,7 @@ export default function InventarResursePage({ inventar, tipResursa }) {
 
   useEffect(() => {
     setVisibleColumns(readVisibleColumns(tipResursa, config));
-  }, [tipResursa, config.hasPhoto]);
+  }, [tipResursa, config.hasPhoto, config.id]);
 
   useEffect(() => {
     try {
@@ -532,6 +610,7 @@ export default function InventarResursePage({ inventar, tipResursa }) {
       cod: "",
       denumire: "",
       variante: "0",
+      greutate: "",
       cost: "",
       unitate: "all",
       limba: "all",
@@ -551,6 +630,7 @@ export default function InventarResursePage({ inventar, tipResursa }) {
     setAdvancedFiltersDebounced(defaults);
     setPage(1);
     setExpandedResourceIds(new Set());
+    setSelectedVariantKeys([]);
   }, [tipResursa, getDefaultAdvancedFilters]);
 
   useEffect(() => {
@@ -576,6 +656,7 @@ export default function InventarResursePage({ inventar, tipResursa }) {
       denumire: advancedFiltersDebounced.denumire,
       descriere: advancedFiltersDebounced.descriere,
       variante: advancedFiltersDebounced.variante,
+      greutate: advancedFiltersDebounced.greutate,
       cost: advancedFiltersDebounced.cost,
       unitate: advancedFiltersDebounced.unitate === "all" ? "" : advancedFiltersDebounced.unitate,
       sortBy: advancedFiltersDebounced.sortBy,
@@ -590,6 +671,44 @@ export default function InventarResursePage({ inventar, tipResursa }) {
   const items = data?.items || [];
   const totalItems = data?.total || 0;
   const totalPages = data?.totalPages || 1;
+
+  const expandableResourceIds = useMemo(
+    () =>
+      items
+        .filter((item) => (item.subcategorii || []).length > 0)
+        .map((item) => String(item.inventar_resursa_id || item.id))
+        .filter(Boolean),
+    [items],
+  );
+
+  const allResourcesExpanded = useMemo(() => expandableResourceIds.length > 0 && expandableResourceIds.every((id) => expandedResourceIds.has(id)), [expandableResourceIds, expandedResourceIds]);
+
+  const selectedVariantItems = useMemo(() => {
+    const selected = new Set(selectedVariantKeys);
+    const result = [];
+
+    items.forEach((parent) => {
+      (parent.subcategorii || []).forEach((sub) => {
+        const key = getVariantSelectionKey(parent, sub);
+        if (selected.has(key)) {
+          result.push(buildVariantSelectionItem(parent, sub));
+        }
+      });
+    });
+
+    return result;
+  }, [items, selectedVariantKeys]);
+
+  useEffect(() => {
+    const availableKeys = new Set();
+    items.forEach((parent) => {
+      (parent.subcategorii || []).forEach((sub) => {
+        availableKeys.add(getVariantSelectionKey(parent, sub));
+      });
+    });
+
+    setSelectedVariantKeys((prev) => prev.filter((key) => availableKeys.has(key)));
+  }, [items]);
 
   useEffect(() => {
     if (!variantDialogOpen || !variantDialogParent?.id) return;
@@ -626,6 +745,52 @@ export default function InventarResursePage({ inventar, tipResursa }) {
       }
       return next;
     });
+  }, []);
+
+  const handleToggleAllResources = useCallback(() => {
+    setExpandedResourceIds((prev) => {
+      const allExpanded = expandableResourceIds.length > 0 && expandableResourceIds.every((id) => prev.has(id));
+      return allExpanded ? new Set() : new Set(expandableResourceIds);
+    });
+  }, [expandableResourceIds]);
+
+  const handleToggleVariantSelect = useCallback((parent, sub) => {
+    const key = getVariantSelectionKey(parent, sub);
+
+    setSelectedVariantKeys((prev) => {
+      if (prev.includes(key)) return prev.filter((item) => item !== key);
+      return [...prev, key];
+    });
+  }, []);
+
+  const handleContextSelectVariant = useCallback(
+    (parent, sub) => {
+      const key = getVariantSelectionKey(parent, sub);
+      if (selectedVariantKeys.includes(key)) return;
+      setSelectedVariantKeys([key]);
+    },
+    [selectedVariantKeys],
+  );
+
+  const getContextVariantItems = useCallback(
+    (parent, sub) => {
+      const key = getVariantSelectionKey(parent, sub);
+      if (selectedVariantKeys.includes(key) && selectedVariantItems.length > 1) return selectedVariantItems;
+      return [buildVariantSelectionItem(parent, sub)];
+    },
+    [selectedVariantItems, selectedVariantKeys],
+  );
+
+  const handleOpenTransaction = useCallback(
+    (parent, sub) => {
+      setTransactionItems(getContextVariantItems(parent, sub));
+      setTransactionDialogOpen(true);
+    },
+    [getContextVariantItems],
+  );
+
+  const handleClearVariantSelection = useCallback(() => {
+    setSelectedVariantKeys([]);
   }, []);
 
   const handleOpenVariantDialog = useCallback((item) => {
@@ -778,6 +943,9 @@ export default function InventarResursePage({ inventar, tipResursa }) {
             return next;
           });
         }}
+        allRowsExpanded={allResourcesExpanded}
+        onToggleAllRows={handleToggleAllResources}
+        toggleAllRowsLabel={`Extinde/închide ${config.titlePlural}`}
       />
 
       <div className="flex-1 min-h-0 rounded-lg border border-border bg-card overflow-hidden flex flex-col">
@@ -829,6 +997,23 @@ export default function InventarResursePage({ inventar, tipResursa }) {
                     {renderPlainHeader("Descriere", textAlign)}
                   </ResizableTableHead>
                 )}
+
+                {visibleColumns.furnizor && (
+                  <ResizableTableHead colKey="furnizor" style={getColumnStyle("furnizor")} onResizeStart={handleColumnResizeStart}>
+                    {renderPlainHeader("Furnizor", textAlign)}
+                  </ResizableTableHead>
+                )}
+                {visibleColumns.marca && (
+                  <ResizableTableHead colKey="marca" style={getColumnStyle("marca")} onResizeStart={handleColumnResizeStart}>
+                    {renderPlainHeader("Marcă", textAlign)}
+                  </ResizableTableHead>
+                )}
+
+                {visibleColumns.greutate && (
+                  <ResizableTableHead colKey="greutate" style={getColumnStyle("greutate")} onResizeStart={handleColumnResizeStart} className="text-center">
+                    {renderSortHeaderContent("greutate", "Greutate (kg)")}
+                  </ResizableTableHead>
+                )}
                 {visibleColumns.unitate && (
                   <ResizableTableHead colKey="unitate" style={getColumnStyle("unitate")} onResizeStart={handleColumnResizeStart} className="text-center">
                     {renderPlainHeader("UM")}
@@ -839,14 +1024,14 @@ export default function InventarResursePage({ inventar, tipResursa }) {
                     {renderSortHeaderContent("cost", "Cost")}
                   </ResizableTableHead>
                 )}
-                {visibleColumns.stocTotal && (
-                  <ResizableTableHead colKey="stocTotal" style={getColumnStyle("stocTotal")} onResizeStart={handleColumnResizeStart} className="text-center">
-                    {renderPlainHeader("Stoc total")}
-                  </ResizableTableHead>
-                )}
                 {visibleColumns.stocInventar && (
                   <ResizableTableHead colKey="stocInventar" style={getColumnStyle("stocInventar")} onResizeStart={handleColumnResizeStart} className="text-center">
-                    {renderPlainHeader("Stoc inventar")}
+                    {renderSortHeaderContent("stocInventar", "Stoc inventar")}
+                  </ResizableTableHead>
+                )}
+                {visibleColumns.stocTotal && (
+                  <ResizableTableHead colKey="stocTotal" style={getColumnStyle("stocTotal")} onResizeStart={handleColumnResizeStart} className="text-center">
+                    {renderSortHeaderContent("stocTotal", "Stoc total")}
                   </ResizableTableHead>
                 )}
                 {visibleColumns.creat && (
@@ -877,6 +1062,11 @@ export default function InventarResursePage({ inventar, tipResursa }) {
                     isExpanded={expandedResourceIds.has(String(item.inventar_resursa_id || item.id))}
                     onToggleVariants={toggleResourceExpand}
                     onAddVariant={handleOpenVariantDialog}
+                    selectedVariantKeys={selectedVariantKeys}
+                    onToggleVariantSelect={handleToggleVariantSelect}
+                    onContextSelectVariant={handleContextSelectVariant}
+                    onOpenTransaction={handleOpenTransaction}
+                    onClearVariantSelection={handleClearVariantSelection}
                   />
                 ))}
             </TableBody>
@@ -912,6 +1102,16 @@ export default function InventarResursePage({ inventar, tipResursa }) {
           </div>
 
           <div className="flex items-center gap-3 xxxl:gap-4">
+            {selectedVariantKeys.length > 0 && (
+              <div className="flex items-center h-9 gap-2 rounded-md border border-primary/40 bg-primary/10 px-2 py-1">
+                <span className="text-sm font-black text-primary">{selectedVariantKeys.length} variante selectate</span>
+              </div>
+            )}
+            {selectedVariantKeys.length > 0 && (
+              <Button variant="destructive" onClick={handleClearVariantSelection} className="h-9 px-2 text-sm font-bold">
+                Anulează selecția
+              </Button>
+            )}
             <Button variant="default" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className={`h-9 xxxl:h-10 px-3 xxxl:px-4 text-sm xxxl:text-base ${config.hoverButton}`}>
               Înapoi
             </Button>
@@ -932,6 +1132,13 @@ export default function InventarResursePage({ inventar, tipResursa }) {
 
       <InventarCatalogSelectDialog open={selectDialogOpen} setOpen={setSelectDialogOpen} tipResursa={tipResursa} lockedLang={inventarLang} onConfirm={handleConfirmSelect} />
       {variantDialogParent && <CatalogSubList config={config} open={variantDialogOpen} setOpen={handleSetVariantDialogOpen} parentItem={variantDialogParent} />}
+      <InventarStocTranzactieDialog
+        open={transactionDialogOpen}
+        setOpen={setTransactionDialogOpen}
+        selectedItems={transactionItems}
+        inventar={inventar}
+        tipResursa={tipResursa}
+      />
     </div>
   );
 }

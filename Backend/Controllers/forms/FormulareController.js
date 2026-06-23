@@ -663,6 +663,7 @@ const fetchOfertaPdfData = async (lucrareId) => {
         od.descriere_fr,
         od.photo_url,
         od.unitate_masura,
+        od.greutate,
         od.cost AS cost_definitie_snapshot,
 
         os.cod_specific,
@@ -670,6 +671,11 @@ const fetchOfertaPdfData = async (lucrareId) => {
         os.descriere_fr AS descriere_specifica_fr,
         os.photo_url AS photo_specific_url,
         os.cost AS cost_subcategorie_snapshot,
+        os.detalii_extra,
+        os.furnizor_id,
+        os.marca_id,
+        meta_furnizor.denumire AS furnizor_denumire,
+        meta_marca.denumire AS marca_denumire,
 
         cd.cost AS cost_definitie_live,
 
@@ -681,6 +687,10 @@ const fetchOfertaPdfData = async (lucrareId) => {
         ON od.id = ore.oferta_definitie_id
       LEFT JOIN S03_Oferte_Catalog_Subcategorii os
         ON os.id = ore.oferta_subcategorie_id
+      LEFT JOIN S02_Catalog_Meta_Furnizori meta_furnizor
+        ON meta_furnizor.id = os.furnizor_id
+      LEFT JOIN S02_Catalog_Meta_Marci meta_marca
+        ON meta_marca.id = os.marca_id
       LEFT JOIN S02_Catalog_Definitii cd
         ON cd.id = ore.original_definitie_id
       LEFT JOIN S02_Catalog_Subcategorii live_sub
@@ -726,12 +736,19 @@ const fetchOfertaPdfData = async (lucrareId) => {
     const cantitateLucrare = toNumber(reteta.cantitate_lucrare);
     const cost = toNumber(reteta.cost);
     const elemente = elementeByReteta[reteta.id] || [];
+    const greutateUnitara = elemente.reduce((sum, element) => {
+      if (element.tip_resursa !== "material") return sum;
+
+      return sum + toNumber(element.greutate) * toNumber(element.cantitate_in_reteta);
+    }, 0);
 
     return {
       ...reteta,
       cantitate_lucrare: cantitateLucrare,
       cost,
       cost_total_lucrare: cost * cantitateLucrare,
+      greutate_unitara: greutateUnitara,
+      greutate_totala: greutateUnitara * cantitateLucrare,
       elemente,
     };
   });
@@ -781,6 +798,7 @@ const fetchOfertaPdfData = async (lucrareId) => {
       acc.utilaj += toNumber(reteta.utilaj_cost) * cantitateLucrare;
       acc.transport += toNumber(reteta.transport_cost) * cantitateLucrare;
       acc.totalManoperaHours += toNumber(reteta.manopera_hours) * cantitateLucrare;
+      acc.greutateTotala += toNumber(reteta.greutate_totala);
       acc.total += toNumber(reteta.cost_total_lucrare);
       acc.coeficientTotal += toNumber(reteta.coeficient_added_value);
       acc.pret += toNumber(reteta.pret_total_lucrare);
@@ -793,6 +811,7 @@ const fetchOfertaPdfData = async (lucrareId) => {
       utilaj: 0,
       transport: 0,
       totalManoperaHours: 0,
+      greutateTotala: 0,
       total: 0,
       coeficientTotal: 0,
       pret: 0,

@@ -480,6 +480,7 @@ const buildElementSyncStatus = ({ el, definitieOferta, definitieLive, subcategor
       { field: "descriere", label: "Descriere" },
       { field: "descriere_fr", label: "Descriere FR" },
       { field: "unitate_masura", label: "Unitate măsură" },
+      { field: "greutate", label: "Greutate" },
       { field: "cost", label: "Cost" },
     ],
   });
@@ -540,7 +541,8 @@ const buildElementSyncStatus = ({ el, definitieOferta, definitieLive, subcategor
           { field: "descriere", label: "Descriere variantă" },
           { field: "descriere_fr", label: "Descriere variantă FR" },
           { field: "cost", label: "Cost variantă" },
-          { field: "detalii_extra", label: "Detalii extra" },
+          { field: "furnizor_id", label: "Furnizor" },
+          { field: "marca_id", label: "Marcă" },
         ],
       });
 
@@ -909,6 +911,7 @@ const getOfertaRetete = async (req, res) => {
         od.descriere_fr,
         od.photo_url,
         od.unitate_masura,
+        od.greutate,
         od.cost AS cost_definitie_snapshot,
 
         DATE_FORMAT(od.created_at, '%Y-%m-%dT%H:%i:%sZ') AS oferta_def_created_at,
@@ -926,11 +929,15 @@ const getOfertaRetete = async (req, res) => {
         os.cod_specific,
         os.descriere AS descriere_specifica,
         os.descriere_fr AS descriere_specifica_fr,
-        os.photo_url AS photo_specific_url,
-        os.cost AS cost_subcategorie_snapshot,
-        os.detalii_extra,
+          os.photo_url AS photo_specific_url,
+          os.cost AS cost_subcategorie_snapshot,
+          os.detalii_extra,
+          os.furnizor_id AS oferta_sub_furnizor_id,
+          os.marca_id AS oferta_sub_marca_id,
+          oferta_furnizor.denumire AS oferta_sub_furnizor_denumire,
+          oferta_marca.denumire AS oferta_sub_marca_denumire,
 
-        DATE_FORMAT(os.created_at, '%Y-%m-%dT%H:%i:%sZ') AS oferta_sub_created_at,
+          DATE_FORMAT(os.created_at, '%Y-%m-%dT%H:%i:%sZ') AS oferta_sub_created_at,
         os.created_by_user_id AS oferta_sub_created_by_user_id,
         u_os_c.name AS oferta_sub_created_by_name,
         u_os_c.photo_url AS oferta_sub_created_by_photo_url,
@@ -950,6 +957,7 @@ const getOfertaRetete = async (req, res) => {
         cd.descriere_fr AS descriere_fr_live,
         cd.photo_url AS photo_url_live,
         cd.unitate_masura AS unitate_masura_live,
+        cd.greutate AS greutate_definitie_live,
         cd.cost AS cost_definitie_live,
 
         DATE_FORMAT(cd.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at_definitie_live,
@@ -972,6 +980,12 @@ const getOfertaRetete = async (req, res) => {
 
       LEFT JOIN S03_Oferte_Catalog_Subcategorii os
         ON os.id = ore.oferta_subcategorie_id
+
+      LEFT JOIN S02_Catalog_Meta_Furnizori oferta_furnizor
+        ON oferta_furnizor.id = os.furnizor_id
+
+      LEFT JOIN S02_Catalog_Meta_Marci oferta_marca
+        ON oferta_marca.id = os.marca_id
 
       LEFT JOIN S02_Catalog_Definitii cd
         ON cd.id = ore.original_definitie_id
@@ -1077,6 +1091,10 @@ const getOfertaRetete = async (req, res) => {
           s.photo_url,
           s.cost,
           s.detalii_extra,
+          s.furnizor_id,
+          s.marca_id,
+          live_furnizor.denumire AS furnizor_denumire,
+          live_marca.denumire AS marca_denumire,
 
           DATE_FORMAT(s.created_at, '%Y-%m-%dT%H:%i:%sZ') AS created_at,
           s.created_by_user_id,
@@ -1089,6 +1107,12 @@ const getOfertaRetete = async (req, res) => {
           u_su.photo_url AS updated_by_photo_url
 
         FROM S02_Catalog_Subcategorii s
+
+        LEFT JOIN S02_Catalog_Meta_Furnizori live_furnizor
+          ON live_furnizor.id = s.furnizor_id
+
+        LEFT JOIN S02_Catalog_Meta_Marci live_marca
+          ON live_marca.id = s.marca_id
 
         LEFT JOIN S00_Utilizatori u_sc
           ON u_sc.id = s.created_by_user_id
@@ -1138,6 +1162,7 @@ const getOfertaRetete = async (req, res) => {
             descriere_fr: el.descriere_fr_live,
             photo_url: el.photo_url_live,
             unitate_masura: el.unitate_masura_live,
+            greutate: Number(el.greutate_definitie_live || 0),
             cost: el.cost_definitie_live !== null && el.cost_definitie_live !== undefined ? Number(el.cost_definitie_live || 0) : null,
 
             created_at: el.created_at_definitie_live,
@@ -1167,6 +1192,7 @@ const getOfertaRetete = async (req, res) => {
         descriere_fr: el.descriere_fr,
         photo_url: el.photo_url,
         unitate_masura: el.unitate_masura,
+        greutate: Number(el.greutate || 0),
         cost: costDefinitie,
 
         created_at: el.oferta_def_created_at,
@@ -1189,10 +1215,14 @@ const getOfertaRetete = async (req, res) => {
             descriere: el.descriere_specifica,
             descriere_fr: el.descriere_specifica_fr,
             photo_url: el.photo_specific_url,
-            cost: costSubcategorie,
-            detalii_extra: parseMaybeJson(el.detalii_extra, null),
+          cost: costSubcategorie,
+          detalii_extra: parseMaybeJson(el.detalii_extra, null),
+          furnizor_id: el.oferta_sub_furnizor_id || null,
+          marca_id: el.oferta_sub_marca_id || null,
+          furnizor_denumire: el.oferta_sub_furnizor_denumire || null,
+          marca_denumire: el.oferta_sub_marca_denumire || null,
 
-            created_at: el.oferta_sub_created_at,
+          created_at: el.oferta_sub_created_at,
             created_by_user_id: el.oferta_sub_created_by_user_id,
             created_by_name: el.oferta_sub_created_by_name,
             created_by_photo_url: el.oferta_sub_created_by_photo_url,
@@ -1236,8 +1266,13 @@ const getOfertaRetete = async (req, res) => {
 
         cost_definitie_snapshot: costDefinitie,
         cost_subcategorie_snapshot: costSubcategorie,
+        greutate: Number(el.greutate || 0),
 
         detalii_extra: parseMaybeJson(el.detalii_extra, null),
+        furnizor_id: subcategorieOferta?.furnizor_id || null,
+        marca_id: subcategorieOferta?.marca_id || null,
+        furnizor_denumire: subcategorieOferta?.furnizor_denumire || null,
+        marca_denumire: subcategorieOferta?.marca_denumire || null,
 
         selected_type: hasVariant ? "varianta" : "definitie",
 
@@ -1246,6 +1281,7 @@ const getOfertaRetete = async (req, res) => {
         definitie_live: definitieLive,
 
         cost_definitie_actual: definitieLive?.cost ?? null,
+        greutate_actual: definitieLive?.greutate ?? null,
         cod_definitie_actual: definitieLive?.cod_definitie ?? null,
         denumire_actual: definitieLive?.denumire ?? null,
         denumire_fr_actual: definitieLive?.denumire_fr ?? null,
@@ -1486,6 +1522,7 @@ const addOfertaReteta = async (req, res) => {
         cd.descriere_fr,
         cd.photo_url,
         cd.unitate_masura,
+        cd.greutate,
         cd.cost
       FROM S02_Retete_Elemente re
       INNER JOIN S02_Catalog_Definitii cd ON cd.id = re.definitie_id
@@ -1518,11 +1555,12 @@ const addOfertaReteta = async (req, res) => {
           descriere_fr,
           photo_url,
           unitate_masura,
+          greutate,
           cost,
 
           created_by_user_id
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `,
         [
           ofertaRetetaId,
@@ -1539,6 +1577,7 @@ const addOfertaReteta = async (req, res) => {
           el.descriere_fr || null,
           snapshotPhotoUrl,
           el.unitate_masura,
+          Number(el.greutate || 0),
           el.cost || 0,
 
           createdBy,
@@ -1991,6 +2030,7 @@ const duplicateOfertaRetete = async (req, res) => {
           od.descriere_fr AS od_descriere_fr,
           od.photo_url AS od_photo_url,
           od.unitate_masura AS od_unitate_masura,
+          od.greutate AS od_greutate,
           od.cost AS od_cost,
 
           os.id AS os_id,
@@ -2001,6 +2041,8 @@ const duplicateOfertaRetete = async (req, res) => {
           os.photo_url AS os_photo_url,
           os.cost AS os_cost,
           os.detalii_extra AS os_detalii_extra,
+          os.furnizor_id AS os_furnizor_id,
+          os.marca_id AS os_marca_id,
 
           cd.id AS cd_id,
           cd.limba AS cd_limba,
@@ -2012,6 +2054,7 @@ const duplicateOfertaRetete = async (req, res) => {
           cd.descriere_fr AS cd_descriere_fr,
           cd.photo_url AS cd_photo_url,
           cd.unitate_masura AS cd_unitate_masura,
+          cd.greutate AS cd_greutate,
           cd.cost AS cd_cost
 
         FROM S03_Oferte_Retete_Elemente ore
@@ -2056,6 +2099,7 @@ const duplicateOfertaRetete = async (req, res) => {
               descriere_fr: el.cd_descriere_fr,
               photo_url: el.cd_photo_url,
               unitate_masura: el.cd_unitate_masura,
+              greutate: el.cd_greutate,
               cost: el.cd_cost,
             }
           : {
@@ -2070,6 +2114,7 @@ const duplicateOfertaRetete = async (req, res) => {
               descriere_fr: el.od_descriere_fr,
               photo_url: el.od_photo_url,
               unitate_masura: el.od_unitate_masura,
+              greutate: el.od_greutate,
               cost: el.od_cost,
             };
         const nextDefCost = item.only_definitions && item.rewrite_costs && el.cd_id ? Number(el.cd_cost || 0) : Number(defSnapshot.cost || 0);
@@ -2093,11 +2138,12 @@ const duplicateOfertaRetete = async (req, res) => {
             descriere_fr,
             photo_url,
             unitate_masura,
+            greutate,
             cost,
 
             created_by_user_id
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `,
           [
             newOfertaRetetaId,
@@ -2114,6 +2160,7 @@ const duplicateOfertaRetete = async (req, res) => {
             defSnapshot.descriere_fr || null,
             copiedDefinitionPhotoUrl,
             defSnapshot.unitate_masura,
+            Number(defSnapshot.greutate || 0),
             nextDefCost,
 
             createdBy,
@@ -2139,10 +2186,12 @@ const duplicateOfertaRetete = async (req, res) => {
               photo_url,
               cost,
               detalii_extra,
+              furnizor_id,
+              marca_id,
 
               created_by_user_id
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `,
             [
               newOfertaDefinitieId,
@@ -2154,6 +2203,8 @@ const duplicateOfertaRetete = async (req, res) => {
               copiedSubPhotoUrl,
               el.os_cost || 0,
               parseJsonForDb(parseMaybeJson(el.os_detalii_extra, null)),
+              el.os_furnizor_id || null,
+              el.os_marca_id || null,
 
               createdBy,
             ],
@@ -2332,6 +2383,7 @@ const replaceOfertaRetete = async (req, res) => {
         cd.descriere_fr,
         cd.photo_url,
         cd.unitate_masura,
+        cd.greutate,
         cd.cost
       FROM S02_Retete_Elemente re
       INNER JOIN S02_Catalog_Definitii cd ON cd.id = re.definitie_id
@@ -2461,11 +2513,12 @@ const replaceOfertaRetete = async (req, res) => {
             descriere_fr,
             photo_url,
             unitate_masura,
+            greutate,
             cost,
 
             created_by_user_id
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `,
           [
             item.oferta_reteta_id,
@@ -2482,6 +2535,7 @@ const replaceOfertaRetete = async (req, res) => {
             el.descriere_fr || null,
             snapshotPhotoUrl,
             el.unitate_masura,
+            Number(el.greutate || 0),
             el.cost || 0,
 
             updatedBy,
@@ -2724,12 +2778,15 @@ const actualizeazaOfertaRetete = async (req, res) => {
           COALESCE(re.cantitate, re_fallback.cantitate, ore.cantitate_in_reteta) AS original_cantitate_in_reteta,
 
           od.photo_url AS od_photo_url,
+          od.greutate AS od_greutate,
           od.cost AS od_cost,
 
           os.id AS os_id,
           os.original_subcategorie_id AS os_original_subcategorie_id,
           os.photo_url AS os_photo_url,
           os.cost AS os_cost,
+          os.furnizor_id AS os_furnizor_id,
+          os.marca_id AS os_marca_id,
 
           cd.id AS cd_id,
           cd.limba AS cd_limba,
@@ -2741,6 +2798,7 @@ const actualizeazaOfertaRetete = async (req, res) => {
           cd.descriere_fr AS cd_descriere_fr,
           cd.photo_url AS cd_photo_url,
           cd.unitate_masura AS cd_unitate_masura,
+          cd.greutate AS cd_greutate,
           cd.cost AS cd_cost
 
         FROM S03_Oferte_Retete_Elemente ore
@@ -2784,6 +2842,7 @@ const actualizeazaOfertaRetete = async (req, res) => {
           cd.descriere_fr,
           cd.photo_url,
           cd.unitate_masura,
+          cd.greutate,
           cd.cost
         FROM S02_Retete_Elemente re
         INNER JOIN S02_Catalog_Definitii cd
@@ -2829,6 +2888,7 @@ const actualizeazaOfertaRetete = async (req, res) => {
               descriere_fr = ?,
               photo_url = ?,
               unitate_masura = ?,
+              greutate = ?,
               cost = ?,
               updated_by_user_id = ?
             WHERE id = ?
@@ -2845,6 +2905,7 @@ const actualizeazaOfertaRetete = async (req, res) => {
               el.cd_descriere_fr || null,
               copiedDefinitionPhotoUrl,
               el.cd_unitate_masura,
+              Number(el.cd_greutate || 0),
               nextDefCost,
               updatedBy,
               el.oferta_definitie_id,
@@ -2870,7 +2931,9 @@ const actualizeazaOfertaRetete = async (req, res) => {
                 descriere_fr,
                 photo_url,
                 cost,
-                detalii_extra
+                detalii_extra,
+                furnizor_id,
+                marca_id
               FROM S02_Catalog_Subcategorii
               WHERE id = ?
                 AND definitie_id = ?
@@ -2893,10 +2956,23 @@ const actualizeazaOfertaRetete = async (req, res) => {
                   photo_url = ?,
                   cost = ?,
                   detalii_extra = ?,
+                  furnizor_id = ?,
+                  marca_id = ?,
                   updated_by_user_id = ?
                 WHERE id = ?
                 `,
-                [liveSub.cod_specific, liveSub.descriere || null, liveSub.descriere_fr || null, copiedSubPhotoUrl, nextSubCost, jsonForDb(liveSub.detalii_extra), updatedBy, el.oferta_subcategorie_id],
+                [
+                  liveSub.cod_specific,
+                  liveSub.descriere || null,
+                  liveSub.descriere_fr || null,
+                  copiedSubPhotoUrl,
+                  nextSubCost,
+                  jsonForDb(liveSub.detalii_extra),
+                  liveSub.furnizor_id || null,
+                  liveSub.marca_id || null,
+                  updatedBy,
+                  el.oferta_subcategorie_id,
+                ],
               );
 
               if (el.os_photo_url && el.os_photo_url !== copiedSubPhotoUrl) {
@@ -2992,11 +3068,12 @@ const actualizeazaOfertaRetete = async (req, res) => {
             descriere_fr,
             photo_url,
             unitate_masura,
+            greutate,
             cost,
 
             created_by_user_id
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `,
           [
             ofertaReteta.id,
@@ -3013,6 +3090,7 @@ const actualizeazaOfertaRetete = async (req, res) => {
             liveElement.descriere_fr || null,
             snapshotPhotoUrl,
             liveElement.unitate_masura,
+            Number(liveElement.greutate || 0),
             Number(liveElement.cost || 0),
 
             updatedBy,
@@ -3103,7 +3181,8 @@ const getOfertaReteteFurnizori = async (req, res) => {
       `
       SELECT DISTINCT
         cd.tip_resursa,
-        s.detalii_extra
+        s.furnizor_id,
+        meta_furnizor.denumire AS furnizor_denumire
       FROM S03_Oferte_Retete_Elemente ore
 
       INNER JOIN S03_Oferte_Retete ort
@@ -3115,9 +3194,13 @@ const getOfertaReteteFurnizori = async (req, res) => {
       INNER JOIN S02_Catalog_Subcategorii s
         ON s.definitie_id = cd.id
 
+      INNER JOIN S02_Catalog_Meta_Furnizori meta_furnizor
+        ON meta_furnizor.id = s.furnizor_id
+
       WHERE ore.oferta_reteta_id IN (${placeholders})
         AND ort.lucrare_id = ?
         AND cd.tip_resursa IN ('material', 'utilaj')
+        AND s.furnizor_id IS NOT NULL
       `,
       [...ofertaRetetaIds, lucrare_id],
     );
@@ -3126,16 +3209,16 @@ const getOfertaReteteFurnizori = async (req, res) => {
     const utilajeMap = new Map();
 
     rows.forEach((row) => {
-      const furnizor = getFurnizorFromDetaliiExtra(row.detalii_extra);
+      const furnizor = String(row.furnizor_denumire || "").trim();
 
-      if (!furnizor) return;
+      if (!row.furnizor_id || !furnizor) return;
 
-      const key = normalizeText(furnizor);
+      const key = String(row.furnizor_id);
       const targetMap = row.tip_resursa === "utilaj" ? utilajeMap : materialeMap;
 
       if (!targetMap.has(key)) {
         targetMap.set(key, {
-          value: furnizor,
+          value: String(row.furnizor_id),
           label: furnizor,
         });
       }
@@ -3266,22 +3349,34 @@ const applyOfertaReteteFurnizori = async (req, res) => {
       const [subRows] = await conn.execute(
         `
         SELECT
-          id,
-          definitie_id,
-          cod_specific,
-          descriere,
-          descriere_fr,
-          photo_url,
-          cost,
-          detalii_extra
-        FROM S02_Catalog_Subcategorii
-        WHERE definitie_id = ?
-        ORDER BY id ASC
+          s.id,
+          s.definitie_id,
+          s.cod_specific,
+          s.descriere,
+          s.descriere_fr,
+          s.photo_url,
+          s.cost,
+          s.detalii_extra,
+          s.furnizor_id,
+          s.marca_id,
+          meta_furnizor.denumire AS furnizor_denumire
+        FROM S02_Catalog_Subcategorii s
+        LEFT JOIN S02_Catalog_Meta_Furnizori meta_furnizor
+          ON meta_furnizor.id = s.furnizor_id
+        WHERE s.definitie_id = ?
+        ORDER BY s.id ASC
         `,
         [el.original_definitie_id],
       );
 
-      const liveSub = subRows.find((sub) => normalizeText(getFurnizorFromDetaliiExtra(sub.detalii_extra)) === normalizeText(wantedFurnizor));
+      const wantedFurnizorId = Number(wantedFurnizor);
+      const liveSub = subRows.find((sub) => {
+        if (Number.isFinite(wantedFurnizorId) && wantedFurnizorId > 0) {
+          return Number(sub.furnizor_id) === wantedFurnizorId;
+        }
+
+        return normalizeText(sub.furnizor_denumire) === normalizeText(wantedFurnizor);
+      });
 
       if (!liveSub) {
         failedItems.push({
@@ -3334,10 +3429,23 @@ const applyOfertaReteteFurnizori = async (req, res) => {
             photo_url = ?,
             cost = ?,
             detalii_extra = ?,
+            furnizor_id = ?,
+            marca_id = ?,
             updated_by_user_id = ?
           WHERE id = ?
           `,
-          [liveSub.cod_specific, liveSub.descriere || null, liveSub.descriere_fr || null, copiedSubPhotoUrl, nextSubCost, jsonForDb(liveSub.detalii_extra), updatedBy, existing.id],
+          [
+            liveSub.cod_specific,
+            liveSub.descriere || null,
+            liveSub.descriere_fr || null,
+            copiedSubPhotoUrl,
+            nextSubCost,
+            jsonForDb(liveSub.detalii_extra),
+            liveSub.furnizor_id || null,
+            liveSub.marca_id || null,
+            updatedBy,
+            existing.id,
+          ],
         );
 
         if (existing.photo_url && existing.photo_url !== copiedSubPhotoUrl) {
@@ -3356,11 +3464,13 @@ const applyOfertaReteteFurnizori = async (req, res) => {
             photo_url,
             cost,
             detalii_extra,
+            furnizor_id,
+            marca_id,
 
             created_by_user_id,
             updated_by_user_id
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `,
           [
             el.oferta_definitie_id,
@@ -3372,6 +3482,8 @@ const applyOfertaReteteFurnizori = async (req, res) => {
             copiedSubPhotoUrl,
             nextSubCost,
             jsonForDb(liveSub.detalii_extra),
+            liveSub.furnizor_id || null,
+            liveSub.marca_id || null,
 
             updatedBy,
             updatedBy,
@@ -3657,7 +3769,9 @@ const editOfertaRetetaElementVariant = async (req, res) => {
           descriere_fr,
           photo_url,
           cost,
-          detalii_extra
+          detalii_extra,
+          furnizor_id,
+          marca_id
         FROM S02_Catalog_Subcategorii
         WHERE id = ?
           AND definitie_id = ?
@@ -3704,10 +3818,23 @@ const editOfertaRetetaElementVariant = async (req, res) => {
             photo_url = ?,
             cost = ?,
             detalii_extra = ?,
+            furnizor_id = ?,
+            marca_id = ?,
             updated_by_user_id = ?
           WHERE id = ?
           `,
-          [liveSub.cod_specific, liveSub.descriere || null, liveSub.descriere_fr || null, copiedVariantPhotoUrl, cost, jsonForDb(liveSub.detalii_extra), updatedBy, existingOfertaSub.id],
+          [
+            liveSub.cod_specific,
+            liveSub.descriere || null,
+            liveSub.descriere_fr || null,
+            copiedVariantPhotoUrl,
+            cost,
+            jsonForDb(liveSub.detalii_extra),
+            liveSub.furnizor_id || null,
+            liveSub.marca_id || null,
+            updatedBy,
+            existingOfertaSub.id,
+          ],
         );
 
         if (existingOfertaSub.photo_url && existingOfertaSub.photo_url !== copiedVariantPhotoUrl) {
@@ -3726,11 +3853,13 @@ const editOfertaRetetaElementVariant = async (req, res) => {
             photo_url,
             cost,
             detalii_extra,
+            furnizor_id,
+            marca_id,
 
             created_by_user_id,
             updated_by_user_id
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `,
           [
             element.oferta_definitie_id,
@@ -3742,6 +3871,8 @@ const editOfertaRetetaElementVariant = async (req, res) => {
             copiedVariantPhotoUrl,
             cost,
             jsonForDb(liveSub.detalii_extra),
+            liveSub.furnizor_id || null,
+            liveSub.marca_id || null,
 
             updatedBy,
             updatedBy,
@@ -3791,6 +3922,7 @@ const editOfertaRetetaElementVariant = async (req, res) => {
           descriere_fr,
           photo_url,
           unitate_masura,
+          greutate,
           cost
         FROM S02_Catalog_Definitii
         WHERE id = ?
@@ -3823,6 +3955,7 @@ const editOfertaRetetaElementVariant = async (req, res) => {
           descriere_fr = ?,
           photo_url = ?,
           unitate_masura = ?,
+          greutate = ?,
           cost = ?,
           updated_by_user_id = ?
         WHERE id = ?
@@ -3839,6 +3972,7 @@ const editOfertaRetetaElementVariant = async (req, res) => {
           liveDef.descriere_fr || null,
           copiedDefinitionPhotoUrl,
           liveDef.unitate_masura,
+          Number(liveDef.greutate || 0),
           cost,
           updatedBy,
           element.oferta_definitie_id,

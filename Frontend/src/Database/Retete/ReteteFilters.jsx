@@ -63,6 +63,7 @@ const COLUMN_LABELS = {
   clasa5: "Articol de lucrare",
   denumire: "Denumire",
   unitate: "Unitate",
+  greutate: "Greutate",
   cost: "Cost",
   creat: "Creat",
   actualizat: "Actualizat",

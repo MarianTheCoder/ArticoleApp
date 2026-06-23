@@ -24,10 +24,14 @@ const LAST_COLUMNS = [
   { key: "clasa", label: "Clasă" },
   { key: "denumire", label: "Denumire" },
   { key: "descriere", label: "Descriere" },
+  { key: "furnizor", label: "Furnizor" },
+  { key: "marca", label: "Marcă" },
   { key: "unitate", label: "U.M." },
   { key: "cantitate", label: "Qty unitar" },
   { key: "qtyTotal", label: "Qty total" },
-  { key: "cost", label: "Cost" },
+  { key: "greutateUnitara", label: "Greutate unitară" },
+  { key: "greutateTotala", label: "Greutate totală" },
+  { key: "cost", label: "Cost unitar" },
   { key: "costTotal", label: "Cost total" },
   { key: "coefProcent", label: "Coef" },
   { key: "coefPret", label: "Coef. preț" },
@@ -38,6 +42,8 @@ const BASE_COLUMNS = [...FIRST_COLUMNS, ...LAST_COLUMNS];
 const CATEGORY_LEVEL_COUNT = 5;
 const DEFAULT_COLUMN_VISIBILITY = {
   clasa: false,
+  furnizor: false,
+  marca: false,
   cantitate: false,
   coefPret: false,
 };
@@ -61,6 +67,7 @@ const DEFAULT_OPTIONS = {
   showRecapitulatii: true,
   showReducere: true,
   showTva: true,
+  showGreutateTotalaFooter: false,
   creatDe: "",
   aprobatDe: "",
   categoryConfig: Array.from({ length: CATEGORY_LEVEL_COUNT }, () => ""),
@@ -228,15 +235,22 @@ export default function OferteExportPdfDialog({
   const [loadingPreview, setLoadingPreview] = useState(false);
 
   const allColumns = useMemo(() => {
+    const isReteteForm = options.formType === "compact_retete" || options.formType === "rasfirat_retete";
+    const isMaterialForm = options.formType === "materiale_retete";
+    const lastColumns = LAST_COLUMNS.filter((col) => {
+      if (col.key === "greutateUnitara" || col.key === "greutateTotala") return isReteteForm || isMaterialForm;
+      return true;
+    });
+
     return [
       ...FIRST_COLUMNS,
       ...dynamicColumns.map((col) => ({
         key: `col_${col.id}`,
         label: col.nume,
       })),
-      ...LAST_COLUMNS,
+      ...lastColumns,
     ];
-  }, [dynamicColumns]);
+  }, [dynamicColumns, options.formType]);
 
   const categoryFields = useMemo(() => buildCategoryFields(dynamicColumns), [dynamicColumns]);
   const selectedCategoryKeys = useMemo(() => new Set((options.categoryConfig || []).filter(Boolean)), [options.categoryConfig]);
@@ -651,6 +665,11 @@ export default function OferteExportPdfDialog({
                         </Label>
                         <Input value={tvaPercent} onChange={(e) => handleTvaPercentChange(e.target.value)} className="h-8 bg-background text-xs font-semibold" inputMode="decimal" />
                       </div>
+
+                      <Label className="flex h-8 items-center justify-between gap-2 self-end rounded-md border bg-background px-2 text-xs font-bold text-foreground">
+                        <span>Greutate totală</span>
+                        <Checkbox className="h-4 w-4" checked={options.showGreutateTotalaFooter} onCheckedChange={(checked) => updateOption("showGreutateTotalaFooter", !!checked)} />
+                      </Label>
                     </div>
 
                     <div className="grid gap-1">
