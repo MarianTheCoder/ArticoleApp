@@ -201,7 +201,7 @@ export default function ReteteMainPage({ isEmbedded = false, isSelectionMode = f
         className={
           isEmbedded
             ? "w-full h-full flex flex-col p-2 xxxl:p-3 gap-2 xxxl:gap-3 overflow-hidden bg-background relative"
-            : "w-[95%] h-[95%] flex flex-col p-2 xxxl:p-3 gap-2 xxxl:gap-3 overflow-hidden bg-background relative rounded-lg"
+            : "w-[95%] h-[95%] isolate flex flex-col p-2 xxxl:p-3 gap-2 xxxl:gap-3 overflow-visible bg-background relative rounded-lg"
         }
       >
         {/* --- 1. HEADER (FILTRE) --- */}
@@ -227,45 +227,45 @@ export default function ReteteMainPage({ isEmbedded = false, isSelectionMode = f
               return effectiveLockedLang ? { ...next, limba: effectiveLockedLang } : next;
             });
           }}
+          showAdvancedFilters={false}
         />
 
         {/* --- 2. LISTA ȘI PAGINAREA --- */}
         <div className="flex-1 w-full bg-card rounded-lg overflow-hidden relative shadow-base border border-border flex flex-col">
           <div className="flex-1 p-2 xxxl:p-3 overflow-hidden flex flex-col relative">
-            {reteteList.length > 0 ? (
-              <ReteteList
-                reteteItems={reteteList}
-                visibleColumns={visibleColumns}
-                setDraft={setDraft}
-                setOpen={setOpenAddDef}
-                handleDeleteClick={handleDeleteClick}
-                handleDuplicateClick={handleDuplicateClick}
-                displayLang={displayLang}
-                isSelectionMode={isSelectionMode}
-                selectedRetetaId={selectedRetetaId}
-                onSelectReteta={onSelectReteta}
-                sortBy={advancedFilters.sortBy}
-                sortOrder={advancedFilters.sortOrder}
-                decimalPlaces={decimalPlaces}
-                textAlign={textAlign}
-                columnResetKey={columnResetKey}
-                onSortChange={(sortBy, sortOrder) => {
-                  setAdvancedFilters((prev) => ({
-                    ...prev,
-                    sortBy,
-                    sortOrder,
-                  }));
-                }}
-              />
-            ) : (
-              <div className="flex-1 w-full flex justify-center items-center rounded-lg border border-border bg-muted/10">
-                <span className="text-base xxxl:text-xl text-muted-foreground italic">
-                  {searchDebounced.trim() === "" && advancedFiltersDebounced.cod === ""
-                    ? `Nu am găsit nicio rețetă conform criteriilor de căutare.`
-                    : `Nu am găsit nicio rețetă conform criteriilor de căutare.`}
-                </span>
-              </div>
-            )}
+            <ReteteList
+              reteteItems={reteteList}
+              visibleColumns={visibleColumns}
+              setDraft={setDraft}
+              setOpen={setOpenAddDef}
+              handleDeleteClick={handleDeleteClick}
+              handleDuplicateClick={handleDuplicateClick}
+              displayLang={displayLang}
+              isSelectionMode={isSelectionMode}
+              selectedRetetaId={selectedRetetaId}
+              onSelectReteta={onSelectReteta}
+              sortBy={advancedFilters.sortBy}
+              sortOrder={advancedFilters.sortOrder}
+              decimalPlaces={decimalPlaces}
+              textAlign={textAlign}
+              columnResetKey={columnResetKey}
+              onSortChange={(sortBy, sortOrder) => {
+                setAdvancedFilters((prev) => ({
+                  ...prev,
+                  sortBy,
+                  sortOrder,
+                }));
+              }}
+              advancedFilters={advancedFilters}
+              setAdvancedFilters={(updater) => {
+                setAdvancedFilters((prev) => {
+                  const next = typeof updater === "function" ? updater(prev) : updater;
+                  return effectiveLockedLang ? { ...next, limba: effectiveLockedLang } : next;
+                });
+              }}
+              lockedLang={effectiveLockedLang}
+              emptyMessage="Nu am găsit nicio rețetă conform criteriilor de căutare."
+            />
 
             {isFetching && !loading && <SpinnerElement text={2} />}
           </div>

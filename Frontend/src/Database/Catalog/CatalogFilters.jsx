@@ -37,6 +37,7 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
 import ReteteClaseCoduriDialog from "@/Database/Retete/ReteteClaseCoduriDialog";
+import { faRotate } from "@fortawesome/free-solid-svg-icons/faRotate";
 
 const DECIMAL_PLACE_VALUES = [1, 2];
 
@@ -51,6 +52,7 @@ const COLUMN_LABELS = {
   descriere: "Descriere",
   furnizor: "Furnizor",
   marca: "Marcă",
+  status: "Status",
   greutate: "Greutate",
   unitate: "Unitate",
   cost: "Cost",
@@ -103,6 +105,12 @@ export default function CatalogFilters({
   allRowsExpanded = false,
   onToggleAllRows,
   toggleAllRowsLabel = "Extinde/închide rânduri",
+  viewMode = null,
+  onToggleViewMode,
+  viewModeLabel = "",
+  viewModeLocked = false,
+  showAdvancedFilters = true,
+  showAddButton = true,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [claseFilterOpen, setClaseFilterOpen] = useState(false);
@@ -131,18 +139,22 @@ export default function CatalogFilters({
       <div className="flex flex-wrap xl:flex-nowrap items-center justify-between gap-2 xxxl:gap-3 w-full">
         <div className="flex items-center gap-2 xxxl:gap-2.5 w-full xl:w-auto">
           {/* Butonul de Adăugare preia titlul dinamic */}
-          <Button variant="default" className={`gap-2 h-8 xxxl:h-9 px-2.5 xxxl:px-3 text-sm xxxl:text-base ${config.hoverButton}`} onClick={onAddClick}>
-            <FontAwesomeIcon icon={faPlus} className="text-sm xxxl:text-base" />
-            <span className="tracking-wide">Adaugă {config.title}</span>
-          </Button>
-
-          <CollapsibleTrigger asChild>
-            <Button variant="outline" className="gap-2 h-8 xxxl:h-9 px-2.5 xxxl:px-3 text-sm xxxl:text-base text-foreground">
-              <FontAwesomeIcon icon={faFilter} className={isOpen ? "text-primary" : "text-foreground"} />
-              <span className="hidden sm:inline">Filtre avansate</span>
-              <FontAwesomeIcon icon={isOpen ? faChevronUp : faChevronDown} className="text-xs ml-1" />
+          {showAddButton && (
+            <Button variant="default" className={`gap-2 h-8 xxxl:h-9 px-2.5 xxxl:px-3 text-sm xxxl:text-base ${config.hoverButton}`} onClick={onAddClick}>
+              <FontAwesomeIcon icon={faPlus} className="text-sm xxxl:text-base" />
+              <span className="tracking-wide">Adaugă {config.title}</span>
             </Button>
-          </CollapsibleTrigger>
+          )}
+
+          {showAdvancedFilters && (
+            <CollapsibleTrigger asChild>
+              <Button variant="outline" className="gap-2 h-8 xxxl:h-9 px-2.5 xxxl:px-3 text-sm xxxl:text-base text-foreground">
+                <FontAwesomeIcon icon={faFilter} className={isOpen ? "text-primary" : "text-foreground"} />
+                <span className="hidden sm:inline">Filtre avansate</span>
+                <FontAwesomeIcon icon={isOpen ? faChevronUp : faChevronDown} className="text-xs ml-1" />
+              </Button>
+            </CollapsibleTrigger>
+          )}
 
           <Button variant="outline" className="gap-2 h-8 xxxl:h-9 px-2.5 xxxl:px-3 text-sm xxxl:text-base text-foreground" onClick={() => setClaseCatalogOpen(true)}>
             <FontAwesomeIcon icon={faLayerGroup} />
@@ -175,6 +187,14 @@ export default function CatalogFilters({
         </div>
 
         <div className="relative justify-end w-full gap-2 xxxl:gap-3 flex flex-wrap xl:flex-nowrap items-center">
+          {(onToggleViewMode || viewModeLocked) && (
+            <>
+              <Button onClick={onToggleViewMode} disabled={viewModeLocked} variant="outline" className="group gap-2 h-8 xxxl:h-9 text-sm xxxl:text-base text-foreground disabled:opacity-70">
+                <FontAwesomeIcon icon={faRotate} className={`text-sm text-foreground transition-transform duration-500 ${viewModeLocked ? "" : "group-hover:rotate-[360deg]"}`} />
+                <span>{viewModeLabel || "Schimbă view"}</span>
+              </Button>
+            </>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="gap-2 h-8 xxxl:h-9 text-sm xxxl:text-base text-foreground">
@@ -216,7 +236,13 @@ export default function CatalogFilters({
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent className="w-44 p-1">
                   {DECIMAL_PLACE_VALUES.map((value) => (
-                    <DropdownMenuCheckboxItem key={value} className="text-sm font-semibold" checked={decimalPlaces === value} onSelect={(e) => e.preventDefault()} onCheckedChange={() => setDecimalPlaces?.(value)}>
+                    <DropdownMenuCheckboxItem
+                      key={value}
+                      className="text-sm font-semibold"
+                      checked={decimalPlaces === value}
+                      onSelect={(e) => e.preventDefault()}
+                      onCheckedChange={() => setDecimalPlaces?.(value)}
+                    >
                       {value} zecimal{value === 1 ? "ă" : "e"}
                     </DropdownMenuCheckboxItem>
                   ))}
@@ -233,11 +259,18 @@ export default function CatalogFilters({
                     .filter((colKey) => colKey !== "greutate" || config.id === "material")
                     .filter((colKey) => colKey !== "furnizor" || config.hasFurnizor)
                     .filter((colKey) => colKey !== "marca" || config.id === "material" || config.id === "utilaj")
+                    .filter((colKey) => colKey !== "status" || config.hasStatus)
                     .map((colKey) => (
-                    <DropdownMenuCheckboxItem key={colKey} checked={visibleColumns[colKey]} onCheckedChange={(c) => toggleCol(colKey, c)} onSelect={(e) => e.preventDefault()} className="text-sm font-semibold">
-                      {COLUMN_LABELS[colKey] || colKey}
-                    </DropdownMenuCheckboxItem>
-                  ))}
+                      <DropdownMenuCheckboxItem
+                        key={colKey}
+                        checked={visibleColumns[colKey]}
+                        onCheckedChange={(c) => toggleCol(colKey, c)}
+                        onSelect={(e) => e.preventDefault()}
+                        className="text-sm font-semibold"
+                      >
+                        {COLUMN_LABELS[colKey] || colKey}
+                      </DropdownMenuCheckboxItem>
+                    ))}
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
 
@@ -278,7 +311,7 @@ export default function CatalogFilters({
         </div>
       </div>
 
-      {activeFilters.length > 0 && (
+      {showAdvancedFilters && activeFilters.length > 0 && (
         <div className="flex flex-wrap gap-1.5 xxxl:gap-2 items-center px-1">
           <span className="text-[11px] xxxl:text-xs font-bold text-muted-foreground uppercase mr-1">Filtre Active:</span>
           {activeFilters.map(([key, value]) => (
@@ -310,82 +343,92 @@ export default function CatalogFilters({
         </div>
       )}
 
-      <CollapsibleContent className="space-y-2 xxxl:space-y-3">
-        <Separator />
-        <div className="flex flex-wrap gap-2 xxxl:gap-3 items-end ">
-          <div className="flex flex-col gap-1">
-            <span className="text-[11px] xxxl:text-xs font-semibold uppercase text-foreground">Doar cu variante</span>
-            <Button variant="outline" className="gap-2 h-8 xxxl:h-9 text-sm xxxl:text-base text-foreground w-[9rem] xxxl:w-[10rem]" onClick={() => updateFilter("variante", advancedFilters.variante === "0" ? "1" : "0")}>
-              <FontAwesomeIcon icon={faLayerGroup} />
-              <span>{advancedFilters.variante === "0" ? "Nu" : "Da"}</span>
-            </Button>
-          </div>
-
-          <div className="flex flex-col w-[7rem] xxxl:w-[7.5rem] gap-1">
-            <span className="text-[11px] xxxl:text-xs font-semibold uppercase text-foreground">Limbă</span>
-            <Select value={advancedFilters.limba} onValueChange={(v) => updateFilter("limba", lockedLang || v)} disabled={!!lockedLang}>
-              <SelectTrigger className="bg-background text-foreground h-8 xxxl:h-9 text-sm xxxl:text-base">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Toate</SelectItem>
-                <SelectItem value="RO">Română</SelectItem>
-                <SelectItem value="FR">Franceză</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex flex-col w-[9rem] xxxl:w-[10rem] gap-1">
-            <span className="text-[11px] xxxl:text-xs font-semibold uppercase text-foreground">Cod</span>
-            <div className="flex">
-              <Input value={advancedFilters.cod} onChange={(e) => updateFilter("cod", formatCatalogFilterCode(e.target.value))} className="bg-background h-8 xxxl:h-9 text-sm xxxl:text-base rounded-r-none" />
-              <Button type="button" variant="outline" className="h-8 xxxl:h-9 w-8 xxxl:w-9 rounded-l-none border-l-0 px-0 text-foreground" onClick={() => setClaseFilterOpen(true)}>
-                <FontAwesomeIcon icon={faLayerGroup} className="text-xs" />
+      {showAdvancedFilters && (
+        <CollapsibleContent className="space-y-2 xxxl:space-y-3">
+          <Separator />
+          <div className="flex flex-wrap gap-2 xxxl:gap-3 items-end ">
+            <div className="flex flex-col gap-1">
+              <span className="text-[11px] xxxl:text-xs font-semibold uppercase text-foreground">Doar cu variante</span>
+              <Button
+                variant="outline"
+                className="gap-2 h-8 xxxl:h-9 text-sm xxxl:text-base text-foreground w-[9rem] xxxl:w-[10rem]"
+                onClick={() => updateFilter("variante", advancedFilters.variante === "0" ? "1" : "0")}
+              >
+                <FontAwesomeIcon icon={faLayerGroup} />
+                <span>{advancedFilters.variante === "0" ? "Nu" : "Da"}</span>
               </Button>
             </div>
-          </div>
 
-          <div className="flex flex-col min-w-[12rem] xxxl:min-w-[14rem] flex-1 gap-1">
-            <span className="text-[11px] xxxl:text-xs font-semibold uppercase text-foreground">Denumire</span>
-            <Input value={advancedFilters.denumire} onChange={(e) => updateFilter("denumire", e.target.value)} className="bg-background h-8 xxxl:h-9 text-sm xxxl:text-base" />
-          </div>
-
-          <div className="flex flex-col min-w-[12rem] xxxl:min-w-[14rem] flex-1 gap-1">
-            <span className="text-[11px] xxxl:text-xs font-semibold uppercase text-foreground">Descriere</span>
-            <Input value={advancedFilters.descriere} onChange={(e) => updateFilter("descriere", e.target.value)} className="bg-background h-8 xxxl:h-9 text-sm xxxl:text-base" />
-          </div>
-
-          <div className="flex flex-col w-[7rem] xxxl:w-[7.5rem] gap-1">
-            <span className="text-[11px] xxxl:text-xs font-semibold uppercase text-foreground">Unitate</span>
-            <Select value={advancedFilters.unitate} onValueChange={(v) => updateFilter("unitate", v)}>
-              <SelectTrigger className="bg-background text-foreground h-8 xxxl:h-9 text-sm xxxl:text-base">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Toate</SelectItem>
-                {/* Opțiunile de unitate sunt generate dinamic din config */}
-                {config.unitOptions.map((unit) => (
-                  <SelectItem key={unit} value={unit}>
-                    {unit}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {config.id === "material" && (
-            <div className="flex flex-col w-[8rem] xxxl:w-[9rem] gap-1">
-              <span className="text-[11px] xxxl:text-xs font-semibold uppercase text-foreground">Greutate</span>
-              <Input value={advancedFilters.greutate || ""} onChange={(e) => updateFilter("greutate", e.target.value)} className="bg-background h-8 xxxl:h-9 text-sm xxxl:text-base" />
+            <div className="flex flex-col w-[7rem] xxxl:w-[7.5rem] gap-1">
+              <span className="text-[11px] xxxl:text-xs font-semibold uppercase text-foreground">Limbă</span>
+              <Select value={advancedFilters.limba} onValueChange={(v) => updateFilter("limba", lockedLang || v)} disabled={!!lockedLang}>
+                <SelectTrigger className="bg-background text-foreground h-8 xxxl:h-9 text-sm xxxl:text-base">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toate</SelectItem>
+                  <SelectItem value="RO">Română</SelectItem>
+                  <SelectItem value="FR">Franceză</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          )}
 
-          <div className="flex flex-col w-[9rem] xxxl:w-[10rem] gap-1">
-            <span className="text-[11px] xxxl:text-xs font-semibold uppercase text-foreground">Cost</span>
-            <Input value={advancedFilters.cost} onChange={(e) => updateFilter("cost", e.target.value)} className="bg-background h-8 xxxl:h-9 text-sm xxxl:text-base" />
+            <div className="flex flex-col w-[9rem] xxxl:w-[10rem] gap-1">
+              <span className="text-[11px] xxxl:text-xs font-semibold uppercase text-foreground">Cod</span>
+              <div className="flex">
+                <Input
+                  value={advancedFilters.cod}
+                  onChange={(e) => updateFilter("cod", formatCatalogFilterCode(e.target.value))}
+                  className="bg-background h-8 xxxl:h-9 text-sm xxxl:text-base rounded-r-none"
+                />
+                <Button type="button" variant="outline" className="h-8 xxxl:h-9 w-8 xxxl:w-9 rounded-l-none border-l-0 px-0 text-foreground" onClick={() => setClaseFilterOpen(true)}>
+                  <FontAwesomeIcon icon={faLayerGroup} className="text-xs" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex flex-col min-w-[12rem] xxxl:min-w-[14rem] flex-1 gap-1">
+              <span className="text-[11px] xxxl:text-xs font-semibold uppercase text-foreground">Denumire</span>
+              <Input value={advancedFilters.denumire} onChange={(e) => updateFilter("denumire", e.target.value)} className="bg-background h-8 xxxl:h-9 text-sm xxxl:text-base" />
+            </div>
+
+            <div className="flex flex-col min-w-[12rem] xxxl:min-w-[14rem] flex-1 gap-1">
+              <span className="text-[11px] xxxl:text-xs font-semibold uppercase text-foreground">Descriere</span>
+              <Input value={advancedFilters.descriere} onChange={(e) => updateFilter("descriere", e.target.value)} className="bg-background h-8 xxxl:h-9 text-sm xxxl:text-base" />
+            </div>
+
+            <div className="flex flex-col w-[7rem] xxxl:w-[7.5rem] gap-1">
+              <span className="text-[11px] xxxl:text-xs font-semibold uppercase text-foreground">Unitate</span>
+              <Select value={advancedFilters.unitate} onValueChange={(v) => updateFilter("unitate", v)}>
+                <SelectTrigger className="bg-background text-foreground h-8 xxxl:h-9 text-sm xxxl:text-base">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toate</SelectItem>
+                  {/* Opțiunile de unitate sunt generate dinamic din config */}
+                  {config.unitOptions.map((unit) => (
+                    <SelectItem key={unit} value={unit}>
+                      {unit}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {config.id === "material" && (
+              <div className="flex flex-col w-[8rem] xxxl:w-[9rem] gap-1">
+                <span className="text-[11px] xxxl:text-xs font-semibold uppercase text-foreground">Greutate</span>
+                <Input value={advancedFilters.greutate || ""} onChange={(e) => updateFilter("greutate", e.target.value)} className="bg-background h-8 xxxl:h-9 text-sm xxxl:text-base" />
+              </div>
+            )}
+
+            <div className="flex flex-col w-[9rem] xxxl:w-[10rem] gap-1">
+              <span className="text-[11px] xxxl:text-xs font-semibold uppercase text-foreground">Cost</span>
+              <Input value={advancedFilters.cost} onChange={(e) => updateFilter("cost", e.target.value)} className="bg-background h-8 xxxl:h-9 text-sm xxxl:text-base" />
+            </div>
           </div>
-        </div>
-      </CollapsibleContent>
+        </CollapsibleContent>
+      )}
       <ReteteClaseCoduriDialog
         open={claseFilterOpen}
         setOpen={setClaseFilterOpen}

@@ -4,7 +4,7 @@ import React, { useState } from "react";
 export default function ImagePreviewTooltip({
   src,
   alt = "Imagine",
-  fallback,
+  fallback = "",
   containerClassName = "h-11 w-11 mx-auto rounded-md border border-border bg-muted flex items-center justify-center overflow-hidden shrink-0",
   previewMaxHeight = "max-h-[30rem]",
   previewMaxWidth = "max-w-[30rem]",

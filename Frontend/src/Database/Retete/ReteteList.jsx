@@ -12,6 +12,7 @@ import OverflowTooltip from "@/components/ui/OverflowTooltip";
 import photoAPI from "@/api/photoAPI";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import ReteteSubList from "./ReteteSubList"; // <-- Componenta globală pentru elementele rețetei
+import ReteteHeaderFiltersRow from "./ReteteHeaderFiltersRow";
 
 const getCodeTooltipParts = (meta, displayLang = "RO", fallback = "") => {
   const levels = Array.isArray(meta?.levels) ? meta.levels : [];
@@ -177,9 +178,9 @@ const ResizableTableHead = ({ colKey, style, className = "", children, onResizeS
       {children}
       <span
         onPointerDown={(event) => onResizeStart(event, colKey)}
-        className="absolute right-0 top-0 z-30 flex h-full w-3 cursor-col-resize touch-none select-none items-center justify-center hover:bg-primary/20"
+        className="absolute right-0 top-0 z-40 flex h-[4.25rem] w-3 cursor-col-resize touch-none select-none items-center justify-center hover:bg-primary/20 xxxl:h-[4.75rem]"
       >
-        <span className="h-6 w-[2px] rounded-full bg-foreground" />
+        <span className="h-14 w-[2px] rounded-full bg-foreground xxxl:h-16" />
       </span>
     </TableHead>
   );
@@ -244,6 +245,10 @@ const ReteteList = memo(
     textAlign = "center",
     columnResetKey = 0,
     onSortChange,
+    advancedFilters,
+    setAdvancedFilters,
+    lockedLang = null,
+    emptyMessage = "Nu există rezultate.",
   }) => {
     const containerRef = useRef(null);
     const scrollPosRef = useRef(0);
@@ -452,66 +457,80 @@ const ReteteList = memo(
             data={reteteItems}
             style={{ height: "100%", width: "100%" }}
             fixedHeaderContent={() => (
-              <TableRow className="h-9 xxxl:h-10  hover:bg-muted-foreground/25 bg-muted-foreground/25 border-b">
-                {showCol("limba") && (
-                  <ResizableTableHead colKey="limba" style={getColumnStyle("limba")} onResizeStart={handleColumnResizeStart} className="text-center">
-                    {renderSortHeaderContent("limba", "Limba")}
-                  </ResizableTableHead>
-                )}
-                {/* COLOANA NOUĂ PENTRU VARIANTE/ELEMENTE */}
-                {showCol("elemente") && (
-                  <ResizableTableHead colKey="elemente" style={getColumnStyle("elemente")} onResizeStart={handleColumnResizeStart} className="text-center">
-                    <div className="px-2 xxxl:px-2.5 text-sm xxxl:text-base font-bold">Elemente</div>
-                  </ResizableTableHead>
-                )}
+              <>
+                <TableRow className="h-9 xxxl:h-10 hover:bg-muted-foreground/25 bg-muted-foreground/25 border-b">
+                  {showCol("limba") && (
+                    <ResizableTableHead colKey="limba" style={getColumnStyle("limba")} onResizeStart={handleColumnResizeStart} className="text-center">
+                      {renderSortHeaderContent("limba", "Limba")}
+                    </ResizableTableHead>
+                  )}
+                  {/* COLOANA NOUĂ PENTRU VARIANTE/ELEMENTE */}
+                  {showCol("elemente") && (
+                    <ResizableTableHead colKey="elemente" style={getColumnStyle("elemente")} onResizeStart={handleColumnResizeStart} className="text-center">
+                      <div className="px-2 xxxl:px-2.5 text-sm xxxl:text-base font-bold">Elemente</div>
+                    </ResizableTableHead>
+                  )}
 
-                {showCol("cod") && (
-                  <ResizableTableHead colKey="cod" style={getColumnStyle("cod")} onResizeStart={handleColumnResizeStart} className="text-center">
-                    {renderSortHeaderContent("cod", "Cod", textAlign)}
-                  </ResizableTableHead>
-                )}
-                {CLASS_LEVEL_COLUMNS.map(
-                  (column) =>
-                    showCol(column.key) && (
-                      <ResizableTableHead key={column.key} colKey={column.key} style={getColumnStyle(column.key)} onResizeStart={handleColumnResizeStart} className="text-center">
-                        <div className={`px-2 xxxl:px-2.5 text-sm xxxl:text-base font-bold text-foreground ${textAlignClasses.cell}`}>{column.label}</div>
-                      </ResizableTableHead>
-                    ),
-                )}
-                {showCol("denumire") && (
-                  <ResizableTableHead colKey="denumire" style={getColumnStyle("denumire")} onResizeStart={handleColumnResizeStart}>
-                    {renderSortHeaderContent("denumire", "Denumire", textAlign)}
-                  </ResizableTableHead>
-                )}
-                {showCol("unitate") && (
-                  <ResizableTableHead colKey="unitate" style={getColumnStyle("unitate")} onResizeStart={handleColumnResizeStart} className="text-center">
-                    <div className="px-2 xxxl:px-2.5 text-sm xxxl:text-base font-bold">Unitate</div>
-                  </ResizableTableHead>
-                )}
+                  {showCol("cod") && (
+                    <ResizableTableHead colKey="cod" style={getColumnStyle("cod")} onResizeStart={handleColumnResizeStart} className="text-center">
+                      {renderSortHeaderContent("cod", "Cod", textAlign)}
+                    </ResizableTableHead>
+                  )}
+                  {CLASS_LEVEL_COLUMNS.map(
+                    (column) =>
+                      showCol(column.key) && (
+                        <ResizableTableHead key={column.key} colKey={column.key} style={getColumnStyle(column.key)} onResizeStart={handleColumnResizeStart} className="text-center">
+                          <div className={`px-2 xxxl:px-2.5 text-sm xxxl:text-base font-bold text-foreground ${textAlignClasses.cell}`}>{column.label}</div>
+                        </ResizableTableHead>
+                      ),
+                  )}
+                  {showCol("denumire") && (
+                    <ResizableTableHead colKey="denumire" style={getColumnStyle("denumire")} onResizeStart={handleColumnResizeStart}>
+                      {renderSortHeaderContent("denumire", "Denumire", textAlign)}
+                    </ResizableTableHead>
+                  )}
+                  {showCol("unitate") && (
+                    <ResizableTableHead colKey="unitate" style={getColumnStyle("unitate")} onResizeStart={handleColumnResizeStart} className="text-center">
+                      <div className="px-2 xxxl:px-2.5 text-sm xxxl:text-base font-bold">Unitate</div>
+                    </ResizableTableHead>
+                  )}
 
-                {showCol("greutate") && (
-                  <ResizableTableHead colKey="greutate" style={getColumnStyle("greutate")} onResizeStart={handleColumnResizeStart} className="text-center">
-                    <div className="px-2 xxxl:px-2.5 text-sm xxxl:text-base font-bold">Greutate</div>
-                  </ResizableTableHead>
-                )}
+                  {showCol("greutate") && (
+                    <ResizableTableHead colKey="greutate" style={getColumnStyle("greutate")} onResizeStart={handleColumnResizeStart} className="text-center">
+                      <div className="px-2 xxxl:px-2.5 text-sm xxxl:text-base font-bold">Greutate</div>
+                    </ResizableTableHead>
+                  )}
 
-                {showCol("cost") && (
-                  <ResizableTableHead colKey="cost" style={getColumnStyle("cost")} onResizeStart={handleColumnResizeStart} className="text-center">
-                    {renderSortHeaderContent("cost", "Cost")}
-                  </ResizableTableHead>
-                )}
+                  {showCol("cost") && (
+                    <ResizableTableHead colKey="cost" style={getColumnStyle("cost")} onResizeStart={handleColumnResizeStart} className="text-center">
+                      {renderSortHeaderContent("cost", "Cost")}
+                    </ResizableTableHead>
+                  )}
 
-                {showCol("creat") && (
-                  <ResizableTableHead colKey="creat" style={getColumnStyle("creat")} onResizeStart={handleColumnResizeStart}>
-                    {renderSortHeaderContent("creat", "Creat", textAlign)}
-                  </ResizableTableHead>
+                  {showCol("creat") && (
+                    <ResizableTableHead colKey="creat" style={getColumnStyle("creat")} onResizeStart={handleColumnResizeStart}>
+                      {renderSortHeaderContent("creat", "Creat", textAlign)}
+                    </ResizableTableHead>
+                  )}
+                  {showCol("actualizat") && (
+                    <ResizableTableHead colKey="actualizat" style={getColumnStyle("actualizat")} onResizeStart={handleColumnResizeStart}>
+                      {renderSortHeaderContent("actualizat", "Actualizat", textAlign)}
+                    </ResizableTableHead>
+                  )}
+                </TableRow>
+
+                {advancedFilters && setAdvancedFilters && (
+                  <ReteteHeaderFiltersRow
+                    visibleColumns={visibleColumns}
+                    getColumnStyle={getColumnStyle}
+                    advancedFilters={advancedFilters}
+                    setAdvancedFilters={setAdvancedFilters}
+                    lockedLang={lockedLang}
+                    displayLang={displayLang}
+                    textAlign={textAlign}
+                  />
                 )}
-                {showCol("actualizat") && (
-                  <ResizableTableHead colKey="actualizat" style={getColumnStyle("actualizat")} onResizeStart={handleColumnResizeStart}>
-                    {renderSortHeaderContent("actualizat", "Actualizat", textAlign)}
-                  </ResizableTableHead>
-                )}
-              </TableRow>
+              </>
             )}
             components={componentsRetete}
             context={context}
@@ -730,6 +749,16 @@ const ReteteList = memo(
               );
             }}
           />
+
+          {reteteItems.length === 0 && (
+            <div
+              className={`pointer-events-none absolute inset-x-0 bottom-0 ${
+                advancedFilters && setAdvancedFilters ? "top-[4.25rem] xxxl:top-[4.75rem]" : "top-9 xxxl:top-10"
+              } flex items-center justify-center bg-card/60`}
+            >
+              <span className="px-4 text-center text-base italic text-muted-foreground xxxl:text-xl">{emptyMessage}</span>
+            </div>
+          )}
         </div>
 
         <ReteteSubList open={subDialogOpen} setOpen={setSubDialogOpen} parentItem={selectedParent} displayLang={displayLang} />

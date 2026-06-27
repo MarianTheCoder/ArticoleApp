@@ -5,6 +5,7 @@ import api from "../../api/axiosAPI"; // Ensure you import your API instance
 import OferteWrapper from "./Ofertare/OferteWrapper";
 import Prezentare from "./Prezentare/Prezentare";
 import MainRezerve from "./Rezerve/MainRezerve";
+import InventarMainPageSantier from "./Inventar/InventarMainPageSantier";
 // import SarciniMain from "./Sarcini/SarciniMain";
 
 export default function SantiereRoutes() {
@@ -16,7 +17,7 @@ export default function SantiereRoutes() {
   const getBtnClass = (index) => {
     const isActive = selectedButton === index;
     const base = "relative w-40 text-foreground font-semibold tracking-wide transition-all duration-[150ms]  px-6 p-3 xxxl:px-4 rounded-tr-[4rem] rounded-tl-2xl hover:-translate-y-1";
-    const active = "bg-primary text-white -translate-y-1 shadow-[8px_8px_15px_rgba(0,0,0,1)] z-40";
+    const active = "bg-primary text-white -translate-y-1 shadow-[8px_8px_15px_rgba(0,0,0,1)] !z-50";
     const inactive = "bg-background shadow-[2px_2px_10px_rgba(0,0,0,1)]";
 
     // Z-index layering logic from your original code
@@ -37,12 +38,15 @@ export default function SantiereRoutes() {
             Oferte
           </button>
           <button onClick={() => setSelectedButton(3)} className={`z-30 ${getBtnClass(3)}`}>
-            Execuție
+            Inventar
           </button>
           <button onClick={() => setSelectedButton(4)} className={`z-20 ${getBtnClass(4)}`}>
-            Rezerve
+            Execuție
           </button>
           <button onClick={() => setSelectedButton(5)} className={`z-10 ${getBtnClass(5)}`}>
+            Rezerve
+          </button>
+          <button onClick={() => setSelectedButton(6)} className={`z-[9] ${getBtnClass(6)}`}>
             Antimăsurători
           </button>
         </div>
@@ -51,8 +55,9 @@ export default function SantiereRoutes() {
         <div className="bg-background relative z-50 w-full h-full flex flex-col items-center rounded-lg">
           {selectedButton === 1 && <Prezentare key={`${idUser}-${idSantier}`} />}
           {selectedButton === 2 && <OferteWrapper key={`${idUser}-${idSantier}`} />}
+          {selectedButton === 3 && <InventarMainPageSantier key={`${idUser}-${idSantier}`} />}
           {/* {selectedButton === 3 && <SarciniMain key={`${idUser}-${idSantier}`} />} */}
-          {selectedButton === 4 && <MainRezerve key={`${idUser}-${idSantier}`} />}
+          {selectedButton === 5 && <MainRezerve key={`${idUser}-${idSantier}`} />}
           {/* Add Button 5 component here if you have one */}
         </div>
       </div>

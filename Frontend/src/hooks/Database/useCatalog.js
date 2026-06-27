@@ -46,6 +46,7 @@ export const useBulkSaveCatalogMeta = () => {
       queryClient.invalidateQueries({ queryKey: ["catalog", "meta", variables.type] });
       queryClient.invalidateQueries({ queryKey: ["catalog"] });
       queryClient.invalidateQueries({ queryKey: ["retete"] });
+      queryClient.invalidateQueries({ queryKey: ["oferte", "retete"] });
       queryClient.invalidateQueries({ queryKey: ["inventar", "resurse"] });
     },
   });
@@ -127,6 +128,7 @@ export const useAddCatalogSubDef = () => {
       queryClient.invalidateQueries(["catalog", tipResursa]);
       queryClient.invalidateQueries({ queryKey: ["inventar", "resurse"] });
       queryClient.invalidateQueries(["retete"]); // Dacă adăugăm o subcategorie nouă, e bine să refacem și lista de rețete pentru a prinde eventualele legături noi
+      queryClient.invalidateQueries({ queryKey: ["oferte", "retete"] });
     },
   });
 };
@@ -146,6 +148,7 @@ export const useEditCatalogSubDef = () => {
       queryClient.invalidateQueries(["catalog", tipResursa]);
       queryClient.invalidateQueries({ queryKey: ["inventar", "resurse"] });
       queryClient.invalidateQueries(["retete"]); // Dacă edităm o subcategorie, e bine să refacem și lista de rețete pentru a prinde eventualele modificări în legături
+      queryClient.invalidateQueries({ queryKey: ["oferte", "retete"] });
     },
   });
 };
@@ -159,6 +162,7 @@ export const useDeleteCatalogSubDef = () => {
       queryClient.invalidateQueries(["catalog", variables.tip_resursa]);
       queryClient.invalidateQueries({ queryKey: ["inventar", "resurse"] });
       queryClient.invalidateQueries(["retete"]); // Dacă ștergem o subcategorie, e bine să refacem și lista de rețete pentru a prinde eventualele modificări în legături
+      queryClient.invalidateQueries({ queryKey: ["oferte", "retete"] });
     },
   });
 };

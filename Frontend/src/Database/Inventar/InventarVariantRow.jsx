@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBan, faRightLeft } from "@fortawesome/free-solid-svg-icons";
+import { faBan, faClockRotateLeft, faRightLeft } from "@fortawesome/free-solid-svg-icons";
 
 import OverflowTooltip from "@/components/ui/OverflowTooltip";
 import ImagePreviewTooltip from "@/components/ui/ImagePreviewTooltip";
@@ -47,6 +47,7 @@ const tableCellLeftClass = `${tableCellClass} text-left`;
 export default function InventarVariantRow({
   sub,
   parent,
+  isVariantView,
   config,
   visibleColumns,
   displayLang,
@@ -59,29 +60,37 @@ export default function InventarVariantRow({
   onToggleSelect,
   onContextSelect,
   onOpenTransaction,
+  onOpenIstoric,
   onClearSelection,
+  showExpandCell = true,
 }) {
   const showCol = (key) => visibleColumns[key];
   const afisareDescriere = displayLang === "FR" ? sub.descriere_fr || sub.descriere || "" : sub.descriere || sub.descriere_fr || "";
   const furnizor = sub.furnizor_denumire || sub.detalii_extra?.furnizor || "";
   const marca = sub.marca_denumire || sub.detalii_extra?.marca || "";
+  const status = sub.detalii_extra?.status_utilaj || "";
   const hasMarca = config.id === "material" || config.id === "utilaj";
   const stocTotal = getStockNumber(sub.stoc_total, sub.stocTotal);
   const stocInventar = getStockNumber(sub.stoc_inventar, sub.stocInventar, sub.stoc_total);
 
   const rowNode = (
     <TableRow
-      className={`h-8 cursor-pointer border-b-0 bg-zinc-500/35 hover:bg-zinc-500/50 dark:bg-zinc-700/80 dark:hover:bg-zinc-700/95 ${isSelected ? "!bg-primary/25 hover:!bg-primary/35 dark:!bg-primary/45 dark:hover:!bg-primary/60" : ""}`}
+      className={`h-8 cursor-pointer border-b-0 ${!isVariantView ? "bg-zinc-500/35 hover:bg-zinc-500/50 dark:bg-zinc-700/80 dark:hover:bg-zinc-700/95" : "bg-card hover:bg-accent"} ${isSelected ? "!bg-primary/25 hover:!bg-primary/35 dark:!bg-primary/45 dark:hover:!bg-primary/60" : ""}`}
+      onMouseDownCapture={(event) => {
+        if (!event.shiftKey) return;
+        event.preventDefault();
+        window.getSelection?.()?.removeAllRanges?.();
+      }}
       onClick={(event) => {
         if (event.target.closest("a, button, input, textarea, select")) return;
-        onToggleSelect?.(parent, sub);
+        onToggleSelect?.(parent, sub, event);
       }}
       onContextMenuCapture={() => onContextSelect?.(parent, sub)}
     >
-      <TableCell style={getColumnStyle("expand")} className={`px-0 py-1 ${last ? "border-b " : ""} text-center bg-card dark:bg-card`} />
+      {showExpandCell && <TableCell style={getColumnStyle("expand")} className={`px-0 py-1 ${last ? "border-b " : ""} text-center bg-card dark:bg-card`} />}
 
       {config.hasPhoto && showCol("poza") && (
-        <TableCell style={getColumnStyle("poza")} className={`${tableCellCenterClass} border-l border-b border-border`}>
+        <TableCell style={getColumnStyle("poza")} className={`${tableCellCenterClass} ${!isVariantView ? "border-l" : ""} border-b border-border`}>
           <ImagePreviewTooltip
             src={sub.photo_url ? `${photoAPI}/${sub.photo_url}` : null}
             alt={sub.cod_specific}
@@ -160,6 +169,18 @@ export default function InventarVariantRow({
         </TableCell>
       )}
 
+      {config.hasStatus && showCol("status") && (
+        <TableCell style={getColumnStyle("status")} className={tableCellCenterClass}>
+          {status ? (
+            <Badge variant="outline" className="h-6 max-w-full truncate px-2 text-xs xxxl:text-sm font-black shadow-none">
+              {status}
+            </Badge>
+          ) : (
+            <span className="text-muted-foreground/40 italic">—</span>
+          )}
+        </TableCell>
+      )}
+
       {showCol("greutate") && (
         <TableCell style={getColumnStyle("greutate")} className={tableCellCenterClass}>
           <span className="text-muted-foreground/40 italic">—</span>
@@ -197,11 +218,11 @@ export default function InventarVariantRow({
           <div className="flex items-center gap-1.5 h-8 overflow-hidden">
             <Avatar className="h-7 w-7 border rounded-md border-border shrink-0">
               <AvatarImage src={sub.created_by_photo_url ? `${photoAPI}/${sub.created_by_photo_url}` : undefined} alt={sub.created_by_name} className="object-cover" />
-              <AvatarFallback className="text-[10px] rounded-md bg-muted font-bold">{getUserInitials(sub.created_by_name)}</AvatarFallback>
+              <AvatarFallback className="text-xs rounded-md bg-muted font-bold">{getUserInitials(sub.created_by_name)}</AvatarFallback>
             </Avatar>
             <div className="flex flex-col justify-center min-w-0 leading-tight">
               <span className="text-xs font-bold text-foreground truncate block">{sub.created_by_name || "Sistem"}</span>
-              <span className="text-[10px] text-muted-foreground">{formatDateTime(sub.created_at)}</span>
+              <span className="text-xs text-muted-foreground">{formatDateTime(sub.created_at)}</span>
             </div>
           </div>
         </TableCell>
@@ -212,11 +233,11 @@ export default function InventarVariantRow({
           <div className="flex items-center gap-1.5 h-8 overflow-hidden">
             <Avatar className="h-7 w-7 border rounded-md border-border shrink-0">
               <AvatarImage src={sub.updated_by_photo_url ? `${photoAPI}/${sub.updated_by_photo_url}` : undefined} alt={sub.updated_by_name} className="object-cover" />
-              <AvatarFallback className="text-[10px] rounded-md bg-muted font-bold">{getUserInitials(sub.updated_by_name)}</AvatarFallback>
+              <AvatarFallback className="text-xs rounded-md bg-muted font-bold">{getUserInitials(sub.updated_by_name)}</AvatarFallback>
             </Avatar>
             <div className="flex flex-col justify-center min-w-0 leading-tight">
               <span className="text-xs font-bold text-foreground truncate block">{sub.updated_by_name || "Sistem"}</span>
-              <span className="text-[10px] text-muted-foreground">{formatDateTime(sub.updated_at)}</span>
+              <span className="text-xs text-muted-foreground">{formatDateTime(sub.updated_at)}</span>
             </div>
           </div>
         </TableCell>
@@ -243,10 +264,15 @@ export default function InventarVariantRow({
           Tranzacție stoc
         </ContextMenuItem>
 
+        <ContextMenuItem className="gap-3" onClick={() => onOpenIstoric?.(parent, sub)}>
+          <FontAwesomeIcon icon={faClockRotateLeft} className="text-primary" />
+          Istoric mișcări
+        </ContextMenuItem>
+
         <ContextMenuSeparator />
 
         <ContextMenuItem className="gap-3" onClick={onClearSelection}>
-          <FontAwesomeIcon icon={faBan} className="text-muted-foreground" />
+          <FontAwesomeIcon icon={faBan} className="text-destructive" />
           Anulează selecția
         </ContextMenuItem>
       </ContextMenuContent>

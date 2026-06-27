@@ -70,7 +70,7 @@ import NotificationBell from "./NotificationsBell";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { useInventare } from "@/hooks/Database/useInventar";
-import InventarAddDialog from "@/Database/Inventar/InventarAddDialog";
+import InventarAddDialog from "@/Database/Inventar/components/Dialogs/InventarAddDialog";
 
 const getContrastColor = (hexColor) => {
   if (!hexColor) return "white";

@@ -408,7 +408,7 @@ export default function ActivitatiMainCompany({ companyId = null, filialaId = nu
                     }}
                     onEditComment={(comment, actSev) => {
                       setActiveCommentActId(comment.activitate_id);
-                      setActiveCommentSeverity(actSev);
+                      setActiveCommentActSeverity(actSev);
                       setComentariuDialogMode("edit");
                       setComentariuDraftData(comment);
                       setComentariuDialogOpen(true);

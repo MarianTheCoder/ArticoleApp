@@ -2681,6 +2681,9 @@ const OferteReteteList = memo(function OferteReteteList({
                 const isExpanded = expandedRetetaIds.has(toId(reteta.id));
                 const treeStyle = getColumnStyle("tree");
                 const tipStyle = getColumnStyle("elemente");
+                const retetaElemente = Array.isArray(reteta.elemente) ? reteta.elemente : [];
+                const totalElementeCount = retetaElemente.length;
+                const variantElementeCount = retetaElemente.filter((element) => !!(element?.oferta_subcategorie_id || element?.original_subcategorie_id || element?.cod_specific)).length;
 
                 return (
                   <>
@@ -2690,7 +2693,13 @@ const OferteReteteList = memo(function OferteReteteList({
                       </div>
                     </TableCell>
 
-                    {showCol("elemente") && <TableCell style={tipStyle} className="border-l border-r border-border p-0 align-middle" />}
+                    {showCol("elemente") && (
+                      <TableCell style={tipStyle} className="border-l border-r border-border p-0 text-center align-middle">
+                        <span className="inline-flex h-6 min-w-9 items-center justify-center rounded-md border border-primary/30 bg-primary/10 px-1.5 text-xs font-black text-primary">
+                          {variantElementeCount}/{totalElementeCount}
+                        </span>
+                      </TableCell>
+                    )}
 
                     {showCol("poza") && (
                       <TableCell style={getColumnStyle("poza")} className="border-r border-border p-1 text-center align-middle text-sm">

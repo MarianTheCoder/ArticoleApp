@@ -106,10 +106,9 @@ const getVariantMetaLabel = (el, key) => {
   if (!hasVariantSelected(el)) return "";
   if (!["material", "utilaj"].includes(String(el?.tip_resursa || "").trim().toLowerCase())) return "";
 
-  const selectedVariant = getSelectedVariant(el);
   const field = key === "furnizor" ? "furnizor_denumire" : "marca_denumire";
 
-  return String(el?.[field] || el?.subcategorie_oferta?.[field] || selectedVariant?.[field] || "").trim();
+  return String(el?.[field] ?? el?.subcategorie_oferta?.[field] ?? "").trim();
 };
 
 const formatGreutate = (value) => {
@@ -472,6 +471,11 @@ const OferteRetetaSubList = memo(function OferteRetetaSubList({
     center: "text-center",
     right: "text-right",
   }[safeTextAlign];
+  const flexAlignClass = {
+    left: "justify-start",
+    center: "justify-center",
+    right: "justify-end",
+  }[safeTextAlign];
   const tooltipAlign = safeTextAlign;
 
   return (
@@ -514,7 +518,12 @@ const OferteRetetaSubList = memo(function OferteRetetaSubList({
       {showCol("cod") && (
         <TableCell style={getColumnStyle("cod")} className={`${childCellClass} ${textAlignClass}`}>
           {hasVariantSelected(element) ? (
-            <OverflowTooltip align={tooltipAlign} text={afisareCod || EMPTY} className={`font-semibold text-foreground ${textAlignClass} whitespace-nowrap`} maxLines={1} textSize="sm" />
+            <div className={`flex min-w-0 items-center gap-1.5 ${flexAlignClass}`}>
+              <OverflowTooltip align={tooltipAlign} text={afisareCod || EMPTY} className={`min-w-0 font-semibold text-foreground ${textAlignClass} whitespace-nowrap`} maxLines={1} textSize="sm" />
+              <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-md border border-primary/40 bg-primary/10 px-1 text-[10px] font-black leading-none text-primary">
+                V
+              </span>
+            </div>
           ) : (
             <RecipeCodeTooltip text={afisareCod || EMPTY} tooltipParts={getElementCodeTooltipParts(element, displayLang)} className={textAlignClass} plainQuestion />
           )}

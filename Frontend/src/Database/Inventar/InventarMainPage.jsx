@@ -1,12 +1,15 @@
 import React, { useState } from "react";
 import { useParams } from "react-router-dom";
 
-import SpinnerElement from "@/MainElements/SpinnerElement";
 import { useInventar } from "@/hooks/Database/useInventar";
-import InventarSumar from "./Sumar/InventarSumar";
-import InventarUtilaje from "./Utilaje/InventarUtilaje";
-import InventarTransport from "./Transport/InventarTransport";
 import InventarResursePage from "./InventarResursePage";
+
+// Tab-ul "fancy" -> tipul de resursă randat de pagina generică (Sumar nu are încă UI).
+const TAB_TIP_RESURSA = {
+  2: "material",
+  3: "utilaj",
+  4: "transport",
+};
 
 export default function InventarMainPage() {
   const { idInventar } = useParams();
@@ -28,6 +31,9 @@ export default function InventarMainPage() {
     <div className="relative h-screen w-full flex text-sm leading-tight items-center justify-center">
       <div className="w-[96%] h-90h relative flex justify-center rounded-lg">
         <div className="absolute -top-9 left-8 -space-x-2 select-none flex">
+          <div className="relative z-40 mr-5 flex h-9 select-none items-center rounded-t-lg border border-red-700 bg-red-600 px-5 text-base font-semibold tracking-wide text-white shadow-[2px_2px_10px_rgba(0,0,0,1)] dark:border-red-400/80 dark:bg-red-500 dark:text-white">
+            <span>{inventar?.denumire || "Inventar"}</span>
+          </div>
           <button onClick={() => setSelectedButton(1)} className={`z-50 ${getBtnClass(1)}`}>
             Sumar
           </button>
@@ -43,12 +49,11 @@ export default function InventarMainPage() {
         </div>
 
         <div className="bg-background relative z-50 w-full h-full flex flex-col items-center rounded-lg overflow-hidden">
-          <>
-            {selectedButton === 1 && <InventarSumar />}
-            {selectedButton === 2 && <InventarResursePage inventar={inventar} tipResursa="material" />}
-            {selectedButton === 3 && <InventarUtilaje inventar={inventar} />}
-            {selectedButton === 4 && <InventarTransport inventar={inventar} />}
-          </>
+          {selectedButton === 1 ? (
+            <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-muted-foreground">Sumar — în curând.</div>
+          ) : (
+            <InventarResursePage key={selectedButton} inventar={inventar} tipResursa={TAB_TIP_RESURSA[selectedButton]} />
+          )}
         </div>
       </div>
     </div>

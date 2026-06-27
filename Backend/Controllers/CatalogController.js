@@ -231,6 +231,24 @@ const getResurse = async (req, res) => {
     // Verificăm dacă primim "1"
     const variante = req.query.variante ? (req.query.variante.trim() == "1" ? true : false) : false;
 
+    // Filtre la nivel de variantă (subcategorie): furnizor / marcă / status utilaj. Folosite atât în EXISTS pe definiții,
+    // cât și pentru a filtra variantele nested (deci și lista plată de variante din view-ul "variante").
+    const furnizorId = Number(req.query.furnizor_id || 0);
+    const marcaId = Number(req.query.marca_id || 0);
+    const statusUtilaj = req.query.status ? req.query.status.trim() : "";
+    const buildSubFilter = (alias) => {
+      let sql = "";
+      if (Number.isInteger(furnizorId) && furnizorId > 0) sql += ` AND ${alias}.furnizor_id = ?`;
+      if (Number.isInteger(marcaId) && marcaId > 0) sql += ` AND ${alias}.marca_id = ?`;
+      if (statusUtilaj) sql += ` AND JSON_UNQUOTE(JSON_EXTRACT(${alias}.detalii_extra, '$.status_utilaj')) = ?`;
+      return sql;
+    };
+    const subFilterParams = [];
+    if (Number.isInteger(furnizorId) && furnizorId > 0) subFilterParams.push(furnizorId);
+    if (Number.isInteger(marcaId) && marcaId > 0) subFilterParams.push(marcaId);
+    if (statusUtilaj) subFilterParams.push(statusUtilaj);
+    const hasSubFilter = subFilterParams.length > 0;
+
     // Sortare securizată
     const allowedSortColumns = ["updated_at", "created_at", "cod_definitie", "denumire", "greutate", "cost"];
     const sortBy = allowedSortColumns.includes(req.query.sortBy) ? req.query.sortBy : "updated_at";
@@ -291,6 +309,12 @@ const getResurse = async (req, res) => {
       whereClause += " AND EXISTS (SELECT 1 FROM S02_Catalog_Subcategorii sub WHERE sub.definitie_id = d.id)";
     }
 
+    // Păstrăm doar definițiile care au cel puțin o variantă ce respectă filtrele de furnizor/marcă/status.
+    if (hasSubFilter) {
+      whereClause += ` AND EXISTS (SELECT 1 FROM S02_Catalog_Subcategorii sub WHERE sub.definitie_id = d.id${buildSubFilter("sub")})`;
+      queryParams.push(...subFilterParams);
+    }
+
     // --- 4. EXECUTARE QUERY-URI ---
     // ATENȚIE: Am adăugat "d" ca alias și aici ca să funcționeze cu "d." din whereClause
     const countQuery = `SELECT COUNT(*) as total FROM S02_Catalog_Definitii d ${whereClause}`;
@@ -339,10 +363,10 @@ const getResurse = async (req, res) => {
          LEFT JOIN S02_Catalog_Meta_Furnizori mf ON mf.id = s.furnizor_id
          LEFT JOIN S02_Catalog_Meta_Marci mm ON mm.id = s.marca_id
          LEFT JOIN S00_Utilizatori u1 ON s.created_by_user_id = u1.id
-         LEFT JOIN S00_Utilizatori u2 ON s.updated_by_user_id = u2.id 
-         WHERE s.definitie_id IN (${placeholders})
+         LEFT JOIN S00_Utilizatori u2 ON s.updated_by_user_id = u2.id
+         WHERE s.definitie_id IN (${placeholders})${buildSubFilter("s")}
          ORDER BY s.updated_at DESC`,
-        parentIds,
+        [...parentIds, ...subFilterParams],
       );
 
       const items = parents.map((parent) => ({

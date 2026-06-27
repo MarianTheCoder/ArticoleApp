@@ -31,6 +31,15 @@ const modifyColumn = async (pool, tableName, columnName, definition) => {
   await pool.execute(`ALTER TABLE ${tableName} MODIFY COLUMN ${columnName} ${definition}`);
 };
 
+const dropCheckIfExists = async (pool, tableName, constraintName) => {
+  try {
+    await pool.execute(`ALTER TABLE ${tableName} DROP CHECK ${constraintName}`);
+  } catch (err) {
+    if (err?.code === "ER_CHECK_CONSTRAINT_NOT_FOUND" || err?.errno === 3821 || err?.errno === 1091) return;
+    throw err;
+  }
+};
+
 async function initializeDB(pool) {
   const creatCompaniesTable = `
         CREATE TABLE IF NOT EXISTS S10_Companii (
@@ -307,10 +316,6 @@ async function initializeDB(pool) {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `;
   await pool.execute(catalogSubcategoriiTable);
-  await addColumnIfMissing(pool, "S02_Catalog_Subcategorii", "furnizor_id", "INT NULL AFTER detalii_extra");
-  await addColumnIfMissing(pool, "S02_Catalog_Subcategorii", "marca_id", "INT NULL AFTER furnizor_id");
-  await addIndexIfMissing(pool, "S02_Catalog_Subcategorii", "INDEX idx_catalog_sub_furnizor_id (furnizor_id)");
-  await addIndexIfMissing(pool, "S02_Catalog_Subcategorii", "INDEX idx_catalog_sub_marca_id (marca_id)");
   console.log("S02_Catalog_Subcategorii table created or already exists.");
 
   const catalogFurnizoriTable = `
@@ -363,74 +368,40 @@ async function initializeDB(pool) {
   const inventarResurseTable = `
     CREATE TABLE IF NOT EXISTS S04_Inventar_Resurse (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        inventar_id INT NOT NULL,
-        catalog_definitie_id INT NOT NULL,
         tip_resursa ENUM('material', 'utilaj', 'transport') NOT NULL,
+        catalog_definitie_id INT NOT NULL,
+        catalog_subcategorie_id INT NULL,
+        catalog_subcategorie_key INT NOT NULL DEFAULT 0,
+
+        locatie_tip ENUM('inventar', 'santier', 'user') NOT NULL,
+        locatie_id INT NOT NULL,
+        cantitate DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+
+        observatii TEXT NULL,
+        activ TINYINT(1) NOT NULL DEFAULT 1,
 
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         created_by_user_id INT,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         updated_by_user_id INT,
 
-        CONSTRAINT fk_inventar_resurse_inventar
-          FOREIGN KEY (inventar_id) REFERENCES S04_Inventar(id)
-          ON DELETE CASCADE ON UPDATE CASCADE,
         CONSTRAINT fk_inventar_resurse_catalog
           FOREIGN KEY (catalog_definitie_id) REFERENCES S02_Catalog_Definitii(id)
           ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT fk_inventar_resurse_subcategorie
+          FOREIGN KEY (catalog_subcategorie_id) REFERENCES S02_Catalog_Subcategorii(id)
+          ON DELETE CASCADE ON UPDATE CASCADE,
 
-        UNIQUE KEY uq_inventar_resursa (inventar_id, catalog_definitie_id),
-        INDEX idx_inventar_resurse_inventar_tip (inventar_id, tip_resursa),
-        INDEX idx_inventar_resurse_catalog (catalog_definitie_id)
+        UNIQUE KEY uq_inventar_resursa_locatie (catalog_definitie_id, catalog_subcategorie_key, locatie_tip, locatie_id),
+        INDEX idx_inventar_resurse_locatie (locatie_tip, locatie_id),
+        INDEX idx_inventar_resurse_tip_locatie (tip_resursa, locatie_tip, locatie_id),
+        INDEX idx_inventar_resurse_catalog (catalog_definitie_id),
+        INDEX idx_inventar_resurse_subcategorie (catalog_subcategorie_id),
+        INDEX idx_inventar_resurse_activ (activ)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `;
   await pool.execute(inventarResurseTable);
   console.log("Inventar_Resurse table created or already exists.");
-
-  const inventarStocTable = `
-    CREATE TABLE IF NOT EXISTS S04_Inventar_Stoc (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        inventar_resursa_id INT NOT NULL,
-        inventar_id INT NOT NULL,
-        catalog_definitie_id INT NOT NULL,
-        catalog_subcategorie_id INT NULL,
-        santier_id INT NULL,
-        user_id INT NULL,
-        cantitate DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
-
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        created_by_user_id INT,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        updated_by_user_id INT,
-
-        CONSTRAINT fk_inventar_stoc_resursa
-          FOREIGN KEY (inventar_resursa_id) REFERENCES S04_Inventar_Resurse(id)
-          ON DELETE CASCADE ON UPDATE CASCADE,
-        CONSTRAINT fk_inventar_stoc_inventar
-          FOREIGN KEY (inventar_id) REFERENCES S04_Inventar(id)
-          ON DELETE CASCADE ON UPDATE CASCADE,
-        CONSTRAINT fk_inventar_stoc_catalog
-          FOREIGN KEY (catalog_definitie_id) REFERENCES S02_Catalog_Definitii(id)
-          ON DELETE CASCADE ON UPDATE CASCADE,
-        CONSTRAINT fk_inventar_stoc_subcategorie
-          FOREIGN KEY (catalog_subcategorie_id) REFERENCES S02_Catalog_Subcategorii(id)
-          ON DELETE CASCADE ON UPDATE CASCADE,
-        CONSTRAINT fk_inventar_stoc_santier
-          FOREIGN KEY (santier_id) REFERENCES S01_Santiere(id)
-          ON DELETE SET NULL ON UPDATE CASCADE,
-        CONSTRAINT fk_inventar_stoc_user
-          FOREIGN KEY (user_id) REFERENCES S00_Utilizatori(id)
-          ON DELETE SET NULL ON UPDATE CASCADE,
-
-        INDEX idx_inventar_stoc_resursa (inventar_resursa_id),
-        INDEX idx_inventar_stoc_inventar_catalog (inventar_id, catalog_definitie_id),
-        INDEX idx_inventar_stoc_subcategorie (catalog_subcategorie_id),
-        INDEX idx_inventar_stoc_santier (santier_id),
-        INDEX idx_inventar_stoc_user (user_id)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-  `;
-  await pool.execute(inventarStocTable);
-  console.log("S04_Inventar_Stoc table created or already exists.");
 
   const inventarTranzactiiTable = `
     CREATE TABLE IF NOT EXISTS S04_Inventar_Tranzactii (
@@ -438,7 +409,17 @@ async function initializeDB(pool) {
         inventar_id INT NOT NULL,
         numar_tranzactie INT NOT NULL,
         data_tranzactie DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        tip_tranzactie ENUM('tranzactie', 'cerere') NOT NULL DEFAULT 'tranzactie',
+        status_cerere ENUM('in_asteptare', 'partial', 'aprobata', 'respinsa', 'anulata') NULL,
         observatii_generale TEXT,
+        responsabil_user_id INT NULL,
+        assigned_user_id INT NULL,
+        requested_by_user_id INT NULL,
+        responsabil_approved_by INT NULL,
+        responsabil_approved_at DATETIME NULL,
+        assigned_approved_by INT NULL,
+        assigned_approved_at DATETIME NULL,
+        cerere_text TEXT NULL,
 
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         created_by_user_id INT,
@@ -449,6 +430,10 @@ async function initializeDB(pool) {
 
         UNIQUE KEY uq_inventar_tranzactie_numar (inventar_id, numar_tranzactie),
         INDEX idx_inventar_tranzactii_inventar_data (inventar_id, data_tranzactie),
+        INDEX idx_inventar_tranzactii_tip_status (tip_tranzactie, status_cerere),
+        INDEX idx_inventar_tranzactii_responsabil (responsabil_user_id),
+        INDEX idx_inventar_tranzactii_assigned (assigned_user_id),
+        INDEX idx_inventar_tranzactii_requested_by (requested_by_user_id),
         INDEX idx_inventar_tranzactii_created_by (created_by_user_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `;
@@ -460,19 +445,18 @@ async function initializeDB(pool) {
         id INT AUTO_INCREMENT PRIMARY KEY,
         tranzactie_id INT NOT NULL,
 
-        inventar_resursa_id INT NOT NULL,
         catalog_definitie_id INT NOT NULL,
         catalog_subcategorie_id INT NULL,
 
-        cantitate DECIMAL(12, 2) NOT NULL,
+        cantitate DECIMAL(12, 2) NOT NULL DEFAULT 0,
+        cantitate_ceruta DECIMAL(12, 2) NULL,
+        cantitate_aprobata DECIMAL(12, 2) NULL,
 
         sursa_tip ENUM('inventar', 'santier', 'user', 'cumparare', 'consum', 'pierdere', 'corectie') NOT NULL,
-        sursa_santier_id INT NULL,
-        sursa_user_id INT NULL,
+        sursa_locatie_id INT NULL,
 
         destinatie_tip ENUM('inventar', 'santier', 'user', 'cumparare', 'consum', 'pierdere', 'corectie') NOT NULL,
-        destinatie_santier_id INT NULL,
-        destinatie_user_id INT NULL,
+        destinatie_locatie_id INT NULL,
 
         observatii TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -480,40 +464,20 @@ async function initializeDB(pool) {
         CONSTRAINT fk_inventar_tr_linii_tranzactie
           FOREIGN KEY (tranzactie_id) REFERENCES S04_Inventar_Tranzactii(id)
           ON DELETE CASCADE ON UPDATE CASCADE,
-        CONSTRAINT fk_inventar_tr_linii_resursa
-          FOREIGN KEY (inventar_resursa_id) REFERENCES S04_Inventar_Resurse(id)
-          ON DELETE RESTRICT ON UPDATE CASCADE,
         CONSTRAINT fk_inventar_tr_linii_catalog
           FOREIGN KEY (catalog_definitie_id) REFERENCES S02_Catalog_Definitii(id)
           ON DELETE RESTRICT ON UPDATE CASCADE,
         CONSTRAINT fk_inventar_tr_linii_subcategorie
           FOREIGN KEY (catalog_subcategorie_id) REFERENCES S02_Catalog_Subcategorii(id)
           ON DELETE RESTRICT ON UPDATE CASCADE,
-        CONSTRAINT fk_inventar_tr_linii_sursa_santier
-          FOREIGN KEY (sursa_santier_id) REFERENCES S01_Santiere(id)
-          ON DELETE SET NULL ON UPDATE CASCADE,
-        CONSTRAINT fk_inventar_tr_linii_dest_santier
-          FOREIGN KEY (destinatie_santier_id) REFERENCES S01_Santiere(id)
-          ON DELETE SET NULL ON UPDATE CASCADE,
-        CONSTRAINT fk_inventar_tr_linii_sursa_user
-          FOREIGN KEY (sursa_user_id) REFERENCES S00_Utilizatori(id)
-          ON DELETE SET NULL ON UPDATE CASCADE,
-        CONSTRAINT fk_inventar_tr_linii_dest_user
-          FOREIGN KEY (destinatie_user_id) REFERENCES S00_Utilizatori(id)
-          ON DELETE SET NULL ON UPDATE CASCADE,
 
-        CHECK (cantitate > 0),
+        CHECK (cantitate >= 0),
 
         INDEX idx_inventar_tr_linii_tranzactie (tranzactie_id),
-        INDEX idx_inventar_tr_linii_resursa (inventar_resursa_id),
         INDEX idx_inventar_tr_linii_catalog (catalog_definitie_id),
         INDEX idx_inventar_tr_linii_subcategorie (catalog_subcategorie_id),
-        INDEX idx_inventar_tr_linii_sursa_santier (sursa_santier_id),
-        INDEX idx_inventar_tr_linii_dest_santier (destinatie_santier_id),
-        INDEX idx_inventar_tr_linii_sursa_user (sursa_user_id),
-        INDEX idx_inventar_tr_linii_dest_user (destinatie_user_id),
-        INDEX idx_inventar_tr_linii_sursa_tip (sursa_tip),
-        INDEX idx_inventar_tr_linii_dest_tip (destinatie_tip)
+        INDEX idx_inventar_tr_linii_sursa (sursa_tip, sursa_locatie_id),
+        INDEX idx_inventar_tr_linii_destinatie (destinatie_tip, destinatie_locatie_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `;
   await pool.execute(inventarTranzactiiLiniiTable);
@@ -815,10 +779,6 @@ async function initializeDB(pool) {
 `;
 
   await pool.execute(oferteCatalogSubcategoriiTable);
-  await addColumnIfMissing(pool, "S03_Oferte_Catalog_Subcategorii", "furnizor_id", "INT NULL AFTER detalii_extra");
-  await addColumnIfMissing(pool, "S03_Oferte_Catalog_Subcategorii", "marca_id", "INT NULL AFTER furnizor_id");
-  await addIndexIfMissing(pool, "S03_Oferte_Catalog_Subcategorii", "INDEX idx_oferte_catalog_sub_furnizor_id (furnizor_id)");
-  await addIndexIfMissing(pool, "S03_Oferte_Catalog_Subcategorii", "INDEX idx_oferte_catalog_sub_marca_id (marca_id)");
   console.log("S03_Oferte_Catalog_Subcategorii table created or already exists.");
 
   const oferteReteteElementeTable = `

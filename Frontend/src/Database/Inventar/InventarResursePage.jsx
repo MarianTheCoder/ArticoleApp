@@ -1,29 +1,26 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowRight, faBoxOpen, faChevronDown, faChevronRight, faQuestion, faSort, faSortDown, faSortUp } from "@fortawesome/free-solid-svg-icons";
+import { faBan, faBoxOpen, faSort, faSortDown, faSortUp } from "@fortawesome/free-solid-svg-icons";
 import { toast } from "sonner";
 
 import CatalogFilters from "@/Database/Catalog/CatalogFilters";
 import { resurseConfig } from "@/Database/Catalog/resurseConfig";
-import OverflowTooltip from "@/components/ui/OverflowTooltip";
-import ImagePreviewTooltip from "@/components/ui/ImagePreviewTooltip";
 import SpinnerElement from "@/MainElements/SpinnerElement";
-import InventarCatalogSelectDialog from "./InventarCatalogSelectDialog";
+import InventarCatalogSelectDialog from "./components/Dialogs/InventarCatalogSelectDialog";
+import InventarResourceRow from "./InventarResourceRow";
 import InventarVariantRow from "./InventarVariantRow";
-import InventarStocTranzactieDialog from "./InventarStocTranzactieDialog";
+import InventarStocTranzactieDialog from "./components/Dialogs/InventarStocTranzactieDialog";
+import InventarIstoricDialog from "./components/Dialogs/InventarIstoricDialog";
+import InventarHeaderFiltersRow from "./components/InventarHeaderFiltersRow";
 import CatalogSubList from "@/Database/Catalog/CatalogSubList";
-import { useAddInventarResurse, useInventarResurse } from "@/hooks/Database/useInventar";
-import photoAPI from "@/api/photoAPI";
-import NoImage from "@/assets/no-image-icon.png";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useAddResurse, useInventarResurse, useSantierResurse } from "@/hooks/Database/useInventar";
 
 const COLUMN_WIDTHS_STORAGE_KEY = "inventar_column_widths";
 const TEXT_ALIGN_STORAGE_KEY = "inventar_text_align";
+const VIEW_MODE_STORAGE_KEY = "inventar_view_mode";
 const VISIBLE_COLUMNS_STORAGE_PREFIX = "inventar_visible_columns";
 
 const DEFAULT_COLUMN_WIDTHS = {
@@ -38,6 +35,7 @@ const DEFAULT_COLUMN_WIDTHS = {
   descriere: 320,
   furnizor: 118,
   marca: 112,
+  status: 120,
   greutate: 110,
   unitate: 74,
   cost: 120,
@@ -59,6 +57,7 @@ const MIN_COLUMN_WIDTHS = {
   descriere: 220,
   furnizor: 88,
   marca: 88,
+  status: 90,
   greutate: 90,
   unitate: 64,
   cost: 90,
@@ -90,6 +89,7 @@ const getDefaultVisibleColumns = (config) => ({
   descriere: false,
   furnizor: config.hasFurnizor,
   marca: config.id === "material" || config.id === "utilaj",
+  status: config.hasStatus,
   greutate: config.id === "material",
   unitate: true,
   cost: false,
@@ -113,6 +113,7 @@ const readVisibleColumns = (tipResursa, config) => {
         poza: config.hasPhoto ? Boolean(saved.poza ?? defaults.poza) : false,
         furnizor: config.hasFurnizor ? Boolean(saved.furnizor ?? defaults.furnizor) : false,
         marca: config.id === "material" || config.id === "utilaj" ? Boolean(saved.marca ?? defaults.marca) : false,
+        status: config.hasStatus ? Boolean(saved.status ?? defaults.status) : false,
         greutate: config.id === "material" ? Boolean(saved.greutate ?? defaults.greutate) : false,
       };
     }
@@ -135,6 +136,8 @@ const buildVariantSelectionItem = (parent, sub) => ({
   sub,
 });
 
+const getVariantViewSub = (item) => item?.subcategorie || null;
+
 const normalizeDecimalPlaces = (value) => ([1, 2].includes(Number(value)) ? Number(value) : 2);
 
 const getTextAlignClasses = (textAlign) => {
@@ -143,404 +146,43 @@ const getTextAlignClasses = (textAlign) => {
   return { cell: "text-center", flex: "justify-center", tooltip: "center" };
 };
 
-const formatNumber = (value, digits = 2) => {
-  const numberValue = Number(value || 0);
-  return Number.isFinite(numberValue) ? numberValue.toFixed(digits).replace(".", ",") : (0).toFixed(digits).replace(".", ",");
-};
-
-const getStockNumber = (...values) => {
-  for (const value of values) {
-    const numberValue = Number(value);
-    if (Number.isFinite(numberValue)) return numberValue;
-  }
-
-  return 0;
-};
-
-const getUserInitials = (name) =>
-  String(name || "S")
-    .split(" ")
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-
-const formatDateTime = (value) => {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-
-  return `${date.toLocaleDateString("ro-RO")} ${date.toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" })}`;
-};
-
 const ResizableTableHead = ({ colKey, style, className = "", children, onResizeStart }) => {
   return (
     <TableHead style={style} className={`relative px-0 select-none ${className}`}>
       {children}
       <span
         onPointerDown={(event) => onResizeStart(event, colKey)}
-        className="absolute right-0 top-0 z-30 flex h-full w-3 cursor-col-resize touch-none select-none items-center justify-center hover:bg-primary/20"
+        className="absolute right-0 top-0 z-40 flex h-[4rem] w-3 cursor-col-resize touch-none select-none items-center justify-center hover:bg-primary/20 xxxl:h-[4.5rem]"
       >
-        <span className="h-6 w-[2px] rounded-full bg-foreground" />
+        <span className="h-14 w-[2px] rounded-full bg-foreground xxxl:h-16" />
       </span>
     </TableHead>
   );
 };
 
-const getCatalogClassLevelDisplay = (item, levelNo, displayLang = "RO") => {
-  const level = item?.cod_definitie_meta?.classLevels?.[Number(levelNo) - 1];
-  if (!level || level.is_empty) return "";
-
-  const denumire = displayLang === "FR" ? level.denumire_fr || level.denumire_ro : level.denumire_ro;
-  return `${level.code_segment}. ${level.is_defined && denumire ? denumire : "Nedefinit"}`;
-};
-
-const getCatalogCodeTooltipParts = (item, displayLang = "RO") => {
-  const meta = item?.cod_definitie_meta || {};
-  const levels = Array.isArray(meta.levels) ? meta.levels : Array.isArray(meta.classLevels) ? meta.classLevels.filter((level) => level && !level.is_empty) : [];
-  const classParts = levels
-    .filter((level) => level && !level.is_empty && level.code_segment && String(level.code_segment) !== "00")
-    .map((level, index) => {
-      const denumire = displayLang === "FR" ? level.denumire_fr || level.denumire_ro : level.denumire_ro;
-      const isUndefined = !(level.is_defined && denumire);
-
-      return {
-        key: level.path_code || `${level.level_no || index + 1}-${level.code_segment}`,
-        label: `${level.code_segment}. ${isUndefined ? "Nedefinit" : denumire}`,
-        isUndefined,
-      };
-    });
-  const specificSegments = Array.isArray(meta.specificSegments)
-    ? meta.specificSegments
-    : Array.isArray(meta.specific_segments)
-      ? meta.specific_segments
-      : String(item?.cod_definitie || "")
-          .trim()
-          .split(/\s+/)
-          .slice(2);
-  const specificParts = [specificSegments.filter(Boolean).join(" ")].filter(Boolean).map((segment, index) => ({ key: `specific-${index}`, label: segment }));
-
-  return [...classParts, ...specificParts].length > 0 ? [...classParts, ...specificParts] : [{ key: "fallback", label: item?.cod_definitie || "Cod nedefinit" }];
-};
-
-const InventarCodeValue = ({ item, displayLang }) => {
-  const parts = getCatalogCodeTooltipParts(item, displayLang);
-
-  return (
-    <div className="flex min-w-0 w-full items-center justify-between gap-1.5">
-      <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-bold text-foreground">{String(item.cod_definitie || "—")}</span>
-
-      <Popover>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={(event) => event.stopPropagation()}
-            className="inline-flex h-5 w-5 shrink-0 cursor-help items-center justify-center rounded-full border border-border bg-card text-[10px] font-black text-muted-foreground hover:text-foreground"
-          >
-            <FontAwesomeIcon icon={faQuestion} />
-          </button>
-        </PopoverTrigger>
-
-        <PopoverContent
-          align="center"
-          side="bottom"
-          sideOffset={8}
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={(event) => event.stopPropagation()}
-          className="z-[100] max-w-[64rem] w-auto rounded-md border-2 border-border bg-popover p-2 text-xs xxxl:text-sm text-popover-foreground shadow-md"
-        >
-          <div className="flex max-w-[62rem] flex-wrap items-center gap-1">
-            {parts.map((part, index) => (
-              <React.Fragment key={`${part.key}-${index}`}>
-                <span className={`inline-flex min-w-0 max-w-[18rem] rounded-md border p-1 text-xs font-semibold ${part.isUndefined ? "border-destructive/50 bg-destructive/10 text-destructive" : ""}`}>
-                  <OverflowTooltip text={part.label} align="center" className={`block max-w-full truncate ${part.isUndefined ? "text-destructive" : "text-foreground"}`} maxLines={1} textSize="sm" />
-                </span>
-
-                {index < parts.length - 1 && (
-                  <span className="text-sm xxxl:text-base">
-                    <FontAwesomeIcon icon={faArrowRight} />
-                  </span>
-                )}
-              </React.Fragment>
-            ))}
-          </div>
-        </PopoverContent>
-      </Popover>
-    </div>
-  );
-};
-
-const tableCellClass = "px-2 py-1 text-xs xxxl:text-sm";
-const tableCellCenterClass = `${tableCellClass} text-center`;
-const tableCellLeftClass = `${tableCellClass} text-left`;
-const expandCellClass = "px-0 py-1 text-center";
-
-function InventarResourceRow({
-  item,
-  config,
-  visibleColumns,
-  displayLang,
-  getColumnStyle,
-  textAlignClasses,
-  decimalPlaces,
-  isExpanded,
-  onToggleVariants,
-  onAddVariant,
-  selectedVariantKeys,
-  onToggleVariantSelect,
-  onContextSelectVariant,
-  onOpenTransaction,
-  onClearVariantSelection,
-}) {
-  const showCol = (key) => visibleColumns[key];
-  const afisareDenumire = displayLang === "FR" ? item.denumire_fr || item.denumire : item.denumire;
-  const afisareDescriere = displayLang === "FR" ? item.descriere_fr || "" : item.descriere;
-  const subcategorii = item.subcategorii || [];
-  const hasVariants = subcategorii.length > 0;
-  const stocTotal = getStockNumber(item.stoc_total, item.stocTotal);
-  const stocInventar = getStockNumber(item.stoc_inventar, item.stocInventar);
-
-  return (
-    <>
-      <TableRow
-        className={`h-9 border-b hover:bg-accent ${hasVariants ? "cursor-pointer" : ""}`}
-        onClick={(event) => {
-          if (event.target.closest("a, button, input, textarea, select")) return;
-          if (hasVariants) onToggleVariants?.(item);
-        }}
-      >
-        <TableCell style={getColumnStyle("expand")} className={expandCellClass}>
-          <button
-            type="button"
-            disabled={!hasVariants}
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              if (hasVariants) onToggleVariants?.(item);
-            }}
-            className={`inline-flex  h-10 w-10  items-center justify-center rounded-md ${hasVariants ? "cursor-pointer text-foreground hover:text-primary" : "cursor-default text-muted-foreground"}`}
-          >
-            <FontAwesomeIcon icon={isExpanded ? faChevronDown : faChevronRight} className={`text-base transition-transform ${hasVariants ? "" : "opacity-30"}`} />
-          </button>
-        </TableCell>
-
-        {config.hasPhoto && showCol("poza") && (
-          <TableCell style={getColumnStyle("poza")} className={tableCellCenterClass}>
-            <ImagePreviewTooltip
-              src={item.photo_url ? `${photoAPI}/${item.photo_url}` : null}
-              alt={item.cod_definitie}
-              ringColor={`hover:ring-${config.normalColor}`}
-              fallback={<img src={NoImage} alt="No Image" className="h-full w-full object-cover opacity-50" />}
-              containerClassName="h-9 w-9 xxxl:h-10 xxxl:w-10 rounded-md border border-border bg-muted flex items-center justify-center overflow-hidden shrink-0 mx-auto"
-            />
-          </TableCell>
-        )}
-
-        {showCol("limba") && (
-          <TableCell style={getColumnStyle("limba")} className={tableCellCenterClass}>
-            <div className="flex justify-center">
-              <div className={`rounded-md border ${item.limba !== "FR" ? "bg-cyan-500/5 border-cyan-500" : "bg-lime-500/5 border-lime-500"} flex items-center justify-center`}>
-                <span className={`text-xs xxxl:text-sm w-8 xxxl:w-10 py-1 font-bold ${item.limba !== "FR" ? "text-cyan-600 " : "text-lime-600"}`}>{item.limba}</span>
-              </div>
-            </div>
-          </TableCell>
-        )}
-
-        {showCol("variante") && (
-          <TableCell style={getColumnStyle("variante")} className={tableCellCenterClass}>
-            <div className="flex justify-center items-center">
-              <Badge
-                variant="outline"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onAddVariant?.(item);
-                }}
-                className={`h-8 w-8 px-2 text-center flex justify-center items-center text-xs xxxl:text-sm shadow-none whitespace-nowrap cursor-pointer transition-all hover:scale-110 ${
-                  hasVariants ? (item.limba !== "FR" ? "text-cyan-600 border-cyan-500" : "text-lime-600 border-lime-500") : "text-muted-foreground"
-                }`}
-              >
-                {subcategorii.length}
-              </Badge>
-            </div>
-          </TableCell>
-        )}
-
-        {showCol("cod") && (
-          <TableCell style={getColumnStyle("cod")} className={`${textAlignClasses.cell} ${tableCellClass} whitespace-nowrap`}>
-            <InventarCodeValue item={item} displayLang={displayLang} flexClass={textAlignClasses.flex} />
-          </TableCell>
-        )}
-
-        {showCol("clasa1") && (
-          <TableCell style={getColumnStyle("clasa1")} className={`${textAlignClasses.cell} ${tableCellClass}`}>
-            {getCatalogClassLevelDisplay(item, 1, displayLang) ? (
-              <OverflowTooltip
-                align={textAlignClasses.tooltip}
-                text={getCatalogClassLevelDisplay(item, 1, displayLang)}
-                className={`truncate text-foreground ${textAlignClasses.cell}`}
-                maxLines={1}
-                textSize="sm"
-              />
-            ) : (
-              <span className="text-muted-foreground/40 italic">—</span>
-            )}
-          </TableCell>
-        )}
-
-        {showCol("clasa2") && (
-          <TableCell style={getColumnStyle("clasa2")} className={`${textAlignClasses.cell} ${tableCellClass}`}>
-            {getCatalogClassLevelDisplay(item, 2, displayLang) ? (
-              <OverflowTooltip
-                align={textAlignClasses.tooltip}
-                text={getCatalogClassLevelDisplay(item, 2, displayLang)}
-                className={`truncate text-foreground ${textAlignClasses.cell}`}
-                maxLines={1}
-                textSize="sm"
-              />
-            ) : (
-              <span className="text-muted-foreground/40 italic">—</span>
-            )}
-          </TableCell>
-        )}
-
-        {showCol("denumire") && (
-          <TableCell style={getColumnStyle("denumire")} className={`${textAlignClasses.cell} ${tableCellClass}`}>
-            <OverflowTooltip align={textAlignClasses.tooltip} text={afisareDenumire || "—"} className={`truncate text-foreground ${textAlignClasses.cell}`} maxLines={1} textSize="sm" />
-          </TableCell>
-        )}
-
-        {showCol("descriere") && (
-          <TableCell style={getColumnStyle("descriere")} className={`${textAlignClasses.cell} ${tableCellClass}`}>
-            {afisareDescriere ? (
-              <OverflowTooltip align={textAlignClasses.tooltip} text={afisareDescriere} className={`truncate text-foreground ${textAlignClasses.cell}`} maxLines={1} textSize="sm" />
-            ) : (
-              <span className="text-muted-foreground/40 italic">—</span>
-            )}
-          </TableCell>
-        )}
-
-        {showCol("furnizor") && (
-          <TableCell style={getColumnStyle("furnizor")} className={`${textAlignClasses.cell} ${tableCellClass}`}>
-            <span className="text-muted-foreground/40 italic">—</span>
-          </TableCell>
-        )}
-
-        {showCol("marca") && (
-          <TableCell style={getColumnStyle("marca")} className={`${textAlignClasses.cell} ${tableCellClass}`}>
-            <span className="text-muted-foreground/40 italic">—</span>
-          </TableCell>
-        )}
-
-        {showCol("greutate") && (
-          <TableCell style={getColumnStyle("greutate")} className={tableCellCenterClass}>
-            {item.tip_resursa === "material" ? (
-              <span className="font-semibold text-foreground">{formatNumber(item.greutate, decimalPlaces)}</span>
-            ) : (
-              <span className="text-muted-foreground/40 italic">—</span>
-            )}
-          </TableCell>
-        )}
-
-        {showCol("unitate") && (
-          <TableCell style={getColumnStyle("unitate")} className={tableCellCenterClass}>
-            <Badge variant="outline" className="h-6 px-2 text-xs xxxl:text-sm shadow-none whitespace-nowrap">
-              {item.unitate_masura}
-            </Badge>
-          </TableCell>
-        )}
-
-        {showCol("cost") && (
-          <TableCell style={getColumnStyle("cost")} className={tableCellCenterClass}>
-            <span className="font-bold text-foreground">{formatNumber(item.cost, decimalPlaces)}</span>
-          </TableCell>
-        )}
-
-        {showCol("stocInventar") && (
-          <TableCell style={getColumnStyle("stocInventar")} className={tableCellCenterClass}>
-            <span className="font-black text-foreground">{formatNumber(stocInventar, decimalPlaces)}</span>
-          </TableCell>
-        )}
-
-        {showCol("stocTotal") && (
-          <TableCell style={getColumnStyle("stocTotal")} className={tableCellCenterClass}>
-            <span className="font-black text-primary">{formatNumber(stocTotal, decimalPlaces)}</span>
-          </TableCell>
-        )}
-
-        {showCol("creat") && (
-          <TableCell style={getColumnStyle("creat")} className={tableCellLeftClass}>
-            <div className="flex items-center gap-1.5 h-8 overflow-hidden">
-              <Avatar className="h-7 w-7 border rounded-md border-border shrink-0">
-                <AvatarImage src={item.created_by_photo_url ? `${photoAPI}/${item.created_by_photo_url}` : undefined} alt={item.created_by_name} className="object-cover" />
-                <AvatarFallback className="text-[10px] rounded-md bg-muted font-bold">{getUserInitials(item.created_by_name)}</AvatarFallback>
-              </Avatar>
-
-              <div className="flex flex-col justify-center min-w-0 leading-tight">
-                <span className="text-xs font-bold text-foreground truncate block">{item.created_by_name || "Sistem"}</span>
-                <span className="text-[10px] text-muted-foreground">{formatDateTime(item.created_at)}</span>
-              </div>
-            </div>
-          </TableCell>
-        )}
-
-        {showCol("actualizat") && (
-          <TableCell style={getColumnStyle("actualizat")} className={tableCellLeftClass}>
-            <div className="flex items-center gap-1.5 h-8 overflow-hidden">
-              <Avatar className="h-7 w-7 border rounded-md border-border shrink-0">
-                <AvatarImage src={item.updated_by_photo_url ? `${photoAPI}/${item.updated_by_photo_url}` : undefined} alt={item.updated_by_name} className="object-cover" />
-                <AvatarFallback className="text-[10px] rounded-md bg-muted font-bold">{getUserInitials(item.updated_by_name)}</AvatarFallback>
-              </Avatar>
-
-              <div className="flex flex-col justify-center min-w-0 leading-tight">
-                <span className="text-xs font-bold text-foreground truncate block">{item.updated_by_name || "Sistem"}</span>
-                <span className="text-[10px] text-muted-foreground">{formatDateTime(item.updated_at)}</span>
-              </div>
-            </div>
-          </TableCell>
-        )}
-      </TableRow>
-
-      {isExpanded &&
-        subcategorii.map((sub, index) =>
-          (() => {
-            const variantKey = getVariantSelectionKey(item, sub);
-            const isSelected = selectedVariantKeys.includes(variantKey);
-
-            return (
-              <InventarVariantRow
-                key={sub.id}
-                last={index == subcategorii.length - 1}
-                sub={sub}
-                parent={item}
-                config={config}
-                visibleColumns={visibleColumns}
-                displayLang={displayLang}
-                getColumnStyle={getColumnStyle}
-                textAlignClasses={textAlignClasses}
-                decimalPlaces={decimalPlaces}
-                isSelected={isSelected}
-                selectedCount={isSelected ? selectedVariantKeys.length : 1}
-                onToggleSelect={onToggleVariantSelect}
-                onContextSelect={onContextSelectVariant}
-                onOpenTransaction={onOpenTransaction}
-                onClearSelection={onClearVariantSelection}
-              />
-            );
-          })(),
-        )}
-    </>
-  );
-}
-
-export default function InventarResursePage({ inventar, tipResursa }) {
+export default function InventarResursePage({ inventar, tipResursa, location = null, locationName = "" }) {
   const config = resurseConfig[tipResursa];
-  const inventarLang = inventar?.limba || "RO";
+  // location = lentila prin care privim stocul: magazia inventarului (default) sau un șantier.
+  const resolvedLocation = location || { tip: "inventar", id: inventar?.id, limba: inventar?.limba };
+  const isSantier = resolvedLocation.tip === "santier";
+  const locationLimba = resolvedLocation.limba || inventar?.limba || "RO";
+  const primaryStockLabel = isSantier ? "Stoc șantier" : "Stoc inventar";
+  const addDialogContextType = isSantier ? "șantierul" : "inventarul";
+  const addDialogContextName = locationName || inventar?.denumire || "";
 
   const [selectDialogOpen, setSelectDialogOpen] = useState(false);
   const [variantDialogOpen, setVariantDialogOpen] = useState(false);
   const [variantDialogParent, setVariantDialogParent] = useState(null);
   const [displayLang, setDisplayLang] = useState("RO");
+  const [viewMode, setViewMode] = useState(() => {
+    if (isSantier) return "variante";
+    try {
+      const saved = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+      return saved === "variante" ? "variante" : "definitii";
+    } catch {
+      return "definitii";
+    }
+  });
   const [search, setSearch] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
   const [page, setPage] = useState(1);
@@ -550,8 +192,13 @@ export default function InventarResursePage({ inventar, tipResursa }) {
 
   const [expandedResourceIds, setExpandedResourceIds] = useState(new Set());
   const [selectedVariantKeys, setSelectedVariantKeys] = useState([]);
+  const [selectedVariantItemsByKey, setSelectedVariantItemsByKey] = useState({});
+  const lastSelectedVariantKeyRef = useRef(null);
   const [transactionDialogOpen, setTransactionDialogOpen] = useState(false);
   const [transactionItems, setTransactionItems] = useState([]);
+  const [transactionDefaults, setTransactionDefaults] = useState({ source: null, destination: null });
+  const [istoricOpen, setIstoricOpen] = useState(false);
+  const [istoricVariant, setIstoricVariant] = useState(null);
   const [decimalPlaces, setDecimalPlaces] = useState(2);
   const [textAlign, setTextAlign] = useState(() => {
     try {
@@ -579,6 +226,12 @@ export default function InventarResursePage({ inventar, tipResursa }) {
   useEffect(() => {
     setDisplayLang("RO");
   }, [inventar?.id]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(VIEW_MODE_STORAGE_KEY, viewMode);
+    } catch {}
+  }, [viewMode]);
 
   useEffect(() => {
     try {
@@ -610,8 +263,13 @@ export default function InventarResursePage({ inventar, tipResursa }) {
       cod: "",
       denumire: "",
       variante: "0",
+      descriere: "",
+      furnizor_id: "",
+      marca_id: "",
       greutate: "",
       cost: "",
+      stoc_inventar: "all",
+      stoc_total: "all",
       unitate: "all",
       limba: "all",
       sortBy: "updated_at",
@@ -631,7 +289,12 @@ export default function InventarResursePage({ inventar, tipResursa }) {
     setPage(1);
     setExpandedResourceIds(new Set());
     setSelectedVariantKeys([]);
-  }, [tipResursa, getDefaultAdvancedFilters]);
+    setSelectedVariantItemsByKey({});
+  }, [tipResursa, inventar?.id, resolvedLocation.id, getDefaultAdvancedFilters]);
+
+  useEffect(() => {
+    if (isSantier) setViewMode("variante");
+  }, [isSantier, resolvedLocation.id, tipResursa]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -647,6 +310,11 @@ export default function InventarResursePage({ inventar, tipResursa }) {
     return () => clearTimeout(handler);
   }, [search, limitInput, advancedFilters]);
 
+  useEffect(() => {
+    setPage(1);
+    setExpandedResourceIds(new Set());
+  }, [viewMode]);
+
   const filters = useMemo(
     () => ({
       search: searchDebounced,
@@ -656,17 +324,24 @@ export default function InventarResursePage({ inventar, tipResursa }) {
       denumire: advancedFiltersDebounced.denumire,
       descriere: advancedFiltersDebounced.descriere,
       variante: advancedFiltersDebounced.variante,
+      furnizor_id: advancedFiltersDebounced.furnizor_id,
+      marca_id: advancedFiltersDebounced.marca_id,
       greutate: advancedFiltersDebounced.greutate,
       cost: advancedFiltersDebounced.cost,
+      stoc_inventar: advancedFiltersDebounced.stoc_inventar,
+      stoc_total: advancedFiltersDebounced.stoc_total,
       unitate: advancedFiltersDebounced.unitate === "all" ? "" : advancedFiltersDebounced.unitate,
       sortBy: advancedFiltersDebounced.sortBy,
       sortOrder: advancedFiltersDebounced.sortOrder,
+      view: viewMode,
     }),
-    [advancedFiltersDebounced, limitDebounced, page, searchDebounced],
+    [advancedFiltersDebounced, limitDebounced, page, searchDebounced, viewMode],
   );
 
-  const { data, isFetching } = useInventarResurse(inventar?.id, tipResursa, filters);
-  const { mutateAsync: addInventarResurse } = useAddInventarResurse();
+  const warehouseResurse = useInventarResurse(isSantier ? null : inventar?.id, tipResursa, filters);
+  const santierResurse = useSantierResurse(isSantier ? resolvedLocation.id : null, tipResursa, locationLimba, filters);
+  const { data, isFetching } = isSantier ? santierResurse : warehouseResurse;
+  const { mutateAsync: addResurse } = useAddResurse();
 
   const items = data?.items || [];
   const totalItems = data?.total || 0;
@@ -682,33 +357,64 @@ export default function InventarResursePage({ inventar, tipResursa }) {
   );
 
   const allResourcesExpanded = useMemo(() => expandableResourceIds.length > 0 && expandableResourceIds.every((id) => expandedResourceIds.has(id)), [expandableResourceIds, expandedResourceIds]);
+  const isVariantView = viewMode === "variante";
+  const viewModeLabel = isVariantView ? "Variante" : "Definiții";
 
-  const selectedVariantItems = useMemo(() => {
-    const selected = new Set(selectedVariantKeys);
-    const result = [];
+  const handleToggleViewMode = useCallback(() => {
+    setViewMode((prev) => (prev === "variante" ? "definitii" : "variante"));
+  }, []);
+
+  const selectedVariantItems = useMemo(() => selectedVariantKeys.map((key) => selectedVariantItemsByKey[key]).filter(Boolean), [selectedVariantItemsByKey, selectedVariantKeys]);
+
+  // Lista plată a variantelor selectabile, în ordinea afișată — ancora pentru selecția pe interval cu Shift.
+  // În view-ul „variante" sunt toate rândurile; în „definiții" doar variantele părinților expandați (cele vizibile).
+  const orderedVariantEntries = useMemo(() => {
+    const entries = [];
+    if (isVariantView) {
+      items.forEach((item) => {
+        const sub = getVariantViewSub(item);
+        if (sub) entries.push(buildVariantSelectionItem(item, sub));
+      });
+      return entries;
+    }
 
     items.forEach((parent) => {
-      (parent.subcategorii || []).forEach((sub) => {
-        const key = getVariantSelectionKey(parent, sub);
-        if (selected.has(key)) {
-          result.push(buildVariantSelectionItem(parent, sub));
-        }
-      });
+      if (!expandedResourceIds.has(String(parent.inventar_resursa_id || parent.id))) return;
+      (parent.subcategorii || []).forEach((sub) => entries.push(buildVariantSelectionItem(parent, sub)));
     });
-
-    return result;
-  }, [items, selectedVariantKeys]);
+    return entries;
+  }, [items, isVariantView, expandedResourceIds]);
 
   useEffect(() => {
-    const availableKeys = new Set();
-    items.forEach((parent) => {
-      (parent.subcategorii || []).forEach((sub) => {
-        availableKeys.add(getVariantSelectionKey(parent, sub));
-      });
-    });
+    setSelectedVariantItemsByKey((prev) => {
+      let changed = false;
+      const next = { ...prev };
 
-    setSelectedVariantKeys((prev) => prev.filter((key) => availableKeys.has(key)));
-  }, [items]);
+      items.forEach((parent) => {
+        if (viewMode === "variante") {
+          const sub = getVariantViewSub(parent);
+          if (!sub) return;
+
+          const key = getVariantSelectionKey(parent, sub);
+          if (selectedVariantKeys.includes(key)) {
+            next[key] = buildVariantSelectionItem(parent, sub);
+            changed = true;
+          }
+          return;
+        }
+
+        (parent.subcategorii || []).forEach((sub) => {
+          const key = getVariantSelectionKey(parent, sub);
+          if (selectedVariantKeys.includes(key)) {
+            next[key] = buildVariantSelectionItem(parent, sub);
+            changed = true;
+          }
+        });
+      });
+
+      return changed ? next : prev;
+    });
+  }, [items, selectedVariantKeys, viewMode]);
 
   useEffect(() => {
     if (!variantDialogOpen || !variantDialogParent?.id) return;
@@ -719,15 +425,51 @@ export default function InventarResursePage({ inventar, tipResursa }) {
     }
   }, [items, variantDialogOpen, variantDialogParent]);
 
-  const handleConfirmSelect = async (selectedIds) => {
-    try {
-      await addInventarResurse({
-        inventar_id: inventar.id,
-        catalog_definitie_ids: selectedIds,
+  // Adaugă resursele selectate pe locația curentă (șantier sau magazie) prin endpoint-ul generic.
+  const handleConfirmSelect = async (selection) => {
+    const mode = selection?.mode || "definitii";
+    const selectedIds = Array.isArray(selection) ? selection : selection?.ids || [];
+
+    if (mode === "variante") {
+      const selectedItems = (selection?.items || [])
+        .map((item) => {
+          const parent = item.__parent || item.parent || item;
+          const sub = item.__sub || item.sub || item.subcategorie;
+          if (!parent?.id || !sub?.id) return null;
+
+          return {
+            key: `catalog:${parent.id}:${sub.id}`,
+            parent,
+            sub,
+          };
+        })
+        .filter(Boolean);
+
+      if (selectedItems.length === 0) {
+        toast.error("Nu există variante valide pentru tranzacție.", { position: "top-right" });
+        return { keepOpen: true };
+      }
+
+      setTransactionItems((prev) => {
+        if (!transactionDialogOpen || prev.length === 0) return selectedItems;
+        const byKey = new Map(prev.map((item) => [String(item.key), item]));
+        selectedItems.forEach((item) => byKey.set(String(item.key), item));
+        return Array.from(byKey.values());
       });
-      toast.success("Resursele au fost adăugate în inventar.", { position: "top-right" });
+      setTransactionDefaults({
+        source: null,
+        destination: isSantier ? { type: "santier", santierId: resolvedLocation.id } : null,
+      });
+      setTransactionDialogOpen(true);
+      return { keepOpen: !transactionDialogOpen };
+    }
+
+    try {
+      await addResurse(isSantier ? { santier_id: resolvedLocation.id, limba: locationLimba, catalog_definitie_ids: selectedIds } : { inventar_id: inventar.id, catalog_definitie_ids: selectedIds });
+      toast.success(isSantier ? "Resursele au fost adăugate pe șantier." : "Resursele au fost adăugate în inventar.", { position: "top-right" });
+      return { keepOpen: false };
     } catch (error) {
-      toast.error(error?.response?.data?.message || "Eroare la adăugarea resurselor în inventar.", { position: "top-right" });
+      toast.error(error?.response?.data?.message || "Eroare la adăugarea resurselor.", { position: "top-right" });
       throw error;
     }
   };
@@ -754,20 +496,69 @@ export default function InventarResursePage({ inventar, tipResursa }) {
     });
   }, [expandableResourceIds]);
 
-  const handleToggleVariantSelect = useCallback((parent, sub) => {
-    const key = getVariantSelectionKey(parent, sub);
+  const handleToggleVariantSelect = useCallback(
+    (parent, sub, event) => {
+      const key = getVariantSelectionKey(parent, sub);
 
-    setSelectedVariantKeys((prev) => {
-      if (prev.includes(key)) return prev.filter((item) => item !== key);
-      return [...prev, key];
-    });
-  }, []);
+      // Shift = selectează intervalul dintre ancoră (ultimul rând atins) și rândul curent, în ordinea afișată.
+      if (event?.shiftKey) {
+        const orderedKeys = orderedVariantEntries.map((entry) => entry.key);
+        const entryByKey = new Map(orderedVariantEntries.map((entry) => [entry.key, entry]));
+        const anchorKey = orderedKeys.includes(lastSelectedVariantKeyRef.current) ? lastSelectedVariantKeyRef.current : key;
+        const startIndex = orderedKeys.indexOf(anchorKey);
+        const endIndex = orderedKeys.indexOf(key);
+
+        if (startIndex !== -1 && endIndex !== -1) {
+          const [from, to] = startIndex < endIndex ? [startIndex, endIndex] : [endIndex, startIndex];
+          const rangeKeys = orderedKeys.slice(from, to + 1);
+
+          setSelectedVariantItemsByKey((current) => {
+            const next = { ...current };
+            rangeKeys.forEach((rangeKey) => {
+              const entry = entryByKey.get(rangeKey);
+              if (entry) next[rangeKey] = entry;
+            });
+            return next;
+          });
+          setSelectedVariantKeys((prev) => [...new Set([...prev, ...rangeKeys])]);
+          lastSelectedVariantKeyRef.current = key;
+          return;
+        }
+      }
+
+      lastSelectedVariantKeyRef.current = key;
+      const item = buildVariantSelectionItem(parent, sub);
+
+      setSelectedVariantKeys((prev) => {
+        if (prev.includes(key)) {
+          setSelectedVariantItemsByKey((current) => {
+            const next = { ...current };
+            delete next[key];
+            return next;
+          });
+          return prev.filter((itemKey) => itemKey !== key);
+        }
+
+        setSelectedVariantItemsByKey((current) => ({
+          ...current,
+          [key]: item,
+        }));
+        return [...prev, key];
+      });
+    },
+    [orderedVariantEntries],
+  );
 
   const handleContextSelectVariant = useCallback(
     (parent, sub) => {
       const key = getVariantSelectionKey(parent, sub);
       if (selectedVariantKeys.includes(key)) return;
+      const item = buildVariantSelectionItem(parent, sub);
       setSelectedVariantKeys([key]);
+      setSelectedVariantItemsByKey((prev) => ({
+        ...prev,
+        [key]: item,
+      }));
     },
     [selectedVariantKeys],
   );
@@ -784,13 +575,38 @@ export default function InventarResursePage({ inventar, tipResursa }) {
   const handleOpenTransaction = useCallback(
     (parent, sub) => {
       setTransactionItems(getContextVariantItems(parent, sub));
+      setTransactionDefaults({
+        source: isSantier ? { type: "santier", santierId: resolvedLocation.id } : null,
+        destination: null,
+      });
       setTransactionDialogOpen(true);
     },
-    [getContextVariantItems],
+    [getContextVariantItems, isSantier, resolvedLocation.id],
   );
+
+  const handleOpenEmptyTransaction = useCallback(() => {
+    setTransactionItems([]);
+    setTransactionDefaults({
+      source: null,
+      destination: isSantier ? { type: "santier", santierId: resolvedLocation.id } : null,
+    });
+    setTransactionDialogOpen(true);
+  }, [isSantier, resolvedLocation.id]);
+
+  const handleOpenTransactionCatalog = useCallback(() => {
+    setSelectDialogOpen(true);
+  }, []);
 
   const handleClearVariantSelection = useCallback(() => {
     setSelectedVariantKeys([]);
+    setSelectedVariantItemsByKey({});
+  }, []);
+
+  // Istoricul mișcărilor se deschide mereu pentru varianta pe care s-a dat click — ignoră selecția multiplă.
+  const handleOpenIstoric = useCallback((parent, sub) => {
+    if (!sub?.id) return;
+    setIstoricVariant({ parent, sub });
+    setIstoricOpen(true);
   }, []);
 
   const handleOpenVariantDialog = useCallback((item) => {
@@ -926,7 +742,7 @@ export default function InventarResursePage({ inventar, tipResursa }) {
         search={search}
         setSearch={setSearch}
         totalItems={totalItems}
-        onAddClick={() => setSelectDialogOpen(true)}
+        onAddClick={handleOpenEmptyTransaction}
         displayLang={displayLang}
         onDisplayLangToggle={() => setDisplayLang((prev) => (prev === "RO" ? "FR" : "RO"))}
         decimalPlaces={decimalPlaces}
@@ -943,9 +759,14 @@ export default function InventarResursePage({ inventar, tipResursa }) {
             return next;
           });
         }}
-        allRowsExpanded={allResourcesExpanded}
-        onToggleAllRows={handleToggleAllResources}
+        allRowsExpanded={!isVariantView && allResourcesExpanded}
+        onToggleAllRows={isVariantView ? undefined : handleToggleAllResources}
         toggleAllRowsLabel={`Extinde/închide ${config.titlePlural}`}
+        viewMode={viewMode}
+        onToggleViewMode={isSantier ? undefined : handleToggleViewMode}
+        viewModeLabel={viewModeLabel}
+        viewModeLocked={isSantier}
+        showAdvancedFilters={false}
       />
 
       <div className="flex-1 min-h-0 rounded-lg border border-border bg-card overflow-hidden flex flex-col">
@@ -953,9 +774,11 @@ export default function InventarResursePage({ inventar, tipResursa }) {
           <Table className="min-w-full table-fixed">
             <TableHeader className="sticky top-0 z-10 bg-background">
               <TableRow className="h-8 xxxl:h-9 bg-muted-foreground/25 hover:bg-muted-foreground/25">
-                <TableHead style={getColumnStyle("expand")} className="px-0 text-center">
-                  {renderPlainHeader("")}
-                </TableHead>
+                {!isVariantView && (
+                  <TableHead style={getColumnStyle("expand")} className="px-0 text-center">
+                    {renderPlainHeader("")}
+                  </TableHead>
+                )}
 
                 {config.hasPhoto && visibleColumns.poza && (
                   <ResizableTableHead colKey="poza" style={getColumnStyle("poza")} onResizeStart={handleColumnResizeStart} className="text-center">
@@ -1008,6 +831,11 @@ export default function InventarResursePage({ inventar, tipResursa }) {
                     {renderPlainHeader("Marcă", textAlign)}
                   </ResizableTableHead>
                 )}
+                {visibleColumns.status && (
+                  <ResizableTableHead colKey="status" style={getColumnStyle("status")} onResizeStart={handleColumnResizeStart} className="text-center">
+                    {renderPlainHeader("Status", "center")}
+                  </ResizableTableHead>
+                )}
 
                 {visibleColumns.greutate && (
                   <ResizableTableHead colKey="greutate" style={getColumnStyle("greutate")} onResizeStart={handleColumnResizeStart} className="text-center">
@@ -1026,7 +854,7 @@ export default function InventarResursePage({ inventar, tipResursa }) {
                 )}
                 {visibleColumns.stocInventar && (
                   <ResizableTableHead colKey="stocInventar" style={getColumnStyle("stocInventar")} onResizeStart={handleColumnResizeStart} className="text-center">
-                    {renderSortHeaderContent("stocInventar", "Stoc inventar")}
+                    {renderSortHeaderContent("stocInventar", primaryStockLabel)}
                   </ResizableTableHead>
                 )}
                 {visibleColumns.stocTotal && (
@@ -1045,35 +873,81 @@ export default function InventarResursePage({ inventar, tipResursa }) {
                   </ResizableTableHead>
                 )}
               </TableRow>
+
+              <InventarHeaderFiltersRow
+                config={config}
+                visibleColumns={visibleColumns}
+                getColumnStyle={getColumnStyle}
+                advancedFilters={advancedFilters}
+                setAdvancedFilters={setAdvancedFilters}
+                displayLang={displayLang}
+                textAlign={textAlign}
+                showExpandColumn={!isVariantView}
+                isVariantView={isVariantView}
+              />
             </TableHeader>
 
             <TableBody>
               {items.length > 0 &&
-                items.map((item) => (
-                  <InventarResourceRow
-                    key={item.inventar_resursa_id}
-                    item={item}
-                    config={config}
-                    visibleColumns={visibleColumns}
-                    displayLang={displayLang}
-                    getColumnStyle={getColumnStyle}
-                    textAlignClasses={textAlignClasses}
-                    decimalPlaces={safeDecimalPlaces}
-                    isExpanded={expandedResourceIds.has(String(item.inventar_resursa_id || item.id))}
-                    onToggleVariants={toggleResourceExpand}
-                    onAddVariant={handleOpenVariantDialog}
-                    selectedVariantKeys={selectedVariantKeys}
-                    onToggleVariantSelect={handleToggleVariantSelect}
-                    onContextSelectVariant={handleContextSelectVariant}
-                    onOpenTransaction={handleOpenTransaction}
-                    onClearVariantSelection={handleClearVariantSelection}
-                  />
-                ))}
+                (isVariantView
+                  ? items.map((item) => {
+                      const sub = getVariantViewSub(item);
+                      if (!sub) return null;
+
+                      const variantKey = getVariantSelectionKey(item, sub);
+                      const isSelected = selectedVariantKeys.includes(variantKey);
+
+                      return (
+                        <InventarVariantRow
+                          key={variantKey}
+                          isVariantView={isVariantView}
+                          last
+                          sub={sub}
+                          parent={item}
+                          config={config}
+                          visibleColumns={visibleColumns}
+                          displayLang={displayLang}
+                          getColumnStyle={getColumnStyle}
+                          textAlignClasses={textAlignClasses}
+                          decimalPlaces={safeDecimalPlaces}
+                          isSelected={isSelected}
+                          selectedCount={isSelected ? selectedVariantKeys.length : 1}
+                          onToggleSelect={handleToggleVariantSelect}
+                          onContextSelect={handleContextSelectVariant}
+                          onOpenTransaction={handleOpenTransaction}
+                          onOpenIstoric={handleOpenIstoric}
+                          onClearSelection={handleClearVariantSelection}
+                          showExpandCell={false}
+                        />
+                      );
+                    })
+                  : items.map((item) => (
+                      <InventarResourceRow
+                        key={item.inventar_resursa_id}
+                        isVariantView={isVariantView}
+                        item={item}
+                        config={config}
+                        visibleColumns={visibleColumns}
+                        displayLang={displayLang}
+                        getColumnStyle={getColumnStyle}
+                        textAlignClasses={textAlignClasses}
+                        decimalPlaces={safeDecimalPlaces}
+                        isExpanded={expandedResourceIds.has(String(item.inventar_resursa_id || item.id))}
+                        onToggleVariants={toggleResourceExpand}
+                        onAddVariant={handleOpenVariantDialog}
+                        selectedVariantKeys={selectedVariantKeys}
+                        onToggleVariantSelect={handleToggleVariantSelect}
+                        onContextSelectVariant={handleContextSelectVariant}
+                        onOpenTransaction={handleOpenTransaction}
+                        onOpenIstoric={handleOpenIstoric}
+                        onClearVariantSelection={handleClearVariantSelection}
+                      />
+                    )))}
             </TableBody>
           </Table>
 
           {items.length === 0 && !isFetching && (
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 top-9 xxxl:top-10 flex items-center justify-center text-muted-foreground">
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 top-[4rem] xxxl:top-[4.5rem] flex items-center justify-center text-muted-foreground">
               <div className="flex items-center justify-center gap-2 text-sm xxxl:text-base">
                 <FontAwesomeIcon icon={faBoxOpen} />
                 Nu există {config.titlePlural.toLowerCase()} în inventar.
@@ -1109,6 +983,7 @@ export default function InventarResursePage({ inventar, tipResursa }) {
             )}
             {selectedVariantKeys.length > 0 && (
               <Button variant="destructive" onClick={handleClearVariantSelection} className="h-9 px-2 text-sm font-bold">
+                <FontAwesomeIcon icon={faBan} />
                 Anulează selecția
               </Button>
             )}
@@ -1130,7 +1005,16 @@ export default function InventarResursePage({ inventar, tipResursa }) {
         </div>
       </div>
 
-      <InventarCatalogSelectDialog open={selectDialogOpen} setOpen={setSelectDialogOpen} tipResursa={tipResursa} lockedLang={inventarLang} onConfirm={handleConfirmSelect} />
+      <InventarCatalogSelectDialog
+        open={selectDialogOpen}
+        setOpen={setSelectDialogOpen}
+        tipResursa={tipResursa}
+        lockedLang={locationLimba}
+        onConfirm={handleConfirmSelect}
+        variantOnly
+        contextTypeLabel={addDialogContextType}
+        contextName={addDialogContextName}
+      />
       {variantDialogParent && <CatalogSubList config={config} open={variantDialogOpen} setOpen={handleSetVariantDialogOpen} parentItem={variantDialogParent} />}
       <InventarStocTranzactieDialog
         open={transactionDialogOpen}
@@ -1138,7 +1022,12 @@ export default function InventarResursePage({ inventar, tipResursa }) {
         selectedItems={transactionItems}
         inventar={inventar}
         tipResursa={tipResursa}
+        defaultSource={transactionDefaults.source}
+        defaultDestination={transactionDefaults.destination}
+        onAddItems={handleOpenTransactionCatalog}
+        onSaved={() => setSelectDialogOpen(false)}
       />
+      <InventarIstoricDialog open={istoricOpen} setOpen={setIstoricOpen} variant={istoricVariant} location={resolvedLocation} primaryStockLabel={primaryStockLabel} />
     </div>
   );
 }

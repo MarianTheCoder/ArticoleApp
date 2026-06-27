@@ -1,8 +1,8 @@
-import React, { useCallback, useContext, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronLeft, faChevronRight } from "@fortawesome/free-solid-svg-icons";
+import { faBan, faChevronLeft, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 
 import { useLoading } from "@/context/LoadingContext";
 import { AuthContext } from "@/context/TokenContext";
@@ -22,6 +22,7 @@ import DeleteDialog from "@/components/ui/delete-dialog";
 import { toast } from "sonner";
 
 const TEXT_ALIGN_STORAGE_KEY = "catalog_text_align";
+const VIEW_MODE_STORAGE_KEY = "catalog_view_mode";
 const VISIBLE_COLUMNS_STORAGE_PREFIX = "catalog_visible_columns";
 
 const getDefaultVisibleColumns = (config) => ({
@@ -33,6 +34,9 @@ const getDefaultVisibleColumns = (config) => ({
   clasa2: false,
   denumire: true,
   descriere: false,
+  furnizor: config.hasFurnizor,
+  marca: config.id === "material" || config.id === "utilaj",
+  status: config.hasStatus,
   greutate: config.id === "material",
   unitate: true,
   cost: true,
@@ -52,6 +56,9 @@ const readVisibleColumns = (tipResursa, config) => {
         ...defaults,
         ...saved,
         poza: config.hasPhoto ? Boolean(saved.poza ?? defaults.poza) : false,
+        furnizor: config.hasFurnizor ? Boolean(saved.furnizor ?? defaults.furnizor) : false,
+        marca: config.id === "material" || config.id === "utilaj" ? Boolean(saved.marca ?? defaults.marca) : false,
+        status: config.hasStatus ? Boolean(saved.status ?? defaults.status) : false,
         greutate: config.id === "material" ? Boolean(saved.greutate ?? defaults.greutate) : false,
       };
     }
@@ -72,7 +79,14 @@ export default function CatalogMainPage({
   onSelectElement,
   selectedItemId = null,
   selectedItemIds = [],
+  selectedCount = 0,
+  selectedLabel = "",
+  onClearSelection,
+  onConfirmSelection,
   lockedLang = null,
+  allowSelectionViewMode = false,
+  lockedViewMode = null,
+  initialViewMode = null,
 }) {
   const { loading, show, hide } = useLoading();
   const { user } = useContext(AuthContext);
@@ -115,6 +129,35 @@ export default function CatalogMainPage({
   });
   const [columnResetKey, setColumnResetKey] = useState(0);
 
+  // View mode: "definitii" (clasic) sau "variante" (listă plată de variante).
+  const [viewMode, setViewMode] = useState(() => {
+    if (initialViewMode === "variante" || initialViewMode === "definitii") return initialViewMode;
+    try {
+      return localStorage.getItem(VIEW_MODE_STORAGE_KEY) === "variante" ? "variante" : "definitii";
+    } catch {
+      return "definitii";
+    }
+  });
+  const effectiveViewMode = lockedViewMode === "variante" || lockedViewMode === "definitii" ? lockedViewMode : viewMode;
+  const effectiveIsVariantView = (!isSelectionMode || allowSelectionViewMode || Boolean(lockedViewMode)) && effectiveViewMode === "variante";
+  const viewModeLabel = effectiveIsVariantView ? "Variante" : "Definiții";
+
+  const handleToggleViewMode = useCallback(() => {
+    if (lockedViewMode) return;
+    if (isSelectionMode) onClearSelection?.();
+    setViewMode((prev) => (prev === "variante" ? "definitii" : "variante"));
+  }, [isSelectionMode, lockedViewMode, onClearSelection]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(VIEW_MODE_STORAGE_KEY, viewMode);
+    } catch {}
+  }, [viewMode]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [effectiveIsVariantView]);
+
   useEffect(() => {
     try {
       localStorage.setItem(TEXT_ALIGN_STORAGE_KEY, textAlign);
@@ -127,6 +170,9 @@ export default function CatalogMainPage({
       cod: "",
       denumire: "",
       variante: "0",
+      furnizor_id: "",
+      marca_id: "",
+      status: "all",
       greutate: "",
       cost: "",
       unitate: "all",
@@ -189,8 +235,11 @@ export default function CatalogMainPage({
     limit: limitDebounced,
     cod: advancedFiltersDebounced.cod,
     denumire: advancedFiltersDebounced.denumire,
-    variante: advancedFiltersDebounced.variante,
+    variante: effectiveIsVariantView ? "1" : advancedFiltersDebounced.variante,
     descriere: advancedFiltersDebounced.descriere,
+    furnizor_id: advancedFiltersDebounced.furnizor_id,
+    marca_id: advancedFiltersDebounced.marca_id,
+    status: advancedFiltersDebounced.status === "all" ? "" : advancedFiltersDebounced.status,
     cost: advancedFiltersDebounced.cost,
     greutate: advancedFiltersDebounced.greutate,
     unitate: advancedFiltersDebounced.unitate === "all" ? "" : advancedFiltersDebounced.unitate,
@@ -201,9 +250,28 @@ export default function CatalogMainPage({
 
   const { mutateAsync: deleteDefinitie } = useDeleteCatalogDef();
 
-  const resurseList = data?.items || [];
   const totalItems = data?.total || 0;
   const totalPages = data?.totalPages || 1;
+
+  // În view-ul "variante" aplatizăm: un rând per variantă, păstrând definiția-părinte (__parent) cu toate variantele pentru a deschide CatalogSubList neschimbat.
+  const displayItems = useMemo(() => {
+    const list = data?.items || [];
+    if (!effectiveIsVariantView) return list;
+
+    return list.flatMap((parent) =>
+      (parent.subcategorii || []).map((sub) => ({
+        ...parent,
+        __parent: parent,
+        __sub: sub,
+        id: `${parent.id}:${sub.id}`,
+        cod_definitie: sub.cod_specific || parent.cod_definitie,
+        descriere: sub.descriere ?? parent.descriere,
+        descriere_fr: sub.descriere_fr ?? parent.descriere_fr,
+        cost: sub.cost ?? parent.cost,
+        photo_url: sub.photo_url || parent.photo_url,
+      })),
+    );
+  }, [data, effectiveIsVariantView]);
 
   // --- ACȚIUNI ---
   const handleAddClick = () => {
@@ -245,7 +313,9 @@ export default function CatalogMainPage({
 
   return (
     <div className="h-full w-full flex justify-center overflow-hidden items-center">
-      <div className={`${!isSelectionMode ? "w-[95%] h-[95%] rounded-lg" : "rounded-t-lg w-full h-full"} flex flex-col p-2 xxxl:p-3 gap-2 xxxl:gap-3 overflow-hidden bg-background relative `}>
+      <div
+        className={`${!isSelectionMode ? "w-[95%] h-[92%] rounded-lg overflow-visible" : "rounded-t-lg w-full h-full overflow-hidden"} isolate flex flex-col p-2 xxxl:p-3 gap-2 xxxl:gap-3 bg-background relative `}
+      >
         {/* --- 1. HEADER (FILTRE) --- */}
         <CatalogFilters
           config={config} // Trimitem configuratia dinamica
@@ -270,49 +340,56 @@ export default function CatalogMainPage({
             });
           }}
           lockedLang={effectiveLockedLang}
+          showAdvancedFilters={false}
+          viewMode={effectiveIsVariantView ? "variante" : "definitii"}
+          onToggleViewMode={!lockedViewMode && (!isSelectionMode || allowSelectionViewMode) ? handleToggleViewMode : undefined}
+          viewModeLabel={viewModeLabel}
+          viewModeLocked={Boolean(lockedViewMode)}
         />
 
         {/* --- 2. LISTA ȘI PAGINAREA --- */}
         <div className="flex-1 w-full bg-card rounded-lg overflow-hidden relative shadow-base border border-border flex flex-col">
           <div className="flex-1 p-2 xxxl:p-3 overflow-hidden flex flex-col relative">
-            {resurseList.length > 0 ? (
-              <CatalogList
-                config={config} // Trimitem configuratia
-                catalogItems={resurseList}
-                visibleColumns={visibleColumns}
-                setDraft={setDraft}
-                setOpen={setOpenAddDef}
-                handleDeleteClick={handleDeleteClick}
-                handleDuplicateClick={handleDuplicateClick}
-                displayLang={displayLang}
-                // selectie
-                isSelectionMode={isSelectionMode}
-                selectedItemId={selectedItemId}
-                selectedItemIds={selectedItemIds}
-                onSelectElement={onSelectElement}
-                // sortare / afisare
-                sortBy={advancedFilters.sortBy}
-                sortOrder={advancedFilters.sortOrder}
-                decimalPlaces={decimalPlaces}
-                textAlign={textAlign}
-                columnResetKey={columnResetKey}
-                onSortChange={(sortBy, sortOrder) => {
-                  setAdvancedFilters((prev) => ({
-                    ...prev,
-                    sortBy,
-                    sortOrder,
-                  }));
-                }}
-              />
-            ) : (
-              <div className="flex-1 w-full flex justify-center items-center rounded-lg border border-border bg-muted/10">
-                <span className="text-base xxxl:text-xl text-muted-foreground italic">
-                  {searchDebounced.trim() === "" && advancedFiltersDebounced.cod === ""
-                    ? `Nu am găsit niciun/nicio ${config.title.toLowerCase()} conform criteriilor de căutare.`
-                    : `Nu am găsit niciun/nicio ${config.title.toLowerCase()} conform criteriilor de căutare.`}
-                </span>
-              </div>
-            )}
+            <CatalogList
+              config={config} // Trimitem configuratia
+              catalogItems={displayItems}
+              viewMode={effectiveIsVariantView ? "variante" : "definitii"}
+              visibleColumns={visibleColumns}
+              setDraft={setDraft}
+              setOpen={setOpenAddDef}
+              handleDeleteClick={handleDeleteClick}
+              handleDuplicateClick={handleDuplicateClick}
+              displayLang={displayLang}
+              // selectie
+              isSelectionMode={isSelectionMode}
+              selectedItemId={selectedItemId}
+              selectedItemIds={selectedItemIds}
+              onSelectElement={onSelectElement}
+              // sortare / afisare
+              sortBy={advancedFilters.sortBy}
+              sortOrder={advancedFilters.sortOrder}
+              decimalPlaces={decimalPlaces}
+              textAlign={textAlign}
+              columnResetKey={columnResetKey}
+              onSortChange={(sortBy, sortOrder) => {
+                setAdvancedFilters((prev) => ({
+                  ...prev,
+                  sortBy,
+                  sortOrder,
+                }));
+              }}
+              onClearSelection={onClearSelection}
+              onConfirmSelection={onConfirmSelection}
+              advancedFilters={advancedFilters}
+              setAdvancedFilters={(updater) => {
+                setAdvancedFilters((prev) => {
+                  const next = typeof updater === "function" ? updater(prev) : updater;
+                  return effectiveLockedLang ? { ...next, limba: effectiveLockedLang } : next;
+                });
+              }}
+              lockedLang={effectiveLockedLang}
+              emptyMessage={`Nu am găsit niciun/nicio ${config.title.toLowerCase()} conform criteriilor de căutare.`}
+            />
 
             {isFetching && !loading && <SpinnerElement text={2} />}
           </div>
@@ -337,13 +414,34 @@ export default function CatalogMainPage({
             </div>
 
             <div className="flex items-center gap-3 xxxl:gap-4">
-              <Button variant="default" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className={`h-9 xxxl:h-10 px-3 xxxl:px-4 text-sm xxxl:text-base ${config.hoverButton}`}>
+              {isSelectionMode && selectedCount > 0 && (
+                <>
+                  <div data-catalog-selection-keep className="flex h-9 items-center gap-2 rounded-md border border-primary/40 bg-primary/10 px-2 py-1">
+                    <span className="text-sm font-black text-primary">{selectedLabel || `${selectedCount} selectate`}</span>
+                  </div>
+                  <Button data-catalog-selection-keep type="button" variant="destructive" onClick={onClearSelection} className="h-9 px-2 text-sm font-bold">
+                    <FontAwesomeIcon icon={faBan} />
+                    Anulează selecția
+                  </Button>
+                </>
+              )}
+              <Button
+                variant="default"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className={`h-9 xxxl:h-10 px-3 xxxl:px-4 text-sm xxxl:text-base ${config.hoverButton}`}
+              >
                 <FontAwesomeIcon icon={faChevronLeft} className="text-sm" /> Înapoi
               </Button>
               <span className="text-sm xxxl:text-base font-semibold text-foreground">
                 Pagina {page} / {totalPages || 1}
               </span>
-              <Button variant="default" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= (totalPages || 1)} className={`h-9 xxxl:h-10 px-3 xxxl:px-4 text-sm xxxl:text-base ${config.hoverButton}`}>
+              <Button
+                variant="default"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= (totalPages || 1)}
+                className={`h-9 xxxl:h-10 px-3 xxxl:px-4 text-sm xxxl:text-base ${config.hoverButton}`}
+              >
                 Înainte <FontAwesomeIcon icon={faChevronRight} className="text-sm" />
               </Button>
             </div>

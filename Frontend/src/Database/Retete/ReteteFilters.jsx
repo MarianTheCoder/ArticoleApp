@@ -86,6 +86,7 @@ export default function ReteteFilters({
   toggleCol,
   advancedFilters,
   setAdvancedFilters,
+  showAdvancedFilters = true,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [claseFilterOpen, setClaseFilterOpen] = useState(false);
@@ -124,13 +125,15 @@ export default function ReteteFilters({
             <span className="hidden sm:inline">Catalog clase</span>
           </Button>
 
-          <CollapsibleTrigger asChild>
-            <Button variant="outline" className="gap-2 h-8 xxxl:h-9 px-2.5 xxxl:px-3 text-sm xxxl:text-base text-foreground">
-              <FontAwesomeIcon icon={faFilter} className={isOpen ? "text-sky-600" : "text-foreground"} />
-              <span className="hidden sm:inline">Filtre avansate</span>
-              <FontAwesomeIcon icon={isOpen ? faChevronUp : faChevronDown} className="text-xs ml-1" />
-            </Button>
-          </CollapsibleTrigger>
+          {showAdvancedFilters && (
+            <CollapsibleTrigger asChild>
+              <Button variant="outline" className="gap-2 h-8 xxxl:h-9 px-2.5 xxxl:px-3 text-sm xxxl:text-base text-foreground">
+                <FontAwesomeIcon icon={faFilter} className={isOpen ? "text-sky-600" : "text-foreground"} />
+                <span className="hidden sm:inline">Filtre avansate</span>
+                <FontAwesomeIcon icon={isOpen ? faChevronUp : faChevronDown} className="text-xs ml-1" />
+              </Button>
+            </CollapsibleTrigger>
+          )}
 
           <Separator orientation="vertical" className="h-8 xxxl:h-9 hidden sm:block" />
 
@@ -242,7 +245,7 @@ export default function ReteteFilters({
         </div>
       </div>
 
-      {activeFilters.length > 0 && (
+      {showAdvancedFilters && activeFilters.length > 0 && (
         <div className="flex flex-wrap gap-1.5 xxxl:gap-2 items-center px-1">
           <span className="text-[11px] xxxl:text-xs font-bold text-muted-foreground uppercase mr-1">Filtre Active:</span>
           {activeFilters.map(([key, value]) => (
@@ -271,6 +274,7 @@ export default function ReteteFilters({
         </div>
       )}
 
+      {showAdvancedFilters && (
       <CollapsibleContent className="space-y-2 xxxl:space-y-3">
         <Separator />
         <div className="flex flex-wrap gap-2 xxxl:gap-3 items-end">
@@ -331,6 +335,7 @@ export default function ReteteFilters({
           </div>
         </div>
       </CollapsibleContent>
+      )}
       <ReteteClaseCoduriDialog
         open={claseFilterOpen}
         setOpen={setClaseFilterOpen}
